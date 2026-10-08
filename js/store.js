@@ -27,7 +27,7 @@ export function getDisplayName() { return lsGet(LS_NAME, ''); }
 export function setDisplayName(name) { lsSet(LS_NAME, String(name || '').slice(0, 40)); }
 
 export const store = {
-  state: lsGet(LS_KEY, { checks: {}, choices: {}, suggestions: [], updatedAt: null }),
+  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, updatedAt: null }, lsGet(LS_KEY, {})),
   mode: 'connecting', // connecting | online | local
   lastError: null,
   listeners: new Set(),
@@ -66,7 +66,7 @@ export const store = {
   async refresh() {
     try {
       const remote = await this.api('state');
-      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], updatedAt: remote.updatedAt || null };
+      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, updatedAt: remote.updatedAt || null };
       this.persist();
       this.setMode('online');
       this.emit();
@@ -107,6 +107,16 @@ export const store = {
       (s) => { s.choices[id] = value; },
       'choices', { id, value },
       (d, s) => { if (d.choices) s.choices = d.choices; },
+    );
+  },
+
+  // Edits, hidden stops and added stops, keyed by stop id. value null removes the record (reset / delete).
+  getCustom(id) { return (this.state.custom || {})[id] || null; },
+  setCustom(id, value) {
+    return this._mutate(
+      (s) => { s.custom = s.custom || {}; if (value) s.custom[id] = { ...value, ts: new Date().toISOString() }; else delete s.custom[id]; },
+      'custom', { id, value: value || null },
+      (d, s) => { if (d.custom) s.custom = d.custom; },
     );
   },
 

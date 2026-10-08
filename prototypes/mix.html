@@ -236,6 +236,101 @@ body.scrolled .topfade { opacity:1; }
 .jpcard .e { font-size:15px; color:var(--ink3); margin-top:10px; }
 .jpcard .x { position:absolute; top:var(--top); right:14px; width:48px; height:48px; border-radius:50%; background:#fff; display:grid; place-items:center; box-shadow:0 2px 10px rgba(0,0,0,.12); }
 
+/* key info pill + story */
+.keyp { max-width:100%; min-width:0; padding:6px 14px 7px; border-radius:16px; background:rgba(0,0,0,.38); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#fff; line-height:1.25; text-align:center; display:inline-flex; flex-direction:column; align-items:center; }
+.keyp span { font-size:12.5px; font-weight:700; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.keyp i { font-style:normal; font-size:11px; font-weight:500; opacity:.8; white-space:nowrap; }
+.pass.tk .keyp { background:rgba(0,0,0,.07); color:var(--ink); -webkit-backdrop-filter:none; backdrop-filter:none; }
+.storyx { display:none; margin:0 0 14px; padding:12px 14px; border-radius:14px; background:rgba(0,0,0,.16); font-size:14.5px; line-height:1.5; }
+.storyx b { display:block; font-family:var(--serif); font-style:italic; font-size:19px; font-weight:400; margin-bottom:2px; }
+.pass.storyon .storyx { display:block; animation:fadeup 300ms var(--ease) both; }
+.pass.tk .storyx { background:rgba(0,0,0,.05); }
+/* the saying: Japanese name + romaji, opens phrase cards */
+.say { display:flex; align-items:center; gap:12px; width:100%; margin-top:14px; padding:12px 14px; border-radius:14px; background:rgba(0,0,0,.16); text-align:left; color:inherit; }
+.pass.tk .say { background:rgba(0,0,0,.05); }
+.say-l { flex:1; min-width:0; }
+.say-l b { display:block; font-family:var(--mincho); font-size:24px; line-height:1.2; font-weight:700; }
+.say-l small { display:block; font-size:13.5px; opacity:.85; margin-top:2px; }
+.say-r { flex:none; font-size:12.5px; font-weight:700; opacity:.85; text-align:right; line-height:1.25; display:flex; align-items:center; gap:4px; }
+.a-ed { background:rgba(255,255,255,.16); color:#fff; flex:0 0 52px; }
+.pass.tk .a-ed { background:rgba(0,0,0,.07); color:var(--ink); }
+.who-tag { display:inline-flex; align-items:center; gap:4px; }
+.addgap { position:absolute; left:50%; top:0; z-index:5; transform:translate(-50%,0); height:34px; padding:0 14px 0 10px; border-radius:999px; background:#fff; color:var(--ink); font-size:13px; font-weight:700; display:none; align-items:center; gap:6px; box-shadow:0 4px 14px -6px rgba(0,0,0,.3); white-space:nowrap; }
+.addgap.on { display:inline-flex; }
+.addgap svg, .addend svg { width:18px; height:18px; }
+.addend { display:flex; align-items:center; justify-content:center; gap:6px; margin:14px 12px 0; width:calc(100% - 24px); height:52px; border-radius:18px; border:1.5px dashed rgba(0,0,0,.18); font-size:14.5px; font-weight:700; color:var(--ink2); }
+.hd .gear { width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,.05); display:grid; place-items:center; flex:none; }
+.hd-r .rr { display:flex; align-items:center; gap:6px; }
+/* editor sheet */
+.ed { z-index:980; }
+.ed .kit-b { padding-bottom:6px; }
+.ed-h { display:flex; align-items:center; justify-content:space-between; margin:2px 2px 12px; }
+.ed-h b { font-size:19px; letter-spacing:-.02em; }
+.ed-h button { font-size:14.5px; font-weight:700; color:var(--ink3); padding:6px 4px; }
+.fld { display:block; margin-bottom:12px; }
+.fld > span { display:block; font-size:12px; font-weight:700; color:var(--ink3); margin:0 2px 5px; }
+.fld input, .fld textarea { width:100%; font:500 16px var(--sans); color:var(--ink); background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:14px; padding:12px 14px; outline:none; -webkit-appearance:none; appearance:none; }
+.fld input:focus, .fld textarea:focus { border-color:var(--ink); }
+.fld textarea { min-height:84px; resize:vertical; line-height:1.4; }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.tchips { display:flex; flex-wrap:wrap; gap:6px; }
+.tchips button { padding:8px 12px; border-radius:12px; background:#fff; font-size:13.5px; font-weight:700; border:1px solid rgba(0,0,0,.06); transition:background 160ms, color 160ms; }
+.tchips button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+.pcur { display:flex; align-items:center; gap:10px; background:#fff; border-radius:14px; padding:10px 12px; margin-bottom:8px; font-size:14.5px; font-weight:700; border:1px solid rgba(0,0,0,.06); }
+.pcur span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pcur button { color:var(--ink3); font-size:13px; font-weight:700; }
+.pres { display:grid; gap:4px; margin-top:6px; }
+.pres button { text-align:left; padding:10px 12px; border-radius:12px; background:#fff; font-size:14px; line-height:1.3; border:1px solid rgba(0,0,0,.05); }
+.pres button small { display:block; color:var(--ink3); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pres p { font-size:13px; color:var(--ink3); padding:4px 2px; }
+.here { margin-top:8px; font-size:13.5px; font-weight:700; color:var(--blue); padding:4px 2px; display:inline-flex; gap:6px; align-items:center; }
+.more { font-size:13.5px; font-weight:700; color:var(--ink2); padding:2px; margin-bottom:12px; }
+.save { width:100%; height:52px; border-radius:16px; background:var(--ink); color:#fff; font-size:16px; font-weight:700; margin-top:4px; transition:transform 160ms var(--ease); }
+.save:active { transform:scale(.98); }
+.save:disabled { opacity:.35; }
+.edx { display:flex; gap:8px; margin-top:10px; }
+.edx button { flex:1; height:46px; border-radius:14px; background:#fff; font-size:14px; font-weight:700; border:1px solid rgba(0,0,0,.06); }
+.edx .danger { color:#c62d22; }
+.edmsg { font-size:12.5px; color:var(--ink3); text-align:center; margin-top:10px; }
+/* settings page */
+.setp { position:fixed; inset:0; z-index:960; background:var(--paper); overflow-y:auto; overscroll-behavior:contain; transform:translate3d(100%,0,0); transition:transform 380ms var(--ease); padding:0 0 calc(40px + env(safe-area-inset-bottom)); }
+.setp.on { transform:none; }
+.set-h { position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:8px; padding:calc(10px + env(safe-area-inset-top)) 12px 10px; background:rgba(246,244,239,.92); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); }
+.set-h h2 { font-size:20px; letter-spacing:-.02em; flex:1; }
+.set-h .tb { background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.set-note { font-size:13.5px; color:var(--ink2); padding:4px 20px 12px; }
+.sday { margin:0 12px 10px; background:#fff; border-radius:20px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.sday summary { list-style:none; display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer; }
+.sday summary::-webkit-details-marker { display:none; }
+.sday summary b { flex:1; font-size:15.5px; letter-spacing:-.01em; }
+.sday summary small { font-size:12px; color:var(--ink3); font-weight:500; display:block; }
+.sday summary .n { font-family:var(--serif); font-style:italic; font-size:26px; width:30px; }
+.sday summary .cnt2 { font-size:11.5px; font-weight:700; color:#fff; background:var(--blue); border-radius:999px; padding:2px 8px; }
+.srow { display:flex; align-items:center; gap:10px; width:100%; padding:11px 16px; border-top:1px solid var(--line); text-align:left; }
+.srow .t { width:64px; flex:none; font-size:12.5px; color:var(--ink3); }
+.srow .m { flex:1; min-width:0; }
+.srow .m b { display:block; font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.srow .bd { display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; }
+.bdg { font-size:10.5px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; padding:2px 7px; border-radius:6px; background:var(--paper); color:var(--ink2); }
+.bdg.ed2 { background:#e5edff; color:#1e4fc2; } .bdg.add { background:#e3f4e8; color:#1f7a3f; } .bdg.hid { background:#f6e3e1; color:#a5281e; } .bdg.nasa { background:#efe7fb; color:#5a3a99; } .bdg.mm { background:#fdebd9; color:#a14e10; }
+.srow.hidden .m b { color:var(--ink3); text-decoration:line-through; }
+.sadd { display:flex; align-items:center; gap:6px; width:100%; padding:12px 16px; border-top:1px solid var(--line); font-size:14px; font-weight:700; color:var(--blue); }
+.set-reset { display:block; margin:18px auto 0; font-size:14px; font-weight:700; color:#c62d22; padding:10px 16px; }
+/* phrase cards */
+.jpcard.car { justify-content:flex-start; padding:calc(70px + env(safe-area-inset-top)) 0 30px; }
+.car-t { font-size:13px; font-weight:700; color:var(--ink3); letter-spacing:.04em; text-transform:uppercase; padding:0 24px; }
+.car-s { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; width:100%; padding:16px 24px 8px; scrollbar-width:none; flex:1; align-items:stretch; }
+.car-s::-webkit-scrollbar { display:none; }
+.pcd { flex:0 0 calc(100% - 24px); scroll-snap-align:center; background:#fff; border-radius:28px; padding:28px 22px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; box-shadow:0 18px 40px -24px rgba(0,0,0,.35); max-height:62vh; }
+.pcd .k { font-size:min(11vw,52px); line-height:1.3; word-break:normal; overflow-wrap:anywhere; line-break:strict; max-width:100%; }
+.pcd .k.long { font-size:min(7.4vw,34px); }
+.pcd .r { font-size:18px; }
+.pcd .e { font-size:15px; margin-top:16px; }
+.pcd .nm { font-family:var(--mincho); font-size:20px; margin-bottom:14px; color:var(--ink2); }
+.car-d { display:flex; gap:5px; justify-content:center; padding-top:8px; }
+.car-d i { width:6px; height:6px; border-radius:3px; background:#d7d3ca; transition:width 200ms var(--ease), background 200ms; }
+.car-d i.on { width:18px; background:var(--ink); }
+
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation-duration:1ms !important; animation-iteration-count:1 !important; transition-duration:120ms !important; transition-delay:0ms !important; }
 }
@@ -256,7 +351,9 @@ body.scrolled .topfade { opacity:1; }
 <div class="wrap"><div class="spacer"></div><main class="sheet" id="sheet"></main></div>
 <div class="scrim" id="scrim"></div>
 <section class="kit" id="kit" aria-label="Travel kit"><div class="kit-h"><div class="grab" style="margin:0"></div></div><div class="kit-b" id="kitb"></div></section>
-<div class="jpcard" id="jpcard" role="dialog" aria-label="Show in Japanese"></div>
+<section class="kit ed" id="ed" aria-label="Edit stop"><div class="kit-h"><div class="grab" style="margin:0"></div></div><div class="kit-b" id="edb"></div></section>
+<section class="setp" id="setp" aria-label="Edit trip"></section>
+<div class="jpcard" id="jpcard" role="dialog" aria-label="Phrases in Japanese"></div>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script type="module">
 import { DAYS, HOTELS } from '../data/itinerary.js';
@@ -302,6 +399,9 @@ const I = {
   chevL: '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   chevR: '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   swap: '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  plus: '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  pen: '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+  pin2: '<svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   x: '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
   sunrise: '<svg viewBox="0 0 24 24"><path d="M4 18h16M7 18a5 5 0 0110 0M12 4v4M5 9l1.5 1.5M19 9l-1.5 1.5M9.5 6.5L12 4l2.5 2.5" stroke="#e0a420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   sunset: '<svg viewBox="0 0 24 24"><path d="M4 18h16M7 18a5 5 0 0110 0M12 4v4M5 9l1.5 1.5M19 9l-1.5 1.5M9.5 5.5L12 8l2.5-2.5" stroke="#e0703a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -391,15 +491,36 @@ const ui = { dayId: qs.get('d') || (tripDay ? tripDay.id : DAYS[0].id), who: ls.
 let day, events, asides, stops, map, layers = [], pinEls = {}, dialApi = null, stackApi = null;
 const nowMin = () => { const t = new Date(Date.now() + 9 * 3600e3); return t.getUTCHours() * 60 + t.getUTCMinutes(); };
 
+const CUSTOM = () => store.state.custom || {};
+const fmtRange = (a, b) => { if (a == null) return ''; const [ta, pa] = fmt(a); if (b == null || b <= a) return `${ta} ${pa}`; const [tb, pb] = fmt(b); return pa === pb ? `${ta}–${tb} ${pb}` : `${ta} ${pa}–${tb} ${pb}`; };
+/* All stops for a day: originals with edits applied, hidden ones dropped (unless asked), added ones slotted in. */
+function dayItems(d, { who = ui.who, withHidden = false } = {}) {
+  const C = CUSTOM();
+  const allowed = (it) => { const w = it.who || 'all'; return who === 'all' || w === 'all' || w === who; };
+  const patch = (it) => { const c = C[it.id]; if (it.type !== 'event' || !c || c.added) return it; const o = { ...it, _orig: it, _edited: Object.keys(c).some((k) => k !== 'hidden' && k !== 'ts') };
+    for (const k of ['title', 'time', 'desc', 'cost', 'who']) if (c[k] != null) o[k] = c[k];
+    if ('place' in c) o.place = c.place ? { ...c.place, q: c.place.name } : null;
+    if (c.cat) o.tags = [c.cat]; if (c.hidden) o.hidden = true; return o; };
+  const items = [];
+  for (const raw of d.items) {
+    if (raw.type === 'choice') { if (!allowed(raw)) continue; const id = store.getChoice(raw.id, raw.default); const o = raw.options.find((x) => x.id === id) || raw.options[0]; items.push(raw); (o.items || []).map(patch).filter(allowed).forEach((x) => items.push(x)); }
+    else { const it = patch(raw); if (allowed(it)) items.push(it); }
+  }
+  const added = Object.entries(C).filter(([, c]) => c.added && c.day === d.id).sort((x, y) => String(x[1].ts).localeCompare(String(y[1].ts)))
+    .map(([id, c]) => ({ type: 'event', id, title: c.title || 'New stop', time: c.time || '', desc: c.desc || '', cost: c.cost || '', who: c.who || 'all', place: c.place ? { ...c.place, q: c.place.name } : null, tags: c.cat ? [c.cat] : [], hidden: !!c.hidden, _added: true, _after: c.after }))
+    .filter(allowed);
+  for (const a of added) {
+    const s0 = span(a);
+    let at = !s0 && a._after ? items.findIndex((x) => x.id === a._after) : -1;
+    if (at >= 0) { at++; while (at < items.length && items[at]._added && items[at]._after === a._after) at++; items.splice(at, 0, a); continue; }
+    const k = s0 ? items.findIndex((x) => x.type === 'event' && span(x) && span(x)[0] > s0[0]) : -1;
+    if (k >= 0) items.splice(k, 0, a); else items.push(a);
+  }
+  return withHidden ? items : items.filter((x) => !x.hidden);
+}
 function prepare() {
   day = DAYS.find((d) => d.id === ui.dayId) || DAYS[0];
-  const allowed = (it) => { const w = it.who || 'all'; return ui.who === 'all' || w === 'all' || w === ui.who; };
-  const items = [];
-  for (const it of day.items) {
-    if (!allowed(it)) continue;
-    if (it.type === 'choice') { const id = store.getChoice(it.id, it.default); const o = it.options.find((x) => x.id === id) || it.options[0]; items.push(it); (o.items || []).filter(allowed).forEach((s) => items.push(s)); }
-    else items.push(it);
-  }
+  const items = dayItems(day);
   events = items.filter((i) => i.type === 'event');
   asides = items.filter((i) => i.type === 'note' || i.type === 'choice');
   stops = []; events.forEach((e) => { if (!e.place) return; const p = stops[stops.length - 1]; if (p && p.e.place.lat === e.place.lat && p.e.place.lng === e.place.lng) { p.ids.push(e.id); return; } stops.push({ n: stops.length + 1, ids: [e.id], e }); });
@@ -425,7 +546,7 @@ function renderTop() {
 /* ═══ render: sheet ═══ */
 function passHTML(e, i) {
   const c = catOf(e), n = numOf(e.id), tk = isTicket(e), d = done(e.id);
-  const host = e.place || placeOfEvent(i); const pi0 = placeInfo(host); const pi = pi0 && !e.place ? { ...pi0, area: pi0.area || host.name, fact: null } : pi0; const photo = imgUrl(pi);
+  const host = e.place || placeOfEvent(i); const pi0 = placeInfo(host); const pi = pi0 && !e.place ? { ...pi0, area: pi0.area || host.name, key: null } : pi0; const photo = imgUrl(pi);
   const color = tk ? legHex(e) : c.c;
   const kind = tk ? (e.travel ? (MODE[e.travel.mode] || [0, 0, 'Transit'])[2] : 'Transit') : c.label;
   const chips = [`<span class="chip">${esc(e.time || 'Any time')}</span>`];
@@ -433,14 +554,16 @@ function passHTML(e, i) {
   if (e.travel && !tk) chips.push(`<span class="chip">${modeIcon(e)}${esc(legMin(e))}</span>`);
   if (e.optional) chips.push('<span class="chip">Optional</span>');
   if (e.who && e.who !== 'all') chips.push(`<span class="chip">${e.who === 'nasa' ? 'NASA' : 'M&amp;M'} only</span>`);
-  const body = `<div class="body">${tk ? `<div class="route"><div><small>From</small><b>${esc(fromName(i))}</b></div><span class="arr">${I.arrow}</span><div><small>To</small><b>${esc(e.place ? e.place.name : toName(i))}</b></div></div>` : ''}
+  if (e._added) chips.push('<span class="chip">Added</span>'); else if (e._edited) chips.push('<span class="chip">Edited</span>');
+  const story = pi && pi.story ? `<div class="storyx"><b>${e.place ? 'The story' : 'About ' + esc(host.name)}</b>${esc(pi.story)}</div>` : '';
+  const body = `<div class="body">${story}${tk ? `<div class="route"><div><small>From</small><b>${esc(fromName(i))}</b></div><span class="arr">${I.arrow}</span><div><small>To</small><b>${esc(e.place ? e.place.name : toName(i))}</b></div></div>` : ''}
     <div class="chips">${chips.join('')}</div>
     ${e.travel && tk ? `<p class="desc"><b>${esc(e.travel.label || '')}</b></p>` : ''}
     ${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
-    ${pi && pi.fact ? `<div class="dyk"><b>Did you know</b>${esc(pi.fact)}</div>` : ''}
-    <div class="acts">${e.place ? `<a class="a-dir press" href="${gmDir(e.place, e.travel && e.travel.mode)}" target="_blank" rel="noopener">${I.dir}Directions</a>` : ''}${pi && pi.ja && host ? `<button class="a-jp press" data-jp="${esc(host.name)}" aria-label="Show name in Japanese">日本</button>` : ''}<button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>
+    ${pi && pi.ja && host ? `<button class="say press" data-jp="${esc(host.name)}"><span class="say-l"><b>${esc(pi.ja)}</b>${pi.ro ? `<small>${esc(pi.ro)}</small>` : ''}</span><span class="say-r">Phrases<br>for here${I.chevR}</span></button>` : ''}
+    <div class="acts">${e.place ? `<a class="a-dir press" href="${gmDir(e.place, e.travel && e.travel.mode)}" target="_blank" rel="noopener">${I.dir}Directions</a>` : ''}<button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>
     ${pi && pi.credit && !tk ? `<p class="credit">Photo${pi.area ? ` (${esc(pi.area)})` : ''}: <a href="${esc(pi.file)}" target="_blank" rel="noopener">${esc(pi.credit)}</a></p>` : ''}</div>`;
-  const nav = `<div class="pnav"><button class="st" data-step="-1" ${i === 0 ? 'disabled' : ''} aria-label="Previous stop">${I.chevL}</button><div class="mid">${pi && pi.ja ? `<span class="jp2"><b>${esc(pi.ja)}</b>${pi.ro ? `<small>${esc(pi.ro)}</small>` : ''}</span>` : `<span class="cnt">${i + 1} of ${events.length}</span>`}</div><button class="st" data-step="1" ${i === events.length - 1 ? 'disabled' : ''} aria-label="Next stop">${I.chevR}</button></div>`;
+  const nav = `<div class="pnav"><button class="st" data-step="-1" ${i === 0 ? 'disabled' : ''} aria-label="Previous stop">${I.chevL}</button><div class="mid">${pi && pi.key ? `<button class="keyp" data-story="${e.id}"><span>${esc(pi.key)}</span>${pi.story ? '<i>Read the story</i>' : ''}</button>` : `<span class="cnt">${i + 1} of ${events.length}</span>`}</div><button class="st" data-step="1" ${i === events.length - 1 ? 'disabled' : ''} aria-label="Next stop">${I.chevR}</button></div>`;
   const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}</small><b>${esc(e.title)}</b></div>${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
   const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}</small><b>${esc(e.title)}</b></div></div></div>`;
   return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}<div class="hanko" aria-hidden="true">済</div></article>`;
@@ -460,11 +583,12 @@ function renderSheet() {
   const know = (KNOW[day.city] || []).map(([t, x]) => `<div class="card"><small>${esc(day.city)}</small><h3>${esc(t)}</h3><p>${withFx(x)}</p></div>`).join('');
   const hpi = PLACES[h0.name] || {};
   sh.innerHTML = `<div class="fadein"><div class="grab"></div>
-    <header class="hd"><div class="hd-r"><p class="eb">Day ${day.n} of ${DAYS.length} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · ${esc(day.city)}</p><div class="seg" id="who">${whoBtns}<i></i></div></div>
+    <header class="hd"><div class="hd-r"><p class="eb">Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p><div class="rr"><div class="seg" id="who">${whoBtns}<i></i></div><button class="gear press" id="gear" aria-label="Edit trip">${I.pen}</button></div></div>
       <h1>${esc(day.title)}</h1>${day.tagline ? `<p class="tg">${esc(day.tagline)}</p>` : ''}</header>
     <div class="facts">${daysTo > 0 ? `<span class="fact cd">${daysTo} <small>days to go</small></span>` : ''}<span class="fact" id="wx"><small>Weather…</small></span><span class="fact">${I.sunrise}${fmt(sun.rise).join(' ')}</span><span class="fact">${I.sunset}${fmt(sun.set).join(' ')}</span><span class="fact"><small>Dinner</small> ${esc(day.dinner)}</span></div>
     <div class="dial" id="dial"><svg id="arc" viewBox="0 0 360 196"></svg><div class="dc"><p class="dc-k" id="dck"></p><p class="dc-t" id="dct"></p><p class="dc-n" id="dcn"></p></div></div>
-    <div class="stack" id="stack">${events.map(passHTML).join('')}</div>
+    <div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button></div>
+    <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
     ${know ? `<p class="sec">Good to know in ${esc(day.city)}</p><div class="know">${know}</div>` : ''}
     <p class="sec">Tonight</p><a class="stay press" href="${gmPlace(h0)}" target="_blank" rel="noopener" style="${hpi.img ? `background-image:url('${imgUrl(hpi)}')` : ''}"><div><small>${esc(h0.city || '')} · ${esc(h0.dates || '')}</small><b>${esc(h0.name || '')}</b></div></a>
@@ -529,7 +653,7 @@ function buildDial(sun) {
 /* ═══ wallet: chosen pass rises to the top, the rest fall into a pile ═══ */
 function buildStack() {
   const stack = document.getElementById('stack'); const cards = [...stack.querySelectorAll('.pass')];
-  const BAND = 64, GAP = 12;
+  const BAND = 64, GAP = 58; const addBtn = document.getElementById('addgap');
   const st = cards.map((el) => { const o = { y: 0, s: 1 }; const ap = () => { el.style.transform = `translate3d(0,${o.y.toFixed(2)}px,0) scale(${o.s.toFixed(4)})`; }; return { el, id: el.dataset.id, o, Y: new Spring(0, (v) => { o.y = v; ap(); }, 0.3), S: new Spring(1, (v) => { o.s = v; ap(); }, 0.0005) }; });
   const layout = (instant) => {
     const selIdx = st.findIndex((c) => c.id === ui.sel);
@@ -543,6 +667,7 @@ function buildStack() {
       if (instant) c.Y.set(y); else c.Y.to(y, { response: 0.48, damping: 0.86 });
     });
     stack.style.height = (selIdx >= 0 ? Hs + GAP : 0) + Math.max(0, k - 1) * BAND + 76 + 'px';
+    addBtn.classList.toggle('on', selIdx >= 0); addBtn.style.top = Hs + 12 + 'px';
   };
   return {
     select(id, { fromDial, scroll } = {}) {
@@ -643,12 +768,143 @@ kitEl.addEventListener('click', (e) => {
 scrim.addEventListener('click', () => closeKit());
 const jp = document.getElementById('jpcard');
 function showJp(big, ro, sub, subRo, en) { jp.innerHTML = `<button class="x" aria-label="Close">${I.x}</button><p class="k">${esc(big)}</p>${ro ? `<p class="r">${esc(ro)}</p>` : ''}${sub ? `<p class="s">${esc(sub)}</p>` : ''}${subRo ? `<p class="sr">${esc(subRo)}</p>` : ''}<p class="e">${esc(en || '')}</p>`; jp.classList.add('on'); }
-jp.addEventListener('click', () => jp.classList.remove('on'));
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { jp.classList.remove('on'); closeKit(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { jp.classList.remove('on'); if (edState) closeEditor(); else if (setp.classList.contains('on')) setp.classList.remove('on'); else closeKit(); } });
+
+/* ═══ phrase cards for each kind of place ═══ */
+const PH = {
+  temple: [['Where do I buy a ticket?', 'チケットはどこで買えますか', 'chiketto wa doko de kaemasu ka'], ['Can I take photos here?', 'ここで写真を撮ってもいいですか', 'koko de shashin o tottemo ii desu ka'], ['Should I take my shoes off?', '靴を脱ぎますか', 'kutsu o nugimasu ka'], ['A goshuin (temple stamp), please', '御朱印をお願いします', 'goshuin o onegaishimasu'], ['What time do you close?', '何時に閉まりますか', 'nanji ni shimarimasu ka']],
+  shrine: [['Can I take photos here?', 'ここで写真を撮ってもいいですか', 'koko de shashin o tottemo ii desu ka'], ['Where can I buy a charm?', 'お守りはどこで買えますか', 'omamori wa doko de kaemasu ka'], ['A goshuin (shrine stamp), please', '御朱印をお願いします', 'goshuin o onegaishimasu'], ['Where do I wash my hands?', '手水舎はどこですか', 'chōzuya wa doko desu ka'], ['What time do you close?', '何時に閉まりますか', 'nanji ni shimarimasu ka']],
+  station: [['Does this train go to {name}?', 'この電車は{ja}に行きますか', 'kono densha wa {ro} ni ikimasu ka'], ['Which platform for {name}?', '{ja}は何番線ですか', '{ro} wa nan-ban-sen desu ka'], ['Four tickets to {name}, please', '{ja}まで4枚お願いします', '{ro} made yon-mai onegaishimasu'], ['Where are the coin lockers?', 'コインロッカーはどこですか', 'koin rokkā wa doko desu ka'], ['Which exit is it?', 'どの出口ですか', 'dono deguchi desu ka']],
+  food: [['A table for four, please', '4人です', 'yonin desu'], ['Does this contain pork?', 'これは豚肉が入っていますか', 'kore wa butaniku ga haitte imasu ka'], ["I can't eat pork or alcohol", '豚肉とアルコールが入ったものは食べられません', 'butaniku to arukōru ga haitta mono wa taberaremasen'], ['Is there an English menu?', '英語のメニューはありますか', 'eigo no menyū wa arimasu ka'], ['The bill, please', 'お会計お願いします', 'okaikei onegaishimasu'], ['Can I pay by card?', 'カードで払えますか', 'kādo de haraemasu ka']],
+  shop: [['Tax-free, please', '免税でお願いします', 'menzei de onegaishimasu'], ['How much is this?', 'これはいくらですか', 'kore wa ikura desu ka'], ['Can I try this on?', '試着してもいいですか', 'shichaku shite mo ii desu ka'], ['Do you have a bigger size?', 'もっと大きいサイズはありますか', 'motto ōkii saizu wa arimasu ka'], ['Do you have a smaller size?', 'もっと小さいサイズはありますか', 'motto chiisai saizu wa arimasu ka'], ["I'm just looking, thanks", '見ているだけです', 'mite iru dake desu']],
+  park: [['Could you take our photo?', '写真を撮っていただけますか', 'shashin o totte itadakemasu ka'], ['Where is the entrance?', '入口はどこですか', 'iriguchi wa doko desu ka'], ['Where is the toilet?', 'トイレはどこですか', 'toire wa doko desu ka'], ['What time does it close?', '何時に閉まりますか', 'nanji ni shimarimasu ka']],
+  sight: [['Could you take our photo?', '写真を撮っていただけますか', 'shashin o totte itadakemasu ka'], ['Where is {name}?', '{ja}はどこですか', '{ro} wa doko desu ka'], ['Where is the toilet?', 'トイレはどこですか', 'toire wa doko desu ka'], ['Is it far from here?', 'ここから遠いですか', 'koko kara tōi desu ka']],
+  attraction: [['Four adults, please', '大人4枚お願いします', 'otona yon-mai onegaishimasu'], ['Where do we line up?', 'どこに並びますか', 'doko ni narabimasu ka'], ['How long is the wait?', '待ち時間はどのくらいですか', 'machi jikan wa dono kurai desu ka'], ['Is there a locker?', 'ロッカーはありますか', 'rokkā wa arimasu ka'], ['Can I take photos?', '写真を撮ってもいいですか', 'shashin o tottemo ii desu ka']],
+  hotel: [['We have a reservation', '予約しています', 'yoyaku shite imasu'], ['Can you keep our luggage?', '荷物を預かってもらえますか', 'nimotsu o azukatte moraemasu ka'], ['I want to send this bag ahead', 'この荷物を送りたいです', 'kono nimotsu o okuritai desu'], ['What time is breakfast?', '朝食は何時からですか', 'chōshoku wa nanji kara desu ka'], ['Can you call us a taxi?', 'タクシーを呼んでもらえますか', 'takushī o yonde moraemasu ka']],
+};
+function showPhrases(name) {
+  const pi = PLACES[name] || {}; const ja = pi.ja || name, ro = pi.ro || name;
+  const fill = (t, w) => t.replace('{name}', name).replace('{ja}', ja).replace('{ro}', ro);
+  const cards = [['Please take me here', 'ここまでお願いします', 'koko made onegaishimasu', true]].concat((PH[pi.kind] || PH.sight).map(([en, j, r]) => [fill(en), fill(j), fill(r)]));
+  jp.classList.add('car');
+  jp.innerHTML = `<button class="x" aria-label="Close" data-jpx>${I.x}</button><p class="car-t">${esc(name)} · ${cards.length} phrases</p>
+    <div class="car-s" id="cars">${cards.map(([en, j, r, first]) => `<div class="pcd">${first ? `<p class="k" style="font-family:var(--mincho)">${esc(ja)}</p><p class="r">${esc(ro)}</p><p class="nm" style="margin-top:22px">${esc(j)}</p><p class="sr">${esc(r)}</p>` : `<p class="k ${j.length > 9 ? 'long' : ''}" style="font-family:var(--mincho)">${esc(j)}</p><p class="r">${esc(r)}</p>`}<p class="e">${esc(en)}</p></div>`).join('')}</div>
+    <div class="car-d" id="card">${cards.map((_, k) => `<i class="${k ? '' : 'on'}"></i>`).join('')}</div><p class="e" style="margin-top:6px">Swipe for more · show the screen to staff</p>`;
+  jp.classList.add('on');
+  const sc = jp.querySelector('#cars'); sc.addEventListener('scroll', () => { const k = Math.round(sc.scrollLeft / (sc.firstElementChild.offsetWidth + 12)); jp.querySelectorAll('#card i').forEach((d, m) => d.classList.toggle('on', m === k)); }, { passive: true });
+}
+jp.addEventListener('click', (e) => { if (!jp.classList.contains('car') || e.target.closest('[data-jpx]')) { jp.classList.remove('on'); setTimeout(() => jp.classList.remove('car'), 250); } });
+
+/* ═══ editor: quick add, and full edit of any stop ═══ */
+const edEl = document.getElementById('ed');
+const EY = new Spring(0, (y) => { edEl.style.transform = `translate3d(0,${y}px,0)`; }, 0.3);
+const toHM = (m) => (m == null ? '' : `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+const fromHM = (v) => { if (!v) return null; const [h, m] = v.split(':').map(Number); return h * 60 + m; };
+let edState = null, searchT = 0;
+function findStop(id) { for (const d of DAYS) { const it = dayItems(d, { who: 'all', withHidden: true }).find((x) => x.id === id); if (it) return { d, it }; } return null; }
+function openEditor(opts) {
+  const f = findStop(opts.id || '') || {};
+  const it = f.it || null; const orig = it && !it._added ? (it._orig || it) : null;
+  const sp0 = it ? span(it) : null;
+  const refPlace = (() => { const d = f.d || DAYS.find((x) => x.id === opts.dayId); const evs = dayItems(d, { who: 'all' }).filter((x) => x.type === 'event'); const k = evs.findIndex((x) => x.id === opts.after); for (let j = k; j >= 0; j--) if (evs[j] && evs[j].place) return evs[j].place; const h = HOTELS.find((x) => x.id === d.hotel); return h; })();
+  edState = { ...opts, dayId: (f.d && f.d.id) || opts.dayId, it, orig, title: it ? it.title : '', start: sp0 ? sp0[0] : null, end: sp0 && it && /[–-]/.test(it.time || '') ? sp0[1] : null,
+    who: it ? it.who || 'all' : ui.who, cat: it ? catOf(it).key : null, place: it ? it.place || null : null, desc: it ? it.desc || '' : '', cost: it ? it.cost || '' : '', more: opts.mode === 'edit', results: null, ref: refPlace, msg: '' };
+  edState.t0 = { start: edState.start, end: edState.end };
+  renderEditor(); scrim.style.zIndex = 970; scrim.classList.add('on'); EY.set(innerHeight); EY.to(0, { response: 0.42, damping: 0.88 });
+}
+function closeEditor() { scrim.classList.remove('on'); setTimeout(() => { if (!edState) scrim.style.zIndex = ''; }, 300); EY.to(innerHeight, { response: 0.36, damping: 1 }); edState = null; }
+function renderEditor() {
+  const s0 = edState, b = document.getElementById('edb'); const adding = s0.mode === 'add';
+  const whoB = [['all', 'All'], ['nasa', 'NASA'], ['mm', 'M&amp;M']].map(([k, l]) => `<button data-fwho="${k}" class="${s0.who === k ? 'on' : ''}">${l}</button>`).join('');
+  const cats = [['sight', 'Sight'], ['food', 'Food'], ['shop', 'Shop'], ['transit', 'Transit'], ['plan', 'Plan']].map(([k, l]) => `<button data-fcat="${k}" class="${s0.cat === k ? 'on' : ''}">${l}</button>`).join('');
+  const res = s0.results === 'loading' ? '<p>Searching…</p>' : Array.isArray(s0.results) ? (s0.results.length ? s0.results.map((r, k) => `<button data-fres="${k}"><b>${esc(r.name)}</b><small>${esc(r.sub)}</small></button>`).join('') : '<p>No matches. Try a shorter name.</p>') : '';
+  b.innerHTML = `<div class="ed-h"><b>${adding ? 'Add a stop' : 'Edit stop'}</b><button data-edx>Cancel</button></div>
+    <label class="fld"><span>Name</span><input id="f-title" value="${esc(s0.title)}" placeholder="e.g. Coffee at % Arabica" autocomplete="off"></label>
+    <div class="row2"><label class="fld"><span>Start</span><input id="f-start" type="time" value="${toHM(s0.start)}"></label><label class="fld"><span>End (optional)</span><input id="f-end" type="time" value="${toHM(s0.end)}"></label></div>
+    <div class="fld"><span>Who's going</span><div class="seg" id="f-who">${whoB}<i></i></div></div>
+    <div class="fld"><span>Place (optional)</span>${s0.place ? `<div class="pcur">${I.pin2}<span>${esc(s0.place.name)}</span><button data-fclear>Remove</button></div>` : ''}
+      <input id="f-q" placeholder="${s0.place ? 'Search to change the place' : 'Search a place, shop or address'}" autocomplete="off"><div class="pres">${res}</div><button class="here" data-fhere>${I.pin2}Use where I am now</button></div>
+    ${s0.more ? `<div class="fld"><span>Type</span><div class="tchips">${cats}</div></div>
+      <label class="fld"><span>Notes</span><textarea id="f-desc" placeholder="Anything the group should know">${esc(s0.desc)}</textarea></label>
+      <label class="fld"><span>Cost</span><input id="f-cost" value="${esc(s0.cost)}" placeholder="e.g. ¥1,500 per person"></label>` : `<button class="more" data-fmore>+ Notes, cost and type</button>`}
+    <button class="save" data-fsave>${adding ? 'Add stop' : 'Save changes'}</button>
+    ${!adding && s0.orig ? `<div class="edx"><button data-fhide>${s0.it.hidden ? 'Show this stop again' : 'Hide this stop'}</button>${s0.it._edited ? '<button data-freset>Reset to original</button>' : ''}</div>` : ''}
+    ${!adding && s0.it && s0.it._added ? `<div class="edx"><button class="danger" data-fdel>Delete this stop</button></div>` : ''}
+    <p class="edmsg">${esc(s0.msg || 'Changes are shared with all four of you.')}</p><div style="height:8px"></div>`;
+  moveSeg(b.querySelector('#f-who'));
+}
+function readForm() { const g = (id) => document.getElementById(id); edState.title = g('f-title').value.trim(); edState.start = fromHM(g('f-start').value); edState.end = fromHM(g('f-end').value); if (g('f-desc')) edState.desc = g('f-desc').value; if (g('f-cost')) edState.cost = g('f-cost').value; }
+async function searchPlaces(q) {
+  edState.results = 'loading'; renderEditor(); const keep = document.getElementById('f-q'); keep.value = q; keep.focus();
+  const r0 = edState.ref || {}; const vb = r0.lat ? `&viewbox=${r0.lng - 0.25},${r0.lat + 0.2},${r0.lng + 0.25},${r0.lat - 0.2}` : '';
+  try { const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=jp&accept-language=en${vb}&q=${encodeURIComponent(q)}`); const j = await r.json();
+    if (!edState) return; edState.results = j.map((x) => ({ name: x.name || x.display_name.split(',')[0], sub: x.display_name.split(',').slice(1, 4).join(',').trim(), lat: +x.lat, lng: +x.lon }));
+  } catch { if (edState) edState.results = []; edState && (edState.msg = 'Place search needs a connection.'); }
+  if (!edState) return; readFormSafe(); renderEditor(); const q2 = document.getElementById('f-q'); q2.value = q;
+}
+function readFormSafe() { try { readForm(); } catch {} }
+function saveEditor() {
+  readForm(); const s0 = edState; if (!s0.title) { s0.msg = 'Give the stop a name first.'; renderEditor(); return; }
+  const timeChanged = s0.start !== s0.t0.start || s0.end !== s0.t0.end;
+  if (s0.mode === 'add' || (s0.it && s0.it._added)) {
+    const id = s0.mode === 'add' ? 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : s0.it.id;
+    const prev = s0.mode === 'add' ? {} : CUSTOM()[id] || {};
+    store.setCustom(id, { ...prev, added: true, day: s0.dayId, after: s0.mode === 'add' ? s0.after || null : prev.after ?? null, title: s0.title, time: fmtRange(s0.start, s0.end), who: s0.who, cat: s0.cat || (s0.place ? 'sight' : 'plan'), place: s0.place, desc: s0.desc || '', cost: s0.cost || '' });
+    const keepDay = s0.dayId; closeEditor(); if (keepDay !== day.id) { ui.dayId = keepDay; } renderDay({ keepScroll: true, selId: id }); buzz(10); return;
+  }
+  const o = s0.orig, prev = CUSTOM()[s0.it.id] || {}, patch = { ...prev };
+  const set = (k, v, ov) => { if (v === ov || (v === '' && ov == null)) delete patch[k]; else patch[k] = v; };
+  set('title', s0.title, o.title); set('desc', s0.desc, o.desc || ''); set('cost', s0.cost, o.cost || ''); set('who', s0.who, o.who || 'all');
+  if (timeChanged) patch.time = fmtRange(s0.start, s0.end); 
+  if (s0.cat !== catOf(o).key) patch.cat = s0.cat; else delete patch.cat;
+  const samePlace = (a, b) => (!a && !b) || (a && b && a.name === b.name && a.lat === b.lat && a.lng === b.lng);
+  if (samePlace(s0.place, o.place)) delete patch.place; else patch.place = s0.place ? { name: s0.place.name, lat: s0.place.lat, lng: s0.place.lng } : null;
+  delete patch.ts; store.setCustom(s0.it.id, Object.keys(patch).length ? patch : null);
+  const id = s0.it.id; closeEditor(); renderDay({ keepScroll: true, selId: id }); buzz(10);
+}
+edEl.addEventListener('click', (e) => {
+  if (!edState) return;
+  if (e.target.closest('[data-edx]')) { closeEditor(); return; }
+  const w = e.target.closest('[data-fwho]'); if (w) { readForm(); edState.who = w.dataset.fwho; renderEditor(); return; }
+  const c = e.target.closest('[data-fcat]'); if (c) { readForm(); edState.cat = c.dataset.fcat; renderEditor(); return; }
+  if (e.target.closest('[data-fmore]')) { readForm(); edState.more = true; renderEditor(); return; }
+  if (e.target.closest('[data-fclear]')) { readForm(); edState.place = null; renderEditor(); return; }
+  const r = e.target.closest('[data-fres]'); if (r) { readForm(); const x = edState.results[+r.dataset.fres]; edState.place = { name: x.name, lat: x.lat, lng: x.lng }; edState.results = null; if (!edState.title) edState.title = x.name; renderEditor(); return; }
+  if (e.target.closest('[data-fhere]')) { readForm(); if (!navigator.geolocation) { edState.msg = 'Location is not available on this device.'; renderEditor(); return; } edState.msg = 'Finding you…'; renderEditor();
+    navigator.geolocation.getCurrentPosition((pos) => { if (!edState) return; edState.place = { name: edState.title || 'Pinned spot', lat: +pos.coords.latitude.toFixed(5), lng: +pos.coords.longitude.toFixed(5) }; edState.msg = ''; renderEditor(); }, () => { if (!edState) return; edState.msg = 'Could not get your location. Check location permission.'; renderEditor(); }, { enableHighAccuracy: true, timeout: 10000 }); return; }
+  if (e.target.closest('[data-fsave]')) { saveEditor(); return; }
+  if (e.target.closest('[data-fhide]')) { const id = edState.it.id; const prev = CUSTOM()[id] || {}; const hid = !edState.it.hidden; const patch = { ...prev }; delete patch.ts; if (hid) patch.hidden = true; else delete patch.hidden; store.setCustom(id, Object.keys(patch).length ? patch : null); closeEditor(); renderDay({ keepScroll: true, keepSel: true }); return; }
+  if (e.target.closest('[data-freset]')) { const id = edState.it.id; store.setCustom(id, null); closeEditor(); renderDay({ keepScroll: true, selId: id }); return; }
+  if (e.target.closest('[data-fdel]')) { if (!confirm('Delete this stop for everyone?')) return; store.setCustom(edState.it.id, null); closeEditor(); renderDay({ keepScroll: true }); return; }
+});
+edEl.addEventListener('input', (e) => { if (e.target.id !== 'f-q') return; clearTimeout(searchT); const q = e.target.value.trim(); if (q.length < 2) return; searchT = setTimeout(() => searchPlaces(q), 700); });
+scrim.addEventListener('click', () => { if (edState) closeEditor(); });
+
+/* ═══ settings: every day and stop, editable ═══ */
+const setp = document.getElementById('setp');
+function renderSettings() {
+  const C = CUSTOM(); const changed = Object.keys(C).length;
+  setp.innerHTML = `<div class="set-h"><button class="tb press" data-setx aria-label="Back">${I.chevL}</button><h2>Edit trip</h2></div>
+    <p class="set-note">Tap any stop to change it, hide it or reset it. Added and edited stops show for all four of you. ${changed ? `${changed} change${changed > 1 ? 's' : ''} so far.` : 'No changes yet.'}</p>
+    ${DAYS.map((d) => { const evs = dayItems(d, { who: 'all', withHidden: true }).filter((x) => x.type === 'event'); const n = evs.filter((x) => x._added || x._edited || x.hidden).length;
+      return `<details class="sday" ${d.id === day.id ? 'open' : ''}><summary><span class="n">${d.n}</span><b>${esc(d.title)}<small>${new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · ${esc(d.city)}</small></b>${n ? `<span class="cnt2">${n}</span>` : ''}</summary>
+        ${evs.map((x) => `<button class="srow ${x.hidden ? 'hidden' : ''}" data-sedit="${x.id}"><span class="t">${esc(startTime(x.time) || '—')}</span><span class="m"><b>${esc(x.title)}</b><span class="bd">${x._added ? '<span class="bdg add">Added</span>' : ''}${x._edited ? '<span class="bdg ed2">Edited</span>' : ''}${x.hidden ? '<span class="bdg hid">Hidden</span>' : ''}${x.who === 'nasa' ? '<span class="bdg nasa">NASA</span>' : x.who === 'mm' ? '<span class="bdg mm">M&amp;M</span>' : ''}</span></span>${I.chevR}</button>`).join('')}
+        <button class="sadd" data-sadd="${d.id}">${I.plus}Add a stop</button></details>`; }).join('')}
+    ${changed ? '<button class="set-reset" data-sresetall>Undo all changes</button>' : ''}`;
+}
+function openSettings() { renderSettings(); setp.classList.add('on'); setp.scrollTop = 0; const o = setp.querySelector('details[open]'); if (o) setTimeout(() => o.scrollIntoView({ block: 'start' }), 60); }
+setp.addEventListener('click', (e) => {
+  if (e.target.closest('[data-setx]')) { setp.classList.remove('on'); return; }
+  const r = e.target.closest('[data-sedit]'); if (r) { openEditor({ mode: 'edit', id: r.dataset.sedit }); return; }
+  const a = e.target.closest('[data-sadd]'); if (a) { const d = DAYS.find((x) => x.id === a.dataset.sadd); const evs = dayItems(d, { who: 'all' }).filter((x) => x.type === 'event'); openEditor({ mode: 'add', dayId: d.id, after: evs.length ? evs[evs.length - 1].id : null }); return; }
+  if (e.target.closest('[data-sresetall]')) { if (!confirm('Undo every edit, hidden stop and added stop for everyone?')) return; Object.keys(CUSTOM()).forEach((id) => store.setCustom(id, null)); renderSettings(); }
+});
 
 /* ═══ wiring ═══ */
-function renderDay({ keepScroll } = {}) {
+function renderDay({ keepScroll, keepSel, selId } = {}) {
+  const prevSel = selId || (keepSel ? ui.sel : null);
   prepare(); renderTop(); renderSheet(); renderMap();
+  if (prevSel && events.some((e) => e.id === prevSel)) { ui.sel = prevSel; stackApi.layout(true); syncPins(); dialApi.focus(prevSel, true); const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url); return; }
   const nx = nextEv(); const first = (tripDay && tripDay.id === day.id) ? (events.find((e) => { const s = span(e); return s && s[1] > nowMin() && !done(e.id); }) || nx) : nx;
   ui.sel = null; const target = (first || events[0] || {}).id;
   if (target) { ui.sel = target; stackApi.layout(true); syncPins(); const s = span(events.find((e) => e.id === target)); dialApi.initAt ? dialApi.initAt(tripDay && tripDay.id === day.id ? nowMin() : (s ? s[0] : 0)) : null; if (!(tripDay && tripDay.id === day.id)) setTimeout(() => dialApi.focus(target), 0); }
@@ -665,7 +921,12 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   const sp = e.target.closest('[data-step]'); if (sp) { if (!sp.disabled) step(+sp.dataset.step); return; }
   if (swiped) { swiped = false; return; }
   const st = e.target.closest('[data-stamp]'); if (st) { const id = st.dataset.stamp; const was = done(id); store.toggleCheck(id); if (!was) { buzz(12); stackApi.thump(id); } return; }
-  const j = e.target.closest('[data-jp]'); if (j) { const pi = PLACES[j.dataset.jp]; showJp(pi.ja, pi.ro, 'ここに行きたいです', 'koko ni ikitai desu', `${j.dataset.jp} · "I'd like to go here"`); return; }
+  const j = e.target.closest('[data-jp]'); if (j) { showPhrases(j.dataset.jp); return; }
+  const sy = e.target.closest('[data-story]'); if (sy) { const card = document.getElementById('p-' + sy.dataset.story); card.classList.toggle('storyon'); stackApi.layout(false); return; }
+  const ed = e.target.closest('[data-edit]'); if (ed) { openEditor({ mode: 'edit', id: ed.dataset.edit }); return; }
+  if (e.target.closest('#addgap')) { openEditor({ mode: 'add', dayId: day.id, after: ui.sel }); return; }
+  if (e.target.closest('[data-addend]')) { openEditor({ mode: 'add', dayId: day.id, after: events.length ? events[events.length - 1].id : null }); return; }
+  if (e.target.closest('#gear')) { openSettings(); return; }
   const pk = e.target.closest('[data-pick]'); if (pk && !e.target.closest('a')) { const id = pk.dataset.pick; if (ui.sel !== id) { stackApi.select(id, { scroll: true }); dialApi.focus(id); focusMap(id); } return; }
   const w = e.target.closest('[data-who]'); if (w) { ui.who = w.dataset.who; ls.set('japan2026.whoMix', ui.who); renderDay({ keepScroll: true }); return; }
   const c = e.target.closest('[data-choice]'); if (c) { store.setChoice(c.dataset.choice, c.dataset.opt); renderDay({ keepScroll: true }); }
@@ -676,7 +937,9 @@ let swiped = false;
   document.getElementById('sheet').addEventListener('pointerdown', (e) => { const card = e.target.closest('.pass.open'); if (!card || e.target.closest('a,button')) return; sw = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; });
   const end = (e) => { if (!sw || e.pointerId !== sw.id) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y, v = Math.abs(dx) / Math.max(1, performance.now() - sw.t); sw = null; if (Math.abs(dx) > Math.abs(dy) * 1.6 && (Math.abs(dx) > 60 || (Math.abs(dx) > 25 && v > 0.5))) { swiped = true; setTimeout(() => (swiped = false), 80); step(dx < 0 ? 1 : -1); } };
   window.addEventListener('pointerup', end); window.addEventListener('pointercancel', () => (sw = null)); }
-store.subscribe(() => { if (!stackApi) return; stackApi.refresh(); dialApi.refresh(); syncPins(); });
+const customSig = () => JSON.stringify(Object.entries(CUSTOM()).map(([k, v]) => [k, { ...v, ts: undefined }]).sort());
+let lastSig = customSig();
+store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig !== lastSig) { lastSig = sig; renderDay({ keepScroll: true, keepSel: true }); if (setp.classList.contains('on')) renderSettings(); return; } stackApi.refresh(); dialApi.refresh(); syncPins(); });
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });
 window.addEventListener('scroll', () => { const sh = document.getElementById('sheet'); document.body.classList.toggle('scrolled', sh.getBoundingClientRect().top < 70); }, { passive: true });
 buildMap(); renderDay(); store.start(); refreshFx();
