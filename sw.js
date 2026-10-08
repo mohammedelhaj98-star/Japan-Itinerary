@@ -1,10 +1,10 @@
 // Service worker: cache the app shell for offline use. Map tiles and /api are network-first.
-const VERSION = 'japan2026-v3';
+const VERSION = 'japan2026-v4';
 const SHELL = [
   './', './index.html', './css/app.css', './js/app.js', './js/map.js', './js/store.js',
   './data/itinerary.js', './data/guide.js', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css',
   './vendor/leaflet/images/marker-icon.png', './vendor/leaflet/images/marker-icon-2x.png', './vendor/leaflet/images/marker-shadow.png',
-  './manifest.webmanifest', './icons/icon.svg', './vendor/fonts/biz-udpgothic-latin-400-normal.woff2', './vendor/fonts/biz-udpgothic-latin-700-normal.woff2', './vendor/fonts/biz-udpgothic-latin-ext-400-normal.woff2', './vendor/fonts/biz-udpgothic-latin-ext-700-normal.woff2',
+  './manifest.webmanifest', './icons/icon.svg', './vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2', './vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2', './vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2',
 ];
 
 self.addEventListener('install', (e) => {

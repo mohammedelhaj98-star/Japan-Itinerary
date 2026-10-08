@@ -163,19 +163,10 @@ function renderDay() {
 
   el.appendChild(h(`
     <div class="board">
+      <p class="date">Day ${day.n} of 17 <span class="dot"></span> ${esc(longDate(day.date))} <span class="dot"></span> ${esc(day.city)}</p>
       <h2>${esc(day.title)}</h2>
-      <p class="date">Day ${day.n} of 17. ${esc(longDate(day.date))}, ${esc(day.city)}.</p>
-      <p class="facts"><span class="energy" aria-hidden="true"><i class="${bars >= 1 ? 'on' : ''}"></i><i class="${bars >= 2 ? 'on' : ''}"></i><i class="${bars >= 3 ? 'on' : ''}"></i></span><span class="sr-only">Pace ${esc(day.energy.toLowerCase())}.</span>${p.done} of ${p.total} done <span class="sep" aria-hidden="true"></span> ${icon('hotel', 15)} <a href="${gmapsPlace(hotel)}" target="_blank" rel="noopener">${esc(hotel.name.replace(/ \(.*\)$/, ''))}</a></p>
-      <div class="actions">
-        <button type="button" class="btn small" data-act="map">${icon('map', 16)}Map</button>
-        <button type="button" class="btn small" data-act="ideas">${icon('ideas', 16)}Ideas</button>
-        <button type="button" class="btn small" data-act="full" aria-pressed="${full}" title="Show every detail open">${icon('book', 16)}Full</button>
-      </div>
+      <p class="meta"><a href="${gmapsPlace(hotel)}" target="_blank" rel="noopener">${esc(hotel.name.replace(/ \(.*\)$/, ''))}</a> <span class="dot"></span> ${p.done} of ${p.total} done</p>
     </div>`));
-  $$('[data-go]', el).forEach((b) => b.addEventListener('click', () => selectDay(b.dataset.go)));
-  $('[data-act="map"]', el).addEventListener('click', () => switchTab('map'));
-  $('[data-act="ideas"]', el).addEventListener('click', () => { ui.ideasDay = day.id; switchTab('ideas'); });
-  $('[data-act="full"]', el).addEventListener('click', () => setFull(!ui.full));
 
   const stops = dayStops(day);
   const nxt = nextEvent(day);
@@ -195,33 +186,26 @@ function renderDay() {
     el.appendChild(route);
   }
 
-  // Next stop headline.
-  if (nxt) {
-    const n = nxt.place ? numOf(nxt.id) : null;
-    const leg = nxt.travel ? `${esc(nxt.travel.label || nxt.travel.mode)}` : '';
-    el.appendChild(h(`<div class="next"><div class="n" aria-hidden="true">${n ?? ''}</div><div class="time"><span class="jn">次 Next</span>${esc((nxt.time || '').split(/[–-]/)[0].trim())}</div><div class="n" style="visibility:hidden" aria-hidden="true"></div><div><div class="t">${esc(nxt.title)}</div>${leg ? `<div class="w">${leg}</div>` : ''}</div></div>`));
-  } else {
-    el.appendChild(h(`<div class="next"><div class="n done" aria-hidden="true">${icon('check', 26)}</div><div><div class="t">Day complete. Every stop is ticked off.</div></div></div>`));
-  }
+  if (!nxt) el.appendChild(h(`<p class="complete">Day complete. Every stop is ticked off.</p>`));
 
   const items = visibleItems(day);
 
   // Signs: the day's notes, choices and dinner as a row of signboard chips (compact mode).
   if (!full) {
     const signs = h('<div class="signs" role="group" aria-label="Notes and choices for the day"></div>');
-    const dinnerChip = h(`<button type="button" class="sign"><span class="si">${icon('guide', 15)}</span><span class="sl"><small>Dinner</small><b>${esc(day.dinner)}</b></span></button>`);
+    const dinnerChip = h(`<button type="button" class="sign"><span class="sl"><small>Dinner</small><b>${esc(day.dinner)}</b></span></button>`);
     dinnerChip.addEventListener('click', () => openSheet({ title: 'Dinner', text: day.dinner, icon: 'guide' }));
     signs.appendChild(dinnerChip);
     items.forEach((it) => {
       if (it.type === 'choice') {
         const chosen = it.options.find((o) => o.id === store.getChoice(it.id, it.default)) || it.options[0];
-        const b = h(`<button type="button" class="sign choice-sign ${it.who && it.who !== 'all' ? it.who : ''}"><span class="si">${icon('flag', 15)}</span><span class="sl"><small>${esc(it.title)}</small><b>${esc(chosen.label)}</b></span><span class="change">Change</span></button>`);
+        const b = h(`<button type="button" class="sign choice-sign ${it.who && it.who !== 'all' ? it.who : ''}"><span class="sl"><small>${esc(it.title)}</small><b>${esc(chosen.label)}</b></span><span class="change">Change</span></button>`);
         b.addEventListener('click', () => openSheet({ choice: it }));
         signs.appendChild(b);
       } else if (it.type === 'note') {
         const kind = it.kind || 'note';
         const ic = { note: 'info', warn: 'warn', book: 'book', decide: 'flag', tip: 'info' }[kind] || 'info';
-        const b = h(`<button type="button" class="sign ${kind} ${it.who && it.who !== 'all' ? it.who : ''}"><span class="si">${icon(ic, 15)}</span><span class="sl"><b>${esc(it.title)}</b></span></button>`);
+        const b = h(`<button type="button" class="sign ${kind} ${it.who && it.who !== 'all' ? it.who : ''}"><span class="sl"><small>${kind === 'warn' ? 'Heads up' : kind === 'decide' ? 'Decide' : kind === 'book' ? 'Book' : 'Note'}</small><b>${esc(it.title)}</b></span></button>`);
         b.addEventListener('click', () => openSheet({ title: it.title, text: it.text, icon: ic, link: it.link, who: it.who }));
         signs.appendChild(b);
       }
@@ -263,7 +247,7 @@ function renderDay() {
       <div class="card">
         <div class="row">
           <button type="button" class="rowbtn" aria-expanded="${open}" aria-controls="det-${esc(it.id)}">
-            <span class="time">${esc(it.time)}${legMeta}</span>
+            <span class="time ${isNext ? 'big' : ''}">${isNext ? `<span class="jn">Next</span>` : ''}${esc((isNext ? (it.time || '').split(/[–-]/)[0].trim() : it.time))}${legMeta}</span>
             <span class="title">${esc(it.title)}${it.optional ? ' <span class="opt-tag">optional</span>' : ''}${flags}</span>
           </button>
           <button type="button" class="check" aria-pressed="${store.isChecked(it.id)}" aria-label="Mark ${esc(it.title)} as done">${isNext ? '<span class="lbl">Done</span>' : ''}<i>${icon('check', 16)}</i></button>
@@ -284,6 +268,9 @@ function renderDay() {
     if (it.place) lastPinned = it;
   });
   $$('.group', el).forEach((g) => { const evs = $$('.ev', g); evs.forEach((e) => e.classList.remove('first', 'last', 'alone')); if (evs.length === 1) evs[0].classList.add('alone'); else if (evs.length) { evs[0].classList.add('first'); evs[evs.length - 1].classList.add('last'); } });
+  const fb = h(`<button type="button" class="fullbtn" aria-pressed="${full}">${full ? 'Show less' : 'Show every detail'}</button>`);
+  fb.addEventListener('click', () => setFull(!ui.full));
+  el.appendChild(fb);
   if (!events.length) el.appendChild(h(`<div class="empty">Nothing is planned for ${TRIP.travelers[ui.who].short} on this day. Switch to All to see the shared plan.</div>`));
 }
 
