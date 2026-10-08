@@ -46,7 +46,7 @@ export const FOOD = [
     cafes: [
       { name: 'Bear Pond Espresso · Shimokitazawa', text: 'D4: legendary single-origin espresso. No phone policy, cash only, closes when coffee runs out. Queue before opening.', lat: 35.6625, lng: 139.6670 },
       { name: 'Fuglen Tokyo · Tomigaya', text: 'D15 area: Norwegian specialty roaster between Harajuku and Shibuya. Pour-overs and pastries; natural wine bar in the evenings.', lat: 35.6680, lng: 139.6920 },
-      { name: 'Starbucks Reserve Roastery · Nakameguro', text: 'Four-storey experience store along the canal. Near Daikanyama — completely unlike a regular Starbucks.', lat: 35.6460, lng: 139.6990 },
+      { name: 'Starbucks Reserve Roastery · Nakameguro', text: 'Four-storey experience store along the canal. Near Daikanyama — completely unlike a regular Starbucks.', lat: 35.6493, lng: 139.6926 },
       { name: 'Melon pan from a bakery window', text: '¥150–200. Japan\'s sweet bread with a crisp sugar crust. Best warm. Good on any morning between activities.' },
     ],
   },
@@ -60,8 +60,8 @@ export const FOOD = [
       { name: 'Kichi Kichi Omurice · Nishiki area', meta: 'Day-of phone reservations only', text: 'Chef\'s theatrical tableside omurice. Call the moment lines open (11 AM–12 PM) for that evening; ask the concierge to help.', lat: 35.0075, lng: 135.7700 },
     ],
     cafes: [
-      { name: '% Arabica Kyoto · Higashiyama (Gion Shirakawa)', text: 'D10 area: glass-front window over the canal. One of the most photographed café spots in Kyoto. Queue moves fast.', lat: 35.0053, lng: 135.7748 },
-      { name: 'Wife & Husband · Kuramaguchi', text: 'Beloved indie café with vintage furniture and home baking. A deliberate 20-min taxi detour — worth it for a slower morning. Check hours.', lat: 35.0375, lng: 135.7570 },
+      { name: '% Arabica Kyoto · Higashiyama (Yasaka Pagoda)', text: 'D10 area: on Yasaka-dori below the pagoda, right on the kimono circuit. One of the most photographed café spots in Kyoto. Queue moves fast.', lat: 34.9992, lng: 135.7781 },
+      { name: 'Wife & Husband · Kuramaguchi', text: 'Beloved indie café with vintage furniture and home baking. A deliberate 20-min taxi detour — worth it for a slower morning. Check hours.', lat: 35.0434, lng: 135.7617 },
       { name: 'Omen · Ginkaku-ji area', text: 'Thick handmade udon with dipping broth. 5-min walk from Ginkaku-ji — a reliable north-east Kyoto lunch.', lat: 35.0250, lng: 135.7930 },
       { name: 'Gion Kinana · Gion', text: 'Matcha soft serve and mochi ice cream from a walk-up window near the hotel. Among the best matcha soft serve in Kyoto.', lat: 35.0030, lng: 135.7745 },
       { name: 'AWOMB Karasuma · central Kyoto', text: 'Roll-your-own temaki with seasonal ingredients arranged in a bento box, Zen-garden-style room. Book ahead.', lat: 35.0075, lng: 135.7600 },
@@ -180,11 +180,11 @@ export const SUGGESTIONS = [
   ] },
   { id: 's-d10-free', day: 'd10', slot: 'Free Higashiyama afternoon in kimono', title: 'Kimono afternoon', picks: [
     { name: 'Kennin-ji', why: 'Kyoto\'s oldest Zen temple, 10 min from the hotel, ¥600. Twin dragon ceiling + gravel garden, perfect in kimono.', lat: 35.0005, lng: 135.7735 },
-    { name: '% Arabica Gion Shirakawa', why: 'Canal-side coffee, the most photographed café in Kyoto. You\'re in kimono — this is the shot.', lat: 35.0053, lng: 135.7748 },
+    { name: '% Arabica Higashiyama', why: 'Below Yasaka Pagoda, the most photographed café in Kyoto. You\'re in kimono — this is the shot.', lat: 34.9992, lng: 135.7781 },
     { name: 'Philosopher\'s Path toward Ginkaku-ji', why: 'If you want to walk further — taxi north and stroll back along the canal.', lat: 35.0210, lng: 135.7950 },
   ] },
   { id: 's-d12-morning', day: 'd12', slot: 'Flexible Kyoto morning', title: 'Last Kyoto morning', picks: [
-    { name: 'Wife & Husband café', why: 'Indie café in north Kyoto — a slow pour-over morning. 20-min taxi, worth it.', lat: 35.0375, lng: 135.7570 },
+    { name: 'Wife & Husband café', why: 'Indie café in north Kyoto — a slow pour-over morning. 20-min taxi, worth it.', lat: 35.0434, lng: 135.7617 },
     { name: 'Kennin-ji', why: 'If you skipped it on D10. Opens 10 AM, right on the doorstep.', lat: 35.0005, lng: 135.7735 },
     { name: 'Kyoto Railway Museum', why: 'Near Kyoto Station — convenient since you\'re heading there anyway. Closed Wed, so open on Tue Oct 27.', lat: 34.9870, lng: 135.7420 },
   ] },
@@ -201,7 +201,7 @@ export const SUGGESTIONS = [
   { id: 's-d16-morning', day: 'd16', slot: 'Free Halloween morning', title: 'Last free morning in Tokyo', picks: [
     { name: 'Daiwa Sushi at Toyosu (tuna omakase)', why: 'The one must-eat you haven\'t scheduled. Queue from 6:30 AM, done by 9.', lat: 35.6450, lng: 139.7850 },
     { name: 'Kitsuneya gyudon, Ningyocho', why: 'Legendary tiny-counter beef bowl, 15 min from Akihabara. Early lunch.', lat: 35.6855, lng: 139.7830 },
-    { name: 'Yanaka Ginza + Nezu Shrine', why: 'Old shitamachi Tokyo 10 min from the hotel. Cats, food stalls, torii tunnel at Nezu.', lat: 35.7270, lng: 139.7704 },
+    { name: 'Yanaka Ginza + Nezu Shrine', why: 'Old shitamachi Tokyo 10 min from the hotel. Cats, food stalls, torii tunnel at Nezu.', lat: 35.7277, lng: 139.7653 },
   ] },
   { id: 's-anytime', day: null, slot: 'Any free hour', title: 'Fill any gap', picks: [
     { name: 'Depachika lap (Isetan Shinjuku, Tokyu Food Show)', why: 'Department store food basements. Better than any market for prepared items.' },

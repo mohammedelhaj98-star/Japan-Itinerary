@@ -41,7 +41,7 @@ export const DAYS = [
     energy: 'LOW', dinner: 'Easy near hotel', hotel: 'sotetsu',
     items: [
       E('4:10 PM', 'Land at Narita', 'Welcome to Japan.', {
-        id: 'd01-land', place: P('Narita Airport Terminal 1', 35.7720, 140.3929, 'Narita Airport Terminal 1'), tags: ['flight'],
+        id: 'd01-land', place: P('Narita Airport Terminal 1', 35.7654, 140.3860, 'Narita Airport Terminal 1'), tags: ['flight'],
       }),
       E('4:10–5:45 PM', 'Immigration, luggage, essentials', 'Suica top-up ¥5,000 at 7-Bank ATM, eSIM activation, cash withdrawal. Friday afternoon arrivals can take 60–90 min through immigration — if it runs long, the 6:30 or 7:00 PM Skyliner works fine too. Still at the hotel by 8:30 PM.', { id: 'd01-arrive', tags: ['logistics'] }),
       E('6:00–7:45 PM', 'Keisei Skyliner → Nippori → Yamanote', 'Skyliner to Nippori (36 min, ¥2,520), then JR Yamanote toward Shinjuku / Takadanobaba.', {
@@ -81,7 +81,7 @@ export const DAYS = [
         id: 'd02-bagdrop', place: P('Takadanobaba Station', 35.7127, 139.7040), travel: { mode: 'train', label: 'JR Yamanote, 12 min, ¥170' }, tags: ['transit'],
       }),
       E('~1:25–2:15 PM', 'Seibu Shinjuku Line → Hon-Kawagoe', '~50 min, ¥530. The hotel is directly on this line — board right from the doorstep.', {
-        id: 'd02-seibu', place: P('Hon-Kawagoe Station', 35.9143, 139.4866), travel: { mode: 'train', label: 'Seibu Shinjuku Line, 50 min, ¥530' }, tags: ['transit'],
+        id: 'd02-seibu', place: P('Hon-Kawagoe Station', 35.9151, 139.4821), travel: { mode: 'train', label: 'Seibu Shinjuku Line, 50 min, ¥530' }, tags: ['transit'],
       }),
       S('Kawagoe — afternoon sights'),
       E('2:25–3:00 PM', 'Kashiya Yokocho (Candy Alley)', 'First stop heading north from the station; traditional sweet shops selling Edo-period candy. Stock up on snacks for the afternoon.', {
@@ -119,7 +119,7 @@ export const DAYS = [
             E('~6:30 AM', 'Meet cousins in Shinjuku — depart by car', 'Toward Kawaguchiko (~2 hrs via Chuo Expressway, Fujiyoshida IC exit).', { id: 'd03a-depart', place: P('Shinjuku Station (meetup)', 35.6896, 139.7005, 'Shinjuku Station'), tags: ['transit'] }),
             E('9:00–10:00 AM', 'Chureito Pagoda', 'Short drive to Fujiyoshida, then 398 stone steps up through cedar forest. Iconic Fuji-framed-by-pagoda view, best in morning light. Worth every step.', { id: 'd03a-chureito', place: P('Chureito Pagoda', 35.5016, 138.8011), travel: { mode: 'drive', label: '~2 hrs via Chuo Expressway' }, tags: ['sight'] }),
             E('10:15 AM–12:00 PM', 'Kawaguchiko lake — Oishi Park', 'Oishi Park on the north shore gives the best Fuji-over-water reflection shots. Drive the lakeside road, stop freely. Kachi Kachi Ropeway optional (views from above the lake, ¥900).', { id: 'd03a-oishi', place: P('Oishi Park, Kawaguchiko', 35.5252, 138.7420, 'Oishi Park Kawaguchiko'), travel: { mode: 'drive', label: '~20 min' }, tags: ['sight'] }),
-            E('12:00–1:00 PM', 'Lunch in Kawaguchiko — hoto noodles', 'Local flat noodle hot pot, ¥1,200; pork-free versions available. Multiple spots near the lake and station.', { id: 'd03a-lunch', place: P('Kawaguchiko Station area', 35.4970, 138.7645, 'Kawaguchiko Station'), travel: { mode: 'drive', label: '~15 min' }, tags: ['food'] }),
+            E('12:00–1:00 PM', 'Lunch in Kawaguchiko — hoto noodles', 'Local flat noodle hot pot, ¥1,200; pork-free versions available. Multiple spots near the lake and station.', { id: 'd03a-lunch', place: P('Kawaguchiko Station area', 35.4986, 138.7686, 'Kawaguchiko Station'), travel: { mode: 'drive', label: '~15 min' }, tags: ['food'] }),
             E('~1:15 PM', 'Fuji 5th Station', 'Drive up via Fuji Subaru Line road (~40 min by car to 2,300m). Looking up at the crater rim from this altitude is a completely different experience from the lake views. Walk the Ochudo trail (flat 20-min loop), Komitake Shrine, Fuji gifts.', { id: 'd03a-5th', place: P('Fuji Subaru Line 5th Station', 35.3954, 138.7332, 'Fuji Subaru Line 5th Station'), travel: { mode: 'drive', label: '~40 min via Fuji Subaru Line' }, tags: ['sight'] }),
             E('2:30–4:15 PM', 'More time at the lake or 5th Station', 'Use the extra afternoon. Kachi Kachi Ropeway (¥900) if you skipped it earlier, another lakeside loop, or just sit and take in Fuji. This is the day — milk it.', { id: 'd03a-extra', optional: true, place: P('Kachi Kachi Ropeway', 35.5089, 138.7649, 'Mt. Fuji Panoramic Ropeway Kawaguchiko'), travel: { mode: 'drive', label: '~40 min back down' }, tags: ['sight'] }),
             E('~4:30 PM', 'Drive back to Shinjuku', '~2 hrs via Chuo Expressway. Target arrival Shinjuku 6:30–7:00 PM.', { id: 'd03a-back', place: P('Shinjuku Station', 35.6896, 139.7005), travel: { mode: 'drive', label: '~2 hrs via Chuo Expressway' }, tags: ['transit'] }),
@@ -205,13 +205,13 @@ export const DAYS = [
         id: 'd05-owakudani', place: P('Owakudani', 35.2435, 139.0195, 'Owakudani Hakone'), travel: { mode: 'ropeway', label: 'Tozan + cable car + ropeway' }, tags: ['sight', 'food'],
       }),
       E('12:15 PM', 'Ropeway down to Togendai', '~25 min. At Togendai pier, grab kombini onigiri or snacks if you want more — eat on the ferry crossing.', {
-        id: 'd05-togendai', place: P('Togendai Pier', 35.2399, 139.0062, 'Togendai Port Hakone'), travel: { mode: 'ropeway', label: 'Hakone Ropeway, 25 min' }, tags: ['transit'],
+        id: 'd05-togendai', place: P('Togendai Pier', 35.2376, 138.9946, 'Togendai Port Hakone'), travel: { mode: 'ropeway', label: 'Hakone Ropeway, 25 min' }, tags: ['transit'],
       }),
       E('~12:45 PM', 'Hakone Sightseeing Cruise → Hakone-machi', '~35 min, ~¥1,200 (covered by Free Pass). Lake crossing with Fuji views from the water. Arrive pier ~1:20 PM.', {
-        id: 'd05-cruise', place: P('Hakone-machi Pier', 35.1970, 139.0276, 'Hakonemachi-ko Port'), travel: { mode: 'boat', label: 'Sightseeing cruise, 35 min' }, tags: ['transit', 'sight'],
+        id: 'd05-cruise', place: P('Hakone-machi Pier', 35.1900, 139.0245, 'Hakonemachi-ko Port'), travel: { mode: 'boat', label: 'Sightseeing cruise, 35 min' }, tags: ['transit', 'sight'],
       }),
       E('~1:25–2:00 PM', 'Hakone Shrine + lakeside torii', '5-min walk from the pier. Red torii gate rising from the lake, cedar-lined approach to the inner shrine. Grounds open 24 hrs; inner shrine 8:30 AM–5 PM. Free. 35 min is plenty.', {
-        id: 'd05-shrine', place: P('Hakone Shrine', 35.2047, 139.0254, 'Hakone Shrine'), travel: { mode: 'walk', label: '~15-min walk along the lake' }, tags: ['sight'],
+        id: 'd05-shrine', place: P('Hakone Shrine', 35.2047, 139.0254, 'Hakone Shrine'), travel: { mode: 'walk', label: '~20-min lakeside walk from Hakone-machi (or ride one more stop to Moto-Hakone pier, 5 min from the shrine)' }, tags: ['sight'],
       }),
       E('~2:05 PM', 'Walk or 5-min taxi to Mizunoto', 'Check in ~2:15–2:30 PM.', {
         id: 'd05-mizunoto', place: P('Mizunoto Hakone', 35.2048, 139.0287, 'Hotel Mizunoto Hakone'), travel: { mode: 'walk', label: 'Walk or 5-min taxi' }, tags: ['hotel'],
@@ -380,7 +380,7 @@ export const DAYS = [
       E('6:00 AM', 'Leave hotel', 'Bring a layer — the dawn will feel cold.', { id: 'd09-leave', place: P('Kyoto Granbell Hotel', 35.0036, 135.7711), tags: ['hotel'] }),
       E('6:10–6:25 AM', 'Keihan Line Gion-Shijo → Fushimi-Inari', '3 stops, ~12 min.', { id: 'd09-keihan', tags: ['transit'] }),
       E('6:30–8:30 AM', 'Fushimi Inari', 'Go further up the mountain than you normally would at midday. The higher sections have emptier paths and better views back over the city. Stalls at the base sell coffee and light bites from early morning. Open 24 hrs, always free.', {
-        id: 'd09-fushimi', place: P('Fushimi Inari Taisha', 34.9671, 135.7727), travel: { mode: 'train', label: 'Keihan Line, 3 stops, 12 min' }, tags: ['sight'],
+        id: 'd09-fushimi', place: P('Fushimi Inari Taisha', 34.9675, 135.7797), travel: { mode: 'train', label: 'Keihan Line, 3 stops, 12 min' }, tags: ['sight'],
       }),
       E('8:30–9:00 AM', 'Walk to Sanjusangen-do', '2 km flat, ~25 min. Grab breakfast from a stall or convenience store on the way.', { id: 'd09-walk', tags: ['transit'] }),
       E('9:00–9:45 AM', 'Sanjusangen-do', '120m hall containing 1,001 life-size golden Kannon statues standing in rows. Nothing else in Japan looks like this. Opens 8 AM. ¥600.', {
@@ -431,7 +431,7 @@ export const DAYS = [
       E('1:30–2:15 PM', 'Hikiniku to Come 挽肉と米', 'CONFIRMED 1:30 PM. Arrive within 10 min of slot. Thick coarsely-minced beef patty grilled tableside on a hot iron plate, served with perfect rice and miso soup. Apron provided. ¥1,800/person + ¥1,000 priority ticket. Cash or card.', {
         id: 'd10-hikiniku', confirmed: true, place: P('Hikiniku to Come Kyoto', 35.0040, 135.7730, '挽肉と米 京都'), travel: { mode: 'walk', label: '10–15 min walk' }, tags: ['food', 'booking'], cost: '¥1,800 + ¥1,000',
       }),
-      E('2:15–4:00 PM', 'Free Higashiyama afternoon in kimono', 'Best window for Ninenzaka and Sannenzaka — crowds are far lighter by 2–3 PM and you\'ll be in full kimono. Other options: Hanamikoji Street in Gion, Yasaka Shrine, Kennin-ji (10-min walk, ¥600, twin dragon ceiling), or a matcha cafe sit-down (% Arabica on the Shirakawa canal, Gion Kinana soft serve). No agenda — this is the day\'s exhale.', {
+      E('2:15–4:00 PM', 'Free Higashiyama afternoon in kimono', 'Best window for Ninenzaka and Sannenzaka — crowds are far lighter by 2–3 PM and you\'ll be in full kimono. Other options: Hanamikoji Street in Gion, Yasaka Shrine, Kennin-ji (10-min walk, ¥600, twin dragon ceiling), or a matcha cafe sit-down (% Arabica below Yasaka Pagoda, Gion Kinana soft serve). No agenda — this is the day\'s exhale.', {
         id: 'd10-free', place: P('Sannenzaka', 34.9968, 135.7820, 'Sannenzaka Kyoto'), travel: { mode: 'walk', label: 'Walk' }, tags: ['sight'],
       }),
       E('4:00–4:30 PM', 'Return kimono to Momo Kimono', '', { id: 'd10-return', place: P('Momo Kimono', 35.0039, 135.7745, 'Momo Kimono Kyoto'), travel: { mode: 'walk', label: 'Walk' }, tags: ['booking'] }),
@@ -653,7 +653,7 @@ export const DAYS = [
         { id: 'rest', label: 'Sleep in, pack, rest before a big night', desc: '', items: [] },
         { id: 'yanaka', label: 'Yanaka Ginza + Nezu Shrine', desc: 'Nippori, 10 min from hotel — old shitamachi Tokyo, cats wandering freely, local food stalls, wooden machiya backstreets, one of the most authentic neighbourhoods in the city.',
           items: [
-            E('Morning', 'Yanaka Ginza', 'Old shitamachi Tokyo, cats, food stalls, machiya backstreets.', { id: 'd16-yanaka', optional: true, place: P('Yanaka Ginza', 35.7270, 139.7704, 'Yanaka Ginza'), travel: { mode: 'train', label: 'JR to Nippori, 10 min' }, tags: ['sight', 'food'] }),
+            E('Morning', 'Yanaka Ginza', 'Old shitamachi Tokyo, cats, food stalls, machiya backstreets.', { id: 'd16-yanaka', optional: true, place: P('Yanaka Ginza', 35.7277, 139.7653, 'Yanaka Ginza'), travel: { mode: 'train', label: 'JR to Nippori, 10 min' }, tags: ['sight', 'food'] }),
             E('Late morning', 'Nezu Shrine', 'Torii tunnel, one of Tokyo\'s oldest shrines. 15-min walk from Yanaka Ginza.', { id: 'd16-nezu', optional: true, place: P('Nezu Shrine', 35.7196, 139.7645, 'Nezu Shrine'), travel: { mode: 'walk', label: '15-min walk' }, tags: ['sight'] }),
           ] },
         { id: 'omotesando', label: 'Jingumae / Omotesando', desc: 'Revisit the Harajuku area from D2 or D15, or just walk the boulevard with a proper coffee.',
@@ -697,7 +697,7 @@ export const DAYS = [
         id: 'd17-ueno', place: P('Keisei Ueno Station', 35.7126, 139.7741, 'Keisei Ueno Station'), travel: { mode: 'train', label: 'JR, 5 min' }, tags: ['transit'],
       }),
       E('~2:25 PM', 'Arrive Narita Terminal 1', '', {
-        id: 'd17-narita', place: P('Narita Airport Terminal 1', 35.7720, 140.3929, 'Narita Airport Terminal 1'), travel: { mode: 'train', label: 'Keisei Skyliner, 36 min, ¥2,520' }, tags: ['flight'],
+        id: 'd17-narita', place: P('Narita Airport Terminal 1', 35.7654, 140.3860, 'Narita Airport Terminal 1'), travel: { mode: 'train', label: 'Keisei Skyliner, 36 min, ¥2,520' }, tags: ['flight'],
       }),
       E('2:25–5:15 PM', 'Check in · security · immigration · lounge', 'Eat at the airport lounge — no lunch was planned and you\'ve earned a proper sit-down. Browse Duty Free: Royce chocolate, matcha Kit Kats, Japanese whisky, any final Japan buys. Keep ¥10,000 cash for Duty Free.', { id: 'd17-airport', tags: ['food', 'shop'] }),
       E('~5:15 PM', 'M&M depart', 'One last see-you-on-the-other-side before their gate.', { id: 'd17-mm', who: 'mm', tags: ['flight'] }),
