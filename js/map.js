@@ -59,6 +59,8 @@ export function createMap(el) {
   const layer = L.layerGroup().addTo(map);
   const markers = new Map();
   let aborted = false;
+  // The map element is re-parented between the day view and the map tab; keep Leaflet's size in step with its box.
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(() => map.invalidateSize()).observe(el);
 
   function numberIcon(n, opts = {}) {
     const cls = ['pin', opts.optional ? 'pin-optional' : '', opts.who && opts.who !== 'all' ? 'pin-' + opts.who : '', opts.done ? 'pin-done' : ''].join(' ');

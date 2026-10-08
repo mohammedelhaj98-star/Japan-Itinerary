@@ -15,7 +15,7 @@ const shortDate = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB
 const hotelOf = (id) => HOTELS.find((x) => x.id === id);
 const dayById = (id) => DAYS.find((d) => d.id === id);
 const dayLabel = (id) => { const d = dayById(id); return d ? `Day ${d.n}` : 'Any day'; };
-const CITY = { Tokyo: 'var(--rail)', Hakone: 'var(--water)', Kyoto: 'var(--mm)', Osaka: 'var(--taxi)' };
+const CITY = { Tokyo: 'var(--rail)', Hakone: 'var(--water)', Kyoto: 'var(--kyoto)', Osaka: 'var(--taxi)' };
 const MODE_ICON = { walk: 'walk', drive: 'drive', taxi: 'taxi', transit: 'train', train: 'train', boat: 'boat', ropeway: 'ropeway', flight: 'flight' };
 const MODE_VAR = { walk: 'var(--walk)', drive: 'var(--taxi)', taxi: 'var(--taxi)', transit: 'var(--rail)', train: 'var(--rail)', boat: 'var(--water)', ropeway: 'var(--water)', flight: 'var(--flight)' };
 const legMinutes = (label) => { const m = /(\d+)\s*(?:-|–)?\s*(\d+)?\s*min/.exec(label || ''); if (!m) { const hr = /(\d+)\s*(?:h|hr)/.exec(label || ''); return hr ? `${hr[1]} h` : ''; } return `${m[1]} min`; };
@@ -201,9 +201,9 @@ function renderDay() {
   if (nxt) {
     const n = nxt.place ? numOf(nxt.id) : null;
     const leg = nxt.travel ? `${esc(nxt.travel.label || nxt.travel.mode)}` : '';
-    el.appendChild(h(`<div class="next"><div class="n">${n ?? ''}</div><div><div class="l">Next stop</div><div class="t">${esc(nxt.title)}</div>${leg ? `<div class="w">${leg}</div>` : ''}</div><div class="time">${esc((nxt.time || '').split(/[–-]/)[0].trim())}</div></div>`));
+    el.appendChild(h(`<div class="next"><div class="n" aria-hidden="true">${n ?? ''}</div><div class="time"><span class="jn">次 Next</span>${esc((nxt.time || '').split(/[–-]/)[0].trim())}</div><div class="n" style="visibility:hidden" aria-hidden="true"></div><div><div class="t">${esc(nxt.title)}</div>${leg ? `<div class="w">${leg}</div>` : ''}</div></div>`));
   } else {
-    el.appendChild(h(`<div class="next"><div class="n done">${icon('check', 26)}</div><div><div class="l">Day complete</div><div class="t">Every stop is ticked off.</div></div><div></div></div>`));
+    el.appendChild(h(`<div class="next"><div class="n done" aria-hidden="true">${icon('check', 26)}</div><div><div class="t">Day complete. Every stop is ticked off.</div></div></div>`));
   }
 
   const items = visibleItems(day);
@@ -243,7 +243,7 @@ function renderDay() {
             ${it.desc ? `<div class="desc ${long && !expanded ? 'clamp' : ''}">${esc(it.desc)}</div>` : ''}
             ${long ? `<button type="button" class="more" aria-expanded="${expanded}">${expanded ? 'Show less' : 'Read more'}</button>` : ''}
           </div>
-          <button type="button" class="check" aria-pressed="${store.isChecked(it.id)}" aria-label="Mark ${esc(it.title)} as done"><i>${icon('check', 16)}</i></button>
+          <button type="button" class="check" aria-pressed="${store.isChecked(it.id)}" aria-label="Mark ${esc(it.title)} as done">${isNext ? '<span class="lbl">Done</span>' : ''}<i>${icon('check', 16)}</i></button>
         </div>
         ${chips.length ? `<div class="chips">${chips.join('')}</div>` : ''}
         ${it.place ? `<div class="links"><a class="btn small" href="${gmapsPlace(it.place)}" target="_blank" rel="noopener">${icon('pin', 15)}${esc(it.place.name)}</a>${(it.subplaces || []).map((sp) => `<a class="btn small" href="${gmapsPlace(sp)}" target="_blank" rel="noopener">${icon('pin', 15)}${esc(sp.name)}</a>`).join('')}</div>` : ''}
