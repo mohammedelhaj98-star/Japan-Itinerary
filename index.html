@@ -107,6 +107,14 @@
     <section class="panel" id="panel-ideas" role="tabpanel" hidden><div class="content" id="ideas"></div></section>
   </main>
 
+  <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet-backdrop" id="sheet-backdrop"></div>
+    <div class="sheet-panel">
+      <div class="sheet-head"><h3 id="sheet-title"></h3><button type="button" id="sheet-close" aria-label="Close"><svg width="22" height="22"><use href="#i-close"/></svg></button></div>
+      <div class="sheet-body" id="sheet-body"></div>
+    </div>
+  </div>
+
   <div class="search" id="search" hidden role="dialog" aria-modal="true" aria-label="Search the trip">
     <div class="search-box">
       <label class="sr-only" for="search-input">Search</label>

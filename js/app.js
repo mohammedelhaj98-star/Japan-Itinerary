@@ -21,7 +21,8 @@ const MODE_VAR = { walk: 'var(--walk)', drive: 'var(--taxi)', taxi: 'var(--taxi)
 const legMinutes = (label) => { const m = /(\d+)\s*(?:-|–)?\s*(\d+)?\s*min/.exec(label || ''); if (!m) { const hr = /(\d+)\s*(?:h|hr)/.exec(label || ''); return hr ? `${hr[1]} h` : ''; } return `${m[1]} min`; };
 
 // ───────────────────────── state ─────────────────────────
-const ui = { tab: 'days', dayId: null, who: 'all', mapScope: 'day', expanded: new Set(), ideasDay: null };
+const ui = { tab: 'days', dayId: null, who: 'all', mapScope: 'day', expanded: new Set(), ideasDay: null, full: false, collapsedNext: null };
+try { ui.full = localStorage.getItem('japan2026.full') === '1'; } catch { /* ignore */ }
 try { ui.who = localStorage.getItem('japan2026.who') || 'all'; } catch { /* ignore */ }
 
 function todayId() {
@@ -140,14 +141,14 @@ function renderStrip() {
 }
 
 function selectDay(id, { silent } = {}) {
-  ui.dayId = id;
+  ui.dayId = id; ui.expanded.clear(); ui.collapsedNext = null; closeSheet();
   if (!silent) history.replaceState(null, '', '#' + id);
   renderStrip();
   renderDay();
   refreshMap();
 }
 
-// ───────────────────────── day: board, route diagram, rail ─────────────────────────
+// ───────────────────────── day: board, route diagram, departure board ─────────────────────────
 function renderDay() {
   const day = dayById(ui.dayId);
   const el = $('#timeline');
@@ -158,26 +159,23 @@ function renderDay() {
   const prev = DAYS[day.n - 2], next = DAYS[day.n];
   const energy = day.energy.split(' ')[0];
   const bars = { LOW: 1, MEDIUM: 2, HIGH: 3 }[energy] || 2;
+  const full = ui.full;
 
   el.appendChild(h(`
     <div class="board">
       <h2>${esc(day.title)}</h2>
       <p class="date">Day ${day.n} of 17. ${esc(longDate(day.date))}, ${esc(day.city)}.</p>
-      <dl class="facts">
-        <dt>Pace</dt><dd><span class="energy" aria-hidden="true"><i class="${bars >= 1 ? 'on' : ''}"></i><i class="${bars >= 2 ? 'on' : ''}"></i><i class="${bars >= 3 ? 'on' : ''}"></i></span>${esc(day.energy.toLowerCase())}, ${p.done} of ${p.total} stops done</dd>
-        <dt>Dinner</dt><dd>${esc(day.dinner)}</dd>
-        <dt>Hotel</dt><dd><a href="${gmapsPlace(hotel)}" target="_blank" rel="noopener">${esc(hotel.name)}</a></dd>
-      </dl>
+      <p class="facts"><span class="energy" aria-hidden="true"><i class="${bars >= 1 ? 'on' : ''}"></i><i class="${bars >= 2 ? 'on' : ''}"></i><i class="${bars >= 3 ? 'on' : ''}"></i></span><span class="sr-only">Pace ${esc(day.energy.toLowerCase())}.</span>${p.done} of ${p.total} done <span class="sep" aria-hidden="true"></span> ${icon('hotel', 15)} <a href="${gmapsPlace(hotel)}" target="_blank" rel="noopener">${esc(hotel.name.replace(/ \(.*\)$/, ''))}</a></p>
       <div class="actions">
-        ${prev ? `<button type="button" class="btn small round" data-go="${prev.id}" aria-label="Day ${prev.n}" title="Day ${prev.n}">${icon('left', 18)}</button>` : ''}
-        ${next ? `<button type="button" class="btn small round" data-go="${next.id}" aria-label="Day ${next.n}" title="Day ${next.n}">${icon('right', 18)}</button>` : ''}
         <button type="button" class="btn small" data-act="map">${icon('map', 16)}Map</button>
         <button type="button" class="btn small" data-act="ideas">${icon('ideas', 16)}Ideas</button>
+        <button type="button" class="btn small" data-act="full" aria-pressed="${full}" title="Show every detail open">${icon('book', 16)}Full</button>
       </div>
     </div>`));
   $$('[data-go]', el).forEach((b) => b.addEventListener('click', () => selectDay(b.dataset.go)));
   $('[data-act="map"]', el).addEventListener('click', () => switchTab('map'));
   $('[data-act="ideas"]', el).addEventListener('click', () => { ui.ideasDay = day.id; switchTab('ideas'); });
+  $('[data-act="full"]', el).addEventListener('click', () => setFull(!ui.full));
 
   const stops = dayStops(day);
   const nxt = nextEvent(day);
@@ -191,7 +189,7 @@ function renderDay() {
       const st = modeStyle(mode);
       const isNext = nxt && s.ids.includes(nxt.id);
       const b = h(`<button type="button" class="${isNext ? 'next' : ''} ${s.done ? 'done' : ''} ${s.optional ? 'optional' : ''} ${s.who !== 'all' ? s.who : ''}" style="--leg:${MODE_VAR[mode]}" aria-label="Stop ${s.n}, ${esc(s.title)}"><span class="rseg ${st.dash ? 'dashed' : ''}"><span class="leg-min">${esc(legMinutes(s.travel && s.travel.label))}</span><b>${s.n}</b></span><small>${esc(s.title)}</small><em>${esc((s.time || '').split(/[–-]/)[0].trim())}</em></button>`);
-      b.addEventListener('click', () => highlightEvent(s.id));
+      b.addEventListener('click', () => { ui.expanded.add(s.id); renderDay(); highlightEvent(s.id); });
       route.appendChild(b);
     });
     el.appendChild(route);
@@ -207,55 +205,91 @@ function renderDay() {
   }
 
   const items = visibleItems(day);
+
+  // Signs: the day's notes, choices and dinner as a row of signboard chips (compact mode).
+  if (!full) {
+    const signs = h('<div class="signs" role="group" aria-label="Notes and choices for the day"></div>');
+    const dinnerChip = h(`<button type="button" class="sign"><span class="si">${icon('guide', 15)}</span><span class="sl"><small>Dinner</small><b>${esc(day.dinner)}</b></span></button>`);
+    dinnerChip.addEventListener('click', () => openSheet({ title: 'Dinner', text: day.dinner, icon: 'guide' }));
+    signs.appendChild(dinnerChip);
+    items.forEach((it) => {
+      if (it.type === 'choice') {
+        const chosen = it.options.find((o) => o.id === store.getChoice(it.id, it.default)) || it.options[0];
+        const b = h(`<button type="button" class="sign choice-sign ${it.who && it.who !== 'all' ? it.who : ''}"><span class="si">${icon('flag', 15)}</span><span class="sl"><small>${esc(it.title)}</small><b>${esc(chosen.label)}</b></span><span class="change">Change</span></button>`);
+        b.addEventListener('click', () => openSheet({ choice: it }));
+        signs.appendChild(b);
+      } else if (it.type === 'note') {
+        const kind = it.kind || 'note';
+        const ic = { note: 'info', warn: 'warn', book: 'book', decide: 'flag', tip: 'info' }[kind] || 'info';
+        const b = h(`<button type="button" class="sign ${kind} ${it.who && it.who !== 'all' ? it.who : ''}"><span class="si">${icon(ic, 15)}</span><span class="sl"><b>${esc(it.title)}</b></span></button>`);
+        b.addEventListener('click', () => openSheet({ title: it.title, text: it.text, icon: ic, link: it.link, who: it.who }));
+        signs.appendChild(b);
+      }
+    });
+    if (signs.children.length) el.appendChild(signs);
+  }
+
+  // Departure board: one line per stop; the next stop (and anything tapped) is open.
   let lastPinned = null;
   const events = items.filter((i) => i.type === 'event');
   items.forEach((it) => {
     if (it.type === 'section') { el.appendChild(h(`<h3 class="section-h">${esc(it.title)}</h3>`)); return; }
-    if (it.type === 'note') { el.appendChild(renderNote(it)); return; }
-    if (it.type === 'choice') { el.appendChild(renderChoice(it)); return; }
+    if (it.type === 'note') { if (full) el.appendChild(renderNote(it)); return; }
+    if (it.type === 'choice') { if (full) el.appendChild(renderChoice(it)); return; }
 
     const n = it.place ? numOf(it.id) : null;
     const idx = events.indexOf(it);
     const pos = events.length === 1 ? 'alone' : idx === 0 ? 'first' : idx === events.length - 1 ? 'last' : '';
     const mode = it.travel ? it.travel.mode : null;
     const isNext = nxt && nxt.id === it.id;
-    const wrap = h(`<div class="ev ${pos} ${it.who && it.who !== 'all' ? it.who : ''} ${it.optional ? 'optional' : ''} ${store.isChecked(it.id) ? 'done' : ''} ${isNext ? 'next' : ''}" id="ev-${esc(it.id)}" style="--leg:${mode ? MODE_VAR[mode] : 'var(--n3)'}"></div>`);
-    if (it.place && it.travel && lastPinned && n && numOf(lastPinned.id) !== n) {
+    const open = full || isNext || ui.expanded.has(it.id);
+    const hasLeg = !!(it.place && it.travel && lastPinned && n && numOf(lastPinned.id) !== n);
+    const wrap = h(`<div class="ev ${pos} ${it.who && it.who !== 'all' ? it.who : ''} ${it.optional ? 'optional' : ''} ${store.isChecked(it.id) ? 'done' : ''} ${isNext ? 'next' : ''} ${open ? 'open' : ''}" id="ev-${esc(it.id)}" style="--leg:${mode ? MODE_VAR[mode] : 'var(--n3)'}"></div>`);
+    if (hasLeg && open) {
       wrap.appendChild(h(`<div class="travel"><span class="mode" aria-hidden="true">${icon(MODE_ICON[mode] || 'train', 16)}</span><span>${esc(it.travel.label || it.travel.mode)}</span><a href="${gmapsDir(lastPinned.place, it.place, it.travel.mode)}" target="_blank" rel="noopener">${icon('dir', 16)}Directions</a></div>`));
     }
     const numBtn = h(`<button type="button" class="num ${n ? '' : 'none'}" ${n ? `aria-label="Show stop ${n} on the map"` : 'tabindex="-1" aria-hidden="true"'}><span>${n || ''}</span></button>`);
     if (n) numBtn.addEventListener('click', () => { if (!window.matchMedia('(min-width: 960px)').matches) switchTab('map'); setTimeout(() => theMap.focus(it.id), 60); });
     wrap.appendChild(numBtn);
 
-    const long = (it.desc || '').length > 220 || (it.desc || '').includes('\n');
-    const expanded = ui.expanded.has(it.id);
     const chips = [];
     if (it.confirmed) chips.push(`<span class="chip confirmed">${icon('check', 12)}Confirmed</span>`);
     if (it.tbd) chips.push('<span class="chip tbd">Still to decide</span>');
     if (it.who && it.who !== 'all') chips.push(`<span class="chip ${it.who}">${TRIP.travelers[it.who].short}</span>`);
     if (it.cost) chips.push(`<span class="chip cost">${esc(it.cost)}</span>`);
+    const legMeta = hasLeg && !open ? `<span class="legmeta" style="color:${MODE_VAR[mode]}">${icon(MODE_ICON[mode] || 'train', 14)}<span>${esc(legMinutes(it.travel.label) || modeStyle(mode).label)}</span></span>` : '';
+    const flags = !open ? [it.confirmed ? `<span class="flag ok" title="Confirmed">${icon('check', 11)}</span>` : '', it.tbd ? '<span class="flag tbd" title="Still to decide">?</span>' : '', it.who && it.who !== 'all' ? `<span class="flag ${it.who}">${TRIP.travelers[it.who].short}</span>` : ''].join('') : '';
     const card = h(`
       <div class="card">
         <div class="row">
-          <div style="flex:1;min-width:0">
-            <div class="time">${esc(it.time)}</div>
-            <div class="title">${esc(it.title)}${it.optional ? ' <span class="opt-tag">optional</span>' : ''}</div>
-            ${it.desc ? `<div class="desc ${long && !expanded ? 'clamp' : ''}">${esc(it.desc)}</div>` : ''}
-            ${long ? `<button type="button" class="more" aria-expanded="${expanded}">${expanded ? 'Show less' : 'Read more'}</button>` : ''}
-          </div>
+          <button type="button" class="rowbtn" aria-expanded="${open}" aria-controls="det-${esc(it.id)}">
+            <span class="time">${esc(it.time)}${legMeta}</span>
+            <span class="title">${esc(it.title)}${it.optional ? ' <span class="opt-tag">optional</span>' : ''}${flags}</span>
+          </button>
           <button type="button" class="check" aria-pressed="${store.isChecked(it.id)}" aria-label="Mark ${esc(it.title)} as done">${isNext ? '<span class="lbl">Done</span>' : ''}<i>${icon('check', 16)}</i></button>
         </div>
-        ${chips.length ? `<div class="chips">${chips.join('')}</div>` : ''}
-        ${it.place ? `<div class="links"><a class="btn small" href="${gmapsPlace(it.place)}" target="_blank" rel="noopener">${icon('pin', 15)}${esc(it.place.name)}</a>${(it.subplaces || []).map((sp) => `<a class="btn small" href="${gmapsPlace(sp)}" target="_blank" rel="noopener">${icon('pin', 15)}${esc(sp.name)}</a>`).join('')}</div>` : ''}
+        <div class="det" id="det-${esc(it.id)}" ${open ? '' : 'hidden'}>
+          ${it.desc ? `<div class="desc">${esc(it.desc)}</div>` : ''}
+          ${chips.length ? `<div class="chips">${chips.join('')}</div>` : ''}
+          ${it.place ? `<div class="links"><a class="btn small" href="${gmapsPlace(it.place)}" target="_blank" rel="noopener">${icon('pin', 15)}${esc(it.place.name)}</a>${(it.subplaces || []).map((sp) => `<a class="btn small" href="${gmapsPlace(sp)}" target="_blank" rel="noopener">${icon('pin', 15)}${esc(sp.name)}</a>`).join('')}</div>` : ''}
+        </div>
       </div>`);
-    const more = $('.more', card);
-    if (more) more.addEventListener('click', () => { if (ui.expanded.has(it.id)) ui.expanded.delete(it.id); else ui.expanded.add(it.id); renderDay(); });
+    $('.rowbtn', card).addEventListener('click', () => { if (full) return; if (ui.expanded.has(it.id) || (isNext && !ui.collapsedNext)) { ui.expanded.delete(it.id); if (isNext) ui.collapsedNext = it.id; } else { ui.expanded.add(it.id); if (isNext) ui.collapsedNext = null; } renderDay(); });
+    if (isNext && ui.collapsedNext === it.id && !full) { wrap.classList.remove('open'); $('.det', card).hidden = true; $('.rowbtn', card).setAttribute('aria-expanded', 'false'); }
     $('.check', card).addEventListener('click', () => store.toggleCheck(it.id));
     wrap.appendChild(card);
     el.appendChild(wrap);
     if (it.place) lastPinned = it;
   });
   if (!events.length) el.appendChild(h(`<div class="empty">Nothing is planned for ${TRIP.travelers[ui.who].short} on this day. Switch to All to see the shared plan.</div>`));
+}
+
+function setFull(v) {
+  ui.full = !!v;
+  try { localStorage.setItem('japan2026.full', ui.full ? '1' : '0'); } catch { /* ignore */ }
+  renderDay();
+  if (ui.tab === 'bookings') renderBookings();
+  if (ui.tab === 'guide') renderGuide();
 }
 
 function renderNote(it) {
@@ -265,9 +299,9 @@ function renderNote(it) {
   return h(`<div class="note ${kind}"><h4>${icon(ic, 18)}${who}${esc(it.title)}</h4><p>${esc(it.text)}</p>${it.link ? `<a class="btn small" href="${esc(it.link.url)}" target="_blank" rel="noopener">${esc(it.link.label)}${icon('ext', 14)}</a>` : ''}</div>`);
 }
 
-function renderChoice(it) {
+function renderChoice(it, inSheet) {
   const chosen = store.getChoice(it.id, it.default);
-  const box = h(`<div class="choice" role="radiogroup" aria-label="${esc(it.title)}"><h4>${icon('flag', 18)}${esc(it.title)}${it.who && it.who !== 'all' ? ` <span class="chip ${it.who}">${TRIP.travelers[it.who].short}</span>` : ''}</h4>${it.text ? `<p>${esc(it.text)}</p>` : ''}<div class="opts"></div><div class="picked">Shared choice: whoever changes it, all four phones see it.</div></div>`);
+  const box = h(`<div class="choice ${inSheet ? 'in-sheet' : ''}" role="radiogroup" aria-label="${esc(it.title)}">${inSheet ? '' : `<h4>${icon('flag', 18)}${esc(it.title)}${it.who && it.who !== 'all' ? ` <span class="chip ${it.who}">${TRIP.travelers[it.who].short}</span>` : ''}</h4>`}${it.text ? `<p>${esc(it.text)}</p>` : ''}<div class="opts"></div><div class="picked">Shared choice: whoever changes it, all four phones see it.</div></div>`);
   const opts = $('.opts', box);
   it.options.forEach((o) => {
     const b = h(`<button type="button" class="opt" role="radio" aria-checked="${o.id === chosen}"><span class="radio" aria-hidden="true"></span><span><b>${esc(o.label)}</b>${o.desc ? `<small>${esc(o.desc)}</small>` : ''}</span></button>`);
@@ -277,32 +311,67 @@ function renderChoice(it) {
   return box;
 }
 
+// ───────────────────────── sheet (notes, choices) ─────────────────────────
+let sheetState = null;
+function openSheet(state) {
+  sheetState = state;
+  const s = $('#sheet');
+  renderSheet();
+  s.hidden = false;
+  s.removeAttribute('data-closing');
+  document.body.classList.add('sheet-open');
+  setTimeout(() => $('#sheet-close').focus(), 30);
+}
+function renderSheet() {
+  if (!sheetState) return;
+  const body = $('#sheet-body');
+  const st = sheetState;
+  if (st.choice) {
+    $('#sheet-title').innerHTML = `${icon('flag', 18)}${esc(st.choice.title)}`;
+    body.innerHTML = '';
+    body.appendChild(renderChoice(st.choice, true));
+  } else {
+    $('#sheet-title').innerHTML = `${icon(st.icon || 'info', 18)}${st.who && st.who !== 'all' ? `<span class="chip ${st.who}">${TRIP.travelers[st.who].short}</span>` : ''}${esc(st.title)}`;
+    body.innerHTML = `<p class="sheet-text">${esc(st.text)}</p>${st.link ? `<a class="btn small" href="${esc(st.link.url)}" target="_blank" rel="noopener">${esc(st.link.label)}${icon('ext', 14)}</a>` : ''}`;
+  }
+}
+function closeSheet() {
+  const s = $('#sheet');
+  if (s.hidden) return;
+  sheetState = null;
+  s.setAttribute('data-closing', '');
+  document.body.classList.remove('sheet-open');
+  setTimeout(() => { s.hidden = true; s.removeAttribute('data-closing'); }, 320);
+}
+
 // ───────────────────────── bookings ─────────────────────────
 function renderBookings() {
   const el = $('#bookings');
-  const card = (b, cls) => `<div class="bk ${cls} ${b.urgent ? 'urgent' : ''}"><span class="st" aria-hidden="true">${cls ? (b.urgent ? icon('warn', 14) : '') : icon('check', 16)}</span><div><div class="when">${meta(b.when)}${b.who ? ` <span class="chip ${b.who}">${TRIP.travelers[b.who].short}</span>` : ''}</div><div class="t">${b.urgent ? '<span class="urgent-tag">Book now</span>' : ''}${esc(b.title)}</div><p>${esc(b.detail)}</p><div class="links">${b.day ? `<button type="button" class="btn small" data-go="${b.day}">Open ${dayLabel(b.day)}</button>` : ''}${b.tel ? `<a class="btn small" href="tel:${b.tel}">${icon('phone', 14)}Call</a>` : ''}</div></div></div>`;
+  const card = (b, cls) => `<details class="bk ${cls} ${b.urgent ? 'urgent' : ''}" ${ui.full ? 'open' : ''}><summary><span class="st" aria-hidden="true">${cls ? (b.urgent ? icon('warn', 14) : '') : icon('check', 16)}</span><span class="sum"><span class="when">${meta(b.when)}${b.who ? ` <span class="chip ${b.who}">${TRIP.travelers[b.who].short}</span>` : ''}</span><span class="t">${b.urgent ? '<span class="urgent-tag">Book now</span>' : ''}${esc(b.title)}</span></span></summary><div class="bk-body"><p>${esc(b.detail)}</p><div class="links">${b.day ? `<button type="button" class="btn small" data-go="${b.day}">Open ${dayLabel(b.day)}</button>` : ''}${b.tel ? `<a class="btn small" href="tel:${b.tel}">${icon('phone', 14)}Call</a>` : ''}</div></div></details>`;
   el.innerHTML = `
-    <h2 class="h2">Still to book or decide</h2>
-    <p class="sub">Book closer to the date or on the day.</p>
+    <div class="tabhead"><h2 class="h2">Still to book or decide</h2><button type="button" class="btn small" data-act="full" aria-pressed="${ui.full}">${icon('book', 16)}Full</button></div>
+    <p class="sub">Tap any line for the details. Book closer to the date or on the day.</p>
     ${BOOKINGS.closer.map((b) => card(b, 'closer')).join('')}
     <h2 class="h2">Confirmed</h2>
     <p class="sub">Done. Nothing more to do.</p>
     ${BOOKINGS.confirmed.map((b) => card(b, '')).join('')}
     <h2 class="h2">Hotels</h2>
-    ${HOTELS.map((hh) => `<div class="bk"><span class="st" aria-hidden="true">${icon('hotel', 14)}</span><div><div class="when">${esc(hh.dates)}, ${hh.nights} night${hh.nights > 1 ? 's' : ''}</div><div class="t">${esc(hh.name)}</div><p>${esc(hh.city)}</p><div class="links"><a class="btn small" href="${gmapsPlace(hh)}" target="_blank" rel="noopener">${icon('pin', 15)}Google Maps</a></div></div></div>`).join('')}`;
+    ${HOTELS.map((hh) => `<details class="bk" ${ui.full ? 'open' : ''}><summary><span class="st" aria-hidden="true">${icon('hotel', 14)}</span><span class="sum"><span class="when">${esc(hh.dates)}, ${hh.nights} night${hh.nights > 1 ? 's' : ''}</span><span class="t">${esc(hh.name)}</span></span></summary><div class="bk-body"><p>${esc(hh.city)}</p><div class="links"><a class="btn small" href="${gmapsPlace(hh)}" target="_blank" rel="noopener">${icon('pin', 15)}Google Maps</a></div></div></details>`).join('')}`;
   $$('[data-go]', el).forEach((b) => b.addEventListener('click', () => { selectDay(b.dataset.go); switchTab('days'); }));
+  $('[data-act="full"]', el).addEventListener('click', () => setFull(!ui.full));
 }
 
 // ───────────────────────── guide ─────────────────────────
 function renderGuide() {
   const el = $('#guide');
-  const food = (f) => `<div class="food"><div class="t">${f.star ? '<span class="star" title="Top pick"></span>' : ''}<span>${esc(f.name)}</span></div>${f.meta ? `<div class="m">${meta(f.meta)}</div>` : ''}<p>${esc(f.text)}</p>${f.lat ? `<div class="links"><a class="btn small" href="${gmapsPlace({ q: f.name.split(' — ').pop().split(' · ')[0] })}" target="_blank" rel="noopener">${icon('pin', 15)}Google Maps</a></div>` : ''}</div>`;
+  const food = (f) => `<details class="food" ${ui.full ? 'open' : ''}><summary><span class="t">${f.star ? '<span class="star" title="Top pick"></span>' : ''}<span>${esc(f.name)}</span></span>${f.meta ? `<span class="m">${meta(f.meta)}</span>` : ''}</summary><div class="food-body"><p>${esc(f.text)}</p>${f.lat ? `<div class="links"><a class="btn small" href="${gmapsPlace({ q: f.name.split(' — ').pop().split(' · ')[0] })}" target="_blank" rel="noopener">${icon('pin', 15)}Google Maps</a></div>` : ''}</div></details>`;
   el.innerHTML = `
-    <h2 class="h2">Must-eat food and experiences</h2>
-    <p class="sub">A red dot marks the top picks. Everything here is pork-free or easy to order that way.</p>
+    <div class="tabhead"><h2 class="h2">Must-eat food and experiences</h2><button type="button" class="btn small" data-act="full" aria-pressed="${ui.full}">${icon('book', 16)}Full</button></div>
+    <p class="sub">A red dot marks the top picks. Tap a name for the why and the map. Everything is pork-free or easy to order that way.</p>
     ${FOOD.map((c) => `<details class="acc" open><summary>${esc(c.city)}</summary><div class="inner">${c.items.map(food).join('')}<h3 class="section-h" style="margin-left:0">Cafés and quick bites</h3>${c.cafes.map(food).join('')}</div></details>`).join('')}
     <h2 class="h2">Trip tips</h2>
-    ${TIPS.map((t) => `<details class="acc"><summary>${esc(t.title)}</summary><ul>${t.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></details>`).join('')}`;
+    ${TIPS.map((t) => `<details class="acc" ${ui.full ? 'open' : ''}><summary>${esc(t.title)}</summary><ul>${t.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></details>`).join('')}`;
+  $('[data-act="full"]', el).addEventListener('click', () => setFull(!ui.full));
 }
 
 // ───────────────────────── ideas ─────────────────────────
@@ -431,9 +500,11 @@ function boot() {
   $$('.seg [data-scope]').forEach((b) => b.addEventListener('click', () => { ui.mapScope = b.dataset.scope; refreshMap(); }));
   $('#search-btn').addEventListener('click', openSearch);
   $('#search-close').addEventListener('click', closeSearch);
+  $('#sheet-close').addEventListener('click', closeSheet);
+  $('#sheet-backdrop').addEventListener('click', closeSheet);
   $('#search-input').addEventListener('input', (e) => runSearch(e.target.value));
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeSearch();
+    if (e.key === 'Escape') { closeSearch(); closeSheet(); }
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
     if (!$('#search').hidden || e.target.matches('input,textarea,select')) return;
     if (e.key === 'ArrowRight') { const d = dayById(ui.dayId); if (DAYS[d.n]) selectDay(DAYS[d.n].id); }
@@ -450,7 +521,7 @@ function boot() {
   const tid = todayId();
   if (tid && !dayById(fromHash)) { const b = $('#banner'); b.hidden = false; b.className = 'banner info'; const d = dayById(tid); b.textContent = `Today is day ${d.n}: ${d.title}`; setTimeout(() => { if (b.classList.contains('info')) b.hidden = true; }, 6000); }
 
-  store.subscribe(() => { renderSync(); renderStrip(); renderDay(); if (ui.tab === 'ideas') renderIdeas(); if (ui.tab === 'map' || window.matchMedia('(min-width: 960px)').matches) refreshMap(); });
+  store.subscribe(() => { renderSync(); renderStrip(); renderDay(); renderSheet(); if (ui.tab === 'ideas') renderIdeas(); if (ui.tab === 'map' || window.matchMedia('(min-width: 960px)').matches) refreshMap(); });
   renderStrip(); renderDay(); switchTab('days');
   store.start();
 
