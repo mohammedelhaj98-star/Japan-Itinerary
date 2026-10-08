@@ -278,9 +278,12 @@ function renderDay() {
     if (isNext && ui.collapsedNext === it.id && !full) { wrap.classList.remove('open'); $('.det', card).hidden = true; $('.rowbtn', card).setAttribute('aria-expanded', 'false'); }
     $('.check', card).addEventListener('click', () => store.toggleCheck(it.id));
     wrap.appendChild(card);
-    el.appendChild(wrap);
+    let group = el.lastElementChild;
+    if (!group || !group.classList.contains('group')) { group = h('<div class="group"></div>'); el.appendChild(group); }
+    group.appendChild(wrap);
     if (it.place) lastPinned = it;
   });
+  $$('.group', el).forEach((g) => { const evs = $$('.ev', g); evs.forEach((e) => e.classList.remove('first', 'last', 'alone')); if (evs.length === 1) evs[0].classList.add('alone'); else if (evs.length) { evs[0].classList.add('first'); evs[evs.length - 1].classList.add('last'); } });
   if (!events.length) el.appendChild(h(`<div class="empty">Nothing is planned for ${TRIP.travelers[ui.who].short} on this day. Switch to All to see the shared plan.</div>`));
 }
 
@@ -351,12 +354,12 @@ function renderBookings() {
   el.innerHTML = `
     <div class="tabhead"><h2 class="h2">Still to book or decide</h2><button type="button" class="btn small" data-act="full" aria-pressed="${ui.full}">${icon('book', 16)}Full</button></div>
     <p class="sub">Tap any line for the details. Book closer to the date or on the day.</p>
-    ${BOOKINGS.closer.map((b) => card(b, 'closer')).join('')}
+    <div class="list">${BOOKINGS.closer.map((b) => card(b, 'closer')).join('')}</div>
     <h2 class="h2">Confirmed</h2>
     <p class="sub">Done. Nothing more to do.</p>
-    ${BOOKINGS.confirmed.map((b) => card(b, '')).join('')}
+    <div class="list">${BOOKINGS.confirmed.map((b) => card(b, '')).join('')}</div>
     <h2 class="h2">Hotels</h2>
-    ${HOTELS.map((hh) => `<details class="bk" ${ui.full ? 'open' : ''}><summary><span class="st" aria-hidden="true">${icon('hotel', 14)}</span><span class="sum"><span class="when">${esc(hh.dates)}, ${hh.nights} night${hh.nights > 1 ? 's' : ''}</span><span class="t">${esc(hh.name)}</span></span></summary><div class="bk-body"><p>${esc(hh.city)}</p><div class="links"><a class="btn small" href="${gmapsPlace(hh)}" target="_blank" rel="noopener">${icon('pin', 15)}Google Maps</a></div></div></details>`).join('')}`;
+    <div class="list">${HOTELS.map((hh) => `<details class="bk" ${ui.full ? 'open' : ''}><summary><span class="st" aria-hidden="true">${icon('hotel', 14)}</span><span class="sum"><span class="when">${esc(hh.dates)}, ${hh.nights} night${hh.nights > 1 ? 's' : ''}</span><span class="t">${esc(hh.name)}</span></span></summary><div class="bk-body"><p>${esc(hh.city)}</p><div class="links"><a class="btn small" href="${gmapsPlace(hh)}" target="_blank" rel="noopener">${icon('pin', 15)}Google Maps</a></div></div></details>`).join('')}</div>`;
   $$('[data-go]', el).forEach((b) => b.addEventListener('click', () => { selectDay(b.dataset.go); switchTab('days'); }));
   $('[data-act="full"]', el).addEventListener('click', () => setFull(!ui.full));
 }
@@ -368,7 +371,7 @@ function renderGuide() {
   el.innerHTML = `
     <div class="tabhead"><h2 class="h2">Must-eat food and experiences</h2><button type="button" class="btn small" data-act="full" aria-pressed="${ui.full}">${icon('book', 16)}Full</button></div>
     <p class="sub">A red dot marks the top picks. Tap a name for the why and the map. Everything is pork-free or easy to order that way.</p>
-    ${FOOD.map((c) => `<details class="acc" open><summary>${esc(c.city)}</summary><div class="inner">${c.items.map(food).join('')}<h3 class="section-h" style="margin-left:0">Cafés and quick bites</h3>${c.cafes.map(food).join('')}</div></details>`).join('')}
+    ${FOOD.map((c) => `<details class="acc" open><summary>${esc(c.city)}</summary><div class="inner">${c.items.map(food).join('')}<h3 class="section-h">Cafés and quick bites</h3>${c.cafes.map(food).join('')}</div></details>`).join('')}
     <h2 class="h2">Trip tips</h2>
     ${TIPS.map((t) => `<details class="acc" ${ui.full ? 'open' : ''}><summary>${esc(t.title)}</summary><ul>${t.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></details>`).join('')}`;
   $('[data-act="full"]', el).addEventListener('click', () => setFull(!ui.full));
