@@ -5,14 +5,14 @@ const OSRM = 'https://router.project-osrm.org/route/v1';
 const ROUTE_CACHE_KEY = 'japan2026.routes.v1';
 
 const MODE_STYLE = {
-  walk: { color: '#2e7d32', dash: null, osrm: 'foot', gmaps: 'walking', icon: '🚶' },
-  drive: { color: '#6a1b9a', dash: null, osrm: 'driving', gmaps: 'driving', icon: '🚗' },
-  taxi: { color: '#ef6c00', dash: null, osrm: 'driving', gmaps: 'driving', icon: '🚕' },
-  transit: { color: '#1565c0', dash: '6 8', osrm: null, gmaps: 'transit', icon: '🚇' },
-  train: { color: '#1565c0', dash: '6 8', osrm: null, gmaps: 'transit', icon: '🚆' },
-  boat: { color: '#00838f', dash: '2 8', osrm: null, gmaps: 'transit', icon: '⛴' },
-  ropeway: { color: '#ad1457', dash: '2 8', osrm: null, gmaps: 'transit', icon: '🚡' },
-  flight: { color: '#546e7a', dash: '1 10', osrm: null, gmaps: 'transit', icon: '✈' },
+  walk: { color: '#008a3e', dash: null, osrm: 'foot', gmaps: 'walking', label: 'Walk' },
+  drive: { color: '#d35f00', dash: null, osrm: 'driving', gmaps: 'driving', label: 'Drive' },
+  taxi: { color: '#d35f00', dash: null, osrm: 'driving', gmaps: 'driving', label: 'Taxi' },
+  transit: { color: '#0063b5', dash: '6 8', osrm: null, gmaps: 'transit', label: 'Transit' },
+  train: { color: '#0063b5', dash: '6 8', osrm: null, gmaps: 'transit', label: 'Train' },
+  boat: { color: '#0083a3', dash: '2 8', osrm: null, gmaps: 'transit', label: 'Boat' },
+  ropeway: { color: '#0083a3', dash: '2 8', osrm: null, gmaps: 'transit', label: 'Ropeway' },
+  flight: { color: '#6f6f6f', dash: '1 10', osrm: null, gmaps: 'transit', label: 'Flight' },
 };
 export const modeStyle = (mode) => MODE_STYLE[mode] || MODE_STYLE.transit;
 
@@ -101,7 +101,7 @@ export function createMap(el) {
         const st = modeStyle(mode);
         const straight = [[a.place.lat, a.place.lng], [b.place.lat, b.place.lng]];
         const line = L.polyline(straight, { color: st.color, weight: 4, opacity: 0.8, dashArray: st.dash || null }).addTo(layer);
-        line.bindPopup(`<div class="pop"><div class="pop-body"><div class="pop-t">${st.icon} ${esc(a.title)} → ${esc(b.title)}</div><div class="pop-time">${esc((b.travel && b.travel.label) || mode)}</div><div class="pop-links"><a href="${gmapsDir(a.place, b.place, mode)}" target="_blank" rel="noopener">Directions in Google Maps</a></div></div></div>`);
+        line.bindPopup(`<div class="pop"><div class="pop-body"><div class="pop-t">${st.label}: ${esc(a.title)} to ${esc(b.title)}</div><div class="pop-time">${esc((b.travel && b.travel.label) || mode)}</div><div class="pop-links"><a href="${gmapsDir(a.place, b.place, mode)}" target="_blank" rel="noopener">Directions in Google Maps</a></div></div></div>`);
         if (st.osrm && haversine(a.place, b.place) < 120) {
           fetchRoute(a.place, b.place, st.osrm).then((r) => {
             if (aborted || this._token !== token) return;
