@@ -117,6 +117,19 @@ body.scrolled .topfade { opacity:1; }
 .hero-in .pn { font-size:40px; }
 .hero-in .pt b { font-size:23px; letter-spacing:-.025em; white-space:normal; line-height:1.12; text-wrap:balance; }
 .hero-in .pt small { opacity:.85; }
+.pnav { display:none; position:absolute; top:12px; left:12px; right:12px; z-index:2; align-items:flex-start; justify-content:space-between; gap:8px; }
+.pass.open .pnav { display:flex; }
+.pass.open { touch-action:pan-y; }
+.st { width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,.36); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#fff; display:grid; place-items:center; flex:none; transition:transform 160ms var(--ease), opacity 200ms; }
+.st:active { transform:scale(.92); }
+.st:disabled { opacity:.25; }
+.pnav .mid { flex:1; min-width:0; display:flex; justify-content:center; }
+.jp2 { display:inline-flex; flex-direction:column; align-items:center; max-width:100%; padding:5px 13px 6px; border-radius:16px; background:rgba(0,0,0,.36); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); line-height:1.2; text-align:center; }
+.jp2 b { font-family:var(--mincho); font-size:15.5px; font-weight:700; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.jp2 small { font-size:11.5px; font-weight:500; opacity:.88; letter-spacing:.01em; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cnt { font-size:12px; font-weight:700; padding:6px 12px; border-radius:999px; background:rgba(0,0,0,.36); }
+.pass.tk .pnav { position:static; padding:12px 12px 0; }
+.pass.tk .st, .pass.tk .jp2, .pass.tk .cnt { background:rgba(0,0,0,.07); color:var(--ink); -webkit-backdrop-filter:none; backdrop-filter:none; }
 .jpn { position:absolute; top:12px; right:14px; max-width:52%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; z-index:1; font-family:var(--mincho); font-size:15px; padding:4px 10px; border-radius:999px; background:rgba(0,0,0,.35); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
 .area { position:absolute; top:12px; left:14px; max-width:42%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; z-index:1; font-size:11px; font-weight:700; padding:4px 9px; border-radius:999px; background:rgba(0,0,0,.35); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
 .body { display:none; padding:14px 16px 16px; }
@@ -217,7 +230,9 @@ body.scrolled .topfade { opacity:1; }
 .jpcard { position:fixed; inset:0; z-index:1000; background:#fbf8f1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; text-align:center; opacity:0; transform:scale(.97); pointer-events:none; transition:opacity 220ms ease, transform 280ms var(--ease); }
 .jpcard.on { opacity:1; transform:none; pointer-events:auto; }
 .jpcard .k { font-family:var(--mincho); font-size:min(18vw,84px); line-height:1.15; letter-spacing:.04em; word-break:keep-all; }
-.jpcard .s { font-family:var(--mincho); font-size:24px; margin-top:24px; }
+.jpcard .r { font-size:20px; font-weight:500; color:var(--ink2); margin-top:10px; letter-spacing:.01em; }
+.jpcard .s { font-family:var(--mincho); font-size:24px; margin-top:28px; }
+.jpcard .sr { font-size:15px; color:var(--ink2); margin-top:4px; }
 .jpcard .e { font-size:15px; color:var(--ink3); margin-top:10px; }
 .jpcard .x { position:absolute; top:var(--top); right:14px; width:48px; height:48px; border-radius:50%; background:#fff; display:grid; place-items:center; box-shadow:0 2px 10px rgba(0,0,0,.12); }
 
@@ -425,9 +440,10 @@ function passHTML(e, i) {
     ${pi && pi.fact ? `<div class="dyk"><b>Did you know</b>${esc(pi.fact)}</div>` : ''}
     <div class="acts">${e.place ? `<a class="a-dir press" href="${gmDir(e.place, e.travel && e.travel.mode)}" target="_blank" rel="noopener">${I.dir}Directions</a>` : ''}${pi && pi.ja && host ? `<button class="a-jp press" data-jp="${esc(host.name)}" aria-label="Show name in Japanese">日本</button>` : ''}<button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>
     ${pi && pi.credit && !tk ? `<p class="credit">Photo${pi.area ? ` (${esc(pi.area)})` : ''}: <a href="${esc(pi.file)}" target="_blank" rel="noopener">${esc(pi.credit)}</a></p>` : ''}</div>`;
+  const nav = `<div class="pnav"><button class="st" data-step="-1" ${i === 0 ? 'disabled' : ''} aria-label="Previous stop">${I.chevL}</button><div class="mid">${pi && pi.ja ? `<span class="jp2"><b>${esc(pi.ja)}</b>${pi.ro ? `<small>${esc(pi.ro)}</small>` : ''}</span>` : `<span class="cnt">${i + 1} of ${events.length}</span>`}</div><button class="st" data-step="1" ${i === events.length - 1 ? 'disabled' : ''} aria-label="Next stop">${I.chevR}</button></div>`;
   const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}</small><b>${esc(e.title)}</b></div>${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
-  const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${pi && pi.ja ? `<span class="jpn">${esc(pi.ja)}</span>` : ''}${pi && pi.area ? `<span class="area">${esc(pi.area)}</span>` : ''}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}</small><b>${esc(e.title)}</b></div></div></div>`;
-  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${band}${hero}${body}<div class="hanko" aria-hidden="true">済</div></article>`;
+  const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}</small><b>${esc(e.title)}</b></div></div></div>`;
+  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}<div class="hanko" aria-hidden="true">済</div></article>`;
 }
 
 function renderSheet() {
@@ -622,11 +638,11 @@ kitEl.addEventListener('click', (e) => {
   const fr = e.target.closest('[data-from]'); if (fr) { const yen = (+kit.amt || 0) * rateOf(kit.from); const c = fr.dataset.from; const v = yen / rateOf(c); kit.amt = String(c === 'JPY' ? Math.round(v) : Math.round(v * 100) / 100); kit.from = c; kit.fresh = true; renderKit(); return; }
   const il = e.target.closest('[data-inl]'); if (il) { fx.cur = il.dataset.inl; ls.set('japan2026.cur3', fx.cur); updateInline(); renderKit(); return; }
   const q = e.target.closest('[data-q]'); if (q) { kit.amt = q.dataset.q; kit.fresh = true; renderKit(); return; }
-  const p = e.target.closest('[data-phr]'); if (p) { const [en, jp, ro] = PHRASES[+p.dataset.phr]; showJp(jp, ro, en); }
+  const p = e.target.closest('[data-phr]'); if (p) { const [en, jp, ro] = PHRASES[+p.dataset.phr]; showJp(jp, ro, null, null, en); }
 });
 scrim.addEventListener('click', () => closeKit());
 const jp = document.getElementById('jpcard');
-function showJp(big, sub, en) { jp.innerHTML = `<button class="x" aria-label="Close">${I.x}</button><p class="k">${esc(big)}</p>${sub ? `<p class="s">${esc(sub)}</p>` : ''}<p class="e">${esc(en || '')}</p>`; jp.classList.add('on'); }
+function showJp(big, ro, sub, subRo, en) { jp.innerHTML = `<button class="x" aria-label="Close">${I.x}</button><p class="k">${esc(big)}</p>${ro ? `<p class="r">${esc(ro)}</p>` : ''}${sub ? `<p class="s">${esc(sub)}</p>` : ''}${subRo ? `<p class="sr">${esc(subRo)}</p>` : ''}<p class="e">${esc(en || '')}</p>`; jp.classList.add('on'); }
 jp.addEventListener('click', () => jp.classList.remove('on'));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { jp.classList.remove('on'); closeKit(); } });
 
@@ -646,12 +662,20 @@ document.getElementById('dayp').addEventListener('click', () => { if (tripDay) {
 document.getElementById('kitbtn').addEventListener('click', openKit);
 document.getElementById('sheet').addEventListener('click', (e) => {
   if (e.target.closest('.cv-in')) { cycleCur(); buzz(4); return; }
+  const sp = e.target.closest('[data-step]'); if (sp) { if (!sp.disabled) step(+sp.dataset.step); return; }
+  if (swiped) { swiped = false; return; }
   const st = e.target.closest('[data-stamp]'); if (st) { const id = st.dataset.stamp; const was = done(id); store.toggleCheck(id); if (!was) { buzz(12); stackApi.thump(id); } return; }
-  const j = e.target.closest('[data-jp]'); if (j) { const pi = PLACES[j.dataset.jp]; showJp(pi.ja, 'ここに行きたいです', `${j.dataset.jp} · "I'd like to go here"`); return; }
+  const j = e.target.closest('[data-jp]'); if (j) { const pi = PLACES[j.dataset.jp]; showJp(pi.ja, pi.ro, 'ここに行きたいです', 'koko ni ikitai desu', `${j.dataset.jp} · "I'd like to go here"`); return; }
   const pk = e.target.closest('[data-pick]'); if (pk && !e.target.closest('a')) { const id = pk.dataset.pick; if (ui.sel !== id) { stackApi.select(id, { scroll: true }); dialApi.focus(id); focusMap(id); } return; }
   const w = e.target.closest('[data-who]'); if (w) { ui.who = w.dataset.who; ls.set('japan2026.whoMix', ui.who); renderDay({ keepScroll: true }); return; }
   const c = e.target.closest('[data-choice]'); if (c) { store.setChoice(c.dataset.choice, c.dataset.opt); renderDay({ keepScroll: true }); }
 });
+function step(d) { const i = events.findIndex((x) => x.id === ui.sel); const j = Math.max(0, Math.min(events.length - 1, i + d)); if (j === i) return; const id = events[j].id; stackApi.select(id, { scroll: true }); dialApi.focus(id); focusMap(id); buzz(4); }
+let swiped = false;
+{ let sw = null;
+  document.getElementById('sheet').addEventListener('pointerdown', (e) => { const card = e.target.closest('.pass.open'); if (!card || e.target.closest('a,button')) return; sw = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; });
+  const end = (e) => { if (!sw || e.pointerId !== sw.id) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y, v = Math.abs(dx) / Math.max(1, performance.now() - sw.t); sw = null; if (Math.abs(dx) > Math.abs(dy) * 1.6 && (Math.abs(dx) > 60 || (Math.abs(dx) > 25 && v > 0.5))) { swiped = true; setTimeout(() => (swiped = false), 80); step(dx < 0 ? 1 : -1); } };
+  window.addEventListener('pointerup', end); window.addEventListener('pointercancel', () => (sw = null)); }
 store.subscribe(() => { if (!stackApi) return; stackApi.refresh(); dialApi.refresh(); syncPins(); });
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });
 window.addEventListener('scroll', () => { const sh = document.getElementById('sheet'); document.body.classList.toggle('scrolled', sh.getBoundingClientRect().top < 70); }, { passive: true });
