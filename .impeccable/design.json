@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-08T00:00:00Z",
+  "title": "Design System: Japan 2026",
+  "extensions": {
+    "colorMeta": {
+      "signage-red": { "role": "primary", "displayName": "Signage Red", "canonical": "#e60012", "dark": "#ff3b4a", "tonalRamp": ["oklch(15% 0.08 28)", "oklch(27% 0.14 28)", "oklch(40% 0.20 28)", "oklch(58% 0.24 28)", "oklch(68% 0.20 28)", "oklch(78% 0.13 28)", "oklch(88% 0.07 28)", "oklch(95% 0.03 28)"] },
+      "signage-red-ink": { "role": "primary", "displayName": "Red Ink", "canonical": "#ffffff", "dark": "#1a0004", "tonalRamp": ["#000000", "#121212", "#262626", "#4f4f4f", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#ffffff"] },
+      "ground": { "role": "neutral", "displayName": "Ground", "canonical": "#ffffff", "dark": "#000000", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff", "#ffffff"] },
+      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#f3f3f3", "dark": "#121212", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#f3f3f3", "#ffffff"] },
+      "rule": { "role": "neutral", "displayName": "Rule", "canonical": "#e3e3e3", "dark": "#262626", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#e3e3e3", "#f3f3f3", "#ffffff"] },
+      "ring-grey": { "role": "neutral", "displayName": "Ring Grey", "canonical": "#bdbdbd", "dark": "#4f4f4f", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
+      "ink-3": { "role": "neutral", "displayName": "Ink 3", "canonical": "#6f6f6f", "dark": "#a6a6a6", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
+      "ink-2": { "role": "neutral", "displayName": "Ink 2", "canonical": "#3d3d3d", "dark": "#d4d4d4", "tonalRamp": ["#000000", "#3d3d3d", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#000000", "dark": "#ffffff", "tonalRamp": ["#000000", "#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
+      "line-walk": { "role": "tertiary", "displayName": "Walk Green", "canonical": "#008a3e", "dark": "#3dc86f", "tonalRamp": ["oklch(15% 0.05 152)", "oklch(27% 0.09 152)", "oklch(40% 0.13 152)", "oklch(54% 0.16 152)", "oklch(66% 0.17 152)", "oklch(78% 0.14 152)", "oklch(88% 0.09 152)", "oklch(95% 0.04 152)"] },
+      "line-rail": { "role": "tertiary", "displayName": "Rail Blue", "canonical": "#1d3fb5", "dark": "#5a8bff", "tonalRamp": ["oklch(15% 0.07 265)", "oklch(27% 0.13 265)", "oklch(42% 0.19 265)", "oklch(52% 0.21 265)", "oklch(63% 0.19 265)", "oklch(75% 0.13 265)", "oklch(87% 0.07 265)", "oklch(95% 0.03 265)"] },
+      "line-taxi": { "role": "tertiary", "displayName": "Taxi Orange", "canonical": "#d35f00", "dark": "#ff9a3d", "tonalRamp": ["oklch(15% 0.05 48)", "oklch(27% 0.09 48)", "oklch(42% 0.14 48)", "oklch(60% 0.18 48)", "oklch(72% 0.17 48)", "oklch(82% 0.12 48)", "oklch(90% 0.07 48)", "oklch(96% 0.03 48)"] },
+      "line-water": { "role": "tertiary", "displayName": "Water Teal", "canonical": "#0092b2", "dark": "#3ed8f0", "tonalRamp": ["oklch(15% 0.04 218)", "oklch(27% 0.07 218)", "oklch(42% 0.10 218)", "oklch(60% 0.12 218)", "oklch(72% 0.12 218)", "oklch(82% 0.10 218)", "oklch(90% 0.06 218)", "oklch(96% 0.03 218)"] },
+      "line-flight": { "role": "tertiary", "displayName": "Flight Grey", "canonical": "#6f6f6f", "dark": "#a6a6a6", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
+      "line-kyoto": { "role": "tertiary", "displayName": "Kyoto Purple", "canonical": "#6b3fa0", "dark": "#b48cff", "tonalRamp": ["oklch(15% 0.06 300)", "oklch(27% 0.11 300)", "oklch(44% 0.16 300)", "oklch(55% 0.17 300)", "oklch(66% 0.15 300)", "oklch(77% 0.11 300)", "oklch(88% 0.06 300)", "oklch(95% 0.03 300)"] },
+      "done-green": { "role": "secondary", "displayName": "Done Green", "canonical": "#008a3e", "dark": "#3dc86f", "tonalRamp": ["oklch(15% 0.05 152)", "oklch(27% 0.09 152)", "oklch(40% 0.13 152)", "oklch(54% 0.16 152)", "oklch(66% 0.17 152)", "oklch(78% 0.14 152)", "oklch(88% 0.09 152)", "oklch(95% 0.04 152)"] },
+      "nasa-blue": { "role": "secondary", "displayName": "NASA Blue", "canonical": "#0063b5", "dark": "#5aa6ff", "tonalRamp": ["oklch(15% 0.06 255)", "oklch(27% 0.11 255)", "oklch(38% 0.15 255)", "oklch(48% 0.17 255)", "oklch(62% 0.17 255)", "oklch(75% 0.12 255)", "oklch(87% 0.06 255)", "oklch(95% 0.03 255)"] },
+      "mm-magenta": { "role": "secondary", "displayName": "M&M Magenta", "canonical": "#a2006d", "dark": "#ff6fc1", "tonalRamp": ["oklch(15% 0.07 345)", "oklch(27% 0.13 345)", "oklch(38% 0.18 345)", "oklch(48% 0.21 345)", "oklch(62% 0.20 345)", "oklch(75% 0.14 345)", "oklch(87% 0.07 345)", "oklch(95% 0.03 345)"] },
+      "amber": { "role": "tertiary", "displayName": "Amber", "canonical": "#f5c400", "dark": "#ffd33d", "tonalRamp": ["oklch(15% 0.04 95)", "oklch(27% 0.07 95)", "oklch(42% 0.10 95)", "oklch(58% 0.14 95)", "oklch(72% 0.17 95)", "oklch(83% 0.18 95)", "oklch(91% 0.12 95)", "oklch(96% 0.06 95)"] },
+      "amber-ink": { "role": "tertiary", "displayName": "Amber Ink", "canonical": "#2b2300", "dark": "#2b2300", "tonalRamp": ["oklch(15% 0.04 95)", "oklch(22% 0.05 95)", "oklch(35% 0.08 95)", "oklch(50% 0.11 95)", "oklch(65% 0.14 95)", "oklch(78% 0.15 95)", "oklch(89% 0.10 95)", "oklch(96% 0.05 95)"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The next stop's departure time; one per screen." },
+      "headline": { "displayName": "Headline", "purpose": "The day's name board." },
+      "section": { "displayName": "Section", "purpose": "Bookings, Guide and Ideas section heads; the next-stop number badge." },
+      "title": { "displayName": "Title", "purpose": "Stop titles, accordion summaries, idea titles." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, notes and sub-copy, capped at 64ch. Base element size is 16px." },
+      "label": { "displayName": "Label", "purpose": "Times, metadata, small buttons, segmented and filter buttons, travel legs." },
+      "caption": { "displayName": "Caption", "purpose": "Tab labels, route-diagram stop names, day-strip numbers and dates, chips." }
+    },
+    "shadows": [
+      { "name": "focus-ring-search", "value": "0 0 0 3px var(--rail)", "purpose": "The only box-shadow in the system: the focused search field. Nothing casts a depth shadow." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.23, 1, 0.32, 1)", "purpose": "Press feedback (scale 0.97 over 160ms) and the search dialog's 200ms fade-and-scale. Removed under prefers-reduced-motion." },
+      { "name": "state-fade", "value": "150ms to 200ms ease", "purpose": "Background and border-colour changes on checks, rows and the sync dot." }
+    ],
+    "breakpoints": [
+      { "name": "narrow-phone", "value": "430px", "purpose": "Max-width: header compresses, date line hides." },
+      { "name": "desktop", "value": "960px", "purpose": "Min-width: tab bar moves under the header, Days becomes a two-pane split with a sticky side map." }
+    ],
+    "layout": {
+      "topHeight": "56px",
+      "tabsHeight": "58px",
+      "tabsHeightDesktop": "48px",
+      "contentMaxWidth": "760px",
+      "timelineMaxWidth": "720px",
+      "gutter": "16px",
+      "railColumn": "40px",
+      "signboardIndent": "52px",
+      "legStroke": "4px",
+      "ringStroke": "3px",
+      "hairline": "1px"
+    }
+  },
+  "components": [
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "The default button: Ground fill, 2px Ink ring, full pill, 40px tall. Primary variant swaps to Signage Red.",
+      "html": "<button class=\"ds-btn\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>Map</button> <button class=\"ds-btn ds-btn-primary\">Post suggestion</button>",
+      "css": ".ds-btn { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); border: 2px solid var(--ink, #000); background: var(--ground, #fff); color: var(--ink, #000); border-radius: 999px; padding: 0 14px; min-height: 40px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-btn:active { transform: scale(0.97); } .ds-btn:focus-visible { outline: 3px solid var(--rail, #1d3fb5); outline-offset: 2px; } .ds-btn-primary { background: var(--red, #e60012); border-color: var(--red, #e60012); color: var(--red-ink, #fff); } .ds-btn svg { display: inline-block; vertical-align: middle; fill: none; }"
+    },
+    {
+      "name": "Small Button",
+      "kind": "button",
+      "refersTo": "button-small",
+      "description": "36px pill with a 1.5px Ring Grey border for map links, day jumps and calls; border turns Ink on hover.",
+      "html": "<a class=\"ds-btn-small\" href=\"#\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 22s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"12\" cy=\"10\" r=\"2.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>Senso-ji</a>",
+      "css": ".ds-btn-small { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); border: 1.5px solid var(--n3, #bdbdbd); background: var(--ground, #fff); color: var(--ink, #000); border-radius: 999px; padding: 0 12px; min-height: 36px; font-size: 13.5px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-btn-small:hover { border-color: var(--ink, #000); } .ds-btn-small:active { transform: scale(0.97); } .ds-btn-small:focus-visible { outline: 3px solid var(--rail, #1d3fb5); outline-offset: 2px; } .ds-btn-small svg { fill: none; }"
+    },
+    {
+      "name": "Chips",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "State and ownership tags: default Paper, Confirmed green, Still to decide outlined, NASA blue, M&M magenta, cost hairline.",
+      "html": "<span class=\"ds-chip ds-chip-confirmed\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>Confirmed</span> <span class=\"ds-chip ds-chip-tbd\">Still to decide</span> <span class=\"ds-chip ds-chip-nasa\">NASA</span> <span class=\"ds-chip ds-chip-mm\">M&amp;M</span> <span class=\"ds-chip ds-chip-cost\">¥3,000</span>",
+      "css": ".ds-chip { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 3px; background: var(--rule-2, #f3f3f3); color: var(--ink-2, #3d3d3d); display: inline-flex; align-items: center; gap: 4px; } .ds-chip svg { fill: none; } .ds-chip-confirmed { background: var(--ok, #008a3e); color: #fff; } .ds-chip-tbd { background: transparent; border: 2px solid var(--ink, #000); color: var(--ink, #000); padding: 1px 7px; } .ds-chip-nasa { background: var(--nasa, #0063b5); color: #fff; } .ds-chip-mm { background: var(--mm, #a2006d); color: #fff; } .ds-chip-cost { background: transparent; border: 1px solid var(--rule, #e3e3e3); }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "input-search",
+      "description": "44px pill with a 2px Ink border; focus shows the system's only box-shadow, a 3px Rail Blue ring.",
+      "html": "<input class=\"ds-input-search\" type=\"search\" placeholder=\"Search stops, food, bookings, tips\">",
+      "css": ".ds-input-search { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); font-size: 16px; border: 2px solid var(--ink, #000); border-radius: 999px; padding: 10px 16px; min-height: 44px; width: 100%; max-width: 360px; background: var(--ground, #fff); color: var(--ink, #000); } .ds-input-search:focus { outline: none; box-shadow: 0 0 0 3px var(--rail, #1d3fb5); }"
+    },
+    {
+      "name": "Form Field",
+      "kind": "input",
+      "refersTo": "input-form",
+      "description": "Square 44px field with a 2px Rule border that turns Ink on focus; 16px text so phones do not zoom.",
+      "html": "<label class=\"ds-field\">Your name<input class=\"ds-input\" type=\"text\" placeholder=\"Sara\"></label>",
+      "css": ".ds-field { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); font-size: 13.5px; font-weight: 700; color: var(--ink-2, #3d3d3d); display: grid; gap: 4px; max-width: 360px; } .ds-input { font: inherit; font-size: 16px; font-weight: 400; border: 2px solid var(--rule, #e3e3e3); border-radius: 0; padding: 10px 12px; background: var(--ground, #fff); color: var(--ink, #000); width: 100%; min-height: 44px; } .ds-input:focus { border-color: var(--ink, #000); outline: none; }"
+    },
+    {
+      "name": "Tab Bar",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Five bottom tabs, 58px: 22px pictogram over an 11.5px bold label; selected tab goes Ink with a 3px Signage Red top edge.",
+      "html": "<nav class=\"ds-tabs\"><button class=\"ds-tab\" aria-selected=\"true\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M3 10h18M8 3v4M16 3v4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>Days</button><button class=\"ds-tab\" aria-selected=\"false\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>Map</button><button class=\"ds-tab\" aria-selected=\"false\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 8a2 2 0 002-2V5h14v1a2 2 0 002 2v3a2 2 0 000 4v3a2 2 0 00-2 2v1H5v-1a2 2 0 00-2-2v-3a2 2 0 000-4zM9 5v14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>Bookings</button></nav>",
+      "css": ".ds-tabs { display: flex; height: 58px; max-width: 360px; background: var(--ground, #fff); border-top: 1px solid var(--rule, #e3e3e3); font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); } .ds-tab { flex: 1; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11.5px; font-weight: 700; color: var(--ink-3, #6f6f6f); cursor: pointer; padding: 4px 0 6px; border-top: 3px solid transparent; margin-top: -1px; } .ds-tab[aria-selected=\"true\"] { color: var(--ink, #000); border-top-color: var(--red, #e60012); } .ds-tab:focus-visible { outline: 3px solid var(--rail, #1d3fb5); outline-offset: -3px; } .ds-tab svg { fill: none; }"
+    },
+    {
+      "name": "Station Ring",
+      "kind": "custom",
+      "refersTo": "station-number",
+      "description": "The signature mark: a 30px circle, 3px Ink ring on Ground with a bold numeral. Red when next, green when done, dashed Ink 3 when optional, couple-coloured ring for a split stop.",
+      "html": "<span class=\"ds-ring\">3</span> <span class=\"ds-ring ds-ring-next\">4</span> <span class=\"ds-ring ds-ring-done\">2</span> <span class=\"ds-ring ds-ring-optional\">5</span> <span class=\"ds-ring ds-ring-nasa\">6</span> <span class=\"ds-ring ds-ring-mm\">7</span>",
+      "css": ".ds-ring { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); width: 30px; height: 30px; border-radius: 50%; background: var(--ground, #fff); border: 3px solid var(--ink, #000); color: var(--ink, #000); font-weight: 700; font-size: 13px; display: inline-grid; place-items: center; line-height: 1; box-sizing: border-box; vertical-align: middle; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-ring:active { transform: scale(0.94); } .ds-ring-next { width: 40px; height: 40px; font-size: 16px; background: var(--red, #e60012); border-color: var(--red, #e60012); color: var(--red-ink, #fff); } .ds-ring-done { background: var(--ok, #008a3e); border-color: var(--ok, #008a3e); color: #fff; } .ds-ring-optional { border-style: dashed; border-color: var(--ink-3, #6f6f6f); color: var(--ink-3, #6f6f6f); } .ds-ring-nasa { border-color: var(--nasa, #0063b5); } .ds-ring-mm { border-color: var(--mm, #a2006d); }"
+    },
+    {
+      "name": "Next-Stop Headline",
+      "kind": "custom",
+      "refersTo": "station-number-next",
+      "description": "The monumental figure: 52px red badge, 44px tabular time with the 13px 次 Next signage label on its baseline, title clamped to two lines, leg beneath, closed by a 2px Ink rule.",
+      "html": "<div class=\"ds-next\"><div class=\"ds-next-n\">4</div><div class=\"ds-next-time\"><span class=\"ds-next-jn\">次 Next</span>14:30</div><div></div><div><div class=\"ds-next-t\">Fushimi Inari Taisha</div><div class=\"ds-next-w\">Train 12 min from Kyoto Station</div></div></div>",
+      "css": ".ds-next { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); font-feature-settings: \"tnum\" 1; display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center; padding: 10px 0 14px; border-bottom: 2px solid var(--ink, #000); max-width: 360px; color: var(--ink, #000); } .ds-next-n { width: 52px; height: 52px; border-radius: 50%; background: var(--red, #e60012); color: var(--red-ink, #fff); display: grid; place-items: center; font-size: 22px; font-weight: 700; } .ds-next-time { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; display: flex; align-items: baseline; gap: 10px; } .ds-next-jn { font-size: 13px; font-weight: 700; color: var(--ink-3, #6f6f6f); letter-spacing: 0; } .ds-next-t { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; } .ds-next-w { font-size: 13.5px; color: var(--ink-2, #3d3d3d); margin-top: 2px; }"
+    },
+    {
+      "name": "Travel Leg",
+      "kind": "custom",
+      "refersTo": "station-number",
+      "description": "The leg between two stations: a 26px disc in the mode colour with its pictogram, the label, and a bold Directions link at the right edge.",
+      "html": "<div class=\"ds-leg\" style=\"--leg: var(--walk, #008a3e)\"><span class=\"ds-leg-mode\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"13.5\" cy=\"4\" r=\"2\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M10 21l2.2-6.2M12.8 9.5L9 12v4M12.8 9.5l3.2 2.3 3 1.2M12.8 9.5l-1.6 5.3 3.8 2.7L16 21\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></span><span>Walk 8 min</span><a href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 20V9a3 3 0 013-3h10M14 3l4 3-4 3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>Directions</a></div>",
+      "css": ".ds-leg { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--ink-2, #3d3d3d); padding: 6px 0; min-height: 40px; max-width: 360px; } .ds-leg-mode { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--leg, #1d3fb5); color: #fff; flex: none; } .ds-leg a { margin-left: auto; font-size: 13.5px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; color: var(--rail, #1d3fb5); text-decoration-thickness: 1px; text-underline-offset: 3px; } .ds-leg a:focus-visible { outline: 3px solid var(--rail, #1d3fb5); outline-offset: 2px; } .ds-leg svg { fill: none; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Station Signboard",
+    "overview": "The whole app is drawn the way Japanese rail signage is drawn: white ground, black ink, one red for \"now\", and colour reserved for the lines themselves. A day is a line; its stops are stations with numbered rings; the legs between them are 4px rules in the colour of how you travel. Nothing is a card. Depth comes from the ink, never from a shadow. The next station is lifted (a 40px red ring, a 44px time) while everything already done dims to the mid-grey of the ramp and is struck through.\n\nDensity is high and honest: 16px gutters, hairlines at one device pixel, no decorative whitespace. The system is built for a phone held one-handed in daylight, so every tap target is 44px, every text colour clears 4.5:1 on its ground, and the dark scheme is a true inversion to pure black rather than a tinted theme. The world was chosen against the generic travel-app default (same-size cards in a scrolling column, map behind a button) and the build keeps that refusal.",
+    "keyCharacteristics": [
+      "Pure white ground (pure black at night), true black ink, neutrals snapped to a seven-step ramp.",
+      "Line colours are data: green walk, blue rail, orange taxi, teal water or ropeway, grey flight, purple Kyoto. They never decorate.",
+      "One accent, signage red, used for \"now\" (the next stop, the current tab, today's dot) and primary actions.",
+      "BIZ UDPGothic, one family, two weights (400, 700), tabular figures everywhere.",
+      "Station rings: a circle with a 3px ink ring on a ground fill; filled red when next, green when done, dashed grey when optional.",
+      "Flat. No box-shadow anywhere except the 3px focus ring on the search field; hairline rules do the structuring.",
+      "Pictograms are inline SVG symbols drawn at one stroke weight (2px, round caps), never glyph fonts."
+    ],
+    "rules": [
+      { "name": "The Seven-Step Rule", "body": "Every grey comes from the seven fixed steps (#ffffff, #f3f3f3, #e3e3e3, #bdbdbd, #6f6f6f, #3d3d3d, #000000). No opacity tints, no new greys. Night mode is the same ramp reversed, step for step.", "section": "colors" },
+      { "name": "The Data-Only Line Rule", "body": "Walk, rail, taxi, water, flight and city colours appear only where they encode a leg or a city. They never colour a heading, a background or a decoration.", "section": "colors" },
+      { "name": "The One Red Rule", "body": "Signage red means \"now\" or \"do this\". The next stop and the primary action may be red; nothing else on the same screen may.", "section": "colors" },
+      { "name": "The Two-Weights Rule", "body": "Only 400 and 700 exist. Anything that must stand out goes bold or goes up the ramp; there is no 500 or 600 and no italic.", "section": "typography" },
+      { "name": "The Tabular Time Rule", "body": "Every number that can change (times, counts, votes, day numbers) is set tabular so columns and rings do not shift as the day progresses.", "section": "typography" },
+      { "name": "The Device Gothic Rule", "body": "Japanese text (the 日 brand mark, \"次\") is rendered by the device's own gothic by design; do not ship a CJK subset.", "section": "typography" },
+      { "name": "The No-Shadow Rule", "body": "Nothing casts a shadow. If a surface needs to read as separate, give it a rule or move it one ramp step; never add elevation.", "section": "elevation" },
+      { "name": "The Hairline Rule", "body": "Dividers are 1px (rule or paper). Emphasis rules are 2px Ink. Lines that carry data (legs, rings) are 3 or 4px. There is no other stroke weight.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do paint every leg, ring and city segment from the line-colour tokens by data (--leg, --city); the colour is the mode.",
+      "Do use the Seven-Step Rule for every grey and reverse the ramp for night mode; never tint with opacity.",
+      "Do keep Signage Red for \"now\" and the primary action only.",
+      "Do draw pictograms as inline SVG <symbol>s at 2px stroke with round caps and joins, 16 to 22px, referenced with <use>.",
+      "Do keep all text at 4.5:1 on its ground and every control at 44px; group smaller buttons inside a larger hit area.",
+      "Do set times and counts tabular, in 700, with the next stop's time at 44px and nothing larger.",
+      "Do structure with 1px hairlines and 2px Ink rules; let the ramp step do the rest.",
+      "Do honour reduced motion: remove the press scale and the search transform."
+    ],
+    "donts": [
+      "Don't add cards, shadows, gradients, blur or rounded 8 to 16px containers; the world is flat signboard.",
+      "Don't introduce a second typeface, a 500 or 600 weight, or an italic.",
+      "Don't colour a heading, background or icon with a line colour for decoration.",
+      "Don't use a glyph icon font or emoji for pictograms.",
+      "Don't invent eyebrow or kicker labels above headings; \"次 Next\" is the signage label beside the time, not a kicker pattern.",
+      "Don't ship CJK font subsets; Japanese glyphs come from the device gothic.",
+      "Don't use dashed strokes for anything but optional stops and transit, water or flight legs."
+    ]
+  }
+}

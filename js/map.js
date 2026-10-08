@@ -8,10 +8,10 @@ const MODE_STYLE = {
   walk: { color: '#008a3e', dash: null, osrm: 'foot', gmaps: 'walking', label: 'Walk' },
   drive: { color: '#d35f00', dash: null, osrm: 'driving', gmaps: 'driving', label: 'Drive' },
   taxi: { color: '#d35f00', dash: null, osrm: 'driving', gmaps: 'driving', label: 'Taxi' },
-  transit: { color: '#0063b5', dash: '6 8', osrm: null, gmaps: 'transit', label: 'Transit' },
-  train: { color: '#0063b5', dash: '6 8', osrm: null, gmaps: 'transit', label: 'Train' },
-  boat: { color: '#0083a3', dash: '2 8', osrm: null, gmaps: 'transit', label: 'Boat' },
-  ropeway: { color: '#0083a3', dash: '2 8', osrm: null, gmaps: 'transit', label: 'Ropeway' },
+  transit: { color: '#1d3fb5', dash: '6 8', osrm: null, gmaps: 'transit', label: 'Transit' },
+  train: { color: '#1d3fb5', dash: '6 8', osrm: null, gmaps: 'transit', label: 'Train' },
+  boat: { color: '#0092b2', dash: '2 8', osrm: null, gmaps: 'transit', label: 'Boat' },
+  ropeway: { color: '#0092b2', dash: '2 8', osrm: null, gmaps: 'transit', label: 'Ropeway' },
   flight: { color: '#6f6f6f', dash: '1 10', osrm: null, gmaps: 'transit', label: 'Flight' },
 };
 export const modeStyle = (mode) => MODE_STYLE[mode] || MODE_STYLE.transit;
@@ -132,7 +132,7 @@ export function createMap(el) {
         bounds.push([p.lat, p.lng]);
       });
       if (points.length > 1) {
-        L.polyline(points.map((p) => [p.lat, p.lng]), { color: '#1565c0', weight: 3, opacity: 0.6, dashArray: '6 8' }).addTo(layer);
+        L.polyline(points.map((p) => [p.lat, p.lng]), { color: '#1d3fb5', weight: 3, opacity: 0.6, dashArray: '6 8' }).addTo(layer);
         map.invalidateSize();
         map.fitBounds(bounds, { padding: [40, 40] });
       }
