@@ -52,6 +52,12 @@ All content lives in two files, no code changes needed:
 
 Coordinates are approximate pins for the map; every pin and leg also carries a Google Maps link by place name, which is what you'd actually navigate with.
 
+## Design
+
+The visual system is Japanese rail station signage: each day is a line, stops are numbered stations on a vertical rail, legs are coloured by how you travel (green walk, blue train, orange taxi, teal boat/ropeway), and the next stop is the largest thing on the screen. White ground by day, black by night (dark mode), one accent (signage red) for "now" and primary actions. Type is BIZ UDPGothic, a universal-design gothic made for public signage, self-hosted for Latin; Japanese glyphs use the phone's own gothic. `DESIGN.md` records the tokens and rules; `PRODUCT.md` records what the product is for.
+
+Design skills used to build and review it live in `.claude/skills/` (Impeccable, Emil Kowalski's design-engineering skills, Anthropic's frontend-design) so future sessions on this repo load them automatically. Run `/impeccable critique` or `/impeccable polish` before shipping visual changes.
+
 ## Project layout
 
 ```
