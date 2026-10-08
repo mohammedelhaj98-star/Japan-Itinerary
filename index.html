@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Japan 2026</title>
+  <meta name="description" content="Japan 2026 — 17-day itinerary with maps, bookings, food guide and suggestions.">
+  <meta name="theme-color" content="#1a2340" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1420" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Japan 2026">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="top-row">
+      <button class="brand" id="brand" type="button" aria-label="Home">
+        <span class="brand-mark">日</span>
+        <span class="brand-text"><strong>Japan 2026</strong><small id="brand-sub">Oct 16 – Nov 1 · 17 days</small></span>
+      </button>
+      <div class="top-actions">
+        <div class="who" role="group" aria-label="Who is this for">
+          <button type="button" data-who="all" class="on">All</button>
+          <button type="button" data-who="nasa">NASA</button>
+          <button type="button" data-who="mm">M&amp;M</button>
+        </div>
+        <button class="icon-btn" id="search-btn" type="button" aria-label="Search">⌕</button>
+        <button class="sync" id="sync" type="button" title="Sync status"><span class="dot"></span></button>
+      </div>
+    </div>
+    <div class="banner" id="banner" hidden></div>
+  </header>
+
+  <nav class="tabs" aria-label="Sections">
+    <button type="button" data-tab="days" class="on"><span class="ti">🗓</span>Days</button>
+    <button type="button" data-tab="map"><span class="ti">🗺</span>Map</button>
+    <button type="button" data-tab="bookings"><span class="ti">🎫</span>Bookings</button>
+    <button type="button" data-tab="guide"><span class="ti">🍜</span>Guide</button>
+    <button type="button" data-tab="ideas"><span class="ti">💡</span>Ideas</button>
+  </nav>
+
+  <main class="main">
+    <section class="panel on" id="panel-days">
+      <div class="daystrip" id="daystrip"></div>
+      <div class="split">
+        <div class="timeline" id="timeline"></div>
+        <aside class="sidemap" id="sidemap"><div class="map" id="map-side"></div></aside>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-map">
+      <div class="map-toolbar">
+        <div class="seg" role="group">
+          <button type="button" data-scope="day" class="on">This day</button>
+          <button type="button" data-scope="trip">Whole trip</button>
+          <button type="button" data-scope="food">Food spots</button>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="map" id="map-main"></div>
+      <div class="stops" id="stops"></div>
+    </section>
+
+    <section class="panel" id="panel-bookings"><div class="content" id="bookings"></div></section>
+    <section class="panel" id="panel-guide"><div class="content" id="guide"></div></section>
+    <section class="panel" id="panel-ideas"><div class="content" id="ideas"></div></section>
+  </main>
+
+  <div class="search" id="search" hidden>
+    <div class="search-box">
+      <input id="search-input" type="search" placeholder="Search the whole trip — places, food, times…" autocomplete="off">
+      <button type="button" id="search-close" aria-label="Close">✕</button>
+    </div>
+    <div class="search-results" id="search-results"></div>
+  </div>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
