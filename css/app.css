@@ -163,6 +163,7 @@ svg { display: inline-block; vertical-align: middle; fill: none; }
 
 /* next stop headline */
 .next { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center; padding: 10px 0 14px; border-bottom: 2px solid var(--ink); }
+.next + .note, .next + .choice { border-top: 0; margin-top: 4px; }
 .next .n { width: 52px; height: 52px; border-radius: 50%; background: var(--red); color: var(--red-ink); display: grid; place-items: center; font-size: 22px; font-weight: 700; }
 .next .n.done { background: var(--ok); color: #fff; }
 .next .time { grid-column: 2; font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; display: flex; align-items: baseline; gap: 10px; }
@@ -243,7 +244,8 @@ svg { display: inline-block; vertical-align: middle; fill: none; }
 .opt .radio::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: transparent; }
 .opt[aria-checked="true"] .radio { border-color: var(--ink); }
 .opt[aria-checked="true"] .radio::after { background: var(--ink); }
-.opt[aria-checked="true"] b { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.opt b { font-weight: 400; }
+.opt[aria-checked="true"] b { font-weight: 700; }
 .opt b { font-size: 14.5px; display: block; }
 .opt small { font-size: 13.5px; color: var(--ink-2); display: block; margin-top: 2px; white-space: pre-line; }
 .choice .picked { margin-top: 10px; font-size: 12.5px; color: var(--ink-3); }
