@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:,">
+<title>Motion prototypes</title>
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Zen+Old+Mincho:wght@700&display=swap">
+<link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
+<style>
+@font-face { font-family: 'Zen Kaku'; font-weight: 400; font-display: swap; src: url(../vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Zen Kaku'; font-weight: 500; font-display: swap; src: url(../vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Zen Kaku'; font-weight: 700; font-display: swap; src: url(../vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2) format('woff2'); }
+:root {
+  --ink:#141412; --ink2:#4b4a45; --ink3:#86847c; --paper:#f4f2ee;
+  --ease:cubic-bezier(.23,1,.32,1); --ease-io:cubic-bezier(.77,0,.175,1);
+  --serif:'Instrument Serif', 'Times New Roman', serif; --mincho:'Zen Old Mincho', 'Hiragino Mincho ProN', serif;
+}
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body { font-family:'Zen Kaku','Hiragino Sans','Noto Sans JP',system-ui,sans-serif; color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased; font-size:16px; line-height:1.5; -webkit-tap-highlight-color:transparent; font-variant-numeric:tabular-nums; overscroll-behavior-y:none; }
+button { font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none; }
+h1,h2,h3,p,dl,dd { margin:0; }
+svg { display:inline-block; vertical-align:middle; fill:none; }
+a { color:inherit; }
+#stage { min-height:100dvh; }
+.phone { max-width:440px; margin:0 auto; min-height:100dvh; position:relative; }
+.pad { height:110px; }
+.leaflet-div-icon { background:transparent; border:0; }
+
+/* ═══ 1 · Island ═══ */
+.w1 { background:linear-gradient(180deg, var(--tint) 0, var(--paper) 380px); padding-bottom:110px; overflow-x:clip; }
+.w1h { padding:calc(76px + env(safe-area-inset-top)) 22px 14px; position:relative; }
+.w1h .kanji { position:absolute; right:6px; top:58px; font-family:var(--mincho); font-size:118px; line-height:1; color:rgba(60,30,0,.07); writing-mode:vertical-rl; white-space:nowrap; pointer-events:none; }
+.w1h .eb { font-size:13px; color:var(--ink3); font-weight:500; }
+.w1h h1 { font-size:36px; font-weight:700; letter-spacing:-.035em; line-height:1.05; margin-top:6px; max-width:12ch; }
+.w1h .tg { font-size:15px; color:var(--ink2); margin-top:10px; max-width:30ch; }
+.w1notes { display:flex; gap:8px; overflow-x:auto; padding:8px 14px 18px; scrollbar-width:none; scroll-snap-type:x proximity; }
+.w1notes::-webkit-scrollbar { display:none; }
+.nchip { flex:none; scroll-snap-align:start; border:0; background:rgba(255,255,255,.7); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border-radius:16px; padding:9px 14px; text-align:left; line-height:1.2; max-width:230px; box-shadow:0 1px 0 rgba(255,255,255,.8) inset, 0 4px 14px -8px rgba(60,40,0,.25); transition:transform 160ms var(--ease); }
+.nchip:active { transform:scale(.97); }
+.nchip small { display:block; font-size:11px; color:var(--ink3); font-weight:500; }
+.nchip b { display:block; font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.fc { position:relative; margin:0 14px; background:#fff; border-radius:24px; box-shadow:0 1px 2px rgba(40,30,10,.05), 0 10px 24px -14px rgba(40,30,10,.22); animation:rise 560ms var(--ease) both; animation-delay:calc(var(--i) * 45ms); transition:background 240ms ease, box-shadow 240ms ease; }
+@keyframes rise { from { opacity:0; transform:translateY(16px) scale(.98); } }
+.fc-main { all:unset; display:block; box-sizing:border-box; width:100%; padding:16px 64px 16px 18px; cursor:pointer; }
+.fc-top { display:flex; gap:8px; align-items:center; font-size:12.5px; color:var(--ink3); }
+.fc-cat { color:var(--c); font-weight:700; }
+.fc-nx { color:#e5483a; font-weight:700; }
+.fc h3 { font-size:18px; font-weight:700; letter-spacing:-.02em; line-height:1.25; margin-top:3px; transition:color 200ms; }
+.fc-more { display:grid; grid-template-rows:0fr; transition:grid-template-rows 340ms var(--ease); }
+.fc-more > div { overflow:hidden; padding:0 18px; }
+.fc-more > div > :last-child { margin-bottom:16px; }
+.fc.open .fc-more { grid-template-rows:1fr; }
+.fc-more p { font-size:14.5px; color:var(--ink2); white-space:pre-line; margin-top:-4px; }
+.fc-cost { margin-top:6px !important; font-size:13px !important; color:var(--ink3) !important; }
+.fc-dir { display:inline-flex; gap:6px; align-items:center; margin-top:12px; font-size:13.5px; font-weight:700; text-decoration:none; background:var(--paper); border-radius:999px; padding:7px 12px; }
+.tick { position:absolute; right:12px; top:14px; width:38px; height:38px; border-radius:50%; border:1.5px solid #dcd9d1; background:#fff; display:grid; place-items:center; color:transparent; transition:background 200ms, border-color 200ms, color 200ms, transform 160ms var(--ease); }
+.tick:active { transform:scale(.88); }
+.tick.on { background:var(--c); border-color:var(--c); color:#fff; animation:pop 360ms cubic-bezier(.3,1.7,.5,1); }
+@keyframes pop { from { transform:scale(.7); } }
+.fc.done { background:rgba(255,255,255,.5); box-shadow:none; }
+.fc.done h3 { color:var(--ink3); }
+.w1leg { display:flex; justify-content:center; align-items:center; height:46px; position:relative; }
+.w1leg::before { content:''; position:absolute; top:0; bottom:0; left:50%; border-left:2px dotted var(--c); opacity:.5; }
+.w1leg span { position:relative; background:#fff; color:var(--c); border-radius:999px; padding:4px 11px 4px 9px; font-size:12px; font-weight:700; display:inline-flex; gap:5px; align-items:center; box-shadow:0 3px 10px -4px rgba(0,0,0,.18); }
+.w1gap { height:10px; }
+.isl { position:fixed; top:calc(10px + env(safe-area-inset-top)); left:50%; width:250px; height:42px; border-radius:21px; background:#0c0c0d; color:#fff; z-index:1000; overflow:hidden; box-shadow:0 12px 30px -12px rgba(0,0,0,.5); transform:translateX(-50%); will-change:width,height; }
+.isl-sm { all:unset; position:absolute; inset:0; display:flex; align-items:center; gap:9px; padding:0 9px 0 15px; cursor:pointer; transition:opacity 130ms ease, filter 130ms ease; }
+.isl-pulse { width:8px; height:8px; border-radius:50%; background:#ff5b4d; flex:none; animation:breathe 2.4s ease-in-out infinite; }
+@keyframes breathe { 50% { box-shadow:0 0 0 5px rgba(255,91,77,0); } 0%,100% { box-shadow:0 0 0 0 rgba(255,91,77,.55); } }
+.isl-t { flex:1; min-width:0; font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.isl-time { font-size:13px; color:#ffb3a0; font-weight:500; }
+.isl-ring { width:24px; height:24px; transform:rotate(-90deg); flex:none; }
+.isl-ring circle { fill:none; stroke:rgba(255,255,255,.18); stroke-width:2.6; }
+.isl-ring .pr { stroke:#7be08e; stroke-dasharray:50.27; stroke-linecap:round; transition:stroke-dashoffset 700ms var(--ease); }
+.isl.open .isl-sm { opacity:0; filter:blur(4px); pointer-events:none; }
+.isl-lg { position:absolute; top:0; left:0; padding:20px 20px 18px; opacity:0; filter:blur(6px); transform:scale(.96); transform-origin:50% 0; pointer-events:none; transition:opacity 150ms ease, filter 150ms ease, transform 150ms ease; }
+.isl.open .isl-lg { opacity:1; filter:none; transform:none; pointer-events:auto; transition-duration:260ms; transition-delay:80ms; }
+.isl.open .isl-lg.swap { opacity:0; filter:blur(8px); transform:translateY(-4px); transition-delay:0ms; transition-duration:160ms; }
+.lg-k { display:flex; justify-content:space-between; font-size:12px; color:#ff8e74; font-weight:700; letter-spacing:.02em; }
+.isl-lg h2 { font-size:25px; letter-spacing:-.03em; line-height:1.12; margin-top:6px; }
+.lg-t { font-size:14px; color:rgba(255,255,255,.62); margin-top:6px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.lg-t span { display:inline-flex; gap:5px; align-items:center; color:var(--c2); font-weight:700; }
+.lg-d { font-size:14.5px; color:rgba(255,255,255,.84); margin-top:10px; white-space:pre-line; }
+.lg-a { display:flex; gap:8px; margin-top:16px; }
+.lg-a a, .lg-done { flex:1; min-height:46px; border-radius:15px; display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none; font-weight:700; font-size:14.5px; border:0; transition:background 220ms, color 220ms, transform 160ms var(--ease); }
+.lg-a a { background:rgba(255,255,255,.12); color:#fff; }
+.lg-done { background:#fff; color:#0c0c0d; }
+.lg-a a:active, .lg-done:active { transform:scale(.97); }
+.lg-done.ok { background:#34c759; color:#fff; }
+.scrim { position:fixed; inset:0; background:rgba(25,20,12,.26); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px); opacity:0; pointer-events:none; transition:opacity 260ms ease; z-index:999; }
+.scrim.on { opacity:1; pointer-events:auto; }
+.notepop { position:fixed; left:12px; right:12px; bottom:calc(84px + env(safe-area-inset-bottom)); max-width:416px; margin:0 auto; z-index:1001; background:#fff; border-radius:26px; padding:18px 20px 20px; box-shadow:0 24px 60px -20px rgba(0,0,0,.4); transform-origin:50% 100%; transition:opacity 200ms ease, transform 260ms var(--ease); }
+.notepop[hidden] { display:block; opacity:0; transform:translateY(16px) scale(.97); pointer-events:none; }
+.notepop small { font-size:12px; color:var(--ink3); font-weight:700; }
+.notepop h3 { font-size:20px; letter-spacing:-.02em; margin-top:2px; }
+.notepop p { font-size:14.5px; color:var(--ink2); margin-top:8px; white-space:pre-line; }
+
+/* ═══ 2 · Glass ═══ */
+.w2 { position:fixed; inset:0; overflow:hidden; background:#e8e6df; }
+#m2 { position:absolute; inset:0; }
+#m2 .leaflet-tile-pane { filter:saturate(.5) contrast(.92) brightness(1.06) sepia(.08); }
+#m2 .leaflet-control-attribution { font-size:9px; background:rgba(255,255,255,.6); }
+.glass { background:rgba(255,255,255,.72); -webkit-backdrop-filter:blur(22px) saturate(1.8); backdrop-filter:blur(22px) saturate(1.8); box-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 0 0 .5px rgba(0,0,0,.06), 0 10px 30px -12px rgba(0,0,0,.28); }
+.g2top { position:absolute; top:calc(12px + env(safe-area-inset-top)); left:12px; right:12px; display:flex; gap:8px; z-index:600; justify-content:center; }
+.gb { height:48px; min-width:48px; border-radius:24px; display:grid; place-items:center; text-decoration:none; color:var(--ink); transition:transform 160ms var(--ease); }
+.gb:active { transform:scale(.95); }
+.gday { flex:1; max-width:280px; display:block; padding:7px 18px; text-align:center; line-height:1.15; }
+.gday small { display:block; font-size:11.5px; color:var(--ink3); font-weight:500; }
+.gday b { display:block; font-size:15px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sh2 { -webkit-user-select:none; user-select:none; position:absolute; left:0; right:0; top:0; height:100%; z-index:700; border-radius:30px 30px 0 0; touch-action:none; will-change:transform; display:flex; flex-direction:column; max-width:440px; margin:0 auto; }
+.sh2-grab { padding:8px 18px 4px; flex:none; touch-action:none; }
+.sh2-grab > i { display:block; width:38px; height:5px; border-radius:3px; background:rgba(0,0,0,.18); margin:0 auto 10px; }
+.sh2-list { flex:1; overflow:hidden; padding:4px 10px 120px; overscroll-behavior:contain; }
+.sh2.full .sh2-list { overflow-y:auto; touch-action:pan-y; }
+.h2c { padding-bottom:12px; }
+.h2top { display:flex; gap:12px; align-items:center; }
+.h2top > div { flex:1; min-width:0; }
+.h2go { width:46px; height:46px; border-radius:50%; background:#1e6bff; color:#fff; display:grid; place-items:center; flex:none; transition:transform 160ms var(--ease); }
+.h2go:active { transform:scale(.94); }
+.h2top small { display:block; font-size:12px; color:var(--ink3); font-weight:700; }
+.h2top h3 { font-size:21px; letter-spacing:-.025em; line-height:1.15; }
+.h2t { font-size:13.5px; color:var(--ink2); margin-top:8px; display:flex; gap:10px; flex-wrap:wrap; }
+.h2t span { display:inline-flex; gap:4px; align-items:center; color:var(--c); font-weight:700; }
+.h2d { font-size:14.5px; color:var(--ink2); margin-top:8px; white-space:pre-line; }
+.h2a { display:flex; gap:8px; margin-top:14px; }
+.h2a a, .h2a button { flex:1; min-height:46px; border-radius:15px; border:0; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:700; font-size:14.5px; text-decoration:none; transition:transform 160ms var(--ease), background 200ms; }
+.h2a a { background:#1e6bff; color:#fff; }
+.h2a button { background:rgba(0,0,0,.06); }
+.h2a button.on { background:#34c759; color:#fff; }
+.h2a a:active, .h2a button:active { transform:scale(.97); }
+.p2 { width:30px; height:30px; border-radius:50%; background:#fff; color:var(--ink); border:2.5px solid var(--c); font-weight:700; font-size:12.5px; display:grid; place-items:center; font-family:'Zen Kaku',system-ui,sans-serif; box-shadow:0 4px 10px -3px rgba(0,0,0,.35); position:relative; transition:transform 300ms cubic-bezier(.3,1.5,.5,1), background 200ms, color 200ms; }
+.p2.nx { background:#ff3b30; border-color:#fff; color:#fff; }
+.p2.nx::after { content:''; position:absolute; inset:-3px; border-radius:50%; border:2px solid #ff3b30; animation:ping 2s var(--ease) infinite; }
+@keyframes ping { from { transform:scale(1); opacity:.8; } to { transform:scale(2.2); opacity:0; } }
+.p2.done { background:var(--c); color:#fff; }
+.p2.sel { transform:scale(1.35) translateY(-4px); z-index:5; }
+.r2 { all:unset; box-sizing:border-box; display:flex; gap:12px; align-items:center; width:100%; padding:10px 8px; border-radius:16px; cursor:pointer; transition:background 160ms; }
+.r2:active { background:rgba(0,0,0,.05); }
+.r2.sel { background:rgba(255,255,255,.75); }
+.r2n { width:30px; height:30px; border-radius:50%; border:2.5px solid var(--c); display:grid; place-items:center; font-size:12px; font-weight:700; flex:none; background:#fff; }
+.r2n.leg { border:0; background:transparent; color:var(--c); }
+.r2.done .r2n { background:var(--c); color:#fff; }
+.r2b { flex:1; min-width:0; }
+.r2b b { display:block; font-size:15px; font-weight:700; line-height:1.25; }
+.r2.done .r2b b { color:var(--ink3); }
+.r2b small { display:block; font-size:12.5px; color:var(--ink3); }
+
+/* ═══ 3 · Journey ═══ */
+.w3 { position:relative; padding-bottom:120px; color:var(--hc,var(--ink)); transition:color 500ms ease; }
+.sky3 { position:fixed; inset:0; z-index:-1; }
+.w3h { padding:calc(54px + env(safe-area-inset-top)) 24px 30px; }
+.w3h .eb { font-size:13px; font-weight:700; opacity:.6; letter-spacing:.02em; }
+.w3h h1 { font-weight:700; font-size:40px; letter-spacing:-.04em; line-height:1; margin-top:10px; }
+.w3h h1 em { font-family:var(--serif); font-weight:400; font-size:64px; letter-spacing:-.02em; display:block; line-height:.9; margin-bottom:4px; }
+.w3h .tg { font-size:15px; opacity:.75; margin-top:12px; max-width:30ch; }
+.trail { position:relative; padding:20px 0 40px; }
+.t3svg { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; z-index:0; }
+#t3base { stroke:currentColor; opacity:.22; stroke-width:2.5; stroke-dasharray:2 7; stroke-linecap:round; fill:none; }
+#t3prog { stroke:currentColor; stroke-width:3.5; fill:none; stroke-linecap:round; opacity:.85; }
+.i3 { position:relative; width:74%; margin:0 0 78px 18px; padding:20px 18px 16px 20px; border-radius:28px; background:rgba(255,255,255,.8); -webkit-backdrop-filter:blur(16px) saturate(1.5); backdrop-filter:blur(16px) saturate(1.5); color:var(--ink); box-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 20px 40px -24px rgba(30,20,60,.5); opacity:0; transform:translateY(28px) scale(.96); transition:opacity 600ms var(--ease), transform 700ms var(--ease); z-index:1; }
+.i3.R { margin-left:auto; margin-right:18px; }
+.i3.in { opacity:1; transform:none; }
+.i3n { position:absolute; top:-15px; left:-8px; width:34px; height:34px; border-radius:50%; background:var(--c); color:#fff; font-weight:700; font-size:14px; display:grid; place-items:center; box-shadow:0 0 0 4px rgba(255,255,255,.9); }
+.i3.R .i3n { left:auto; right:-8px; }
+.i3n.leg { width:18px; height:18px; top:-9px; left:-1px; font-size:0; }
+.i3.R .i3n.leg { right:-1px; }
+.i3t { font-size:12.5px; color:var(--ink3); font-weight:500; }
+.i3 h3 { font-size:18px; letter-spacing:-.02em; line-height:1.2; margin-top:2px; padding-right:28px; }
+.i3d { font-size:14px; color:var(--ink2); margin-top:6px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; white-space:pre-line; cursor:pointer; }
+.i3.open .i3d { -webkit-line-clamp:unset; display:block; }
+.i3 .tick { top:12px; right:10px; width:34px; height:34px; }
+.i3.done h3 { color:var(--ink3); }
+.leg3 { position:absolute; z-index:2; transform:translate(-50%,-50%); background:var(--legbg,rgba(255,255,255,.9)); color:var(--c); border-radius:999px; padding:3px 10px 3px 8px; font-size:11.5px; font-weight:700; display:inline-flex; gap:4px; align-items:center; white-space:nowrap; box-shadow:0 4px 12px -6px rgba(0,0,0,.3); }
+.trav { position:absolute; left:0; top:0; z-index:3; width:40px; height:40px; margin:-20px 0 0 -20px; border-radius:50%; background:var(--ink); color:#fff; display:grid; place-items:center; box-shadow:0 0 0 5px rgba(255,255,255,.55), 0 10px 20px -6px rgba(0,0,0,.45); will-change:transform; }
+.trav svg { width:18px; height:18px; }
+.w3end { margin:0 18px; padding:20px; border-radius:28px; background:rgba(255,255,255,.14); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,.25); }
+.w3end small { display:block; font-size:12px; opacity:.7; font-weight:700; }
+.w3end b { display:block; font-size:17px; margin:2px 0 10px; }
+.w3end b:last-child { margin-bottom:0; }
+
+/* ═══ 4 · Passes ═══ */
+.w4 { background:#101012; color:#fff; min-height:100dvh; }
+.w4h { padding:calc(30px + env(safe-area-inset-top)) 22px 20px; }
+.w4h p { font-size:13px; color:rgba(255,255,255,.55); font-weight:500; }
+.w4h h1 { font-size:32px; letter-spacing:-.035em; line-height:1.05; margin-top:4px; }
+.w4h .cnt { margin-top:8px; display:inline-flex; gap:8px; align-items:center; font-size:13px; color:rgba(255,255,255,.7); }
+.w4h .cnt i { font-style:normal; font-family:var(--mincho); color:#ff5b4d; font-size:15px; }
+.stk { position:relative; margin:0 12px; }
+.ps { position:absolute; left:0; right:0; top:0; border-radius:20px; overflow:hidden; color:#fff; background:linear-gradient(165deg, color-mix(in srgb, var(--c) 80%, #fff) 0, var(--c) 34%, color-mix(in srgb, var(--c) 82%, #000) 100%); box-shadow:0 -1px 0 rgba(255,255,255,.18) inset, 0 -10px 30px -12px rgba(0,0,0,.6); will-change:transform; transform-origin:50% 0; }
+.ps-band { height:68px; display:flex; align-items:center; gap:12px; padding:0 18px; cursor:pointer; position:relative; }
+.ps-n { font-family:var(--serif); font-style:italic; font-size:34px; line-height:1; width:34px; opacity:.9; }
+.ps-tt { flex:1; min-width:0; line-height:1.2; }
+.ps-tt small { display:block; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; opacity:.7; }
+.ps-tt b { display:block; font-size:16.5px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ps-time { font-size:14px; font-weight:700; opacity:.9; }
+.ps-body { padding:6px 18px 18px; height:calc(var(--ch) - 68px); overflow:auto; }
+.ps-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; padding:14px 0; border-top:1px solid rgba(255,255,255,.2); }
+.ps-grid dt { font-size:11px; letter-spacing:.06em; text-transform:uppercase; opacity:.65; font-weight:700; }
+.ps-grid dd { font-size:14.5px; font-weight:700; line-height:1.3; margin-top:2px; }
+.ps-grid .wide { grid-column:1/-1; }
+.ps-d { font-size:15px; line-height:1.5; opacity:.92; white-space:pre-line; }
+.ps-a { display:flex; gap:8px; margin-top:18px; }
+.ps-a a, .ps-a button { flex:1; min-height:48px; border-radius:14px; border:0; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:700; font-size:14.5px; text-decoration:none; transition:transform 160ms var(--ease), background 200ms; }
+.ps-a a { background:rgba(255,255,255,.18); color:#fff; }
+.ps-a button { background:#fff; color:var(--c); }
+.ps-a a:active, .ps-a button:active { transform:scale(.97); }
+.ps.tk { color:var(--ink); background:radial-gradient(circle at 0 68px, transparent 10px, #f2ede2 10.5px) left/51% 100% no-repeat, radial-gradient(circle at 100% 68px, transparent 10px, #f2ede2 10.5px) right/51% 100% no-repeat; box-shadow:none; filter:drop-shadow(0 -8px 18px rgba(0,0,0,.45)); }
+.ps.tk .ps-band::after { content:''; position:absolute; left:18px; right:18px; bottom:0; border-bottom:2px dashed rgba(0,0,0,.16); }
+.ps.tk .ps-grid { border-top:0; }
+.ps.tk .ps-a a { background:rgba(0,0,0,.07); color:var(--ink); }
+.ps.tk .ps-a button { background:var(--ink); color:#fff; }
+.tkr { display:flex; align-items:center; gap:12px; padding:18px 0 4px; }
+.tkr div { flex:1; min-width:0; }
+.tkr small { display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700; }
+.tkr b { display:block; font-size:17px; letter-spacing:-.02em; line-height:1.2; }
+.tkr .arr { color:var(--c); flex:none; }
+.hanko { position:absolute; top:9px; right:74px; width:50px; height:50px; border-radius:50%; border:2.5px solid #e23b2e; color:#e23b2e; background:rgba(252,247,238,.94); display:grid; place-items:center; font-family:var(--mincho); font-size:25px; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; }
+.ps.done .hanko { opacity:.95; transform:rotate(-14deg); }
+.ps.done.stamped .hanko { animation:stamp 380ms cubic-bezier(.2,1.3,.4,1); }
+@keyframes stamp { 0% { opacity:0; transform:scale(1.7) rotate(-30deg); } 60% { opacity:1; transform:scale(.94) rotate(-12deg); } 100% { transform:rotate(-14deg); } }
+
+/* ═══ 5 · Dial ═══ */
+.w5 { background:radial-gradient(120% 60% at 50% 0, #fff 0, var(--paper) 70%); min-height:100dvh; padding-bottom:110px; }
+.w5h { padding:calc(26px + env(safe-area-inset-top)) 22px 0; text-align:center; }
+.w5h p { font-size:13px; color:var(--ink3); font-weight:500; }
+.w5h h1 { font-size:24px; letter-spacing:-.03em; margin-top:2px; }
+.dialw { position:relative; width:min(92vw, 360px); margin:4px auto 0; aspect-ratio:1; touch-action:none; }
+#dial { width:100%; height:100%; overflow:visible; }
+#dial .trk { stroke:#e6e1d6; stroke-width:24; stroke-linecap:round; fill:none; }
+#dial .arc { stroke-width:24; fill:none; transition:opacity 300ms; }
+#dial .arc.done { opacity:.3; }
+#dial .hr text { font-size:10.5px; fill:var(--ink3); font-family:'Zen Kaku',system-ui,sans-serif; text-anchor:middle; dominant-baseline:central; }
+#dial .hr line { stroke:#cfc9bc; stroke-width:1.5; stroke-linecap:round; }
+#knob circle.k1 { fill:#fff; filter:drop-shadow(0 4px 8px rgba(0,0,0,.3)); }
+#knob circle.k2 { fill:var(--kc,#141412); transition:fill 200ms; }
+.dc { position:absolute; inset:24%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; pointer-events:none; }
+.dc-k { font-size:12px; font-weight:700; color:var(--kc,var(--ink3)); letter-spacing:.02em; transition:color 200ms; }
+.dc-time { font-family:var(--serif); font-size:68px; line-height:.95; letter-spacing:-.02em; }
+.dc-time small { font-family:'Zen Kaku',sans-serif; font-size:14px; letter-spacing:0; margin-left:3px; color:var(--ink3); }
+.dc-title { font-size:15px; font-weight:700; line-height:1.25; margin-top:6px; max-width:15ch; transition:opacity 140ms ease, filter 140ms ease; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.dc-title.swap, .d5card.swap { opacity:0; filter:blur(5px); }
+.d5chips { display:flex; gap:6px; overflow-x:auto; padding:6px 16px 10px; scrollbar-width:none; scroll-snap-type:x proximity; }
+.d5chips::-webkit-scrollbar { display:none; }
+.d5chip { flex:none; scroll-snap-align:center; border:0; border-radius:999px; padding:8px 13px; background:#fff; font-size:13px; font-weight:700; box-shadow:0 2px 8px -4px rgba(0,0,0,.2); display:inline-flex; gap:6px; align-items:center; transition:background 200ms, color 200ms, transform 160ms var(--ease); white-space:nowrap; }
+.d5chip i { width:8px; height:8px; border-radius:50%; background:var(--c); }
+.d5chip.on { background:var(--ink); color:#fff; }
+.d5chip:active { transform:scale(.96); }
+.d5card { margin:8px 14px 0; background:#fff; border-radius:26px; padding:18px 18px 16px; box-shadow:0 14px 34px -20px rgba(0,0,0,.35); transition:opacity 160ms ease, filter 160ms ease; position:relative; }
+.d5card small { font-size:12px; font-weight:700; color:var(--c); }
+.d5card h3 { font-size:20px; letter-spacing:-.025em; line-height:1.2; margin-top:2px; padding-right:44px; }
+.d5card .t { font-size:13.5px; color:var(--ink3); margin-top:4px; }
+.d5card p.d { font-size:14.5px; color:var(--ink2); margin-top:8px; white-space:pre-line; }
+.d5card .tick { top:16px; right:14px; }
+.d5card .fc-dir { margin-top:12px; }
+
+/* ═══ picker ═══ */
+.proto-picker { position:fixed; bottom:calc(20px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:2147483647; display:flex; align-items:center; gap:2px; padding:4px; border-radius:999px; background:rgba(10,10,10,.82); -webkit-backdrop-filter:blur(12px) saturate(1.4); backdrop-filter:blur(12px) saturate(1.4); box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.24),0 2px 6px rgba(0,0,0,.12); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:13px; line-height:1; -webkit-font-smoothing:antialiased; user-select:none; -webkit-user-select:none; }
+.proto-picker-highlight { position:absolute; top:4px; left:0; height:28px; border-radius:999px; background:rgba(255,255,255,.14); will-change:transform; }
+.proto-picker[data-ready] .proto-picker-highlight { transition:transform 250ms cubic-bezier(.23,1,.32,1), width 250ms cubic-bezier(.23,1,.32,1); }
+.proto-picker-item { position:relative; display:flex; align-items:center; height:28px; padding:0 12px; border:0; border-radius:999px; background:transparent; color:rgba(255,255,255,.55); font:inherit; cursor:pointer; transition:color 150ms ease-out; }
+.proto-picker-item:active { transform:scale(.97); }
+.proto-picker-item[data-active] { color:#fff; }
+@media (max-width:430px) { .proto-picker-item { padding:0 10px; font-size:12.5px; } }
+
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation-duration:1ms !important; animation-iteration-count:1 !important; transition-duration:120ms !important; transition-delay:0ms !important; }
+  .i3 { transform:none; }
+}
+@media (prefers-reduced-transparency:reduce) {
+  .glass, .nchip, .i3 { background:#fff; -webkit-backdrop-filter:none; backdrop-filter:none; }
+}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<nav class="proto-picker" aria-label="Prototype variants">
+  <span class="proto-picker-highlight" aria-hidden="true"></span>
+  <button class="proto-picker-item" data-active aria-current="true">Island</button>
+  <button class="proto-picker-item">Glass</button>
+  <button class="proto-picker-item">Journey</button>
+  <button class="proto-picker-item">Passes</button>
+  <button class="proto-picker-item">Dial</button>
+</nav>
+<script src="../vendor/leaflet/leaflet.js"></script>
+<script type="module">
+import { DAYS, HOTELS } from '../data/itinerary.js';
+
+/* ─── motion engine: interruptible springs (Apple response/damping) ─── */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+class Spring {
+  constructor(x, apply, eps = 0.02) { this.x = x; this.v = 0; this.t = x; this.apply = apply; this.eps = eps; this.raf = 0; this.done = null; this.step = this.step.bind(this); }
+  to(t, { response = 0.4, damping = 1, velocity } = {}) {
+    this.t = t; if (velocity != null) this.v = velocity;
+    const w = (2 * Math.PI) / response; this.k = w * w; this.c = 2 * damping * w;
+    if (RM) { this.x = t; this.v = 0; this.apply(t); this.done && this.done(); return; }
+    if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame(this.step); }
+  }
+  step(now) {
+    const dt = Math.min(0.064, (now - this.last) / 1000); this.last = now;
+    const n = Math.max(1, Math.ceil(dt / 0.004)), h = dt / n;
+    for (let i = 0; i < n; i++) { const a = -this.k * (this.x - this.t) - this.c * this.v; this.v += a * h; this.x += this.v * h; }
+    if (Math.abs(this.v) < this.eps * 10 && Math.abs(this.x - this.t) < this.eps) { this.x = this.t; this.v = 0; this.apply(this.x); this.raf = 0; this.done && this.done(); return; }
+    this.apply(this.x); this.raf = requestAnimationFrame(this.step);
+  }
+  set(x) { this.stop(); this.x = this.t = x; this.v = 0; this.apply(x); }
+  stop() { cancelAnimationFrame(this.raf); this.raf = 0; }
+}
+const tracker = () => { const s = []; return { add(v) { const t = performance.now(); s.push({ t, v }); while (s.length > 2 && t - s[0].t > 90) s.shift(); }, vel() { if (s.length < 2) return 0; const a = s[0], b = s[s.length - 1]; const dt = (b.t - a.t) / 1000; return dt > 0 ? (b.v - a.v) / dt : 0; }, reset() { s.length = 0; } }; };
+const project = (v, d = 0.998) => ((v / 1000) * d) / (1 - d);
+const rubber = (o, dim, c = 0.55) => (o * dim * c) / (dim + c * Math.abs(o));
+const buzz = (ms = 8) => { if (!(navigator.userActivation && navigator.userActivation.hasBeenActive)) return; try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+
+/* ─── data ─── */
+const qs = new URLSearchParams(location.search);
+const DAY = DAYS.find((d) => d.id === (qs.get('d') || 'd07')) || DAYS[6];
+const HOTEL = HOTELS.find((h) => h.id === DAY.hotel) || {};
+const items = [];
+for (const it of DAY.items) {
+  if (it.type === 'choice') { const o = it.options.find((x) => x.id === it.default) || it.options[0]; items.push(it); o.items.forEach((s) => items.push(s)); }
+  else items.push(it);
+}
+const events = items.filter((i) => i.type === 'event');
+const asides = items.filter((i) => i.type === 'note' || i.type === 'choice');
+const stops = []; events.forEach((e) => { if (!e.place) return; const p = stops[stops.length - 1]; if (p && p.e.place.lat === e.place.lat && p.e.place.lng === e.place.lng) { p.ids.push(e.id); return; } stops.push({ n: stops.length + 1, ids: [e.id], e }); });
+const numOf = (id) => { const s = stops.find((x) => x.ids.includes(id)); return s ? s.n : null; };
+const checks = new Set();
+const nextEv = () => events.find((e) => !checks.has(e.id) && !e.optional) || events.find((e) => !checks.has(e.id));
+const MODE = { walk: ['#2a8a4a', 'walk'], drive: ['#d7731a', 'taxi'], taxi: ['#d7731a', 'taxi'], transit: ['#2f5fd0', 'train'], train: ['#2f5fd0', 'train'], boat: ['#1f98b8', 'train'], ropeway: ['#1f98b8', 'train'], flight: ['#7c7c78', 'train'] };
+const legHex = (e) => (e.travel && MODE[e.travel.mode] ? MODE[e.travel.mode][0] : '#9a978e');
+const legMin = (e) => { const l = (e.travel && e.travel.label) || ''; const m = /(\d+)\s*-?\s*min/.exec(l); if (m) return m[1] + ' min'; const hr = /(\d+(?:\.\d)?)\s*(?:h|hr)/.exec(l); return hr ? hr[1] + ' h' : e.travel ? e.travel.mode : ''; };
+const CAT = { sight: ['#2c4f86', 'Sight'], food: ['#d4602a', 'Food'], shop: ['#c2507a', 'Shop'], transit: ['#4f5d66', 'Transit'], flight: ['#4f5d66', 'Flight'], hotel: ['#5f7a36', 'Hotel'], logistics: ['#5f7a36', 'Admin'], booking: ['#76549f', 'Booking'] };
+const catOf = (e) => { const t = (e.tags || []).find((x) => CAT[x]) || (e.place ? 'sight' : 'transit'); return { key: t, c: CAT[t][0], label: CAT[t][1] }; };
+const isTicket = (e) => ['transit', 'flight'].includes(catOf(e).key);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ICON = {
+  walk: '<svg width="14" height="14" viewBox="0 0 24 24"><circle cx="13.5" cy="4" r="2" fill="currentColor"/><path d="M10 21l2.2-6.2M12.8 9.5L9 12v4M12.8 9.5l3.2 2.3 3 1.2M12.8 9.5l-1.6 5.3 3.8 2.7L16 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  train: '<svg width="14" height="14" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="13" rx="3" stroke="currentColor" stroke-width="2"/><path d="M5 10h14M8 20l-1.5 2M16 20l1.5 2M7 16l-1 4h12l-1-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  taxi: '<svg width="14" height="14" viewBox="0 0 24 24"><path d="M5 12l1.6-4.2A2 2 0 018.5 6.5h7a2 2 0 011.9 1.3L19 12M4 12h16a1 1 0 011 1v4h-2v2h-3v-2H8v2H5v-2H3v-4a1 1 0 011-1z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+  pin: '<svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 22s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2"/></svg>',
+  dir: '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M4 20V9a3 3 0 013-3h10M14 3l4 3-4 3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  check: '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chevL: '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chevR: '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  arrow: '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M4 12h15M14 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  dot: '<svg width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>',
+};
+const modeIcon = (e) => (e.travel ? ICON[MODE[e.travel.mode] ? MODE[e.travel.mode][1] : 'train'] : '');
+const gm = (p) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.q || p.name)}`;
+const startTime = (t) => (t || '').split(/[–-]/)[0].replace('~', '').trim();
+const D = new Date(DAY.date + 'T00:00:00');
+const shortDate = D.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+const KANJI = { Tokyo: '東京', Hakone: '箱根', Kyoto: '京都', Osaka: '大阪' };
+const TINT = { Tokyo: '#dfe6f3', Hakone: '#dcebe0', Kyoto: '#f3e0dc', Osaka: '#fbe3cc' };
+function parseTime(t, mer) { const m = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?/i.exec(t || ''); if (!m) return null; const hr = +m[1]; const ap = (m[3] || mer || (hr >= 1 && hr <= 6 ? 'PM' : 'AM')).toUpperCase(); let h = hr % 12; if (ap === 'PM') h += 12; return h * 60 + +(m[2] || 0); }
+function span(e) { const parts = (e.time || '').replace(/~/g, '').split(/[–-]/).map((s) => s.trim()).filter(Boolean); if (!parts.length) return null; const mer2 = parts[1] && (/(AM|PM)/i.exec(parts[1]) || [])[1]; const a = parseTime(parts[0], mer2); if (a == null) return null; let b = parts[1] ? parseTime(parts[1]) : null; if (b == null || b <= a) b = a + 30; return [a, b]; }
+const fmt = (m) => { const h = Math.floor(m / 60) % 24, mm = Math.round(m % 60); return [`${h % 12 || 12}:${String(mm).padStart(2, '0')}`, h < 12 ? 'AM' : 'PM']; };
+const dayHref = (d) => { const i = DAYS.indexOf(DAY); const j = Math.max(0, Math.min(DAYS.length - 1, i + d)); return `?v=${current + 1}&d=${DAYS[j].id}`; };
+const prevPlace = (i) => { for (let j = i - 1; j >= 0; j--) if (events[j].place) return events[j].place.name; return HOTEL.name || 'Hotel'; };
+const nextPlace = (i) => { for (let j = i + 1; j < events.length; j++) if (events[j].place) return events[j].place.name; return HOTEL.name || 'Hotel'; };
+const toggleCheck = (id) => { if (checks.has(id)) checks.delete(id); else { checks.add(id); buzz(10); } return checks.has(id); };
+
+/* lifecycle helpers: every variant registers its own teardown */
+let cleanups = [];
+const on = (t, type, fn, opts) => { t.addEventListener(type, fn, opts); cleanups.push(() => t.removeEventListener(type, fn, opts)); };
+
+/* ═══════════ 1 · ISLAND — a live pill that morphs into the next stop ═══════════ */
+const V1 = {
+  html() {
+    const nx = nextEv();
+    let flow = '';
+    events.forEach((e, i) => {
+      if (i > 0) flow += e.travel ? `<div class="w1leg" style="--c:${legHex(e)}"><span>${modeIcon(e)}${esc(legMin(e))}</span></div>` : '<div class="w1gap"></div>';
+      const c = catOf(e), done = checks.has(e.id);
+      flow += `<article class="fc ${done ? 'done' : ''}" id="fc-${e.id}" style="--c:${c.c};--i:${Math.min(i, 10)}">
+        <button class="fc-main" data-tog="${e.id}"><div class="fc-top"><span class="fc-cat">${c.label}</span><span>${esc(e.time)}</span>${nx && nx.id === e.id ? '<span class="fc-nx">Next</span>' : ''}${e.optional ? '<span>Optional</span>' : ''}</div><h3>${esc(e.title)}</h3></button>
+        <div class="fc-more"><div>${e.desc ? `<p>${esc(e.desc)}</p>` : ''}${e.cost ? `<p class="fc-cost">${esc(e.cost)}</p>` : ''}${e.place ? `<a class="fc-dir" href="${gm(e.place)}" target="_blank" rel="noopener">${ICON.dir}${esc(e.place.name)}</a>` : ''}</div></div>
+        <button class="tick ${done ? 'on' : ''}" data-check="${e.id}" aria-label="Mark done">${ICON.check}</button></article>`;
+    });
+    const chips = [`<button class="nchip" data-note="dinner"><small>Dinner</small><b>${esc(DAY.dinner)}</b></button>`]
+      .concat(asides.map((a, i) => `<button class="nchip" data-note="${i}"><small>${a.type === 'choice' ? 'Decide' : 'Note'}</small><b>${esc(a.title)}</b></button>`)).join('');
+    return `<div class="phone w1" style="--tint:${TINT[DAY.city] || '#eee'}">
+      <div class="scrim" id="scrim"></div>
+      <div class="isl" id="isl"><button class="isl-sm" id="islsm" aria-label="Show next stop"><span class="isl-pulse"></span><span class="isl-t" id="islt"></span><span class="isl-time" id="isltime"></span><svg class="isl-ring" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/><circle class="pr" id="islpr" cx="10" cy="10" r="8"/></svg></button><div class="isl-lg" id="isllg"></div></div>
+      <header class="w1h"><div class="kanji" aria-hidden="true">${KANJI[DAY.city] || ''}</div><p class="eb">Day ${DAY.n} of 17 · ${esc(shortDate)}</p><h1>${esc(DAY.title)}</h1>${DAY.tagline ? `<p class="tg">${esc(DAY.tagline)}</p>` : ''}</header>
+      <div class="w1notes">${chips}</div>
+      <div class="flow">${flow}</div>
+      <div class="notepop" id="notepop" hidden></div>
+    </div>`;
+  },
+  init(stage) {
+    const isl = stage.querySelector('#isl'), lg = stage.querySelector('#isllg'), scrim = stage.querySelector('#scrim'), pop = stage.querySelector('#notepop');
+    const SW = 250, SH = 42; let open = false, lgH = 200;
+    const EW = () => Math.min(innerWidth - 20, 420);
+    let hNow = SH;
+    const W = new Spring(SW, (w) => { isl.style.width = w + 'px'; }, 0.3);
+    const H = new Spring(SH, (h) => { hNow = h; isl.style.height = h + 'px'; const p = Math.max(0, Math.min(1, (h - SH) / Math.max(1, lgH - SH))); isl.style.borderRadius = 21 + p * 13 + 'px'; }, 0.3);
+    const fill = () => {
+      const nx = nextEv();
+      stage.querySelector('#islt').textContent = nx ? nx.title : 'Day complete';
+      stage.querySelector('#isltime').textContent = nx ? startTime(nx.time) : '';
+      stage.querySelector('#islpr').style.strokeDashoffset = 50.27 * (1 - checks.size / events.length);
+      lg.style.width = EW() + 'px';
+      if (!nx) { lg.innerHTML = `<div class="lg-k"><span>All done</span></div><h2>That's day ${DAY.n}.</h2><p class="lg-d">Dinner: ${esc(DAY.dinner)}</p>`; return; }
+      const n = numOf(nx.id);
+      lg.innerHTML = `<p class="lg-k"><span>Next up</span><span>${checks.size} of ${events.length} done</span></p><h2>${esc(nx.title)}</h2>
+        <p class="lg-t">${esc(nx.time)}${nx.travel ? `<span style="--c2:${legHex(nx)}">${modeIcon(nx)}${esc(legMin(nx))}</span>` : ''}${n ? `<span style="--c2:#fff">Stop ${n}</span>` : ''}</p>
+        ${nx.desc ? `<p class="lg-d">${esc(nx.desc)}</p>` : ''}
+        <div class="lg-a">${nx.place ? `<a href="${gm(nx.place)}" target="_blank" rel="noopener">${ICON.dir}Directions</a>` : ''}<button class="lg-done" data-idone="${nx.id}">${ICON.check}Done</button></div>`;
+    };
+    const measure = () => { lgH = Math.min(lg.scrollHeight, innerHeight - 120); return lgH; };
+    const setOpen = (v) => {
+      open = v; isl.classList.toggle('open', v); scrim.classList.toggle('on', v);
+      if (v) { fill(); W.to(EW(), { response: 0.44, damping: 0.74 }); H.to(measure(), { response: 0.44, damping: 0.78 }); }
+      else { W.to(SW, { response: 0.36, damping: 0.86 }); H.to(SH, { response: 0.36, damping: 0.9 }); }
+    };
+    const syncCard = (id) => { const card = stage.querySelector('#fc-' + id); if (!card) return; const d = checks.has(id); card.classList.toggle('done', d); card.querySelector('.tick').classList.toggle('on', d); stage.querySelectorAll('.fc-nx').forEach((x) => x.remove()); const nx = nextEv(); const nc = nx && stage.querySelector('#fc-' + nx.id + ' .fc-top'); if (nc) nc.insertAdjacentHTML('beforeend', '<span class="fc-nx">Next</span>'); };
+    fill();
+    on(stage.querySelector('#islsm'), 'click', () => setOpen(true));
+    on(scrim, 'click', () => { setOpen(false); pop.hidden = true; });
+    on(document, 'keydown', (e) => { if (e.key === 'Escape') { setOpen(false); pop.hidden = true; scrim.classList.remove('on'); } });
+    on(stage, 'click', (e) => {
+      const dn = e.target.closest('[data-idone]');
+      if (dn) { const id = dn.dataset.idone; checks.add(id); buzz(12); dn.classList.add('ok'); dn.innerHTML = ICON.check + 'Nice'; syncCard(id); stage.querySelector('#islpr').style.strokeDashoffset = 50.27 * (1 - checks.size / events.length);
+        setTimeout(() => { lg.classList.add('swap'); setTimeout(() => { fill(); lg.classList.remove('swap'); if (open) H.to(measure(), { response: 0.4, damping: 0.8 }); }, 170); }, 420); return; }
+      const ck = e.target.closest('[data-check]');
+      if (ck) { toggleCheck(ck.dataset.check); syncCard(ck.dataset.check); fill(); return; }
+      const tg = e.target.closest('[data-tog]');
+      if (tg) { stage.querySelector('#fc-' + tg.dataset.tog).classList.toggle('open'); return; }
+      const nt = e.target.closest('[data-note]');
+      if (nt) { const k = nt.dataset.note; let h = ''; if (k === 'dinner') h = `<small>Dinner</small><h3>${esc(DAY.dinner)}</h3>`; else { const a = asides[+k]; if (a.type === 'choice') { const o = a.options.find((x) => x.id === a.default) || a.options[0]; h = `<small>Decide</small><h3>${esc(a.title)}</h3><p>${esc(a.text || '')}</p><p><b>Plan: ${esc(o.label)}</b>${a.options.filter((x) => x !== o).map((x) => `<br>Or: ${esc(x.label)}`).join('')}</p>`; } else h = `<small>Note</small><h3>${esc(a.title)}</h3><p>${esc(a.text)}</p>`; }
+        pop.innerHTML = h; pop.hidden = false; scrim.classList.add('on'); return; }
+    });
+    on(window, 'resize', () => { if (open) { W.to(EW()); lg.style.width = EW() + 'px'; H.to(measure()); } });
+    cleanups.push(() => { W.stop(); H.stop(); });
+  },
+};
+
+/* ═══════════ 2 · GLASS — full-bleed map, floating glass, a sheet you can throw ═══════════ */
+const V2 = {
+  html() {
+    const rows = events.map((e) => { const n = numOf(e.id); const c = e.place ? catOf(e).c : legHex(e); return `<button class="r2 ${checks.has(e.id) ? 'done' : ''}" data-pick="${e.id}" id="r2-${e.id}" style="--c:${c}"><span class="r2n ${n ? '' : 'leg'}">${n || modeIcon(e) || ICON.dot}</span><span class="r2b"><b>${esc(e.title)}</b><small>${esc(e.time)}${e.travel ? ' · ' + esc(legMin(e)) : ''}</small></span></button>`; }).join('');
+    return `<div class="w2"><div id="m2"></div>
+      <div class="g2top"><a class="gb glass" href="${dayHref(-1)}" aria-label="Previous day">${ICON.chevL}</a><div class="gb glass gday"><small>Day ${DAY.n} · ${esc(shortDate)} · ${esc(DAY.city)}</small><b>${esc(DAY.title)}</b></div><a class="gb glass" href="${dayHref(1)}" aria-label="Next day">${ICON.chevR}</a></div>
+      <div class="sh2 glass" id="sh2"><div class="sh2-grab" id="grab"><i></i><div id="sh2head"></div></div><div class="sh2-list" id="sh2list">${rows}</div></div></div>`;
+  },
+  init(stage) {
+    const sh = stage.querySelector('#sh2'), head = stage.querySelector('#sh2head'), list = stage.querySelector('#sh2list');
+    let Hh = innerHeight; const FULL = () => 74, HALF = () => Math.round(Hh * 0.45), PEEK = () => Hh - 196;
+    let sel = (nextEv() || events[0]).id;
+    const Y = new Spring(Hh, (y) => { sh.style.transform = `translate3d(0,${y}px,0)`; }, 0.3);
+    /* map */
+    const map = L.map(stage.querySelector('#m2'), { zoomControl: false, attributionControl: true });
+    map.attributionControl.setPrefix(false);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+    const pins = {};
+    stops.forEach((s) => { const e = s.e; const m = L.marker([e.place.lat, e.place.lng], { icon: L.divIcon({ className: '', html: `<div class="p2" data-pin="${s.n}" style="--c:${catOf(e).c}">${s.n}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) }).addTo(map); m.on('click', () => pick(e.id)); s.ids.forEach((id) => (pins[id] = s.n)); });
+    const lines = [];
+    for (let i = 1; i < stops.length; i++) { const a = stops[i - 1].e.place, b = stops[i].e.place; const e = stops[i].e; lines.push({ pl: L.polyline([[a.lat, a.lng], [b.lat, b.lng]], { color: legHex(e), weight: 5, opacity: 0.9, lineCap: 'round' }).addTo(map), dashed: e.travel && !/walk|taxi|drive/.test(e.travel.mode) }); }
+    const pinEl = (n) => stage.querySelector(`.p2[data-pin="${n}"]`);
+    const syncPins = () => { const nx = nextEv(); stops.forEach((s) => { const el = pinEl(s.n); if (!el) return; el.classList.toggle('done', s.ids.every((id) => checks.has(id))); el.classList.toggle('nx', !!nx && s.ids.includes(nx.id)); el.classList.toggle('sel', s.ids.includes(sel) || pins[sel] === s.n); }); };
+    map.fitBounds(stops.map((s) => [s.e.place.lat, s.e.place.lng]), { paddingTopLeft: [30, 100], paddingBottomRight: [30, 220], maxZoom: 15 });
+    setTimeout(() => {
+      map.invalidateSize(); syncPins();
+      lines.forEach(({ pl, dashed }, i) => { const p = pl._path; if (!p) return; const len = p.getTotalLength(); p.style.strokeDasharray = len; p.style.strokeDashoffset = len; p.getBoundingClientRect(); p.style.transition = `stroke-dashoffset 800ms cubic-bezier(.77,0,.175,1) ${250 + i * 140}ms`; p.style.strokeDashoffset = 0;
+        setTimeout(() => { p.style.transition = ''; p.style.strokeDasharray = dashed ? '2 10' : ''; p.style.strokeDashoffset = ''; }, 1100 + i * 140); });
+    }, 120);
+    /* head card */
+    const renderHead = () => { const e = events.find((x) => x.id === sel); const n = numOf(e.id); const nx = nextEv(); const c = catOf(e).c; const done = checks.has(e.id);
+      head.innerHTML = `<div class="h2c"><div class="h2top"><span class="r2n ${n ? '' : 'leg'}" style="--c:${n ? c : legHex(e)}">${n || modeIcon(e) || ICON.dot}</span><div><small>${nx && nx.id === e.id ? 'Next up' : done ? 'Done' : 'Stop ' + (events.indexOf(e) + 1) + ' of ' + events.length}</small><h3>${esc(e.title)}</h3></div>${e.place ? `<a class="h2go" href="${gm(e.place)}" target="_blank" rel="noopener" aria-label="Directions">${ICON.dir}</a>` : ''}</div>
+      <p class="h2t">${esc(e.time)}${e.travel ? `<span style="--c:${legHex(e)}">${modeIcon(e)}${esc(e.travel.label || legMin(e))}</span>` : ''}</p>${e.desc ? `<p class="h2d">${esc(e.desc)}</p>` : ''}
+      <div class="h2a"><button class="${done ? 'on' : ''}" data-check2="${e.id}">${ICON.check}${done ? 'Done' : 'Mark done'}</button></div></div>`;
+      stage.querySelectorAll('.r2').forEach((r) => r.classList.toggle('sel', r.id === 'r2-' + sel)); };
+    const go = (t, v = 0) => { Y.done = () => sh.classList.toggle('full', t === FULL()); if (t !== FULL()) sh.classList.remove('full'); Y.to(t, { response: 0.38, damping: 0.86, velocity: v }); };
+    const pick = (id) => { sel = id; renderHead(); syncPins(); const e = events.find((x) => x.id === id); const i = events.indexOf(e); let pl = e.place; for (let j = i; !pl && j >= 0; j--) pl = events[j].place; if (pl) { const z = Math.max(map.getZoom(), 14); const pt = map.project([pl.lat, pl.lng], z).add([0, (Hh - PEEK()) / 2 - 20]); map.flyTo(map.unproject(pt, z), z, { duration: RM ? 0 : 0.9 }); } go(PEEK()); };
+    renderHead(); Y.set(Hh); requestAnimationFrame(() => go(PEEK()));
+    /* drag: 1:1 tracking, rubber-band past the top, momentum-projected snap */
+    const T = tracker(); let drag = null, suppress = false;
+    on(sh, 'pointerdown', (e) => { if (sh.classList.contains('full') && !e.target.closest('#grab')) return; drag = { id: e.pointerId, y0: e.clientY, s0: Y.x, active: false }; T.reset(); T.add(Y.x); });
+    on(window, 'pointermove', (e) => { if (!drag || e.pointerId !== drag.id) return; const dy = e.clientY - drag.y0; if (!drag.active) { if (Math.abs(dy) < 8) return; drag.active = true; Y.stop(); drag.s0 = Y.x - dy; try { sh.setPointerCapture(drag.id); } catch {} } let y = drag.s0 + dy; if (y < FULL()) y = FULL() - rubber(FULL() - y, Hh); Y.set(y); T.add(y); });
+    const end = (e) => { if (!drag || e.pointerId !== drag.id) return; if (drag.active) { const v = T.vel(); const p = Y.x + project(v); const snaps = [FULL(), HALF(), PEEK()]; const t = snaps.reduce((a, b) => (Math.abs(b - p) < Math.abs(a - p) ? b : a)); go(t, v); suppress = true; setTimeout(() => (suppress = false), 60); } drag = null; };
+    on(window, 'pointerup', end); on(window, 'pointercancel', end);
+    on(stage, 'click', (e) => {
+      if (suppress) { e.preventDefault(); e.stopPropagation(); return; }
+      const ck = e.target.closest('[data-check2]'); if (ck) { const id = ck.dataset.check2; toggleCheck(id); stage.querySelector('#r2-' + id).classList.toggle('done', checks.has(id)); renderHead(); syncPins(); return; }
+      const pk = e.target.closest('[data-pick]'); if (pk) pick(pk.dataset.pick);
+    }, true);
+    on(window, 'resize', () => { Hh = innerHeight; go(PEEK()); });
+    cleanups.push(() => { Y.stop(); map.remove(); });
+  },
+};
+
+/* ═══════════ 3 · JOURNEY — scroll drives a traveller along the day; the sky keeps time ═══════════ */
+const SKY = [[300, '#2a2f5c', '#e3a089'], [420, '#f5c3a7', '#fcefe3'], [600, '#a7d1f4', '#eef6fb'], [840, '#86c0f0', '#f1f7fc'], [990, '#f3c08a', '#fde8cf'], [1080, '#59508f', '#ef9468'], [1170, '#1b2148', '#3a3168'], [1380, '#0d1230', '#1a1f45']];
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, t) => { const A = hex(a), B = hex(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; };
+const skyAt = (m) => { let i = SKY.findIndex((k) => k[0] > m); if (i <= 0) { const k = SKY[i === 0 ? 0 : SKY.length - 1]; return [k[1], k[2]]; } const a = SKY[i - 1], b = SKY[i], t = (m - a[0]) / (b[0] - a[0]); return [mix(a[1], b[1], t), mix(a[2], b[2], t)]; };
+const V3 = {
+  html() {
+    const isles = events.map((e, i) => { const n = numOf(e.id); const done = checks.has(e.id); return `<article class="i3 ${i % 2 ? 'R' : 'L'} ${done ? 'done' : ''}" id="i3-${e.id}" style="--c:${n ? catOf(e).c : legHex(e)}"><span class="i3n ${n ? '' : 'leg'}">${n || ''}</span><p class="i3t">${esc(e.time)}${e.optional ? ' · optional' : ''}</p><h3>${esc(e.title)}</h3>${e.desc ? `<p class="i3d" data-tog3="${e.id}">${esc(e.desc)}</p>` : ''}<button class="tick ${done ? 'on' : ''}" data-check="${e.id}" aria-label="Mark done">${ICON.check}</button></article>`; }).join('');
+    const legs = events.map((e, i) => (i > 0 && e.travel ? `<span class="leg3" data-leg="${i}" style="--c:${legHex(e)}">${modeIcon(e)}${esc(legMin(e))}</span>` : '')).join('');
+    return `<div class="phone w3" id="w3"><div class="sky3" id="sky3"></div>
+      <header class="w3h"><p class="eb">${esc(shortDate).toUpperCase()} · ${esc(DAY.city).toUpperCase()}</p><h1><em>Day ${DAY.n}</em>${esc(DAY.title)}</h1>${DAY.tagline ? `<p class="tg">${esc(DAY.tagline)}</p>` : ''}</header>
+      <div class="trail" id="trail"><svg class="t3svg" id="t3svg"><path id="t3base"/><path id="t3prog"/></svg>${isles}${legs}<div class="trav" id="trav"></div></div>
+      <div class="w3end"><small>Dinner</small><b>${esc(DAY.dinner)}</b><small>Sleep</small><b>${esc(HOTEL.name || '')}</b></div><div class="pad"></div></div>`;
+  },
+  init(stage) {
+    const w3 = stage.querySelector('#w3'), trail = stage.querySelector('#trail'), svg = stage.querySelector('#t3svg'), base = stage.querySelector('#t3base'), prog = stage.querySelector('#t3prog'), trav = stage.querySelector('#trav'), sky = stage.querySelector('#sky3');
+    const isles = events.map((e) => stage.querySelector('#i3-' + e.id));
+    let pts = [], segEnds = [], len = 0, samples = [], times = events.map((e) => (span(e) || [null])[0]);
+    for (let i = 0; i < times.length; i++) if (times[i] == null) times[i] = i ? times[i - 1] + 20 : 480;
+    const layout = () => {
+      const tr = trail.getBoundingClientRect();
+      pts = isles.map((el) => { const b = el.getBoundingClientRect(); const R = el.classList.contains('R'); const x = R ? (b.left - tr.left) / 2 : (b.right - tr.left + tr.width) / 2; return [x, b.top + Math.min(b.height / 2, 46) - tr.top]; });
+      svg.setAttribute('width', tr.width); svg.setAttribute('height', tr.height);
+      let d = `M ${pts[0][0]} ${pts[0][1]}`; const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'path'); svg.appendChild(tmp); segEnds = [0];
+      for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; const k = (y1 - y0) * 0.55; const seg = ` C ${x0} ${y0 + k} ${x1} ${y1 - k} ${x1} ${y1}`; d += seg;
+        tmp.setAttribute('d', `M ${x0} ${y0}` + seg); const sl = tmp.getTotalLength(); const mid = tmp.getPointAtLength(sl / 2); const chip = stage.querySelector(`[data-leg="${i}"]`); if (chip) { chip.style.left = mid.x + 'px'; chip.style.top = mid.y + 'px'; } segEnds.push(segEnds[i - 1] + sl); }
+      tmp.remove(); base.setAttribute('d', d); prog.setAttribute('d', d); len = base.getTotalLength(); prog.style.strokeDasharray = len;
+      samples = []; for (let l = 0; l <= len; l += 4) { const p = base.getPointAtLength(l); samples.push([l, p.y]); }
+    };
+    const L0 = new Spring(0, (l) => { const p = base.getPointAtLength(l); trav.style.transform = `translate3d(${p.x}px,${p.y}px,0)`; prog.style.strokeDashoffset = len - l; let s = segEnds.findIndex((x) => x >= l); s = Math.max(1, s); const e = events[Math.min(s, events.length - 1)]; trav.innerHTML = l < 2 ? ICON.pin : (modeIcon(e) || ICON.dot); }, 0.5);
+    let ticking = false;
+    const frame = () => { ticking = false; if (!samples.length) return; const tr = trail.getBoundingClientRect(); const target = innerHeight * 0.48 - tr.top; let lo = 0, hi = samples.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (samples[m][1] < target) lo = m + 1; else hi = m; } const l = target <= samples[0][1] ? 0 : samples[lo][0]; L0.to(l, { response: 0.45, damping: 1 });
+      /* time of day at the traveller → sky */
+      let i = pts.findIndex((p) => p[1] > target); let m; if (i === -1) m = times[times.length - 1] + 90; else if (i === 0) m = times[0] - 40; else { const t = (target - pts[i - 1][1]) / (pts[i][1] - pts[i - 1][1]); m = times[i - 1] + (times[i] - times[i - 1]) * t; }
+      const [a, b] = skyAt(m); sky.style.background = `linear-gradient(180deg, ${a}, ${b})`; const night = m > 1090 || m < 330; w3.style.setProperty('--hc', night ? '#f4f1ff' : '#141412'); };
+    const req = () => { if (!ticking) { ticking = true; requestAnimationFrame(frame); } };
+    requestAnimationFrame(() => { layout(); L0.set(0); frame(); });
+    on(window, 'scroll', req, { passive: true });
+    on(window, 'resize', () => { layout(); req(); });
+    const io = new IntersectionObserver((es) => es.forEach((x) => { if (x.isIntersecting) { x.target.classList.add('in'); io.unobserve(x.target); } }), { threshold: 0.15 });
+    isles.forEach((el) => io.observe(el));
+    on(stage, 'click', (e) => { const ck = e.target.closest('[data-check]'); if (ck) { const id = ck.dataset.check; const d = toggleCheck(id); ck.classList.toggle('on', d); stage.querySelector('#i3-' + id).classList.toggle('done', d); return; } const tg = e.target.closest('[data-tog3]'); if (tg) { stage.querySelector('#i3-' + tg.dataset.tog3).classList.toggle('open'); requestAnimationFrame(() => { layout(); req(); }); } });
+    cleanups.push(() => { io.disconnect(); L0.stop(); });
+  },
+};
+
+/* ═══════════ 4 · PASSES — a wallet of the day; open one, stamp it 済 ═══════════ */
+const V4 = {
+  html() {
+    const cards = events.map((e, i) => { const c = catOf(e); const n = numOf(e.id); const tk = isTicket(e); const done = checks.has(e.id);
+      return `<article class="ps ${tk ? 'tk' : ''} ${done ? 'done' : ''}" data-i="${i}" style="--c:${tk ? legHex(e) : c.c};z-index:${i}">
+        <div class="ps-band" data-band="${i}"><span class="ps-n">${n ? String(n).padStart(2, '0') : ''}</span><div class="ps-tt"><small>${tk ? (e.travel ? esc(e.travel.mode) : 'Transit') : c.label}${e.optional ? ' · optional' : ''}</small><b>${esc(e.title)}</b></div><span class="ps-time">${esc(startTime(e.time))}</span></div>
+        <div class="ps-body">${tk ? `<div class="tkr"><div><small>From</small><b>${esc(prevPlace(i))}</b></div><span class="arr">${ICON.arrow}</span><div><small>To</small><b>${esc(nextPlace(i))}</b></div></div>` : ''}
+          <dl class="ps-grid"><div><dt>When</dt><dd>${esc(e.time)}</dd></div>${e.cost ? `<div><dt>Cost</dt><dd>${esc(e.cost)}</dd></div>` : ''}${e.travel ? `<div class="wide"><dt>Getting there</dt><dd>${esc(e.travel.label || e.travel.mode)}</dd></div>` : ''}</dl>
+          ${e.desc ? `<p class="ps-d">${esc(e.desc)}</p>` : ''}
+          <div class="ps-a">${e.place ? `<a href="${gm(e.place)}" target="_blank" rel="noopener">${ICON.dir}Directions</a>` : ''}<button data-stamp="${e.id}">${done ? 'Unstamp' : 'Stamp 済'}</button></div></div>
+        <div class="hanko" aria-hidden="true">済</div></article>`; }).join('');
+    return `<div class="phone w4"><header class="w4h"><p>Day ${DAY.n} · ${esc(shortDate)} · ${esc(DAY.city)}</p><h1>${esc(DAY.title)}</h1><p class="cnt"><i>済</i><span id="cnt4">${checks.size} of ${events.length} stamped</span></p></header><div class="stk" id="stk">${cards}</div><div class="pad"></div></div>`;
+  },
+  init(stage) {
+    const stk = stage.querySelector('#stk'), cards = [...stk.querySelectorAll('.ps')];
+    const PEEK = 66, CH = () => Math.min(560, innerHeight - 150);
+    let sel = -1;
+    const st = cards.map((el) => { const o = { y: 0, s: 1 }; const ap = () => { el.style.transform = `translate3d(0,${o.y}px,0) scale(${o.s})`; }; return { el, o, Y: new Spring(0, (v) => { o.y = v; ap(); }, 0.3), S: new Spring(1, (v) => { o.s = v; ap(); }, 0.0005) }; });
+    const size = () => { stk.style.setProperty('--ch', CH() + 'px'); cards.forEach((c) => (c.style.height = CH() + 'px')); stk.style.height = PEEK * (cards.length - 1) + CH() + 'px'; };
+    const stackTop = () => stk.getBoundingClientRect().top + scrollY;
+    const rest = (opts = {}) => st.forEach((c, i) => { c.Y.to(i * PEEK, { response: 0.5, damping: 0.84, ...opts }); c.S.to(1, { response: 0.4, damping: 1 }); });
+    const openAt = (i) => { sel = i; document.documentElement.style.overflow = 'hidden'; const top = scrollY - stackTop() + 64; let k = 0;
+      st.forEach((c, j) => { if (j === i) { c.el.style.zIndex = 200; c.el.style.touchAction = 'none'; c.Y.to(top, { response: 0.5, damping: 0.82 }); c.S.to(1); } else { c.el.style.zIndex = j; c.el.style.touchAction = ''; const kk = Math.min(k++, 5); c.Y.to(top + innerHeight - 64 - 96 + kk * 9, { response: 0.5, damping: 0.9 }); c.S.to(0.9 + kk * 0.012, { response: 0.45, damping: 1 }); } }); };
+    const close = (v = 0) => { const i = sel; sel = -1; document.documentElement.style.overflow = ''; st.forEach((c, j) => { c.el.style.touchAction = ''; c.Y.to(j * PEEK, { response: 0.5, damping: 0.84, velocity: j === i ? v : 0 }); c.S.to(1); }); setTimeout(() => cards.forEach((c, j) => (c.style.zIndex = j)), 420); };
+    size(); rest();
+    /* entrance: deal the cards in */
+    if (!RM) st.forEach((c, i) => { c.Y.set(i * PEEK + 300 + i * 30); c.el.style.opacity = 0; setTimeout(() => { c.el.style.transition = 'opacity 300ms ease'; c.el.style.opacity = 1; c.Y.to(i * PEEK, { response: 0.6, damping: 0.8 }); }, 40 + i * 35); });
+    /* drag the open pass down to put it back */
+    const T = tracker(); let drag = null, suppress = false;
+    on(stk, 'pointerdown', (e) => { if (sel < 0) return; const c = st[sel]; if (!c.el.contains(e.target) || e.target.closest('a,button')) return; drag = { id: e.pointerId, y0: e.clientY, base: c.Y.t, active: false }; T.reset(); });
+    on(window, 'pointermove', (e) => { if (!drag || e.pointerId !== drag.id) return; const dy = e.clientY - drag.y0; if (!drag.active) { if (Math.abs(dy) < 8) return; drag.active = true; st[sel].Y.stop(); } const y = drag.base + (dy > 0 ? dy : -rubber(-dy, 400)); st[sel].Y.set(y); T.add(y); });
+    const end = (e) => { if (!drag || e.pointerId !== drag.id) return; if (drag.active) { const v = T.vel(); const dy = st[sel].Y.x - drag.base; suppress = true; setTimeout(() => (suppress = false), 60); if (dy + project(v, 0.99) > 160) close(v); else st[sel].Y.to(drag.base, { response: 0.4, damping: 0.8, velocity: v }); } drag = null; };
+    on(window, 'pointerup', end); on(window, 'pointercancel', end);
+    on(stk, 'click', (e) => {
+      if (suppress) return;
+      const sp = e.target.closest('[data-stamp]'); if (sp) { const id = sp.dataset.stamp; const d = toggleCheck(id); const card = sp.closest('.ps'); const c = st[+card.dataset.i]; card.classList.toggle('done', d); card.classList.remove('stamped'); sp.textContent = d ? 'Unstamp' : 'Stamp 済'; if (d) { void card.offsetWidth; card.classList.add('stamped'); c.S.set(0.97); c.S.to(1, { response: 0.32, damping: 0.45 }); } stage.querySelector('#cnt4').textContent = `${checks.size} of ${events.length} stamped`; return; }
+      const b = e.target.closest('.ps'); if (!b || e.target.closest('a')) return; const i = +b.dataset.i;
+      if (sel === i) { if (e.target.closest('[data-band]')) close(); } else openAt(i);
+    });
+    on(document, 'keydown', (e) => { if (e.key === 'Escape' && sel >= 0) close(); });
+    on(window, 'resize', () => { size(); if (sel >= 0) openAt(sel); else rest(); });
+    cleanups.push(() => { document.documentElement.style.overflow = ''; st.forEach((c) => { c.Y.stop(); c.S.stop(); }); });
+  },
+};
+
+/* ═══════════ 5 · DIAL — the day as a clock face; scrub, flick, it snaps to the stop ═══════════ */
+const V5 = {
+  html() {
+    const sp = events.map((e) => ({ e, s: span(e) })).filter((x) => x.s);
+    return `<div class="phone w5"><header class="w5h"><p>Day ${DAY.n} · ${esc(shortDate)} · ${esc(DAY.city)}</p><h1>${esc(DAY.title)}</h1></header>
+      <div class="dialw" id="dialw"><svg id="dial" viewBox="0 0 340 340"></svg><div class="dc"><p class="dc-k" id="dck">Next up</p><p class="dc-time" id="dct"></p><p class="dc-title" id="dctt"></p></div></div>
+      <div class="d5chips" id="d5chips">${sp.map(({ e }) => `<button class="d5chip" data-jump="${e.id}" style="--c:${e.place ? catOf(e).c : legHex(e)}"><i></i>${esc(startTime(e.time))} ${esc(e.title)}</button>`).join('')}</div>
+      <div class="d5card" id="d5card"></div><div class="pad"></div></div>`;
+  },
+  init(stage) {
+    const svg = stage.querySelector('#dial'), wrap = stage.querySelector('#dialw'), card = stage.querySelector('#d5card'), chips = stage.querySelector('#d5chips');
+    const sp = events.map((e) => ({ e, s: span(e) })).filter((x) => x.s);
+    const t0 = Math.floor(Math.min(...sp.map((x) => x.s[0])) / 60) * 60 - 30, t1 = Math.ceil(Math.max(...sp.map((x) => x.s[1])) / 60) * 60 + 30;
+    const A0 = -150, A1 = 150, CX = 170, CY = 170, R = 138;
+    const ang = (m) => A0 + ((m - t0) / (t1 - t0)) * (A1 - A0), minAt = (a) => t0 + ((a - A0) / (A1 - A0)) * (t1 - t0);
+    const pt = (a, r) => [CX + r * Math.sin((a * Math.PI) / 180), CY - r * Math.cos((a * Math.PI) / 180)];
+    const arc = (a0, a1, r) => { const [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r); return `M ${x0} ${y0} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`; };
+    let g = `<path class="trk" d="${arc(A0, A1, R)}"/>`;
+    sp.forEach(({ e, s }) => { const a0 = ang(s[0]) + 0.8, a1 = Math.max(a0 + 1.5, ang(s[1]) - 0.8); g += `<path class="arc ${checks.has(e.id) ? 'done' : ''}" data-arc="${e.id}" stroke="${e.place ? catOf(e).c : legHex(e)}" d="${arc(a0, a1, R)}"/>`; });
+    for (let h = Math.ceil(t0 / 60); h * 60 <= t1; h++) { const a = ang(h * 60); const [x0, y0] = pt(a, R + 17), [x1, y1] = pt(a, R + 22); const [tx, ty] = pt(a, R - 27); g += `<g class="hr"><line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>${(h - Math.ceil(t0 / 60)) % 2 === 0 ? `<text x="${tx}" y="${ty}">${h % 12 || 12}${h < 12 ? 'a' : 'p'}</text>` : ''}</g>`; }
+    g += `<g id="knob"><circle class="k1" r="17"/><circle class="k2" r="6"/></g>`;
+    svg.innerHTML = g;
+    const knob = svg.querySelector('#knob');
+    let curId = null;
+    const at = (m) => { let best = null; for (const x of sp) if (x.s[0] <= m + 0.5) best = x; return best || sp[0]; };
+    const renderCard = (x) => { const e = x.e; const c = e.place ? catOf(e) : { c: legHex(e), label: 'Getting there' }; const done = checks.has(e.id); const n = numOf(e.id);
+      card.style.setProperty('--c', c.c); card.innerHTML = `<small>${c.label}${n ? ' · stop ' + n : ''}</small><h3>${esc(e.title)}</h3><p class="t">${esc(e.time)}${e.travel ? ' · ' + esc(e.travel.label || legMin(e)) : ''}</p>${e.desc ? `<p class="d">${esc(e.desc)}</p>` : ''}${e.place ? `<a class="fc-dir" href="${gm(e.place)}" target="_blank" rel="noopener">${ICON.dir}${esc(e.place.name)}</a>` : ''}<button class="tick ${done ? 'on' : ''}" data-check="${e.id}" style="--c:${c.c}" aria-label="Mark done">${ICON.check}</button>`; };
+    const A = new Spring(A0, (a) => {
+      const [x, y] = pt(a, R); knob.setAttribute('transform', `translate(${x} ${y})`);
+      const m = minAt(a); const x0 = at(m); const [tm, ap] = fmt(Math.round(m / 5) * 5); stage.querySelector('#dct').innerHTML = `${tm}<small>${ap}</small>`;
+      const col = x0.e.place ? catOf(x0.e).c : legHex(x0.e); wrap.style.setProperty('--kc', col);
+      const nx = nextEv(); stage.querySelector('#dck').textContent = nx && nx.id === x0.e.id ? 'Next up' : checks.has(x0.e.id) ? 'Done' : m > x0.s[1] ? 'After' : 'Then';
+      if (x0.e.id !== curId) { curId = x0.e.id; buzz(4); const tt = stage.querySelector('#dctt'); tt.classList.add('swap'); card.classList.add('swap'); setTimeout(() => { tt.textContent = x0.e.title; tt.classList.remove('swap'); renderCard(x0); card.classList.remove('swap'); }, 120);
+        chips.querySelectorAll('.d5chip').forEach((c) => { const onn = c.dataset.jump === curId; c.classList.toggle('on', onn); if (onn) c.scrollIntoView({ inline: 'center', block: 'nearest', behavior: RM ? 'auto' : 'smooth' }); }); }
+    }, 0.05);
+    const snapTo = (id, v = 0) => { const x = sp.find((y) => y.e.id === id); if (x) A.to(ang(x.s[0]) + 0.01, { response: 0.5, damping: 0.86, velocity: v }); };
+    const nx = nextEv(); A.set(A0); requestAnimationFrame(() => snapTo((nx || sp[0].e).id));
+    /* scrub: angle follows the finger; release projects momentum then snaps to the nearest start */
+    const T = tracker(); let drag = null;
+    const angleOf = (e) => { const r = svg.getBoundingClientRect(); const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); return (Math.atan2(dx, -dy) * 180) / Math.PI; };
+    on(wrap, 'pointerdown', (e) => { drag = { id: e.pointerId, last: angleOf(e) }; A.stop(); T.reset(); try { wrap.setPointerCapture(e.pointerId); } catch {} let a = Math.max(A0, Math.min(A1, drag.last)); A.set(a); T.add(a); });
+    on(wrap, 'pointermove', (e) => { if (!drag || e.pointerId !== drag.id) return; let a = angleOf(e); if (Math.abs(a - drag.last) > 180) return; drag.last = a; const over = a < A0 ? a - A0 : a > A1 ? a - A1 : 0; a = Math.max(A0, Math.min(A1, a)) + (over ? Math.sign(over) * rubber(Math.abs(over), 60) : 0); A.set(a); T.add(a); });
+    const end = (e) => { if (!drag || e.pointerId !== drag.id) return; drag = null; const v = T.vel(); const p = Math.max(A0, Math.min(A1, A.x + project(v, 0.995))); const m = minAt(p); let best = sp[0]; for (const x of sp) if (Math.abs(x.s[0] - m) < Math.abs(best.s[0] - m)) best = x; snapTo(best.e.id, v); };
+    on(wrap, 'pointerup', end); on(wrap, 'pointercancel', end);
+    on(stage, 'click', (e) => { const j = e.target.closest('[data-jump]'); if (j) { snapTo(j.dataset.jump); return; } const ck = e.target.closest('[data-check]'); if (ck) { const id = ck.dataset.check; const d = toggleCheck(id); ck.classList.toggle('on', d); svg.querySelector(`[data-arc="${id}"]`)?.classList.toggle('done', d); } });
+    cleanups.push(() => A.stop());
+  },
+};
+
+/* ─── harness ─── */
+const variants = [V1, V2, V3, V4, V5];
+const stage = document.getElementById('stage');
+const picker = document.querySelector('.proto-picker');
+const highlight = picker.querySelector('.proto-picker-highlight');
+const pitems = [...picker.querySelectorAll('.proto-picker-item')];
+let current = 0;
+function moveHighlight() { const el = pitems[current]; highlight.style.width = el.offsetWidth + 'px'; highlight.style.transform = `translateX(${el.offsetLeft}px)`; }
+function mount(i) { cleanups.forEach((f) => { try { f(); } catch {} }); cleanups = []; document.documentElement.style.overflow = ''; window.scrollTo(0, 0); stage.innerHTML = variants[i].html(); variants[i].init(stage); }
+function setActive(i) { if (i < 0 || i >= variants.length) return; current = i; pitems.forEach((el, j) => { el.toggleAttribute('data-active', j === i); if (j === i) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current'); }); moveHighlight(); const url = new URL(location); url.searchParams.set('v', i + 1); history.replaceState(null, '', url); mount(i); }
+pitems.forEach((el, i) => el.addEventListener('click', () => setActive(i)));
+window.addEventListener('resize', moveHighlight);
+document.addEventListener('keydown', (e) => { if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.metaKey || e.ctrlKey || e.altKey) return; const n = parseInt(e.key, 10); if (n >= 1 && n <= variants.length) setActive(n - 1); else if (e.key === 'ArrowRight') setActive((current + 1) % variants.length); else if (e.key === 'ArrowLeft') setActive((current - 1 + variants.length) % variants.length); });
+setActive((parseInt(qs.get('v'), 10) || 1) - 1);
+requestAnimationFrame(() => requestAnimationFrame(() => picker.setAttribute('data-ready', '')));
+</script>
+</body>
+</html>
