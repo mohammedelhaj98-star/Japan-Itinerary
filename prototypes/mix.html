@@ -97,8 +97,7 @@ body.scrolled .topfade { opacity:1; }
 .dc-t { font-family:var(--serif); font-size:58px; line-height:.9; letter-spacing:-.02em; }
 .dc-t small { font-family:var(--sans); font-size:13px; letter-spacing:0; margin-left:3px; color:var(--ink3); }
 .dc-n { font-size:14.5px; font-weight:700; margin:4px auto 0; max-width:17ch; line-height:1.25; min-height:1.25em; transition:opacity 140ms, filter 140ms; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.dc-n.swap { opacity:0; filter:blur(5px); }
-
+.dc-n
 /* ── wallet of passes ── */
 .stack { position:relative; margin:18px 12px 0; }
 .pass { position:absolute; left:0; right:0; top:0; border-radius:22px; overflow:hidden; color:#fff; background:linear-gradient(165deg, color-mix(in srgb, var(--c) 82%, #fff) 0, var(--c) 36%, color-mix(in srgb, var(--c) 82%, #000) 100%); box-shadow:0 -1px 0 rgba(255,255,255,.2) inset, 0 -8px 22px -12px rgba(0,0,0,.45); will-change:transform; transform-origin:50% 0; }
@@ -127,7 +126,8 @@ body.scrolled .topfade { opacity:1; }
 .chip { display:inline-flex; gap:6px; align-items:center; padding:5px 10px; border-radius:10px; background:rgba(255,255,255,.16); font-size:13px; font-weight:700; }
 .chip small { font-weight:500; opacity:.75; }
 .desc { font-size:15px; line-height:1.5; margin-top:12px; white-space:pre-line; opacity:.95; }
-.cv-in { font-size:.82em; font-weight:700; padding:0 5px; border-radius:6px; background:rgba(255,255,255,.18); white-space:nowrap; }
+.cv-in { font:inherit; font-size:.82em; font-weight:700; padding:0 5px; border-radius:6px; background:rgba(255,255,255,.18); white-space:nowrap; color:inherit; transition:background 160ms; }
+.cv-in:active { background:rgba(255,255,255,.32); }
 .dyk { margin-top:14px; padding:12px 14px; border-radius:14px; background:rgba(0,0,0,.16); font-size:14px; line-height:1.45; }
 .dyk b { display:block; font-family:var(--serif); font-style:italic; font-size:18px; font-weight:400; margin-bottom:2px; }
 .acts { display:flex; gap:8px; margin-top:14px; }
@@ -188,15 +188,16 @@ body.scrolled .topfade { opacity:1; }
 .kit-h { padding:0 16px 10px; display:flex; justify-content:center; }
 .kit-b { overflow-y:auto; padding:0 16px; touch-action:pan-y; overscroll-behavior:contain; }
 .cvbox { background:#fff; border-radius:24px; padding:16px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
-.cvrow { display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
-.cvrow small { font-size:12px; font-weight:700; color:var(--ink3); }
-.cvrow b { font-family:var(--serif); font-size:52px; line-height:1; letter-spacing:-.02em; font-weight:400; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.cvrow.out b { font-size:34px; color:var(--ink2); }
-.cvmid { display:flex; align-items:center; gap:10px; margin:10px 0; }
-.cvmid hr { flex:1; border:0; border-top:1px solid var(--line); }
+.cvin { display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:2px 2px 12px; border-bottom:1px solid var(--line); }
+.cvin small, .cvo small { font-size:12px; font-weight:700; color:var(--ink3); display:block; line-height:1.2; }
+.cvin small i, .cvo small i { font-style:normal; font-weight:500; }
+.cvin b { font-family:var(--serif); font-size:50px; line-height:1; letter-spacing:-.02em; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cvo { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; padding:10px 2px; border-bottom:1px solid var(--line); text-align:left; }
+.cvo:last-child { border-bottom:0; padding-bottom:2px; }
+.cvo b { font-family:var(--serif); font-size:30px; line-height:1; font-weight:400; color:var(--ink2); white-space:nowrap; }
+.cvo:active b { color:var(--ink); }
+.cvinl { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:12px; font-size:13px; font-weight:700; color:var(--ink2); }
 .swap { width:40px; height:40px; border-radius:50%; background:var(--paper); display:grid; place-items:center; transition:transform 300ms var(--ease); }
-.swap.r { transform:rotate(180deg); }
-select.cur { font:700 13px var(--sans); border:0; background:var(--paper); border-radius:10px; padding:6px 8px; color:var(--ink); }
 .qk { display:flex; gap:6px; overflow-x:auto; margin:12px 0 0; scrollbar-width:none; }
 .qk button { flex:none; padding:8px 12px; border-radius:12px; background:#fff; font-size:13.5px; font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.05); }
 .keys { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:12px; }
@@ -339,8 +340,14 @@ async function weatherFor(day, lat, lng) {
 const BAKED = { GBP: 209.07, USD: 158.1, EUR: 176.96, AUD: 110.02, CAD: 110.94, NZD: 88.54, AED: 43.06, QAR: 43.44, SAR: 42.17, KWD: 510.99, BHD: 420.52, OMR: 411.18, SGD: 123.52, MYR: 38.68, INR: 1.635, PKR: 0.5705, EGP: 3.022, TRY: 3.211, CHF: 189.86 };
 const SYM = { GBP: '£', USD: '$', EUR: '€', AUD: 'A$', CAD: 'C$', NZD: 'NZ$', AED: 'AED ', QAR: 'QAR ', SAR: 'SAR ', KWD: 'KWD ', BHD: 'BHD ', OMR: 'OMR ', SGD: 'S$', MYR: 'RM', INR: '₹', PKR: 'Rs ', EGP: 'E£', TRY: '₺', CHF: 'CHF ' };
 const REGION = { GB: 'GBP', US: 'USD', IE: 'EUR', DE: 'EUR', FR: 'EUR', ES: 'EUR', IT: 'EUR', NL: 'EUR', AU: 'AUD', CA: 'CAD', NZ: 'NZD', AE: 'AED', QA: 'QAR', SA: 'SAR', KW: 'KWD', BH: 'BHD', OM: 'OMR', SG: 'SGD', MY: 'MYR', IN: 'INR', PK: 'PKR', EG: 'EGP', TR: 'TRY', CH: 'CHF' };
-const fx = { cur: ls.get('japan2026.cur', REGION[(navigator.language.split('-')[1] || '').toUpperCase()] || 'GBP'), rates: ls.get('japan2026.fx', { t: Date.parse('2026-10-08T00:02:31Z'), r: BAKED }) };
-const perUnit = () => fx.rates.r[fx.cur] || BAKED[fx.cur] || BAKED.GBP;
+const HOME = ['CAD', 'QAR', 'USD'];
+const NAME = { JPY: 'Japanese yen', CAD: 'Canadian dollar', QAR: 'Qatari riyal', USD: 'US dollar' };
+const guess = REGION[(navigator.language.split('-')[1] || '').toUpperCase()];
+const fx = { cur: ls.get('japan2026.cur3', HOME.includes(guess) ? guess : 'USD'), rates: ls.get('japan2026.fx', { t: Date.parse('2026-10-08T00:02:31Z'), r: BAKED }) };
+if (!HOME.includes(fx.cur)) fx.cur = 'USD';
+const rateOf = (c) => (c === 'JPY' ? 1 : fx.rates.r[c] || BAKED[c]);
+const perUnit = () => rateOf(fx.cur);
+const fmtC = (v, c) => (c === 'JPY' ? '¥' + Math.round(v).toLocaleString('en-GB') : money(v, c));
 const money = (v, cur = fx.cur) => { const d = v >= 100 ? 0 : v >= 10 ? 1 : 2; return (SYM[cur] || cur + ' ') + v.toLocaleString('en-GB', { minimumFractionDigits: d, maximumFractionDigits: d }); };
 const yenTo = (y) => money(y / perUnit());
 async function refreshFx() {
@@ -348,7 +355,10 @@ async function refreshFx() {
   try { const r = await fetch('https://open.er-api.com/v6/latest/JPY'); const j = await r.json(); if (j.result !== 'success') throw 0; const out = {}; for (const c of Object.keys(BAKED)) if (j.rates[c]) out[c] = 1 / j.rates[c]; fx.rates = { t: j.time_last_update_unix * 1000, r: out }; ls.set('japan2026.fx', fx.rates); } catch {}
 }
 /* annotate every ¥ amount in a string with the home-currency value */
-const withFx = (s) => esc(s).replace(/¥\s?([\d,]+)(?:\s?[–-]\s?([\d,]+))?/g, (m, a, b) => { const A = +a.replace(/,/g, ''); if (!A) return m; const B = b ? +b.replace(/,/g, '') : null; return `${m} <span class="cv-in">≈${yenTo(A)}${B ? '–' + yenTo(B).replace(/^[^\d]+/, '') : ''}</span>`; });
+const withFx = (s) => esc(s).replace(/¥\s?([\d,]+)(?:\s?[–-]\s?([\d,]+))?/g, (m, a, b) => { const A = +a.replace(/,/g, ''); if (!A) return m; const B = b ? +b.replace(/,/g, '') : null; return `${m} <button class="cv-in" data-a="${A}" data-b="${B || ''}" aria-label="Converted price, tap to switch currency">${cvText(A, B)}</button>`; });
+const cvText = (A, B) => `≈${yenTo(A)}${B ? '–' + yenTo(B).replace(/^[^\d]+/, '') : ''}`;
+function cycleCur() { fx.cur = HOME[(HOME.indexOf(fx.cur) + 1) % HOME.length]; ls.set('japan2026.cur3', fx.cur); updateInline(); }
+function updateInline() { document.querySelectorAll('.cv-in').forEach((el) => { el.textContent = cvText(+el.dataset.a, el.dataset.b ? +el.dataset.b : null); }); }
 
 /* ═══ city know-how ═══ */
 const KNOW = {
@@ -565,20 +575,22 @@ const PHRASES = [
   ['Does this have pork?', 'これは豚肉が入っていますか', 'kore wa butaniku ga haitte imasu ka'], ['The bill, please', 'お会計お願いします', 'okaikei onegaishimasu'],
   ['Where is the toilet?', 'トイレはどこですか', 'toire wa doko desu ka'], ['Please take me here', 'ここまでお願いします', 'koko made onegaishimasu'], ['Tax-free, please', '免税でお願いします', 'menzei de onegaishimasu'],
 ];
-const kit = { tab: 'yen', amt: '1000', dir: 'jpy', fresh: true };
+const kit = { tab: 'yen', amt: '1000', from: 'JPY', fresh: true };
 function renderKit() {
   const b = document.getElementById('kitb');
   const tabs = [['yen', 'Yen'], ['say', 'Phrases'], ['sos', 'Essentials']].map(([k, l]) => `<button data-tab="${k}" class="${kit.tab === k ? 'on' : ''}">${l}</button>`).join('');
   let inner = '';
   if (kit.tab === 'yen') {
-    const a = +kit.amt || 0, rate = perUnit(); const yen = kit.dir === 'jpy' ? a : a * rate, home = kit.dir === 'jpy' ? a / rate : a;
-    const opts = Object.keys(BAKED).map((c) => `<option ${c === fx.cur ? 'selected' : ''}>${c}</option>`).join('');
-    const top = kit.dir === 'jpy' ? ['JPY', '¥' + Math.round(yen).toLocaleString('en-GB')] : [fx.cur, money(home)];
-    const bot = kit.dir === 'jpy' ? [fx.cur, money(home)] : ['JPY', '¥' + Math.round(yen).toLocaleString('en-GB')];
-    const quick = (kit.dir === 'jpy' ? [500, 1000, 3000, 5000, 10000, 30000] : [5, 10, 20, 50, 100, 500]).map((v) => `<button data-q="${v}" class="press">${kit.dir === 'jpy' ? '¥' + v.toLocaleString('en-GB') : money(v)}</button>`).join('');
-    inner = `<div class="cvbox"><div class="cvrow"><small>${top[0]}</small><b id="cvt">${top[1]}</b></div><div class="cvmid"><hr><button class="swap ${kit.dir === 'jpy' ? '' : 'r'}" data-swap aria-label="Swap direction">${I.swap}</button><hr></div><div class="cvrow out"><select class="cur" id="cur" aria-label="Home currency">${opts}</select><b id="cvb">${bot[1]}</b></div></div>
-      <div class="qk">${quick}</div><div class="keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '00', 0, '⌫'].map((k) => `<button data-k="${k}">${k}</button>`).join('')}</div>
-      <p class="rate">1 ${fx.cur} = ¥${rate.toFixed(rate < 10 ? 3 : 2)} · updated ${new Date(fx.rates.t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</p>`;
+    const a = +kit.amt || 0, yen = a * rateOf(kit.from);
+    const others = ['JPY', ...HOME].filter((c) => c !== kit.from);
+    const shown = kit.from === 'JPY' ? '¥' + (kit.fresh ? Math.round(a).toLocaleString('en-GB') : Number(kit.amt).toLocaleString('en-GB')) : (SYM[kit.from] || '') + kit.amt;
+    const quick = (kit.from === 'JPY' ? [500, 1000, 3000, 5000, 10000, 30000] : [5, 10, 20, 50, 100, 500]).map((v) => `<button data-q="${v}" class="press">${kit.from === 'JPY' ? fmtC(v, 'JPY') : (SYM[kit.from] || '') + v}</button>`).join('');
+    const inl = HOME.map((c) => `<button data-inl="${c}" class="${fx.cur === c ? 'on' : ''}">${c}</button>`).join('');
+    inner = `<div class="cvbox"><div class="cvin"><small>${kit.from}<br><i>${NAME[kit.from]}</i></small><b id="cvt">${shown}</b></div>
+      ${others.map((c) => `<button class="cvo" data-from="${c}"><small>${c}<br><i>${NAME[c]}</i></small><b>${fmtC(yen / rateOf(c), c)}</b></button>`).join('')}</div>
+      <div class="qk">${quick}</div><div class="keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, kit.from === 'JPY' ? '00' : '.', 0, '⌫'].map((k) => `<button data-k="${k}">${k}</button>`).join('')}</div>
+      <div class="cvinl"><span>Prices in the itinerary</span><div class="seg" id="inlseg">${inl}<i></i></div></div>
+      <p class="rate">Tap any currency to type in it. ¥ per 1: ${HOME.map((c) => `${c} ${rateOf(c).toFixed(2)}`).join(' · ')} · updated ${new Date(fx.rates.t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</p>`;
   } else if (kit.tab === 'say') {
     inner = `<div class="phr">${PHRASES.map(([en, jp, ro], i) => `<button data-phr="${i}" class="press"><b>${esc(en)}</b><span>${jp}</span><small>${esc(ro)}</small></button>`).join('')}</div><p class="rate">Tap a phrase to show it full screen.</p>`;
   } else {
@@ -589,11 +601,11 @@ function renderKit() {
       <div class="card wide"><small>Lost something?</small><h3>Ask at a kōban</h3><p>Police boxes on most corners hold lost items. Japan returns an astonishing share of lost wallets and phones.</p></div></div>`;
   }
   b.innerHTML = `<div class="seg kseg" id="ktabs">${tabs}<i></i></div>${inner}<div style="height:12px"></div>`;
-  moveSeg(b.querySelector('#ktabs'));
+  moveSeg(b.querySelector('#ktabs')); moveSeg(b.querySelector('#inlseg'));
 }
 const kitEl = document.getElementById('kit'), scrim = document.getElementById('scrim');
 let kitH = 0; const KY = new Spring(0, (y) => { kitEl.style.transform = `translate3d(0,${y}px,0)`; }, 0.3);
-function openKit() { renderKit(); kitH = kitEl.offsetHeight; KY.set(kitH + 40); scrim.classList.add('on'); KY.to(0, { response: 0.42, damping: 0.86 }); refreshFx().then(() => { if (kit.tab === 'yen' && scrim.classList.contains('on')) renderKit(); }); }
+function openKit() { renderKit(); kitH = kitEl.offsetHeight; KY.set(kitH + 40); scrim.classList.add('on'); KY.to(0, { response: 0.42, damping: 0.86 }); refreshFx().then(() => { updateInline(); if (kit.tab === 'yen' && scrim.classList.contains('on')) renderKit(); }); }
 function closeKit(v = 0) { scrim.classList.remove('on'); KY.to(kitEl.offsetHeight + 40, { response: 0.36, damping: 1, velocity: v }); }
 { const T = tracker(); let d = null;
   kitEl.addEventListener('pointerdown', (e) => { if (e.target.closest('.kit-b') && kitEl.querySelector('.kit-b').scrollTop > 0) return; if (e.target.closest('button,select,a')) return; d = { id: e.pointerId, y0: e.clientY, s0: KY.x, on: false }; T.reset(); });
@@ -602,12 +614,16 @@ function closeKit(v = 0) { scrim.classList.remove('on'); KY.to(kitEl.offsetHeigh
   window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end); }
 kitEl.addEventListener('click', (e) => {
   const t = e.target.closest('[data-tab]'); if (t) { kit.tab = t.dataset.tab; renderKit(); return; }
-  const k = e.target.closest('[data-k]'); if (k) { const v = k.dataset.k; if (kit.fresh) { kit.amt = '0'; kit.fresh = false; } if (v === '⌫') kit.amt = kit.amt.slice(0, -1) || '0'; else kit.amt = (kit.amt === '0' ? '' : kit.amt) + v; if (kit.amt === '00') kit.amt = '0'; if (kit.amt.length > 9) kit.amt = kit.amt.slice(0, 9); renderKit(); return; }
+  const k = e.target.closest('[data-k]'); if (k) { const v = k.dataset.k; if (kit.fresh) { kit.amt = '0'; kit.fresh = false; }
+    if (v === '⌫') kit.amt = kit.amt.slice(0, -1) || '0';
+    else if (v === '.') { if (!kit.amt.includes('.')) kit.amt += '.'; }
+    else if (!/\.\d\d$/.test(kit.amt)) kit.amt = (kit.amt === '0' ? '' : kit.amt) + v;
+    if (kit.amt === '00' || kit.amt === '') kit.amt = '0'; if (kit.amt.length > 9) kit.amt = kit.amt.slice(0, 9); renderKit(); return; }
+  const fr = e.target.closest('[data-from]'); if (fr) { const yen = (+kit.amt || 0) * rateOf(kit.from); const c = fr.dataset.from; const v = yen / rateOf(c); kit.amt = String(c === 'JPY' ? Math.round(v) : Math.round(v * 100) / 100); kit.from = c; kit.fresh = true; renderKit(); return; }
+  const il = e.target.closest('[data-inl]'); if (il) { fx.cur = il.dataset.inl; ls.set('japan2026.cur3', fx.cur); updateInline(); renderKit(); return; }
   const q = e.target.closest('[data-q]'); if (q) { kit.amt = q.dataset.q; kit.fresh = true; renderKit(); return; }
-  if (e.target.closest('[data-swap]')) { const a = +kit.amt || 0; kit.amt = String(kit.dir === 'jpy' ? Math.round((a / perUnit()) * 100) / 100 : Math.round(a * perUnit())); kit.dir = kit.dir === 'jpy' ? 'home' : 'jpy'; kit.fresh = true; renderKit(); return; }
   const p = e.target.closest('[data-phr]'); if (p) { const [en, jp, ro] = PHRASES[+p.dataset.phr]; showJp(jp, ro, en); }
 });
-kitEl.addEventListener('change', (e) => { if (e.target.id === 'cur') { fx.cur = e.target.value; ls.set('japan2026.cur', fx.cur); renderKit(); renderSheet(); renderMapSel(); } });
 scrim.addEventListener('click', () => closeKit());
 const jp = document.getElementById('jpcard');
 function showJp(big, sub, en) { jp.innerHTML = `<button class="x" aria-label="Close">${I.x}</button><p class="k">${esc(big)}</p>${sub ? `<p class="s">${esc(sub)}</p>` : ''}<p class="e">${esc(en || '')}</p>`; jp.classList.add('on'); }
@@ -615,7 +631,6 @@ jp.addEventListener('click', () => jp.classList.remove('on'));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { jp.classList.remove('on'); closeKit(); } });
 
 /* ═══ wiring ═══ */
-function renderMapSel() { stackApi.layout(true); syncPins(); }
 function renderDay({ keepScroll } = {}) {
   prepare(); renderTop(); renderSheet(); renderMap();
   const nx = nextEv(); const first = (tripDay && tripDay.id === day.id) ? (events.find((e) => { const s = span(e); return s && s[1] > nowMin() && !done(e.id); }) || nx) : nx;
@@ -630,6 +645,7 @@ document.getElementById('next').addEventListener('click', () => go(1));
 document.getElementById('dayp').addEventListener('click', () => { if (tripDay) { ui.dayId = tripDay.id; renderDay(); } else window.scrollTo({ top: 0, behavior: 'smooth' }); });
 document.getElementById('kitbtn').addEventListener('click', openKit);
 document.getElementById('sheet').addEventListener('click', (e) => {
+  if (e.target.closest('.cv-in')) { cycleCur(); buzz(4); return; }
   const st = e.target.closest('[data-stamp]'); if (st) { const id = st.dataset.stamp; const was = done(id); store.toggleCheck(id); if (!was) { buzz(12); stackApi.thump(id); } return; }
   const j = e.target.closest('[data-jp]'); if (j) { const pi = PLACES[j.dataset.jp]; showJp(pi.ja, 'ここに行きたいです', `${j.dataset.jp} · "I'd like to go here"`); return; }
   const pk = e.target.closest('[data-pick]'); if (pk && !e.target.closest('a')) { const id = pk.dataset.pick; if (ui.sel !== id) { stackApi.select(id, { scroll: true }); dialApi.focus(id); focusMap(id); } return; }
