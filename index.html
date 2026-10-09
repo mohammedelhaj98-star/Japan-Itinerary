@@ -445,7 +445,7 @@ body.mapmax .mapmax-hint { display:block; }
 .tt-opt i { width:32px; height:32px; border-radius:50%; display:grid; place-items:center; background:var(--ink); color:#fff; font-style:normal; }
 .tt-opt small { display:block; font-size:11.5px; font-weight:500; color:var(--ink3); margin-top:1px; }
 .tt.open .tt-opt { pointer-events:auto; opacity:1; transform:none; }
-.tt.open .tt-opt:nth-of-type(5) { transition-delay:0ms; } .tt.open .tt-opt:nth-of-type(4) { transition-delay:25ms; } .tt.open .tt-opt:nth-of-type(3) { transition-delay:50ms; } .tt.open .tt-opt:nth-of-type(2) { transition-delay:75ms; } .tt.open .tt-opt:nth-of-type(1) { transition-delay:100ms; }
+.tt.open .tt-opt:nth-of-type(6) { transition-delay:0ms; } .tt.open .tt-opt:nth-of-type(5) { transition-delay:12ms; } .tt.open .tt-opt:nth-of-type(4) { transition-delay:25ms; } .tt.open .tt-opt:nth-of-type(3) { transition-delay:50ms; } .tt.open .tt-opt:nth-of-type(2) { transition-delay:75ms; } .tt.open .tt-opt:nth-of-type(1) { transition-delay:100ms; }
 /* the card colours at a glance, on top of the tools */
 .tt-key { pointer-events:none; width:226px; padding:11px 14px 12px; border-radius:20px; background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); color:var(--ink); box-shadow:0 10px 30px -10px rgba(0,0,0,.35), 0 0 0 1px var(--line); opacity:0; transform:translate3d(0,14px,0) scale(.9); transform-origin:right bottom; transition:opacity 160ms ease, transform 260ms var(--ease); }
 .tt.open .tt-key { pointer-events:auto; opacity:1; transform:none; transition-delay:125ms; }
@@ -455,6 +455,7 @@ body.mapmax .mapmax-hint { display:block; }
 .tt-key i { width:12px; height:12px; flex:none; border-radius:4px; background:var(--c); }
 .tt-key .tk { grid-column:1 / -1; }
 .tt-key .tk i { width:16px; height:7px; border-radius:2px; }
+@media (max-height: 620px) { .tt-key { display:none; } } /* short phones: room for the six tools first */
 .tt-opt:active { transform:scale(.96); }
 .tt-veil { position:fixed; inset:0; z-index:885; background:rgba(20,16,10,.18); opacity:0; pointer-events:none; transition:opacity 200ms ease; }
 .tt-veil.on { opacity:1; pointer-events:auto; }
@@ -695,7 +696,9 @@ function renderTop() {
 /* ═══ render: sheet ═══ */
 function passHTML(e, i) {
   const c = catOf(e), n = numOf(e.id), tk = isTicket(e), d = done(e.id);
-  const host = e.place || placeOfEvent(i); const pi0 = placeInfo(host); const pi = pi0 && !e.place ? { ...pi0, area: pi0.area || host.name, key: null } : pi0; const photo = imgUrl(pi);
+  const host = e.place || placeOfEvent(i); const pi0 = placeInfo(host); const pi = pi0 && !e.place ? { ...pi0, area: pi0.area || host.name, key: null } : pi0;
+  // a photo one of us chose for this stop (Photos → Use as this stop's photo) replaces the stock picture
+  const cover = (store.state.covers || {})[e.id]; const photo = cover ? `/api/photos/thumb/${encodeURIComponent(cover)}?s=1200` : imgUrl(pi);
   const color = tk ? legHex(e) : c.c;
   const kind = tk ? (e.travel ? (MODE[e.travel.mode] || [0, 0, 'Transit'])[2] : 'Transit') : c.label;
   const chips = [`<span class="chip">${esc(e.time || 'Any time')}</span>`];
@@ -711,7 +714,7 @@ function passHTML(e, i) {
     ${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
     ${pi && pi.ja && host ? `<button class="say press" data-jp="${esc(host.name)}"><span class="say-l"><b>${esc(pi.ja)}</b>${pi.ro ? `<small>${esc(pi.ro)}</small>` : ''}</span><span class="say-r">Phrases<br>for here${I.chevR}</span></button>` : ''}
     <div class="acts">${e.place ? `<a class="a-dir press" href="${gmDir(e.place, e.travel && e.travel.mode)}" target="_blank" rel="noopener">${I.dir}Directions</a>` : ''}<button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>
-    ${pi && pi.credit && !tk ? `<p class="credit">Photo${pi.area ? ` (${esc(pi.area)})` : ''}: <a href="${esc(pi.file)}" target="_blank" rel="noopener">${esc(pi.credit)}</a></p>` : ''}</div>`;
+    ${pi && pi.credit && !tk && !cover ? `<p class="credit">Photo${pi.area ? ` (${esc(pi.area)})` : ''}: <a href="${esc(pi.file)}" target="_blank" rel="noopener">${esc(pi.credit)}</a></p>` : ''}</div>`;
   const nav = `<div class="pnav"><button class="st" data-step="-1" ${events.length < 2 ? 'disabled' : ''} aria-label="Previous stop">${I.chevL}</button><div class="mid">${pi && pi.key ? `<button class="keyp" data-story="${e.id}"><span>${esc(pi.key)}</span>${pi.story ? '<i>Read the story</i>' : ''}</button>` : `<span class="cnt">${i + 1} of ${events.length}</span>`}</div><button class="st" data-step="1" ${events.length < 2 ? 'disabled' : ''} aria-label="Next stop">${I.chevR}</button></div>`;
   const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}</small><b>${esc(e.title)}</b></div>${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
   const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}</small><b>${esc(e.title)}</b></div></div></div>`;
@@ -1189,7 +1192,7 @@ let swiped = false;
   document.getElementById('sheet').addEventListener('pointerdown', (e) => { const card = e.target.closest('.pass.open'); if (!card || e.target.closest('a,button')) return; sw = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; });
   const end = (e) => { if (!sw || e.pointerId !== sw.id) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y, v = Math.abs(dx) / Math.max(1, performance.now() - sw.t); sw = null; if (Math.abs(dx) > Math.abs(dy) * 1.6 && (Math.abs(dx) > 60 || (Math.abs(dx) > 25 && v > 0.5))) { swiped = true; setTimeout(() => (swiped = false), 80); step(dx < 0 ? 1 : -1); } };
   window.addEventListener('pointerup', end); window.addEventListener('pointercancel', () => (sw = null)); }
-const customSig = () => JSON.stringify(Object.entries(CUSTOM()).map(([k, v]) => [k, { ...v, ts: undefined }]).sort());
+const customSig = () => JSON.stringify([Object.entries(CUSTOM()).map(([k, v]) => [k, { ...v, ts: undefined }]).sort(), store.state.covers || {}]);
 let lastSig = customSig();
 store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig !== lastSig) { lastSig = sig; renderDay({ keepScroll: true, keepSel: true }); if (setp.classList.contains('on')) renderSettings(); return; } stackApi.refresh(); dialApi.refresh(); syncPins(); });
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });
@@ -1305,6 +1308,7 @@ setTimeout(saveAhead, 4000);
   <a class="tt-opt" href="prototypes/tools?v=2"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/></svg></i><span>Bookings<small>Booked &amp; to book</small></span></a>
   <a class="tt-opt" href="prototypes/tools?v=3"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16V11l2-5h10l2 5v5M5 16h14M5 16v2M19 16v2M3 11h18"/><circle cx="8" cy="13.5" r=".6"/><circle cx="16" cy="13.5" r=".6"/></svg></i><span>Taxi cards<small>Show the driver</small></span></a>
   <a class="tt-opt" href="prototypes/tools?v=4"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 3v8M5 3v5a2 2 0 004 0V3M7 11v10M16 21V3c-2 1-3 4-3 8h3"/></svg></i><span>Ideas<small>Food, shops &amp; places</small></span></a>
+  <a class="tt-opt" href="photos"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 016.5 6h1.7l1.5-2h4.6l1.5 2h1.7A2.5 2.5 0 0120 8.5v8a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg></i><span>Photos<small>Everyone's, by day &amp; stop</small></span></a>
   <a class="tt-opt" href="prototypes/tools?v=5"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 4-5.4 7-5.4s5.8 1.8 7 5.4"/></svg></i><span>Settings<small>Profile, colours, money</small></span></a>
   <button class="tt-btn" id="ttBtn" aria-expanded="false" aria-label="Trip tools"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 </nav>

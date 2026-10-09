@@ -15,10 +15,13 @@
 //   POST /api/suggestions             { text, name, day, author, kind? }  (kind: food | shop | place)
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
+//   /api/photos/…                                          trip photos in Google Drive (see lib/photos.js)
 
 // Changes need the group's PIN (the TRIP_PIN secret on the Pages project), sent by the app as an x-trip-pin header.
 // Reading is open, so a guest can look around without being able to change anything. With no TRIP_PIN set, changes are open.
 //
+import { handlePhotos } from '../../lib/photos.js';
+
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
 
@@ -39,11 +42,11 @@ async function readKey(kv, key, fallback) {
 }
 
 async function readState(kv) {
-  const [checks, choices, suggestions, custom, expenses, profiles] = await Promise.all([
-    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv), readProfiles(kv),
+  const [checks, choices, suggestions, custom, expenses, profiles, covers] = await Promise.all([
+    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv), readProfiles(kv), readKey(kv, 'covers', {}),
   ]);
   const updatedAt = await kv.get('updatedAt');
-  return { checks, choices, suggestions, custom, expenses, profiles, updatedAt: updatedAt || null };
+  return { checks, choices, suggestions, custom, expenses, profiles, covers, updatedAt: updatedAt || null };
 }
 
 // Expenses and profiles are single records (like checks and custom), so a normal read never needs a KV list
@@ -117,11 +120,12 @@ export async function onRequest({ request, env }) {
   }
 
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type, x-trip-pin' } });
+    return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type, x-trip-pin, x-photo-token' } });
   }
 
   if (path === 'health') return json({ ok: true, kv: !!kv });
   if (!kv) return json({ error: 'KV namespace TRIP_KV is not bound. See README.' }, 503);
+  if (path === 'photos' || path.startsWith('photos/')) return handlePhotos({ request, env, url, path, kv });
 
   try {
     if (request.method === 'GET' && path === 'version') {

@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 rm -rf dist && mkdir -p dist/japan
 cp -r hub/. dist/
-cp -r index.html manifest.webmanifest sw.js data icons img js vendor prototypes dist/japan/
+cp -r index.html photos.html manifest.webmanifest sw.js data icons img js vendor prototypes dist/japan/
 cat > dist/_redirects <<'EOF'
 /japan   /japan/ 301
 /Japan   /japan/ 301

@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trip photos</title>
+<meta name="color-scheme" content="light">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+@font-face { font-family:'Zen Kaku'; font-weight:500; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
+@font-face { font-family:'Zen Kaku'; font-weight:700; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2) format('woff2'); }
+:root { --ink:#141412; --ink2:#4b4a45; --ink3:#86847c; --paper:#f6f4ef; --line:rgba(20,20,10,.08); --blue:#1e6bff; --red:#e23b2e; --ok:#2f9e57; --heart:#ff375f; --ease:cubic-bezier(.23,1,.32,1);
+  --sans:'Zen Kaku','Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',system-ui,sans-serif; --strip:50px; --cell:120px; }
+* { box-sizing:border-box; }
+html,body { margin:0; }
+body { font-family:var(--sans); font-weight:500; color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased; line-height:1.45; -webkit-tap-highlight-color:transparent; font-variant-numeric:tabular-nums; }
+button { font:inherit; color:inherit; cursor:pointer; touch-action:manipulation; -webkit-user-select:none; user-select:none; border:0; background:none; padding:0; }
+input { font:inherit; }
+a { color:inherit; text-decoration:none; }
+h1,h2,h3,p { margin:0; }
+.press { transition:transform 160ms var(--ease); } .press:active { transform:scale(.96); }
+.page { max-width:520px; margin:0 auto; padding:calc(10px + env(safe-area-inset-top)) 0 130px; }
+
+/* top */
+.bar { display:flex; align-items:center; gap:8px; padding:0 14px; }
+.tback { display:flex; align-items:center; gap:4px; height:36px; padding:0 14px 0 9px; border-radius:999px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:14.5px; font-weight:700; }
+.bar .sp { flex:1; }
+.pill { height:36px; padding:0 14px; border-radius:999px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:14px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+.proto { margin:12px 14px 0; padding:9px 12px; border-radius:14px; background:#fff4d6; color:#7a5a00; font-size:13px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.proto b { font-weight:700; }
+.proto .seg { margin-left:auto; }
+.ph { padding:18px 20px 4px; }
+.ph small { font-size:12px; font-weight:700; color:var(--ink3); letter-spacing:.06em; text-transform:uppercase; }
+.ph h1 { font-size:32px; letter-spacing:-.035em; line-height:1.05; margin-top:2px; font-weight:700; }
+.ph p { font-size:14.5px; color:var(--ink2); margin-top:6px; }
+.seg { display:inline-flex; background:rgba(0,0,0,.06); border-radius:999px; padding:3px; }
+.seg button { padding:5px 12px; font-size:13px; font-weight:700; color:var(--ink3); border-radius:999px; white-space:nowrap; }
+.seg button.on { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+
+/* filters */
+.flt { padding:12px 16px 0; display:grid; gap:10px; }
+.flt .lbl { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); }
+.who-row { display:flex; align-items:center; gap:8px; }
+.who-row .ppl { display:flex; gap:6px; }
+.pp { display:flex; flex-direction:column; align-items:center; gap:3px; width:52px; font-size:11.5px; font-weight:700; color:var(--ink3); }
+.pp i { width:40px; height:40px; border-radius:50%; background:var(--c); color:#fff; font-style:normal; font-size:14px; display:grid; place-items:center; opacity:.45; transition:opacity 160ms, transform 200ms var(--ease), box-shadow 160ms; }
+.pp.on i { opacity:1; box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--c); transform:scale(1.04); }
+.pp.on { color:var(--ink); }
+.who-row .clr { margin-left:auto; font-size:13px; font-weight:700; color:var(--blue); }
+.kind-row { display:flex; align-items:center; gap:8px; }
+.kind-row .seg { flex:none; }
+.kind-row .size { margin-left:auto; height:32px; width:32px; border-radius:10px; background:rgba(0,0,0,.06); display:grid; place-items:center; }
+.search { display:flex; align-items:center; gap:8px; height:42px; padding:0 12px; border-radius:14px; background:#fff; box-shadow:0 0 0 1px var(--line); color:var(--ink3); }
+.search input { flex:1; border:0; outline:0; background:none; font-size:16px; color:var(--ink); min-width:0; }
+.search button { font-size:13px; font-weight:700; color:var(--blue); }
+.fsum { font-size:13px; color:var(--ink3); padding:2px 4px 0; }
+
+/* day strip: jump to any day */
+.dstrip { position:sticky; top:0; z-index:8; margin-top:12px; height:var(--strip); display:flex; align-items:center; gap:6px; padding:0 14px; overflow-x:auto; scrollbar-width:none; background:rgba(246,244,239,.94); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:0 1px 0 var(--line); }
+.dstrip::-webkit-scrollbar { display:none; }
+.dstrip button { flex:none; height:34px; padding:0 11px; border-radius:11px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px; }
+.dstrip button small { font-size:11.5px; color:var(--ink3); font-weight:700; }
+.dstrip button.on { background:var(--ink); color:#fff; box-shadow:none; }
+.dstrip button.on small { color:rgba(255,255,255,.65); }
+.dstrip button.none { opacity:.35; }
+
+/* "on the plan" preview */
+.sec { padding:22px 20px 8px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700; }
+.pass { margin:0 14px; border-radius:22px; overflow:hidden; color:#fff; background:linear-gradient(165deg, color-mix(in srgb, var(--c) 82%, #fff) 0, var(--c) 40%, color-mix(in srgb, var(--c) 80%, #000) 100%); box-shadow:0 14px 30px -18px rgba(0,0,0,.5); }
+.pass .hero { height:150px; background-size:cover; background-position:center; position:relative; overflow:hidden; }
+.pass .hero > img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.pass .hero .chosen { position:absolute; right:12px; top:12px; z-index:1; padding:4px 9px; border-radius:999px; background:rgba(255,255,255,.92); color:#141412; font-size:11.5px; font-weight:700; }
+.pass .hero::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.55)); }
+.pass .t { position:absolute; left:16px; right:16px; bottom:12px; z-index:1; }
+.pass .t small { font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; opacity:.9; }
+.pass .t b { display:block; font-size:22px; line-height:1.1; }
+.pstrip { display:flex; align-items:center; gap:6px; padding:12px 12px 14px; }
+.pstrip .pt { position:relative; width:52px; height:52px; border-radius:12px; overflow:hidden; flex:none; box-shadow:0 0 0 2px rgba(255,255,255,.35); }
+.pstrip .pt img { width:100%; height:100%; object-fit:cover; display:block; }
+.pstrip .cnt { margin-left:auto; height:34px; padding:0 12px; border-radius:999px; background:rgba(255,255,255,.2); font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px; }
+.passnote { padding:8px 22px 0; font-size:13px; color:var(--ink3); }
+
+/* gallery laid out like the plan */
+.day { margin-top:14px; scroll-margin-top:var(--strip); }
+.dh { position:sticky; top:var(--strip); z-index:5; padding:8px 16px 8px 20px; background:rgba(246,244,239,.94); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); display:flex; align-items:center; gap:8px; }
+.dh .tt { min-width:0; flex:1; display:flex; align-items:baseline; gap:8px; }
+.dh b { font-size:20px; letter-spacing:-.02em; white-space:nowrap; }
+.dh small { font-size:13px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.relive { flex:none; height:32px; padding:0 12px 0 10px; border-radius:999px; background:var(--ink); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:5px; }
+.stop { padding:10px 14px 0; }
+.sh { display:flex; align-items:center; gap:8px; padding:0 6px 7px; }
+.sh i { width:9px; height:9px; border-radius:3px; background:var(--c); flex:none; }
+.sh b { font-size:15px; line-height:1.2; }
+.sh small { font-size:12.5px; color:var(--ink3); white-space:nowrap; }
+.sh .n { margin-left:auto; font-size:12.5px; color:var(--ink3); font-weight:700; }
+.sh .plan { font-size:12.5px; font-weight:700; color:var(--blue); white-space:nowrap; }
+/* mosaic: favourites take a double tile; pinch the grid to change how many fit a row */
+.grid { display:grid; grid-template-columns:repeat(var(--cols, 3), 1fr); grid-auto-rows:var(--cell); grid-auto-flow:dense; gap:3px; border-radius:16px; overflow:hidden; touch-action:pan-y; }
+.th { position:relative; overflow:hidden; background:#ddd8cc; }
+.th.big { grid-column:span 2; grid-row:span 2; }
+html.c2 .th.big { grid-column:span 1; grid-row:span 1; } /* two a row: every photo is already big */
+.th img, .th video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; -webkit-user-drag:none; }
+.th .vd { position:absolute; right:6px; bottom:5px; z-index:1; color:#fff; font-size:11.5px; font-weight:700; text-shadow:0 1px 4px rgba(0,0,0,.6); display:flex; align-items:center; gap:3px; }
+.faces { position:absolute; left:5px; bottom:5px; z-index:1; display:flex; }
+.faces i { width:18px; height:18px; border-radius:50%; background:var(--c, #555); color:#fff; font-style:normal; font-size:8.5px; font-weight:700; display:grid; place-items:center; box-shadow:0 0 0 1.5px #fff; margin-right:-4px; }
+.faces i.more { background:#141412; }
+.th .hrt { position:absolute; right:6px; top:5px; z-index:1; color:#fff; font-size:13px; text-shadow:0 1px 4px rgba(0,0,0,.5); }
+.th .new { position:absolute; left:5px; top:5px; z-index:1; padding:2px 6px; border-radius:6px; background:var(--ok); color:#fff; font-size:10.5px; font-weight:700; }
+.th .ck { display:none; position:absolute; right:6px; top:6px; z-index:2; width:22px; height:22px; border-radius:50%; box-shadow:inset 0 0 0 2px #fff, 0 1px 4px rgba(0,0,0,.4); }
+body.sel .th .ck { display:block; }
+body.sel .th .hrt { display:none; }
+.th.on .ck { background:var(--blue); box-shadow:inset 0 0 0 2px #fff; }
+.th.on .ck::after { content:''; position:absolute; left:7px; top:3.5px; width:6px; height:11px; border:solid #fff; border-width:0 2.4px 2.4px 0; transform:rotate(45deg); }
+.th.on img, .th.on video { transform:scale(.88); border-radius:6px; transition:transform 160ms var(--ease); }
+.th.gone { visibility:hidden; }
+.other .sh i { background:#c9c4b8; }
+.empty { margin:18px 14px 0; padding:22px; border-radius:16px; border:1.5px dashed rgba(20,20,10,.15); color:var(--ink3); font-size:14px; text-align:center; }
+.hiddenrow { margin:26px 14px 0; display:flex; justify-content:center; }
+
+/* select bar */
+.selbar { position:fixed; left:0; right:0; bottom:0; z-index:40; padding:10px 12px calc(12px + env(safe-area-inset-bottom)); background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); box-shadow:0 -1px 0 var(--line); display:flex; align-items:center; gap:6px; transform:translateY(110%); transition:transform 280ms var(--ease); }
+body.sel .selbar { transform:none; }
+.selbar .n { flex:1; font-weight:700; font-size:14.5px; min-width:0; }
+.selbar button { height:42px; padding:0 13px; border-radius:14px; background:rgba(0,0,0,.06); font-weight:700; font-size:14px; }
+.selbar button.go { background:var(--ink); color:#fff; }
+.selbar button:disabled { opacity:.4; }
+
+/* sheets */
+.scrim { position:fixed; inset:0; z-index:60; background:rgba(14,12,8,.4); opacity:0; pointer-events:none; transition:opacity 220ms ease; }
+.scrim.on { opacity:1; pointer-events:auto; }
+.sheet { position:fixed; left:0; right:0; bottom:0; z-index:61; max-width:520px; margin:0 auto; max-height:86vh; overflow-y:auto; overscroll-behavior:contain; padding:10px 16px calc(18px + env(safe-area-inset-bottom)); border-radius:28px 28px 0 0; background:#faf8f4; box-shadow:0 -20px 60px -20px rgba(0,0,0,.4); transform:translate3d(0,105%,0); transition:transform 360ms var(--ease); }
+.sheet.on { transform:none; }
+.grab { width:38px; height:5px; border-radius:3px; background:rgba(0,0,0,.16); margin:0 auto 12px; }
+.sh-h { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.sh-h b { font-size:19px; }
+.sh-h button { color:var(--ink3); font-weight:700; }
+.daychips { display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; }
+.daychips::-webkit-scrollbar { display:none; }
+.daychips button { flex:none; padding:7px 12px; border-radius:12px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:13px; font-weight:700; text-align:left; line-height:1.15; }
+.daychips button small { display:block; font-size:11px; font-weight:500; color:var(--ink3); max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.daychips button.on { background:var(--ink); color:#fff; box-shadow:none; }
+.daychips button.on small { color:rgba(255,255,255,.7); }
+.stoplist { background:#fff; border-radius:18px; box-shadow:0 0 0 1px var(--line); overflow:hidden; }
+.stoplist button { display:flex; align-items:center; gap:10px; width:100%; padding:12px 14px; text-align:left; border-top:1px solid var(--line); }
+.stoplist button:first-child { border-top:0; }
+.stoplist button:active { background:#f3f0ea; }
+.stoplist i { width:10px; height:10px; border-radius:3px; background:var(--c); flex:none; }
+.stoplist small { font-size:12.5px; color:var(--ink3); width:66px; flex:none; }
+.stoplist b { font-size:15px; line-height:1.25; }
+.tagppl { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
+.tagppl button { display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 4px; border-radius:18px; background:#fff; box-shadow:0 0 0 1px var(--line); font-weight:700; font-size:14px; }
+.tagppl button i { width:46px; height:46px; border-radius:50%; background:var(--c); color:#fff; font-style:normal; display:grid; place-items:center; opacity:.45; }
+.tagppl button.all { box-shadow:0 0 0 2px var(--ink); } .tagppl button.all i { opacity:1; }
+.tagppl button.some i { opacity:.8; }
+.tagppl button small { font-size:11.5px; color:var(--ink3); font-weight:500; }
+.up-pick { display:flex; flex-direction:column; align-items:center; gap:6px; padding:22px; border-radius:18px; border:1.5px dashed rgba(20,20,10,.2); text-align:center; color:var(--ink2); font-size:14px; }
+.up-pick b { font-size:16px; color:var(--ink); }
+.up-pick input { display:none; }
+.uprow { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
+.uprow .pt { position:relative; width:46px; height:46px; border-radius:10px; flex:none; overflow:hidden; background:#ddd8cc; }
+.uprow .pt img, .uprow .pt video { width:100%; height:100%; object-fit:cover; display:block; }
+.uprow .m { flex:1; min-width:0; }
+.uprow .m b { display:block; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.uprow .m small { display:block; font-size:12.5px; color:var(--ink3); }
+.uprow .m small em { font-style:normal; color:var(--ink); font-weight:700; }
+.prog { height:4px; border-radius:2px; background:rgba(0,0,0,.08); margin-top:6px; overflow:hidden; }
+.prog i { display:block; height:100%; width:0; background:var(--blue); transition:width 200ms linear; }
+.uprow.done .prog i { background:var(--ok); }
+.honest { font-size:12.5px; color:var(--ink3); margin-top:12px; }
+
+/* full-screen viewer */
+.vw { position:fixed; inset:0; z-index:80; background:#000; touch-action:none; visibility:hidden; overflow:hidden; -webkit-user-select:none; user-select:none; }
+.vw .info { -webkit-user-select:text; user-select:text; }
+.vw.on { visibility:visible; }
+.vw .track { position:absolute; inset:0; display:flex; will-change:transform; transition:transform 320ms var(--ease); }
+.vw .track.up { transform:translate3d(0,-26vh,0); }
+.vw .slide { flex:none; position:relative; width:100vw; height:100%; }
+.vw .frame { position:absolute; overflow:hidden; will-change:transform; transform-origin:50% 50%; background:#111; }
+.vw .frame img, .vw .frame video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; -webkit-user-drag:none; }
+.vw .frame.real img, .vw .frame.real video { object-fit:contain; }
+.vw .playbadge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:68px; height:68px; border-radius:50%; background:rgba(0,0,0,.45); display:grid; place-items:center; color:#fff; }
+.vw .top { position:absolute; left:0; right:0; top:0; z-index:3; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:calc(12px + env(safe-area-inset-top)) 14px 14px; color:#fff; background:linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0)); transition:opacity 200ms; }
+.vw .top .mid { text-align:center; flex:1; min-width:0; line-height:1.2; }
+.vw .top .mid b { display:block; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vw .top .mid small { font-size:12px; opacity:.7; }
+.vw .rb { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.14); display:grid; place-items:center; flex:none; color:#fff; }
+/* the heart: a floating button under the right thumb, just above Info */
+.vw .hfab { position:absolute; right:14px; bottom:calc(100% + 4px); width:58px; height:58px; border-radius:50%; background:rgba(255,255,255,.16); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); display:grid; place-items:center; color:#fff; box-shadow:0 10px 26px -12px rgba(0,0,0,.7); }
+.vw .hfab svg { width:28px; height:28px; overflow:visible; }
+.vw .hfab path { fill:transparent; stroke:#fff; stroke-width:2.1; stroke-linejoin:round; transition:fill 160ms ease, stroke 160ms ease; }
+.vw .hfab.on { background:rgba(255,55,95,.22); }
+.vw .hfab.on path { fill:var(--heart); stroke:var(--heart); }
+.vw .hfab .n { position:absolute; left:50%; top:calc(100% + 1px); transform:translateX(-50%); font-size:11.5px; font-weight:700; white-space:nowrap; text-shadow:0 1px 4px rgba(0,0,0,.6); }
+.vw .hfab[hidden] { display:none; }
+.mini { position:fixed; z-index:90; width:16px; height:16px; margin:-8px 0 0 -8px; pointer-events:none; color:var(--heart); }
+.bigheart { position:absolute; left:50%; top:46%; z-index:2; width:120px; height:120px; margin:-60px 0 0 -60px; pointer-events:none; color:#fff; filter:drop-shadow(0 6px 24px rgba(255,55,95,.55)); }
+.cov { position:absolute; left:5px; top:5px; z-index:1; padding:2px 7px 2px 5px; border-radius:7px; background:#fff; color:#141412; font-size:10.5px; font-weight:700; display:flex; align-items:center; gap:3px; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+.th .cov + .new { top:26px; }
+.vw .cap { position:absolute; left:0; right:0; bottom:0; z-index:3; padding:22px 0 calc(10px + env(safe-area-inset-bottom)); color:#fff; background:linear-gradient(0deg, rgba(0,0,0,.75), rgba(0,0,0,0)); transition:opacity 200ms, transform 320ms var(--ease); }
+.vw .capt { display:flex; align-items:center; gap:10px; padding:0 16px; }
+.vw .capt .faces { position:static; margin-right:4px; }
+.vw .capt .faces i { width:24px; height:24px; font-size:10px; box-shadow:0 0 0 2px #000; }
+.vw .capt b { display:block; font-size:14.5px; }
+.vw .capt small { display:block; font-size:12.5px; opacity:.75; }
+.vw .capt { padding-right:16px; }
+.vw .capt .up { margin-left:auto; display:flex; flex-direction:column; align-items:center; font-size:11px; font-weight:700; opacity:.8; }
+/* filmstrip */
+.fs { display:flex; gap:3px; overflow-x:auto; padding:12px 50vw 2px; scrollbar-width:none; scroll-behavior:smooth; }
+.fs::-webkit-scrollbar { display:none; }
+.fs button { position:relative; flex:none; width:34px; height:46px; border-radius:5px; overflow:hidden; opacity:.55; transition:width 220ms var(--ease), opacity 160ms; }
+.fs button img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+.fs button.on { width:58px; opacity:1; box-shadow:0 0 0 2px #fff; }
+.vw.chrome-off .top, .vw.chrome-off .cap { opacity:0; pointer-events:none; }
+.vw.showinfo .cap { transform:translateY(40px); opacity:0; pointer-events:none; }
+/* swipe-up info */
+.info { position:absolute; left:0; right:0; bottom:0; z-index:4; max-height:62vh; overflow-y:auto; padding:10px 16px calc(18px + env(safe-area-inset-bottom)); border-radius:24px 24px 0 0; background:#1b1a18; color:#fff; transform:translate3d(0,105%,0); transition:transform 320ms var(--ease); }
+.vw.showinfo .info { transform:none; }
+.info .grab { background:rgba(255,255,255,.25); }
+.info h3 { font-size:19px; line-height:1.2; }
+.info .meta { font-size:13px; opacity:.7; margin-top:3px; }
+.info .desc { font-size:14px; opacity:.85; margin-top:10px; line-height:1.45; }
+.info .lbl { font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; opacity:.55; margin:16px 0 8px; }
+.info .tagrow { display:flex; gap:8px; }
+.info .tagrow button { display:flex; flex-direction:column; align-items:center; gap:4px; width:58px; font-size:12px; font-weight:700; color:rgba(255,255,255,.6); }
+.info .tagrow button i { width:42px; height:42px; border-radius:50%; background:var(--c); color:#fff; font-style:normal; display:grid; place-items:center; opacity:.35; transition:opacity 160ms, box-shadow 160ms; }
+.info .tagrow button.on { color:#fff; } .info .tagrow button.on i { opacity:1; box-shadow:0 0 0 2px #1b1a18, 0 0 0 4px var(--c); }
+.info .tagrow[disabled] button { pointer-events:none; }
+.info .vmap { height:150px; border-radius:16px; overflow:hidden; margin-top:4px; background:#2a2926; }
+.info .row { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.info .row button.chosen { background:#fff; color:#141412; }
+.info .row a, .info .row button { height:40px; padding:0 14px; border-radius:12px; background:rgba(255,255,255,.12); color:#fff; font-size:14px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+.info .kv { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:13.5px; margin-top:4px; }
+.info .kv span:nth-child(odd) { opacity:.55; }
+/* the flyer: the photo growing out of / back into its thumbnail */
+.flyer { position:fixed; z-index:85; overflow:hidden; pointer-events:none; background:#111; }
+.flyer img, .flyer video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.flyer.real img, .flyer.real video { object-fit:contain; }
+
+/* relive the day: a story */
+.story { position:fixed; inset:0; z-index:95; background:#000; color:#fff; visibility:hidden; touch-action:none; overflow:hidden; -webkit-user-select:none; user-select:none; }
+.story.on { visibility:visible; }
+.story .bars { position:absolute; left:10px; right:10px; top:calc(10px + env(safe-area-inset-top)); z-index:3; display:flex; gap:4px; }
+.story .bars i { flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.3); overflow:hidden; }
+.story .bars i b { display:block; height:100%; width:0; background:#fff; }
+.story .shead { position:absolute; left:14px; right:14px; top:calc(22px + env(safe-area-inset-top)); z-index:3; display:flex; align-items:center; gap:10px; }
+.story .shead b { font-size:14.5px; } .story .shead small { font-size:12.5px; opacity:.7; display:block; }
+.story .shead .rb { margin-left:auto; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.14); display:grid; place-items:center; }
+.story .stage { position:absolute; inset:0; }
+.story .it { position:absolute; inset:0; opacity:0; transition:opacity 420ms ease; }
+.story .it.on { opacity:1; }
+.story .it img, .story .it video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; pointer-events:none; -webkit-user-drag:none; }
+.vw img, .flyer img, .story img { -webkit-user-drag:none; } .vw .frame img { pointer-events:none; }
+.story .it.on img { animation:kb var(--dur, 3s) linear both; }
+@keyframes kb { from { transform:scale(1.02) translate3d(0,0,0); } to { transform:scale(1.14) translate3d(-2%,-1.5%,0); } }
+.story .it .cap2 { position:absolute; left:16px; right:16px; bottom:calc(26px + env(safe-area-inset-bottom)); font-size:14px; font-weight:700; text-shadow:0 1px 8px rgba(0,0,0,.6); display:flex; align-items:center; gap:8px; }
+.story .it .cap2 .faces { position:static; }
+.story .card2 { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:flex-end; padding:0 24px calc(90px + env(safe-area-inset-bottom)); background:radial-gradient(120% 80% at 20% 0%, color-mix(in srgb, var(--c) 70%, #fff) 0, var(--c) 45%, color-mix(in srgb, var(--c) 60%, #000) 100%); }
+.story .card2 small { font-size:13px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; opacity:.85; }
+.story .card2 h2 { font-size:40px; line-height:1.02; letter-spacing:-.03em; margin-top:8px; }
+.story .card2 p { font-size:15px; opacity:.85; margin-top:12px; }
+.story .card2 .go { margin-top:22px; align-self:flex-start; height:46px; padding:0 18px; border-radius:14px; background:#fff; color:#141412; font-weight:700; font-size:15px; }
+.story.paused .bars { opacity:.5; }
+
+.toast { position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:99; transform:translate(-50%, 20px); opacity:0; pointer-events:none; display:flex; align-items:center; gap:12px; padding:10px 10px 10px 16px; border-radius:16px; background:#141412; color:#fff; font-size:14px; white-space:nowrap; transition:opacity 200ms, transform 260ms var(--ease); }
+.toast.on { opacity:1; transform:translate(-50%, 0); pointer-events:auto; }
+.toast button { height:32px; padding:0 12px; border-radius:10px; background:rgba(255,255,255,.16); color:#fff; font-weight:700; }
+.fab { position:fixed; right:max(16px, calc(50% - 244px)); bottom:calc(20px + env(safe-area-inset-bottom)); z-index:30; height:56px; padding:0 22px 0 18px; border-radius:28px; background:var(--ink); color:#fff; font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow:0 14px 30px -10px rgba(0,0,0,.5); transition:transform 280ms var(--ease); }
+body.sel .fab, body.guest .fab { transform:translateY(160%); }
+body.guest [data-select] { display:none; }
+@media (prefers-reduced-motion: reduce) { .sheet, .selbar, .toast, .fab, .vw .track, .info { transition-duration:1ms; } .story .it.on img { animation:none; } }
+/* signing in to the photos (guests) and connecting Google Drive (once) */
+.gate { margin:18px 14px 0; padding:22px 20px; border-radius:24px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.04), 0 14px 30px -20px rgba(0,0,0,.35); }
+.gate h2 { font-size:22px; letter-spacing:-.02em; }
+.gate p { font-size:14.5px; color:var(--ink2); margin-top:8px; }
+.gate .go { display:inline-flex; align-items:center; gap:8px; margin-top:16px; height:48px; padding:0 18px; border-radius:16px; background:var(--ink); color:#fff; font-weight:700; font-size:15.5px; }
+.gate ol { margin:12px 0 0; padding-left:20px; font-size:14px; color:var(--ink2); }
+.gate ol li { margin-top:4px; }
+.dots { display:flex; justify-content:center; gap:18px; margin:22px 0 8px; }
+.dots i { width:15px; height:15px; border-radius:50%; box-shadow:inset 0 0 0 2px var(--ink); transition:background 120ms ease; }
+.dots i.on { background:var(--ink); }
+.dots.bad { animation:shake 360ms var(--ease); } .dots.bad i { box-shadow:inset 0 0 0 2px var(--red); }
+@keyframes shake { 20% { transform:translateX(-10px); } 40% { transform:translateX(9px); } 60% { transform:translateX(-6px); } 80% { transform:translateX(3px); } }
+.pin-msg { min-height:22px; text-align:center; font-size:14px; font-weight:700; color:var(--red); }
+.pad { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:8px; }
+.pad button { height:60px; border-radius:20px; background:#f3f0ea; font-size:24px; font-weight:700; }
+.pad button:active { background:#e6e2d9; }
+.pad button.k2 { background:none; font-size:15px; color:var(--ink2); }
+.banner { margin:14px 14px 0; padding:12px 14px; border-radius:16px; background:#e8f0ff; color:#1d3d7a; font-size:14px; display:flex; align-items:center; gap:10px; }
+.banner b { font-weight:700; }
+.banner button { margin-left:auto; flex:none; height:34px; padding:0 12px; border-radius:11px; background:#1e6bff; color:#fff; font-weight:700; font-size:13.5px; }
+.th .ph0 { position:absolute; inset:0; display:grid; place-items:center; color:var(--ink3); font-size:11px; font-weight:700; text-align:center; padding:6px; }
+.uprow .st { font-size:12.5px; font-weight:700; color:var(--ink3); }
+.uprow.done .st { color:var(--ok); } .uprow.err .st { color:var(--red); }
+.upbar { position:fixed; left:12px; right:12px; bottom:calc(86px + env(safe-area-inset-bottom)); z-index:35; max-width:496px; margin:0 auto; padding:10px 14px; border-radius:16px; background:#141412; color:#fff; font-size:13.5px; display:flex; align-items:center; gap:10px; box-shadow:0 14px 30px -12px rgba(0,0,0,.5); }
+.upbar[hidden] { display:none; }
+.upbar .prog { flex:1; margin:0; background:rgba(255,255,255,.18); }
+.upbar button { color:#9cc0ff; font-weight:700; }
+[hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main class="page">
+  <div class="bar"><a class="tback press" href="./" data-home><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Trip</a><span class="sp"></span><button class="pill press" data-select hidden>Select</button></div>
+  <header class="ph"><small>Japan 2026 · photos</small><h1>The trip, in photos</h1><p>Everyone's photos and videos, filed under the stop where they were taken.</p></header>
+  <div id="gate"></div>
+  <div id="main" hidden>
+    <div class="flt">
+      <div><p class="lbl">Who's in it</p><div class="who-row"><div class="ppl" id="ppl"></div><button class="clr" data-clrppl hidden>Clear</button></div></div>
+      <div class="kind-row"><span class="seg" id="kindseg"><button data-kind="all" class="on">All</button><button data-kind="photo">Photos</button><button data-kind="video">Videos</button><button data-kind="fav">♥ Favourites</button></span>
+        <button class="size press" data-size aria-label="Photo size"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button></div>
+      <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><input id="q" type="search" placeholder="Search a stop, like Nara or Dotonbori" autocomplete="off" enterkeyhint="search"><button data-clrq hidden>Clear</button></label>
+      <p class="fsum" id="fsum"></p>
+    </div>
+    <div id="resume"></div>
+    <nav class="dstrip" id="dstrip" aria-label="Jump to a day"></nav>
+    <div id="content"></div>
+  </div>
+</main>
+<button class="fab press" id="fab" data-upload hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 19V6M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Upload</button>
+<div class="upbar" id="upbar" hidden><span id="uptxt">Uploading…</span><div class="prog"><i id="upprog"></i></div><button data-upload>Details</button></div>
+<div class="selbar" id="selbar"><span class="n" id="seln">Tap or drag across</span><button data-tag disabled>Tag</button><button data-hide disabled>Hide</button><button class="go" data-assign disabled>Assign</button><button data-selx>Done</button></div>
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="sheet" aria-modal="true" role="dialog"></section>
+<div class="vw" id="vw" role="dialog" aria-label="Photo viewer"><div class="track" id="track"></div>
+  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><span style="width:40px"></span></div>
+  <div class="cap"><button class="hfab" data-heart aria-label="Love this photo" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-7.6-10.4A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.6 2.7c0 5.8-7.6 10.4-7.6 10.4z"/></svg><span class="n" id="hcount"></span></button><div class="capt" id="vcapt"></div><div class="fs" id="fs"></div></div>
+  <section class="info" id="vinfo"></section></div>
+<div class="story" id="story"><div class="stage" id="stage"></div><div class="bars" id="sbars"></div><div class="shead" id="shead"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script type="module">
+import { DAYS } from './data/itinerary.js?v=9';
+import { CAT } from './js/colors.js?v=9';
+import { stopsOf, jstOf, matchStop, fmtMin } from './js/plan-time.js?v=9';
+import { readTaken } from './js/exif.js?v=9';
+
+/* Trip photos, kept in Google Drive. The server (lib/photos.js) lists them, keeps who's in them, hearts and their stop
+   as Drive file properties, and starts uploads that the phone sends straight to Google. */
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = (s) => document.querySelector(s);
+const TRIP = 'japan';
+const PEOPLE = { naf: { name: 'Naf', ini: 'N', c: '#2c4f86', couple: 'nasa' }, sara: { name: 'Sara', ini: 'S', c: '#6f4f98', couple: 'nasa' }, mariam: { name: 'Mariam', ini: 'Ma', c: '#cc5a26', couple: 'mm' }, m: { name: 'Mo', ini: 'Mo', c: '#b94b74', couple: 'mm' } };
+const PIDS = Object.keys(PEOPLE);
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch {} };
+const ME = (() => { try { return JSON.parse(lsGet('trips.me')); } catch { return null; } })();
+const PIN = () => lsGet('trips.pin') || '';
+const MEMBER = !!(PEOPLE[ME] && PIN()); // one of the four, with the PIN on this phone: can upload and change things
+const member = () => MEMBER;
+const JST = 9 * 3600e3;
+const dayById = Object.fromEntries(DAYS.map((d) => [d.id, d]));
+const fmtDate = (d) => new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+const kindColor = (s) => { const k = /dinner|lunch|breakfast|market|ramen|sushi|food|cafe|izakaya|okonomiyaki/i.test(s.title) ? 'food' : /shop|vintage|streetwear|don quijote|mall|arcade|ginza|uniqlo|street/i.test(s.title) ? 'shop' : /train|bus|subway|walk|→|keihan|shinkansen|transfer|taxi|flight/i.test(s.title) ? 'transit' : /hotel|check/i.test(s.title) ? 'hotel' : 'sight'; return CAT[k][0]; };
+const stopCache = {}; const stopsOfDay = (id) => (stopCache[id] = stopCache[id] || (dayById[id] ? stopsOf(dayById[id]) : []));
+const stopOf = (p) => (p.stop ? stopsOfDay(p.day).find((s) => s.id === p.stop) || null : null);
+const faces = (ids) => (ids && ids.length ? `<span class="faces">${ids.slice(0, 3).map((id) => `<i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>`).join('')}${ids.length > 3 ? `<i class="more">+${ids.length - 3}</i>` : ''}</span>` : '');
+const isVid = (p) => !!p.isVideo;
+const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
+const names = (ids) => { const n = ids.map((id) => PEOPLE[id].name); return n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' & ' + n[n.length - 1]; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* ── talking to the server ── */
+let TOKEN = lsGet('trips.photok') || '';
+async function api(path, body) {
+  const r = await fetch('/api/photos' + path, { method: body ? 'POST' : 'GET', cache: 'no-store',
+    headers: { ...(body ? { 'content-type': 'application/json', 'x-trip-pin': PIN() } : {}), ...(TOKEN ? { 'x-photo-token': TOKEN } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.error || 'HTTP ' + r.status); e.status = r.status; e.d = d; throw e; }
+  return d;
+}
+const media = (p, kind, extra = '') => `/api/photos/${kind}/${p.id}?k=${encodeURIComponent(TOKEN)}${extra}`;
+// a picture of a photo at a size: Google's own rendition when we have its link (fast, and it turns HEIC into JPEG), our proxy otherwise
+const pic = (p, s) => (p.thumb ? p.thumb.replace(/=s\d+(-[a-z0-9-]+)?$/i, '') + '=s' + s : media(p, 'thumb', '&s=' + s));
+const imgTag = (p, s = 600) => p.local
+  ? (p.isVideo ? `<video src="${p.local}#t=0.1" muted playsinline preload="metadata"></video>` : `<img draggable="false" src="${p.local}" alt="" loading="lazy">`)
+  : (p.thumb || !p.isVideo ? `<img draggable="false" src="${pic(p, s)}" data-fb="${media(p, 'thumb', '&s=' + s)}" alt="" loading="lazy">` : '<span class="ph0">Video<br>(picture coming)</span>');
+// Google's links expire after a while: fall back to our own copy of the picture
+document.addEventListener('error', (e) => { const im = e.target; if (im.tagName === 'IMG' && im.dataset.fb && im.src !== location.origin + im.dataset.fb && !im.src.endsWith(im.dataset.fb)) im.src = im.dataset.fb; }, true);
+
+let photos = [], covers = {};
+const norm = (x) => ({ id: x.id, name: x.name, mime: x.mime, day: x.day, stop: x.stop || null, takenAt: x.t, by: x.by, in: x.in || [], hearts: x.hearts || [], hidden: !!x.hidden,
+  ar: x.w && x.h ? x.w / x.h : null, thumb: x.thumb, isVideo: /^video\//.test(x.mime || ''), dur: x.dur });
+async function load() {
+  const d = await api('?trip=' + TRIP);
+  const local = Object.fromEntries(photos.filter((p) => p.local).map((p) => [p.id, p.local]));
+  photos = d.photos.map(norm).map((p) => (local[p.id] && !p.thumb ? { ...p, local: local[p.id] } : p));
+  covers = d.covers || {};
+}
+const failed = (e) => { toast(e && e.status === 403 ? 'The PIN on this phone was refused. Open the trip to enter it again.' : 'Couldn\'t save that. Check your connection and try again.'); load().then(() => render()).catch(() => {}); };
+const save = (body) => api('/update', { trip: TRIP, ...body }).catch(failed);
+
+/* ── state ── */
+const ui = { people: new Set(), kind: 'all', q: '', sel: new Set(), cols: 3 };
+const isCover = (p) => p.stop && covers[p.stop] === p.id;
+const qOk = (p) => { if (!ui.q) return true; const s = stopOf(p), d = dayById[p.day]; const hay = `${s ? s.title : 'other moments'} ${d ? d.title + ' day ' + d.n : ''}`.toLowerCase(); return ui.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w)); };
+const visible = () => photos.filter((p) => !p.hidden && dayById[p.day]
+  && (ui.kind === 'all' || (ui.kind === 'video' ? isVid(p) : ui.kind === 'photo' ? !isVid(p) : p.hearts.length))
+  && [...ui.people].every((id) => p.in.includes(id)) && qOk(p));
+const thumb = (p, ix, big) => `<button class="th ${big ? 'big' : ''}" data-pid="${p.id}" data-ix="${ix}" aria-label="Photo">${imgTag(p, big ? 800 : 400)}${isVid(p) ? `<span class="vd"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>${dur(p.dur)}</span>` : ''}${faces(p.in)}${p.hearts.length ? '<span class="hrt">♥</span>' : ''}${isCover(p) ? '<span class="cov">★ Plan photo</span>' : ''}${p.fresh ? '<span class="new">New</span>' : ''}<span class="ck"></span></button>`;
+
+/* ── filters ── */
+$('#ppl').innerHTML = PIDS.map((id) => `<button class="pp press" data-pp="${id}" aria-pressed="false"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}</button>`).join('');
+function syncFilters() {
+  document.querySelectorAll('[data-pp]').forEach((b) => { const on = ui.people.has(b.dataset.pp); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  $('[data-clrppl]').hidden = !ui.people.size;
+  document.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('on', b.dataset.kind === ui.kind));
+  $('[data-clrq]').hidden = !ui.q;
+}
+
+/* ── the gallery, laid out like the plan ── */
+let order = [];
+function setCellSize() {
+  const gw = Math.min(innerWidth, 520) - 28; const cell = Math.floor((gw - (ui.cols - 1) * 3) / ui.cols);
+  const r = document.documentElement; r.style.setProperty('--cols', ui.cols); r.style.setProperty('--cell', cell + 'px'); r.classList.toggle('c2', ui.cols < 3);
+}
+function setCols(n, at) {
+  if (n === ui.cols) return;
+  const el = at && at.closest && at.closest('.th, .stop, .day'); const before = el ? el.getBoundingClientRect().top : null;
+  ui.cols = n; setCellSize();
+  if (el && el.isConnected) window.scrollBy(0, el.getBoundingClientRect().top - before);
+}
+function render() {
+  const y = scrollY; order = []; setCellSize();
+  const vis = visible(); const byDay = {};
+  for (const p of vis) (byDay[p.day] = byDay[p.day] || []).push(p);
+  const total = photos.filter((p) => !p.hidden).length;
+  $('#fsum').textContent = !total ? '' : `${vis.length} ${vis.length === 1 ? 'photo' : 'photos'}${ui.people.size ? ` with ${names([...ui.people])}` : ''}${ui.kind === 'video' ? ' (videos)' : ui.kind === 'photo' ? ' (no videos)' : ui.kind === 'fav' ? ' marked ♥' : ''}${ui.q ? ` matching “${ui.q}”` : ''}`;
+  const tripDays = DAYS.filter((d) => photos.some((p) => p.day === d.id && !p.hidden));
+  $('#dstrip').innerHTML = tripDays.map((d) => `<button data-jump="${d.id}" class="${byDay[d.id] ? '' : 'none'}">Day ${d.n}<small>${(byDay[d.id] || []).length}</small></button>`).join('');
+  $('#dstrip').hidden = !tripDays.length;
+  const days = DAYS.filter((d) => byDay[d.id]).map((d) => {
+    const ps = byDay[d.id].sort((a, b) => a.takenAt - b.takenAt);
+    const stops = stopsOfDay(d.id).filter((s) => ps.some((p) => p.stop === s.id));
+    const block = (title, small, c, list, sid) => {
+      const start = order.length; order.push(...list);
+      const loved = list.filter((p) => p.hearts.length >= 2); const big = new Set(loved.length ? loved.slice(0, 2).map((p) => p.id) : list.length >= 6 ? [list[0].id] : []);
+      return `<div class="stop ${sid ? '' : 'other'}"><div class="sh"><i style="--c:${c}"></i><span><b>${esc(title)}</b> ${small ? `<small>${esc(small)}</small>` : ''}</span><span class="n">${list.length}</span>${sid ? `<a class="plan" href="./?d=${d.id}">Plan ›</a>` : ''}</div>
+        <div class="grid">${list.map((p, i) => thumb(p, start + i, big.has(p.id))).join('')}</div></div>`; };
+    const others = ps.filter((p) => !stopOf(p));
+    return `<section class="day" id="day-${d.id}" data-day="${d.id}"><div class="dh"><span class="tt"><b>Day ${d.n}</b><small>${fmtDate(d)} · ${esc(d.title)}</small></span><button class="relive press" data-relive="${d.id}"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>Relive</button></div>
+      ${stops.map((s) => block(s.title, s.time, kindColor(s), ps.filter((p) => p.stop === s.id), s.id)).join('')}
+      ${others.length ? block('Other moments', 'between stops', '#c9c4b8', others, null) : ''}</section>`;
+  }).join('');
+  const nHidden = photos.filter((p) => p.hidden).length;
+  const empty = !total ? `<div class="gate"><h2>No photos yet</h2><p>${member() ? 'Tap Upload and pick photos and videos from your phone. Each one is filed under the day and stop it was taken at, in Google Drive.' : 'When the four of them upload photos, they show up here, sorted by day and stop.'}</p></div>`
+    : `<p class="empty">No photos ${ui.people.size ? `with ${names([...ui.people])} ` : ''}${ui.q ? `matching “${esc(ui.q)}” ` : ''}yet.</p>`;
+  $('#content').innerHTML = (days || empty) + (nHidden && member() ? `<div class="hiddenrow"><button class="pill press" data-unhideall>${nHidden} hidden · Show them again</button></div>` : '');
+  for (const id of ui.sel) { const el = document.querySelector(`.th[data-pid="${id}"]`); if (el) el.classList.add('on'); }
+  syncFilters();
+  window.scrollTo(0, y);
+  markDay();
+}
+function currentDay() { const secs = [...document.querySelectorAll('.day')]; let cur = secs[0]; for (const s of secs) if (s.getBoundingClientRect().top < 120) cur = s; return cur ? cur.dataset.day : null; }
+function markDay() {
+  const cur = currentDay(); document.querySelectorAll('[data-jump]').forEach((b) => b.classList.toggle('on', b.dataset.jump === cur));
+  const on = document.querySelector('[data-jump].on'); if (on) { const st = $('#dstrip'); const want = on.offsetLeft - st.clientWidth / 2 + on.offsetWidth / 2; if (Math.abs(st.scrollLeft - want) > 40) st.scrollTo({ left: want, behavior: 'smooth' }); }
+}
+let scrollRaf = 0; addEventListener('scroll', () => { if (scrollRaf) return; scrollRaf = requestAnimationFrame(() => { scrollRaf = 0; markDay(); }); }, { passive: true });
+addEventListener('resize', () => setCellSize());
+
+/* ── pinch the grid to change the size (2 to 6 a row) ── */
+let gp = null;
+document.addEventListener('touchstart', (e) => { if (e.touches.length !== 2 || vw.classList.contains('on') || story.classList.contains('on') || !e.target.closest('#content')) return; const [a, b] = e.touches; gp = { d0: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), c0: ui.cols, at: document.elementFromPoint((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2) }; }, { passive: true });
+document.addEventListener('touchmove', (e) => {
+  if (!gp || e.touches.length !== 2) return; e.preventDefault();
+  const [a, b] = e.touches; const r = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) / gp.d0;
+  setCols(Math.max(2, Math.min(6, Math.round(gp.c0 / r))), gp.at);
+}, { passive: false });
+document.addEventListener('touchend', (e) => { if (gp && e.touches.length < 2) { gp = null; toast(`${ui.cols} photos a row`); } });
+document.addEventListener('gesturestart', (e) => { if (e.target.closest && e.target.closest('#content')) e.preventDefault(); });
+
+/* ── toast with undo ── */
+let undoFn = null, toastT = 0;
+function toast(msg, undo) { undoFn = undo || null; $('#toast').innerHTML = `<span>${esc(msg)}</span>${undo ? '<button data-undo>Undo</button>' : ''}`; $('#toast').classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $('#toast').classList.remove('on'), undo ? 5000 : 2600); }
+$('#toast').addEventListener('click', (e) => { if (e.target.closest('[data-undo]') && undoFn) { const f = undoFn; undoFn = null; f(); $('#toast').classList.remove('on'); render(); } });
+
+/* ── select: tap, or drag sideways across photos ── */
+const setSel = (on) => { document.body.classList.toggle('sel', on); if (!on) ui.sel.clear(); render(); updSel(); };
+function updSel() { const n = ui.sel.size; $('#seln').textContent = n ? `${n} selected` : 'Tap or drag across'; ['tag', 'assign', 'hide'].forEach((k) => ($(`#selbar [data-${k}]`).disabled = !n)); }
+const paintSel = () => { document.querySelectorAll('.grid .th').forEach((el) => el.classList.toggle('on', ui.sel.has(el.dataset.pid))); updSel(); };
+let drag = null;
+$('#content').addEventListener('pointerdown', (e) => {
+  const th = e.target.closest('.grid .th'); if (!th || !document.body.classList.contains('sel') || !e.isPrimary) return;
+  drag = { x: e.clientX, y: e.clientY, start: +th.dataset.ix, mode: null, on: !ui.sel.has(th.dataset.pid), before: new Set(ui.sel), id: e.pointerId };
+});
+$('#content').addEventListener('pointermove', (e) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (!drag.mode) { if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; drag.mode = Math.abs(dx) > Math.abs(dy) ? 'select' : 'scroll'; if (drag.mode === 'select') try { $('#content').setPointerCapture(e.pointerId); } catch {} }
+  if (drag.mode !== 'select') return;
+  const hit = document.elementFromPoint(e.clientX, e.clientY); const th = hit && hit.closest('.grid .th'); if (!th) return;
+  const a = Math.min(drag.start, +th.dataset.ix), b = Math.max(drag.start, +th.dataset.ix);
+  ui.sel = new Set(drag.before); for (let i = a; i <= b; i++) { const id = order[i].id; if (drag.on) ui.sel.add(id); else ui.sel.delete(id); }
+  paintSel();
+});
+$('#content').addEventListener('pointerup', () => { if (!drag) return; const was = drag; drag = null; if (!was.mode) { const id = order[was.start].id; if (ui.sel.has(id)) ui.sel.delete(id); else ui.sel.add(id); paintSel(); } });
+$('#content').addEventListener('pointercancel', () => { drag = null; });
+
+/* ── sheets: assign to a stop, tag who's in it ── */
+const sheet = $('#sheet'), scrim = $('#scrim');
+const openSheet = (html) => { sheet.innerHTML = '<div class="grab"></div>' + html; sheet.classList.add('on'); scrim.classList.add('on'); sheet.scrollTop = 0; };
+const closeSheet = () => { sheet.classList.remove('on'); scrim.classList.remove('on'); };
+scrim.addEventListener('click', () => { closeSheet(); updBar(); });
+let assignIds = [], assignDay = 'd07';
+const byIdP = (id) => photos.find((p) => p.id === id);
+function openAssign(ids) { assignIds = ids; const p0 = byIdP(ids[0]); assignDay = p0 && dayById[p0.day] ? p0.day : DAYS[0].id; renderAssign(); }
+function renderAssign() {
+  openSheet(`<div class="sh-h"><b>Assign ${assignIds.length} photo${assignIds.length > 1 ? 's' : ''} to…</b><button data-sheetx>Cancel</button></div>
+    <div class="daychips" id="daychips">${DAYS.map((x) => `<button data-aday="${x.id}" class="${x.id === assignDay ? 'on' : ''}">Day ${x.n}<small>${esc(x.title)}</small></button>`).join('')}</div>
+    <div class="stoplist">${stopsOfDay(assignDay).map((s) => `<button data-astop="${s.id}" style="--c:${kindColor(s)}"><small>${s.range ? fmtMin(s.range[0]) : esc(s.time || '—')}</small><i></i><b>${esc(s.title)}</b></button>`).join('')}<button data-astop=""><small>—</small><i style="--c:#c9c4b8"></i><b>Other moments (no stop)</b></button></div>`);
+  const on = sheet.querySelector('#daychips .on'); if (on) on.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
+function assign(ids, day, stop) {
+  const prev = ids.map((id) => { const p = byIdP(id); return [p, p.day, p.stop]; });
+  for (const [p] of prev) { p.day = day; p.stop = stop || null; }
+  const s = stop ? stopsOfDay(day).find((x) => x.id === stop) : null;
+  closeSheet(); if (document.body.classList.contains('sel')) setSel(false); else render();
+  if (vw.classList.contains('on')) drawViewer();
+  save({ ids, set: { day, stop: stop || '' } });
+  toast(`Moved ${ids.length} to ${s ? s.title : 'Other moments'}`, () => {
+    const groups = {}; prev.forEach(([p, d0, s0]) => { p.day = d0; p.stop = s0; const k = d0 + '|' + (s0 || ''); (groups[k] = groups[k] || []).push(p.id); });
+    Object.entries(groups).forEach(([k, gids]) => { const [d0, s0] = k.split('|'); save({ ids: gids, set: { day: d0, stop: s0 } }); });
+  });
+}
+let tagIds = [];
+function openTag(ids) { tagIds = ids; renderTag(); }
+function renderTag() {
+  const ps = tagIds.map(byIdP);
+  openSheet(`<div class="sh-h"><b>Who's in ${ps.length > 1 ? `these ${ps.length}` : 'this'}?</b><button data-sheetx>Done</button></div>
+    <div class="tagppl">${PIDS.map((id) => { const n = ps.filter((p) => p.in.includes(id)).length; return `<button data-tagp="${id}" class="${n === ps.length ? 'all' : n ? 'some' : ''}"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}<small>${n === ps.length ? 'in all' : n ? `in ${n}` : 'not in'}</small></button>`; }).join('')}</div>
+    <p class="honest">Tap a person to add them to every selected photo; tap again to take them off. Then filter by "Who's in it" at the top.</p>`);
+}
+function toggleTag(id) {
+  const ps = tagIds.map(byIdP); const all = ps.every((p) => p.in.includes(id));
+  ps.forEach((p) => { p.in = all ? p.in.filter((x) => x !== id) : PIDS.filter((x) => x === id || p.in.includes(x)); });
+  save({ ids: tagIds, tag: { who: id, on: !all } });
+  renderTag(); render();
+}
+function hide(ids) {
+  const ps = ids.map(byIdP); ps.forEach((p) => (p.hidden = true));
+  if (document.body.classList.contains('sel')) setSel(false); else render();
+  save({ ids, set: { hidden: true } });
+  toast(`Hidden ${ids.length}. Still kept in Google Drive`, () => { ps.forEach((p) => (p.hidden = false)); save({ ids, set: { hidden: false } }); });
+}
+
+/* ═══ upload: straight from the phone to Google Drive, in pieces, so a bad connection loses nothing ═══ */
+const CHUNK = () => window.__CHUNK || 8 * 1024 * 1024; // must be a multiple of 256 KB
+const Q_KEY = 'photos.queue'; // unfinished uploads, so they can carry on after the page was closed
+const qGet = () => { try { return JSON.parse(lsGet(Q_KEY)) || {}; } catch { return {}; } };
+const qSet = (q) => lsSet(Q_KEY, Object.keys(q).length ? JSON.stringify(q) : null);
+const fileKey = (f) => `${f.name}|${f.size}|${f.lastModified}`;
+let uploading = false, rows = [], wake = null;
+const folderOf = (d) => `Day ${String(d.n).padStart(2, '0')} · ${d.title}`.slice(0, 80);
+function openUpload() {
+  if (!member()) return;
+  openSheet(`<div class="sh-h"><b>Upload photos</b><button data-sheetx>Close</button></div>
+    <label class="up-pick press"><input type="file" id="upfiles" multiple accept="image/*,video/*"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="15" rx="3" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10.5" r="1.8" fill="currentColor"/><path d="M5 18l5-5 3 3 3-3 3 3" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><b>Choose photos &amp; videos</b>Each one is filed under the day and stop it was taken at.</label>
+    <div id="uplist"></div>
+    <p class="honest">They go into Google Drive, in Our Trips / Japan 2026, a folder for each day. Keep this page open while it uploads (the screen stays on). If it stops, choose the same photos again and it carries on where it left off. Photos taken outside the trip days go to the nearest day; fix it with Assign.</p>`);
+  const list = $('#uplist'); rows.forEach((r) => list.appendChild(r.el));
+}
+const rowState = (r, txt, cls) => { r.el.querySelector('.st').textContent = txt; r.el.classList.remove('done', 'err'); if (cls) r.el.classList.add(cls); };
+const setProg = (r, f) => { r.el.querySelector('.prog i').style.width = Math.round(f * 100) + '%'; };
+function nearestDay(ms) { // photos from outside the trip go to the closest trip day (fixable with Assign)
+  const t = ms; let best = DAYS[0], gap = Infinity;
+  for (const d of DAYS) { const s = Date.parse(d.date + 'T00:00:00Z') - JST, e = s + 864e5; const g = t < s ? s - t : t >= e ? t - e : 0; if (g < gap) { gap = g; best = d; } }
+  return best;
+}
+async function handleFiles(files) {
+  const list = $('#uplist'); const q = qGet();
+  for (const f of files) {
+    if (!f.size) continue;
+    const t = await readTaken(f);
+    let { day, min } = jstOf(t.takenAt, DAYS); let outside = false;
+    if (!day) { day = nearestDay(t.takenAt); outside = true; }
+    const m = matchStop(day, min, t.lat, t.lng);
+    const r = { f, key: fileKey(f), day, stop: m ? m.stop.id : null, takenAt: t.takenAt, how: m ? m.how : null, local: URL.createObjectURL(f), isVideo: /^video\//.test(f.type) || /\.(mov|mp4|m4v)$/i.test(f.name), resume: q[fileKey(f)] || null };
+    const where = `Day ${day.n} · ${m ? m.stop.title : 'Other moments'}`;
+    const how = m ? { location: 'by location', time: 'by time', near: 'closest in time' }[m.how] : 'no stop at that time';
+    r.el = document.createElement('div'); r.el.className = 'uprow';
+    r.el.innerHTML = `<span class="pt">${r.isVideo ? `<video src="${r.local}#t=0.1" muted playsinline preload="metadata"></video>` : `<img draggable="false" src="${r.local}" alt="">`}</span><div class="m"><b>${esc(f.name)}</b><small>${fmtMin(min)}${outside ? ' (outside the trip days)' : ''} → <em>${esc(where)}</em> · ${how}</small><div class="prog"><i></i></div><span class="st">${r.resume ? 'Carries on where it stopped' : 'Waiting'}</span></div>`;
+    if (list) list.appendChild(r.el); rows.push(r);
+  }
+  pump();
+}
+async function pump() {
+  if (uploading) return; uploading = true;
+  try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch {}
+  for (const r of rows) {
+    if (r.done || r.failed) continue;
+    try { await uploadOne(r); } catch (e) { r.failed = true; rowState(r, 'Didn\'t upload: ' + (e.message || 'error') + '. Choose it again to retry.', 'err'); }
+    updBar();
+  }
+  uploading = false; updBar();
+  try { if (wake) await wake.release(); } catch {} wake = null;
+  const n = rows.filter((r) => r.done && !r.dup).length;
+  if (n) { toast(`${n} uploaded to Google Drive`); setTimeout(() => load().then(render).catch(() => {}), 4000); }
+  renderResume();
+}
+async function uploadOne(r) {
+  const size = r.f.size; const q = qGet(); let s = q[r.key];
+  if (s) { // carry on: ask Google how much it already has
+    const off = await probe(s.url, size).catch(() => null);
+    if (off === 'done') { finish(r, s.id || null); return; }
+    if (off === null) s = null; else if (off !== 'unknown') s.offset = off; // 'unknown': Google didn't say, keep what we saved
+  }
+  if (!s) {
+    rowState(r, 'Starting…');
+    const d = await api('/session', { trip: TRIP, folder: folderOf(r.day), name: r.f.name, mime: r.f.type || (r.isVideo ? 'video/quicktime' : 'image/jpeg'), size, day: r.day.id, stop: r.stop, t: Math.round(r.takenAt), by: ME });
+    if (d.dup) { r.done = r.dup = true; setProg(r, 1); rowState(r, 'Already uploaded', 'done'); return; }
+    s = { url: d.url, offset: 0 }; q[r.key] = s; qSet(q);
+  }
+  let off = s.offset || 0; setProg(r, off / size); rowState(r, 'Uploading…');
+  while (off < size) {
+    const end = Math.min(size, off + CHUNK());
+    let res = null;
+    for (let tries = 0; ; tries++) {
+      try { res = await fetch(s.url, { method: 'PUT', headers: { 'content-range': `bytes ${off}-${end - 1}/${size}` }, body: r.f.slice(off, end) }); if (res.status >= 500) throw new Error('Google is busy'); break; }
+      catch (e) { if (tries >= 5) throw new Error('no connection'); rowState(r, 'Connection dropped, trying again…'); await sleep(1000 * (tries + 1)); const p = await probe(s.url, size).catch(() => null); if (p === 'done') { finish(r, null); return; } if (typeof p === 'number') { off = p; res = null; break; } }
+    }
+    if (res && res.status === 308) { const rg = res.headers.get('range'); off = rg ? +rg.split('-')[1] + 1 : end; }
+    else if (res && (res.status === 200 || res.status === 201)) { const j = await res.json().catch(() => ({})); finish(r, j.id || null); return; }
+    else if (res && res.status === 404) { delete q[r.key]; qSet(q); throw new Error('the upload expired'); }
+    else if (res) throw new Error('Google said ' + res.status);
+    s.offset = off; q[r.key] = s; qSet(q); setProg(r, off / size); updBar();
+  }
+}
+// how many bytes Google already has for an upload (or 'done'); null if the upload is gone
+async function probe(url, size) {
+  const r = await fetch(url, { method: 'PUT', headers: { 'content-range': `bytes */${size}` } });
+  if (r.status === 200 || r.status === 201) return 'done';
+  if (r.status === 308) { const rg = r.headers.get('range'); return rg ? +rg.split('-')[1] + 1 : r.headers.has('range') ? 0 : 'unknown'; }
+  return null;
+}
+function finish(r, id) {
+  const q = qGet(); delete q[r.key]; qSet(q);
+  r.done = true; setProg(r, 1); rowState(r, 'Uploaded', 'done');
+  if (id) photos.push({ id, name: r.f.name, mime: r.f.type, day: r.day.id, stop: r.stop, takenAt: r.takenAt, by: ME, in: [], hearts: [], hidden: false, ar: null, thumb: null, isVideo: r.isVideo, local: r.local, fresh: true });
+  if (!r.isVideo) { const im = new Image(); im.onload = () => { const p = byIdP(id); if (p) p.ar = im.naturalWidth / im.naturalHeight; }; im.src = r.local; }
+  render();
+}
+function updBar() {
+  const left = rows.filter((r) => !r.done && !r.failed).length;
+  $('#upbar').hidden = !uploading || sheet.classList.contains('on') && !!sheet.querySelector('#uplist');
+  const tot = rows.reduce((s, r) => s + r.f.size, 0) || 1; const sent = rows.reduce((s, r) => s + (r.done ? r.f.size : (qGet()[r.key] || {}).offset || 0), 0);
+  $('#uptxt').textContent = left ? `Uploading ${left} · keep this page open` : 'Finishing…'; $('#upprog').style.width = Math.round((sent / tot) * 100) + '%';
+}
+function renderResume() {
+  const n = Object.keys(qGet()).length;
+  $('#resume').innerHTML = n && member() && !uploading ? `<div class="banner"><span><b>${n} upload${n > 1 ? 's' : ''} didn't finish.</b> Choose ${n > 1 ? 'them' : 'it'} again and ${n > 1 ? 'they carry' : 'it carries'} on.</span><button data-upload>Choose</button></div>` : '';
+}
+sheet.addEventListener('change', (e) => { if (e.target.id === 'upfiles' && e.target.files.length) { handleFiles([...e.target.files]); e.target.value = ''; } });
+sheet.addEventListener('click', (e) => {
+  const t = (s) => e.target.closest(s);
+  if (t('[data-sheetx]')) { const wasTag = !!sheet.querySelector('.tagppl'); closeSheet(); if (wasTag && document.body.classList.contains('sel')) setSel(false); if (vw.classList.contains('on')) drawViewer(); tagIds = []; updBar(); return; }
+  const ad = t('[data-aday]'); if (ad) { assignDay = ad.dataset.aday; return renderAssign(); }
+  const as = t('[data-astop]'); if (as) return assign(assignIds, assignDay, as.dataset.astop);
+  const tp = t('[data-tagp]'); if (tp) return toggleTag(tp.dataset.tagp);
+});
+addEventListener('beforeunload', (e) => { if (uploading) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ═══ full-screen viewer ═══ */
+const vw = $('#vw'), track = $('#track');
+let vlist = [], vi = 0, zoom = null;
+const fit = (p) => { const W = innerWidth, H = innerHeight; const ar = p.ar || (p.isVideo ? 0.5625 : 0.75); let w = W, h = W / ar; if (h > H) { h = H; w = H * ar; } return { w, h, x: (W - w) / 2, y: (H - h) / 2 }; };
+const thumbEl = (p) => document.querySelector(`.grid .th[data-pid="${p.id}"]`);
+function fly(p, from, to, ms) {
+  const f = document.createElement('div'); f.className = 'flyer' + (p.ar ? '' : ' real'); f.innerHTML = imgTag(p, 800);
+  Object.assign(f.style, { left: from.x + 'px', top: from.y + 'px', width: from.w + 'px', height: from.h + 'px', borderRadius: (from.r || 0) + 'px' });
+  document.body.appendChild(f);
+  const a = f.animate([{ left: from.x + 'px', top: from.y + 'px', width: from.w + 'px', height: from.h + 'px', borderRadius: (from.r || 0) + 'px' }, { left: to.x + 'px', top: to.y + 'px', width: to.w + 'px', height: to.h + 'px', borderRadius: (to.r || 0) + 'px' }], { duration: ms, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' });
+  return a.finished.then(() => f.remove());
+}
+const rectOf = (el) => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, r: 4 }; };
+async function openViewer(list, i, fromEl) {
+  vlist = list; vi = i; zoom = null; vw.classList.remove('chrome-off', 'showinfo'); track.classList.remove('up'); $('#toast').classList.remove('on');
+  const p = vlist[vi]; const to = fit(p);
+  drawViewer();
+  vw.classList.add('on'); vw.style.background = 'rgba(0,0,0,0)'; const cur = curFrame(); if (cur) cur.style.visibility = 'hidden';
+  if (fromEl) fromEl.classList.add('gone');
+  vw.animate([{ background: 'rgba(0,0,0,0)' }, { background: 'rgba(0,0,0,1)' }], { duration: 320, fill: 'forwards' }).finished.then(() => { vw.style.background = '#000'; vw.getAnimations().forEach((a) => a.cancel()); });
+  if (fromEl && !matchMedia('(prefers-reduced-motion: reduce)').matches) await fly(p, rectOf(fromEl), to, 340);
+  if (fromEl) fromEl.classList.remove('gone');
+  if (cur) cur.style.visibility = '';
+  history.pushState({ viewer: 1 }, '');
+}
+async function closeViewer(fromPop, fromRect) {
+  if (!vw.classList.contains('on')) return;
+  const p = vlist[vi]; const el = p && thumbEl(p); const cur = curFrame();
+  track.querySelectorAll('video').forEach((v) => v.pause());
+  const start = fromRect || (cur ? rectOf(cur) : fit(p)); start.r = 0;
+  if (el) { const r = el.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) el.scrollIntoView({ block: 'center' }); }
+  const to = el ? rectOf(el) : null;
+  vw.classList.remove('showinfo'); track.classList.remove('up');
+  if (to && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.classList.add('gone'); if (cur) cur.style.visibility = 'hidden';
+    vw.animate([{ background: getComputedStyle(vw).backgroundColor }, { background: 'rgba(0,0,0,0)' }], { duration: 280, fill: 'forwards' });
+    vw.classList.add('chrome-off');
+    await fly(p, start, to, 300); el.classList.remove('gone');
+  }
+  vw.getAnimations().forEach((a) => a.cancel()); vw.style.background = ''; vw.classList.remove('on', 'chrome-off'); track.innerHTML = ''; destroyMap();
+  if (!fromPop && history.state && history.state.viewer) history.back();
+}
+addEventListener('popstate', () => { if (vw.classList.contains('on')) closeViewer(true); });
+const curFrame = () => track.children[1] && track.children[1].querySelector('.frame');
+function slideHtml(p) {
+  if (!p) return '<div class="slide"></div>';
+  const r = fit(p);
+  const body = p.isVideo ? `<video src="${p.local || media(p, 'file')}" controls playsinline preload="metadata" ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1600);
+  return `<div class="slide"><div class="frame ${p.ar && !p.isVideo ? '' : 'real'}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px">${body}</div></div>`;
+}
+function drawViewer() {
+  vlist = vlist.filter((p) => !p.hidden); if (!vlist.length) return closeViewer();
+  vi = Math.max(0, Math.min(vi, vlist.length - 1)); zoom = null;
+  track.innerHTML = [vi - 1, vi, vi + 1].map((k) => slideHtml(vlist[k])).join('');
+  track.querySelectorAll('.slide:not(:nth-child(2)) video').forEach((v) => v.removeAttribute('src'));
+  setTrack(0, false);
+  const p = vlist[vi], s = stopOf(p), d = dayById[p.day], who = PEOPLE[p.by];
+  $('#vtitle').innerHTML = `<b>${esc(s ? s.title : 'Other moments')}</b><small>Day ${d.n} · ${fmtMin(jstOf(p.takenAt, DAYS).min)} · ${vi + 1} of ${vlist.length}</small>`;
+  const mine = p.hearts.includes(ME); const hb = $('[data-heart]'); hb.classList.toggle('on', mine); hb.setAttribute('aria-pressed', mine); hb.hidden = !member();
+  $('#hcount').textContent = p.hearts.length > 1 || (p.hearts.length && !mine) ? p.hearts.length : '';
+  $('#vcapt').innerHTML = `${p.in.length ? faces(p.in) : ''}<span><b>${p.in.length ? names(p.in) : 'No one tagged'}</b><small>${p.hearts.length ? `♥ ${names(p.hearts)}` : who ? `Taken by ${who.name}` : ''}</small></span><span class="up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 14l6-6 6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Info</span>`;
+  drawFilmstrip();
+  if (vw.classList.contains('showinfo')) drawInfo();
+}
+function drawFilmstrip() {
+  const fs = $('#fs'); const sig = vlist.length + ':' + vlist[0].id + ':' + vlist[vlist.length - 1].id;
+  if (fs.dataset.list !== sig) { fs.dataset.list = sig; fs.innerHTML = vlist.map((p, k) => `<button data-fs="${k}" aria-label="Photo ${k + 1}">${imgTag(p, 200)}</button>`).join(''); }
+  fs.querySelectorAll('button.on').forEach((b) => b.classList.remove('on'));
+  const on = fs.children[vi]; if (on) { on.classList.add('on'); fs.scrollTo({ left: on.offsetLeft - fs.clientWidth / 2 + 29, behavior: 'smooth' }); }
+}
+let vmap = null; const destroyMap = () => { if (vmap) { vmap.remove(); vmap = null; } };
+function drawInfo() {
+  const p = vlist[vi], s = stopOf(p), d = dayById[p.day];
+  const ev = s ? d.items.flatMap((it) => (it.type === 'event' ? [it] : it.type === 'choice' ? it.options.flatMap((o) => o.items || []) : [])).find((x) => x.id === s.id) : null;
+  $('#vinfo').innerHTML = `<div class="grab"></div><h3>${esc(s ? s.title : 'Other moments')}</h3><p class="meta">Day ${d.n} · ${fmtDate(d)} · ${esc(s && s.time ? s.time : 'between stops')}</p>
+    ${ev && ev.desc ? `<p class="desc">${esc(ev.desc).slice(0, 260)}${ev.desc.length > 260 ? '…' : ''}</p>` : ''}
+    <p class="lbl">Who's in it</p><div class="tagrow" ${member() ? '' : 'disabled'}>${PIDS.map((id) => `<button data-vtag="${id}" class="${p.in.includes(id) ? 'on' : ''}"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}</button>`).join('')}</div>
+    ${s && s.place ? `<p class="lbl">Where</p><div class="vmap" id="vmap"></div>` : ''}
+    <p class="lbl">Details</p><div class="kv"><span>Taken</span><span>${fmtMin(jstOf(p.takenAt, DAYS).min)}, ${fmtDate(d)}</span><span>By</span><span>${PEOPLE[p.by] ? PEOPLE[p.by].name : '—'}</span><span>Loved by</span><span>${p.hearts.length ? names(p.hearts) : 'no one yet'}</span>${p.name ? `<span>File</span><span>${esc(p.name)}</span>` : ''}</div>
+    <div class="row">${member() && s ? (isCover(p) ? '<button class="chosen" data-vcover>★ The photo for this stop</button>' : '<button data-vcover>★ Use as this stop\'s photo</button>') : ''}<a href="./?d=${d.id}">Open on the plan</a>${p.local ? '' : `<a href="${media(p, 'file', '&dl=1')}" download>Download original</a>`}${member() ? '<button data-vassign>Move to another stop</button><button data-vhide>Hide</button>' : ''}</div>`;
+  destroyMap();
+  if (s && s.place && window.L) requestAnimationFrame(() => { const el = document.getElementById('vmap'); if (!el) return; vmap = L.map(el, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false }).setView([s.place.lat, s.place.lng], 15); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(vmap); L.circleMarker([s.place.lat, s.place.lng], { radius: 8, color: '#fff', weight: 3, fillColor: kindColor(s), fillOpacity: 1 }).addTo(vmap); });
+}
+vw.addEventListener('scroll', () => { vw.scrollTop = 0; vw.scrollLeft = 0; });
+$('#story').addEventListener('scroll', (e) => { e.currentTarget.scrollTop = 0; });
+const setInfo = (on) => { vw.classList.toggle('showinfo', on); track.classList.toggle('up', on); if (on) drawInfo(); else destroyMap(); };
+const W = () => innerWidth;
+function setTrack(dx, anim) { track.style.transition = anim ? 'transform 300ms cubic-bezier(.23,1,.32,1)' : 'none'; track.style.transform = `translate3d(${-W() + dx}px,${track.classList.contains('up') ? '-26vh' : '0'},0)`; }
+function applyZoom(anim) { const f = curFrame(); if (!f) return; f.style.transition = anim ? 'transform 280ms cubic-bezier(.23,1,.32,1)' : 'none'; f.style.transform = zoom ? `translate3d(${zoom.x}px,${zoom.y}px,0) scale(${zoom.s})` : ''; }
+const pts = new Map(); let g = null, pinch = null, lastTap = 0, tapT = 0;
+const mid = () => { const [a, b] = [...pts.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }; };
+vw.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('.top, .cap, .info, video[controls]')) return;
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { vw.setPointerCapture(e.pointerId); } catch {}
+  if (pts.size === 2) { const m = mid(); const z = zoom || { s: 1, x: 0, y: 0 }; pinch = { m0: m, s0: z.s, x0: z.x, y0: z.y }; g = null; return; }
+  g = { x: e.clientX, y: e.clientY, t: Date.now(), mode: null, id: e.pointerId, zx: zoom ? zoom.x : 0, zy: zoom ? zoom.y : 0 };
+});
+vw.addEventListener('pointermove', (e) => {
+  if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch && pts.size === 2) {
+    const m = mid(); const s = Math.max(1, Math.min(4, pinch.s0 * (m.d / pinch.m0.d))); const cx = innerWidth / 2, cy = innerHeight / 2;
+    zoom = { s, x: (m.x - cx) - ((pinch.m0.x - cx) - pinch.x0) * (s / pinch.s0), y: (m.y - cy) - ((pinch.m0.y - cy) - pinch.y0) * (s / pinch.s0) }; applyZoom(false); return;
+  }
+  if (!g || e.pointerId !== g.id) return;
+  const dx = e.clientX - g.x, dy = e.clientY - g.y;
+  if (!g.mode) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; g.mode = zoom ? 'pan' : vw.classList.contains('showinfo') ? (dy > 0 ? 'infodown' : 'none') : Math.abs(dx) > Math.abs(dy) ? 'x' : dy > 0 ? 'down' : 'up'; }
+  if (g.mode === 'x') { const edge = (vi === 0 && dx > 0) || (vi === vlist.length - 1 && dx < 0); setTrack(edge ? dx / 3 : dx, false); }
+  else if (g.mode === 'down') { const f = curFrame(); if (f) { f.style.transition = 'none'; f.style.transform = `translate3d(${dx * 0.5}px,${dy}px,0) scale(${Math.max(0.6, 1 - dy / 900)})`; } vw.style.background = `rgba(0,0,0,${Math.max(0, 1 - dy / 380)})`; vw.classList.add('chrome-off'); }
+  else if (g.mode === 'up') { track.style.transition = 'none'; track.style.transform = `translate3d(${-W()}px,${Math.max(dy, -innerHeight * 0.3)}px,0)`; }
+  else if (g.mode === 'pan') { zoom.x = g.zx + dx; zoom.y = g.zy + dy; applyZoom(false); }
+});
+const endPtr = (e) => {
+  if (!pts.has(e.pointerId)) return; pts.delete(e.pointerId);
+  if (pinch) { if (pts.size < 2) { pinch = null; if (zoom && zoom.s < 1.06) { zoom = null; applyZoom(true); } } return; }
+  if (!g || e.pointerId !== g.id) return; const was = g; g = null;
+  const dx = e.clientX - was.x, dy = e.clientY - was.y, dt = Math.max(1, Date.now() - was.t);
+  if (was.mode === 'x') {
+    const go = (dx < -W() / 4 || dx / dt < -0.5) && vi < vlist.length - 1 ? 1 : (dx > W() / 4 || dx / dt > 0.5) && vi > 0 ? -1 : 0;
+    setTrack(-go * W(), true); if (go) setTimeout(() => { vi += go; drawViewer(); }, 300);
+  } else if (was.mode === 'down') {
+    const f = curFrame();
+    if (dy > 110 || dy / dt > 0.6) { const r = f ? rectOf(f) : null; if (f) f.style.visibility = 'hidden'; closeViewer(false, r); }
+    else { if (f) { f.style.transition = 'transform 260ms cubic-bezier(.23,1,.32,1)'; f.style.transform = ''; } vw.style.background = ''; vw.classList.remove('chrome-off'); }
+  } else if (was.mode === 'up') { setInfo(dy < -50 || dy / dt < -0.4); setTrack(0, true); }
+  else if (was.mode === 'infodown') { if (dy > 40) setInfo(false); setTrack(0, true); }
+  else if (!was.mode) {
+    const now = Date.now();
+    if (vw.classList.contains('showinfo')) { setInfo(false); setTrack(0, true); return; }
+    if (now - lastTap < 300) { lastTap = 0; clearTimeout(tapT); if (zoom) { zoom = null; applyZoom(true); } else { zoom = { s: 2.5, x: (innerWidth / 2 - e.clientX) * 1.5, y: (innerHeight / 2 - e.clientY) * 1.5 }; applyZoom(true); } }
+    else { lastTap = now; tapT = setTimeout(() => vw.classList.toggle('chrome-off'), 300); }
+  }
+};
+vw.addEventListener('pointerup', endPtr); vw.addEventListener('pointercancel', endPtr);
+let ig = null;
+$('#vinfo').addEventListener('pointerdown', (e) => { if ($('#vinfo').scrollTop > 0) return; ig = { y: e.clientY }; });
+$('#vinfo').addEventListener('pointerup', (e) => { if (ig && e.clientY - ig.y > 50) { setInfo(false); setTrack(0, true); } ig = null; });
+addEventListener('keydown', (e) => { if (!vw.classList.contains('on')) return; if (e.key === 'Escape') closeViewer(); if (e.key === 'ArrowRight' && vi < vlist.length - 1) { vi++; drawViewer(); } if (e.key === 'ArrowLeft' && vi > 0) { vi--; drawViewer(); } if (e.key === 'ArrowUp') { e.preventDefault(); setInfo(true); setTrack(0, true); } if (e.key === 'ArrowDown') { e.preventDefault(); setInfo(false); setTrack(0, true); } });
+vw.addEventListener('click', (e) => {
+  const t = (s) => e.target.closest(s);
+  if (t('[data-vclose]')) return closeViewer();
+  if (t('[data-heart]')) { if (!member()) return; const p = vlist[vi]; const had = p.hearts.includes(ME); p.hearts = had ? p.hearts.filter((x) => x !== ME) : PIDS.filter((x) => x === ME || p.hearts.includes(x)); heartFx(!had); drawViewer(); render(); save({ ids: [p.id], heart: { by: ME, on: !had } }); return; }
+  if (t('[data-vcover]')) { const p = vlist[vi], s = stopOf(p); if (!s) return; const prev = covers[s.id] || null; const next = prev === p.id ? null : p.id;
+    if (next) covers[s.id] = next; else delete covers[s.id];
+    drawInfo(); render(); api('/cover', { stop: s.id, id: next }).catch(failed);
+    toast(next ? `Now the photo for ${s.title} on the plan` : `${s.title} is back to its usual picture`, () => { if (prev) covers[s.id] = prev; else delete covers[s.id]; api('/cover', { stop: s.id, id: prev }).catch(failed); if (vw.classList.contains('on')) drawInfo(); }); return; }
+  const fsb = t('[data-fs]'); if (fsb) { vi = +fsb.dataset.fs; return drawViewer(); }
+  if (t('.capt')) { setInfo(true); setTrack(0, true); return; }
+  const vt = t('[data-vtag]'); if (vt && member()) { const p = vlist[vi], id = vt.dataset.vtag; const on = !p.in.includes(id); p.in = on ? PIDS.filter((x) => x === id || p.in.includes(x)) : p.in.filter((x) => x !== id); drawViewer(); render(); save({ ids: [p.id], tag: { who: id, on } }); return; }
+  if (t('[data-vassign]')) return openAssign([vlist[vi].id]);
+  if (t('[data-vhide]')) { hide([vlist[vi].id]); return drawViewer(); }
+});
+const HEART = '<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M12 20.3s-7.6-4.6-7.6-10.4A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.6 2.7c0 5.8-7.6 10.4-7.6 10.4z" fill="currentColor"/></svg>';
+function heartFx(on) {
+  const b = $('[data-heart]'); const svg = b.querySelector('svg');
+  if (navigator.vibrate) navigator.vibrate(on ? 12 : 6);
+  if (!on) { svg.animate([{ transform: 'scale(1)' }, { transform: 'scale(.72)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'cubic-bezier(.23,1,.32,1)' }); return; }
+  svg.animate([{ transform: 'scale(1) rotate(0)' }, { transform: 'scale(.7) rotate(-10deg)', offset: .25 }, { transform: 'scale(1.32) rotate(8deg)', offset: .6 }, { transform: 'scale(.94) rotate(-3deg)', offset: .82 }, { transform: 'scale(1) rotate(0)' }], { duration: 520, easing: 'ease-out' });
+  b.animate([{ boxShadow: '0 0 0 0 rgba(255,55,95,.55)' }, { boxShadow: '0 0 0 18px rgba(255,55,95,0)' }], { duration: 520, easing: 'ease-out' });
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  for (let k = 0; k < 8; k++) {
+    const m = document.createElement('i'); m.className = 'mini'; m.innerHTML = HEART; m.style.left = cx + 'px'; m.style.top = cy + 'px';
+    m.style.color = ['#ff375f', '#ff6b8a', '#ff9db2', '#ffffff'][k % 4]; document.body.appendChild(m);
+    const ang = -Math.PI / 2 + (k - 3.5) * 0.32 + (Math.random() - 0.5) * 0.3, dist = 46 + Math.random() * 46, s = 0.55 + Math.random() * 0.6;
+    m.animate([{ transform: 'translate(0,0) scale(.2)', opacity: 1 }, { transform: `translate(${Math.cos(ang) * dist * 0.6}px,${Math.sin(ang) * dist * 0.6}px) scale(${s})`, opacity: 1, offset: 0.45 }, { transform: `translate(${Math.cos(ang) * dist}px,${Math.sin(ang) * dist - 24}px) scale(${s * 0.6}) rotate(${(Math.random() - 0.5) * 50}deg)`, opacity: 0 }], { duration: 700 + Math.random() * 250, delay: k * 18, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' }).finished.then(() => m.remove());
+  }
+  const big = document.createElement('div'); big.className = 'bigheart'; big.innerHTML = HEART; vw.appendChild(big);
+  big.animate([{ transform: 'scale(.3)', opacity: 0 }, { transform: 'scale(1.15)', opacity: 0.95, offset: 0.35 }, { transform: 'scale(.95)', opacity: 0.95, offset: 0.55 }, { transform: 'scale(1)', opacity: 0.9, offset: 0.75 }, { transform: 'scale(1.25) translateY(-12px)', opacity: 0 }], { duration: 820, easing: 'ease-out', fill: 'forwards' }).finished.then(() => big.remove());
+}
+
+/* ═══ relive the day: an auto-playing story, stop by stop ═══ */
+const story = $('#story');
+let sItems = [], sGroups = [], sk = 0, sT0 = 0, sRaf = 0, sPaused = false, sElapsed = 0;
+const DUR = { card: 2200, photo: 3000, video: 6000, end: 6000 };
+function openStory(dayId) {
+  const d = dayById[dayId];
+  const ps = visible().filter((p) => p.day === dayId).sort((a, b) => a.takenAt - b.takenAt);
+  if (!ps.length) return toast('No photos to relive here');
+  sItems = []; sGroups = [];
+  sItems.push({ kind: 'card', c: '#141412', small: `Day ${d.n} · ${fmtDate(d)}`, h: d.title, p: `${ps.length} photos${ui.people.size ? ` with ${names([...ui.people])}` : ''}` }); sGroups.push({ start: 0, end: 1 });
+  const stops = stopsOfDay(dayId).filter((s) => ps.some((p) => p.stop === s.id));
+  const block = (title, small, c, list) => { const g = { start: sItems.length }; sItems.push({ kind: 'card', c, small, h: title, p: `${list.length} photo${list.length > 1 ? 's' : ''}` });
+    const pick7 = [...list].sort((a, b) => b.hearts.length - a.hearts.length || a.takenAt - b.takenAt).slice(0, 7).sort((a, b) => a.takenAt - b.takenAt);
+    pick7.forEach((p) => sItems.push({ kind: p.isVideo ? 'video' : 'photo', p })); g.end = sItems.length; sGroups.push(g); };
+  for (const s of stops) block(s.title, s.time, kindColor(s), ps.filter((p) => p.stop === s.id));
+  const others = ps.filter((p) => !stopOf(p)); if (others.length) block('Other moments', 'between stops', '#55534d', others);
+  const next = DAYS[DAYS.indexOf(d) + 1]; const hasNext = next && visible().some((p) => p.day === next.id);
+  sItems.push({ kind: 'end', c: '#141412', small: 'That was', h: `Day ${d.n}`, p: `${ps.length} photos · ${stops.length} stops`, next: hasNext ? next : null });
+  sGroups.push({ start: sItems.length - 1, end: sItems.length });
+  $('#sbars').innerHTML = sGroups.map(() => '<i><b></b></i>').join('');
+  $('#shead').innerHTML = `<span><b>Relive Day ${d.n}</b><small>${esc(d.title)}</small></span><button class="rb" data-sclose aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button>`;
+  $('#stage').innerHTML = ''; story.classList.add('on'); story.classList.remove('paused'); sPaused = false;
+  showItem(0); history.pushState({ story: 1 }, '');
+}
+const itemDur = (it) => DUR[it.kind];
+function itemHtml(it) {
+  if (it.kind === 'photo' || it.kind === 'video') { const p = it.p; return `<div class="it" style="--dur:${DUR.photo + 600}ms">${p.isVideo ? `<video src="${p.local || media(p, 'file')}" autoplay muted playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1400)}<div class="cap2">${faces(p.in)}<span>${fmtMin(jstOf(p.takenAt, DAYS).min)}${p.hearts.length ? ' · ♥' : ''}</span></div></div>`; }
+  return `<div class="it"><div class="card2" style="--c:${it.c}"><small>${esc(it.small)}</small><h2>${esc(it.h)}</h2><p>${esc(it.p)}</p>${it.kind === 'end' && it.next ? `<button class="go" data-snext="${it.next.id}">Next: Day ${it.next.n} ▶</button>` : it.kind === 'end' ? '<button class="go" data-sclose>Back to the photos</button>' : ''}</div></div>`;
+}
+function showItem(k) {
+  sk = Math.max(0, Math.min(k, sItems.length - 1)); sElapsed = 0; sT0 = performance.now();
+  const stage = $('#stage'); const el = document.createElement('div'); el.innerHTML = itemHtml(sItems[sk]); const it = el.firstChild; stage.appendChild(it);
+  requestAnimationFrame(() => it.classList.add('on'));
+  [...stage.children].slice(0, -1).forEach((old) => { old.classList.remove('on'); old.querySelectorAll('video').forEach((v) => v.pause()); setTimeout(() => old.remove(), 450); });
+  const nx = sItems[sk + 1]; if (nx && nx.kind === 'photo') { const im = new Image(); im.src = nx.p.local || pic(nx.p, 1400); }
+  cancelAnimationFrame(sRaf); sRaf = requestAnimationFrame(tick);
+}
+function tick(now) {
+  if (!story.classList.contains('on')) return;
+  const it = sItems[sk]; const el = sPaused ? sElapsed : sElapsed + (now - sT0);
+  if (!sPaused) { sElapsed = el; sT0 = now; }
+  const gi = sGroups.findIndex((g) => sk >= g.start && sk < g.end);
+  $('#sbars').querySelectorAll('b').forEach((b, k) => { let f = 0; if (k < gi) f = 1; else if (k === gi) { const g = sGroups[k]; f = (sk - g.start + Math.min(1, el / itemDur(it))) / (g.end - g.start); } b.style.width = f * 100 + '%'; });
+  if (el >= itemDur(it)) { if (it.kind === 'end') { sPaused = true; } else return showItem(sk + 1); }
+  sRaf = requestAnimationFrame(tick);
+}
+function closeStory(fromPop) { story.classList.remove('on'); cancelAnimationFrame(sRaf); $('#stage').innerHTML = ''; if (!fromPop && history.state && history.state.story) history.back(); }
+addEventListener('popstate', () => { if (story.classList.contains('on')) closeStory(true); });
+let sp = null;
+story.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-sclose], [data-snext]')) return; sp = { x: e.clientX, y: e.clientY, t: Date.now(), hold: setTimeout(() => { sPaused = true; story.classList.add('paused'); }, 220) }; });
+story.addEventListener('pointermove', (e) => { if (sp && (Math.abs(e.clientX - sp.x) > 12 || Math.abs(e.clientY - sp.y) > 12)) clearTimeout(sp.hold); });
+story.addEventListener('pointerup', (e) => {
+  if (!sp) return; const was = sp; sp = null; clearTimeout(was.hold);
+  const dy = e.clientY - was.y, held = story.classList.contains('paused') && sItems[sk].kind !== 'end';
+  if (dy > 90) return closeStory();
+  if (held) { sPaused = false; story.classList.remove('paused'); sT0 = performance.now(); return; }
+  if (Math.abs(e.clientX - was.x) > 30 || Math.abs(dy) > 30) return;
+  if (e.clientX < innerWidth * 0.33) showItem(sk - 1); else if (sk < sItems.length - 1) { sPaused = false; showItem(sk + 1); }
+});
+story.addEventListener('click', (e) => { if (e.target.closest('[data-sclose]')) return closeStory(); const n = e.target.closest('[data-snext]'); if (n) { closeStory(true); history.replaceState(null, ''); openStory(n.dataset.snext); } });
+addEventListener('keydown', (e) => { if (!story.classList.contains('on')) return; if (e.key === 'Escape') closeStory(); if (e.key === 'ArrowRight') showItem(sk + 1); if (e.key === 'ArrowLeft') showItem(sk - 1); if (e.key === ' ') { e.preventDefault(); sPaused = !sPaused; story.classList.toggle('paused', sPaused); sT0 = performance.now(); } });
+
+/* ── page clicks ── */
+document.addEventListener('click', (e) => {
+  const t = (s) => e.target.closest(s);
+  if (e.target.closest('#vw, #story, #sheet')) return;
+  if (t('[data-upload]')) return openUpload();
+  if (t('[data-select]')) return setSel(true);
+  if (t('[data-selx]')) return setSel(false);
+  if (t('#selbar [data-assign]')) return openAssign([...ui.sel]);
+  if (t('#selbar [data-tag]')) return openTag([...ui.sel]);
+  if (t('#selbar [data-hide]')) return hide([...ui.sel]);
+  const pp = t('[data-pp]'); if (pp) { const id = pp.dataset.pp; if (ui.people.has(id)) ui.people.delete(id); else ui.people.add(id); return render(); }
+  if (t('[data-clrppl]')) { ui.people.clear(); return render(); }
+  const k = t('[data-kind]'); if (k) { ui.kind = k.dataset.kind; return render(); }
+  if (t('[data-size]')) { setCols(ui.cols === 3 ? 5 : ui.cols === 5 ? 2 : 3, document.elementFromPoint(innerWidth / 2, innerHeight / 2)); return toast(`${ui.cols} photos a row`); }
+  if (t('[data-clrq]')) { ui.q = ''; $('#q').value = ''; return render(); }
+  const j = t('[data-jump]'); if (j) { const el = document.getElementById('day-' + j.dataset.jump); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  const rl = t('[data-relive]'); if (rl) return openStory(rl.dataset.relive);
+  if (t('[data-unhideall]')) { const ids = photos.filter((p) => p.hidden).map((p) => p.id); photos.forEach((p) => (p.hidden = false)); save({ ids, set: { hidden: false } }); return render(); }
+  const th = t('.grid .th'); if (th && !document.body.classList.contains('sel')) return openViewer(order, +th.dataset.ix, th);
+  const k2 = t('[data-k]'); if (k2) return pinKey(k2.dataset.k);
+});
+let qT = 0; $('#q').addEventListener('input', (e) => { clearTimeout(qT); qT = setTimeout(() => { ui.q = e.target.value.trim(); render(); }, 160); });
+// back to the trip: when we came from it, go back in history so its page is shown as it was
+document.querySelectorAll('[data-home]').forEach((a) => a.addEventListener('click', (e) => {
+  let fromTrip = false; try { const r = new URL(document.referrer); fromTrip = r.origin === location.origin && /\/japan\/(index\.html)?$/.test(r.pathname); } catch {}
+  if (fromTrip && history.length > 1 && !uploading) { e.preventDefault(); history.back(); }
+}));
+
+/* ═══ getting in: guests enter the photos PIN; the four of us need Google Drive connected once ═══ */
+let typed = '';
+function showPinPad(msg = '') {
+  $('#gate').innerHTML = `<div class="gate"><h2>Enter the photos PIN</h2><p>The trip photos are just for family and friends. Ask Naf, Sara, Mariam or Mo for the PIN.</p>
+    <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div><p class="pin-msg" id="pin-msg">${esc(msg)}</p>
+    <div class="pad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<button data-k="${d}">${d}</button>`).join('')}<span></span><button data-k="0">0</button><button class="k2" data-k="del" aria-label="Delete">⌫</button></div></div>`;
+  typed = ''; drawDots();
+}
+function drawDots() { const d = $('#dots'); if (d) d.querySelectorAll('i').forEach((x, i) => x.classList.toggle('on', i < typed.length)); }
+async function pinKey(k) {
+  if (k === 'del') typed = typed.slice(0, -1); else if (typed.length < 4) typed += k;
+  drawDots(); if (typed.length < 4) return;
+  try { const d = await api('/unlock', { pin: typed }); TOKEN = d.token; lsSet('trips.photok', TOKEN); start(); }
+  catch (e) { const dots = $('#dots'); dots.classList.remove('bad'); void dots.offsetWidth; dots.classList.add('bad'); $('#pin-msg').textContent = e.status === 403 ? 'That\'s not it. Try again.' : 'No connection. Try again when you\'re online.'; setTimeout(() => { typed = ''; drawDots(); }, 380); }
+}
+addEventListener('keydown', (e) => { if (!$('#dots') || vw.classList.contains('on')) return; if (/^[0-9]$/.test(e.key)) pinKey(e.key); else if (e.key === 'Backspace') pinKey('del'); });
+function showSetup(st) {
+  const connect = `/api/photos/connect?k=${encodeURIComponent(PIN())}`;
+  $('#gate').innerHTML = member()
+    ? (st.configured
+      ? `<div class="gate"><h2>Connect Google Drive</h2><p>The photos are kept in one Google Drive, in a folder called Our Trips. Sign in once with the Google account whose Drive should hold them. Everyone else then uploads through this page.</p><a class="go press" href="${connect}">Connect Google Drive</a><p style="font-size:13px;color:var(--ink3)">Google will say the app isn't verified (it's our own private app): tap Advanced, then continue.</p></div>`
+      : `<div class="gate"><h2>Photos are almost ready</h2><p>Google Drive isn't set up for the site yet. Once it is, one of us connects the Drive here, and then everyone can upload.</p></div>`)
+    : `<div class="gate"><h2>Photos aren't set up yet</h2><p>Check back soon.</p></div>`;
+}
+async function start(retried) {
+  $('#gate').innerHTML = '<p class="empty">Loading…</p>';
+  try {
+    if (!TOKEN) { if (!member()) return showPinPad(); TOKEN = (await api('/token', {})).token; lsSet('trips.photok', TOKEN); }
+    const st = await fetch('/api/photos/status', { cache: 'no-store' }).then((r) => r.json());
+    if (!st.connected) return showSetup(st);
+    await load();
+  } catch (e) {
+    if (e.status === 403) { const had = !!TOKEN; TOKEN = ''; lsSet('trips.photok', null); if (!member()) return showPinPad(e.d && e.d.photoPin ? '' : 'Enter the PIN again.');
+      if (had && !retried && !(e.d && e.d.pin)) return start(true); /* an old viewing token: get a fresh one with the PIN */
+      return $('#gate').innerHTML = '<div class="gate"><h2>Your PIN was refused</h2><p>Open the trip and enter the PIN again, then come back.</p><a class="go press" href="/?next=japan">Enter the PIN</a></div>'; }
+    $('#gate').innerHTML = `<div class="gate"><h2>Couldn't load the photos</h2><p>${esc(e.status === 409 || e.status === 502 ? e.message : 'Check your connection and try again.')}</p><button class="go press" onclick="location.reload()">Try again</button></div>`; return;
+  }
+  $('#gate').innerHTML = ''; $('#main').hidden = false;
+  $('[data-select]').hidden = !member(); $('#fab').hidden = !member(); document.body.classList.toggle('guest', !member());
+  render(); renderResume();
+  const cq = new URLSearchParams(location.search).get('connect');
+  if (cq === 'ok') toast('Google Drive connected. Upload away!'); if (cq) history.replaceState(null, '', location.pathname);
+  // keep up with the others' uploads while the page is open
+  setInterval(() => { if (document.visibilityState === 'visible' && !uploading && !vw.classList.contains('on') && !story.classList.contains('on') && !document.body.classList.contains('sel')) load().then(render).catch(() => {}); }, 60000);
+}
+start();
+window.__photos = { get photos() { return photos; }, get order() { return order; }, ui, get covers() { return covers; } };
+</script>
+</body>
+</html>

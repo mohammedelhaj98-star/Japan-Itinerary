@@ -87,3 +87,19 @@ specific browser binary. Screenshots land in `tests/shots/`.
 
 Phones check `GET /api/version` (one KV read) every 20 s while the app is on screen, and fetch `/api/state` only when
 it changed. Normal use does no KV list operations (capped at 1,000/day on the free plan); each change costs 2 writes.
+
+## Trip photos (Google Drive)
+
+`/japan/photos` (+ menu → Photos) shows everyone's photos and videos by day and stop. Files live in one person's
+Google Drive under `Our Trips / Japan 2026 / Day NN · …`; the site uploads into it as them (`lib/photos.js`).
+
+One-time setup:
+1. Google Cloud console: new project → enable the **Google Drive API** → OAuth consent screen (External, add the
+   `drive.file` scope, then **Publish app** so sign-ins don't expire after 7 days) → Credentials → OAuth client ID,
+   type *Web application*, redirect URI `https://ourtrips.date/api/photos/callback`.
+2. `npx wrangler pages secret put GOOGLE_CLIENT_ID --project-name japan2026` and the same for `GOOGLE_CLIENT_SECRET`,
+   then redeploy (`bash scripts/deploy.sh`).
+3. Open the photos page as one of the four and tap **Connect Google Drive**, signing in with the Drive's account.
+
+Secrets already set: `TRIP_PIN` (members), `PHOTO_PIN` (guests' viewing PIN), `PHOTO_SECRET` (signs viewing tokens).
+Tests: `npm run test:photos` runs the page and API against a stand-in Google.
