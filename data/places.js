@@ -310,6 +310,17 @@ export const PLACES = {
   "story": "Jackroad is a Shinjuku dealer in new and pre-owned luxury watches, a short walk from the station. Shinjuku has several watch and resale shops close together, so it is easy to compare prices on the same model. Bring your passport for tax-free buying and ask about the warranty.",
   "kind": "shop"
  },
+ "Nakano Broadway": {
+  "ja": "中野ブロードウェイ",
+  "ro": "Nakano Burōdowei",
+  "img": "nakano-broadway.webp",
+  "credit": "Kentin, CC BY-SA 3.0",
+  "file": "https://commons.wikimedia.org/wiki/File:Nakano_broadway_entrance.JPG",
+  "area": "Nakano",
+  "key": "3F watch dealers · Cash + passport",
+  "story": "Nakano Broadway opened in 1966 as a shopping arcade with flats on top. Over time its upper floors filled with small collector shops: manga, figures, retro games and, on the third floor, a cluster of vintage watch dealers. It is at the end of the Sun Mall covered street, five minutes north of Nakano Station.",
+  "kind": "shop"
+ },
  "Takashimaya Times Square": {
   "ja": "タカシマヤタイムズスクエア",
   "img": "takashimaya-times-square.webp",

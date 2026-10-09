@@ -32,6 +32,14 @@ const E = (time, title, desc, extra = {}) => ({ type: 'event', time, title, desc
 const S = (title) => ({ type: 'section', title });
 const N = (title, text, kind = 'note', extra = {}) => ({ type: 'note', title, text, kind, ...extra });
 const C = (id, title, text, options, extra = {}) => ({ type: 'choice', id, title, text, options, ...extra });
+// Marks every item (and every choice option's items) as one couple's, unless it already names someone.
+const only = (who, items) => items.map((it) => {
+  const o = { ...it, who: it.who && it.who !== 'all' ? it.who : who };
+  if (it.type === 'choice') o.options = it.options.map((op) => ({ ...op, items: only(who, op.items || []) }));
+  return o;
+});
+// Shown to M&M on the days before they land.
+const MM_AWAY = N('M&M arrive Oct 21', 'Mariam + Mo land on Oct 21 and meet NASA in Kyoto that evening. Until then this day is NASA only.', 'note', { who: 'mm' });
 
 export const DAYS = [
   // ───────────────────────────── D01 ─────────────────────────────
@@ -39,9 +47,9 @@ export const DAYS = [
     id: 'd01', n: 1, date: '2026-10-16', dow: 'Fri', city: 'Tokyo',
     title: 'Arrival in Tokyo', tagline: 'Tokyo first steps',
     energy: 'LOW', dinner: 'Easy near hotel', hotel: 'sotetsu',
-    items: [
-      E('4:10 PM', 'Land at Narita', 'Welcome to Japan.', {
-        id: 'd01-land', place: P('Narita Airport Terminal 1', 35.7654, 140.3860, 'Narita Airport Terminal 1'), tags: ['flight'],
+    items: [MM_AWAY, ...only('nasa', [
+      E('4:10 PM', 'NASA land at Narita', 'Naf + Sara arrive, Narita Terminal 1. Welcome to Japan.', {
+        id: 'd01-land', place: P('Narita Airport Terminal 1', 35.7654, 140.3860, 'Narita Airport Terminal 1'), travel: { mode: 'flight', label: 'Flight into Narita' }, tags: ['flight'],
       }),
       E('4:10–5:45 PM', 'Immigration, luggage, essentials', 'Suica top-up ¥5,000 at 7-Bank ATM, eSIM, cash. Friday immigration 60–90 min — if long, 6:30 or 7:00 PM Skyliner works. Hotel by 8:30 PM.', { id: 'd01-arrive', tags: ['logistics'] }),
       E('6:00–7:45 PM', 'Skyliner → Nippori → Yamanote', 'Skyliner to Nippori (36 min, ¥2,520), then JR Yamanote toward Shinjuku / Takadanobaba.', {
@@ -52,7 +60,7 @@ export const DAYS = [
       }),
       E('9:00–10:15 PM', 'Easy dinner beside hotel', 'Ramen, conveyor sushi, or the nearest izakaya.', { id: 'd01-dinner', tags: ['food'] }),
       N('First evening', 'Low-key. Waseda-dori ramen (Ichiran on the main street). Shinjuku 10 min: Omoide Yokocho chicken/seafood skewers, Kabukicho. Kawagoe starts early tomorrow.'),
-    ],
+    ])],
   },
 
   // ───────────────────────────── D02 ─────────────────────────────
@@ -60,7 +68,7 @@ export const DAYS = [
     id: 'd02', n: 2, date: '2026-10-17', dow: 'Sat', city: 'Tokyo',
     title: 'Harajuku + Kawagoe Matsuri', tagline: 'Little Edo — Kawagoe Matsuri',
     energy: 'MEDIUM', dinner: 'Festival street food + Kawagoe izakaya', hotel: 'sotetsu',
-    items: [
+    items: [MM_AWAY, ...only('nasa', [
       S('Takadanobaba hotel — morning'),
       E('8:30–9:00 AM', 'Konbini breakfast', 'Grab on the way out.', { id: 'd02-bfast', place: P('Sotetsu Grand Fresa Takadanobaba', 35.7127, 139.7040), tags: ['food'] }),
       C('d02-morning', 'Morning — choose on the day', 'Decide by energy.', [
@@ -102,7 +110,7 @@ export const DAYS = [
       E('~8:30 PM', 'Return to Tokyo', 'Seibu Shinjuku Line Hon-Kawagoe → Takadanobaba (~50 min, ¥530). Frequent trains; same station you arrived at.', {
         id: 'd02-return', place: P('Sotetsu Grand Fresa Takadanobaba', 35.7127, 139.7040), travel: { mode: 'train', label: 'Seibu Shinjuku Line, 50 min, ¥530' }, tags: ['transit', 'hotel'],
       }),
-    ],
+    ])],
   },
 
   // ───────────────────────────── D03 ─────────────────────────────
@@ -110,7 +118,7 @@ export const DAYS = [
     id: 'd03', n: 3, date: '2026-10-18', dow: 'Sun', city: 'Tokyo',
     title: 'Fuji or Nikko + omakase', tagline: 'Fuji chase with Nehla & Ghalib · 8:30 PM omakase',
     energy: 'HIGH', dinner: 'CONFIRMED: Sushi Yoshikawa Kaido Shinjuku 8:30 PM', hotel: 'sotetsu',
-    items: [
+    items: [MM_AWAY, ...only('nasa', [
       N('Night-before: Fuji vs Nikko', 'Oct 17 by 10 PM: check fujisan-webcam.net. Summit visible → A (Fuji). Socked in → B (Nikko).\nHARD: back in Shinjuku by 7:30 PM for the 8:30 PM omakase. Target 6:30–7:00 PM → leave by ~4:30 PM (Fuji) / ~4:00 PM (Nikko).\nNehla & Ghalib book + drive the rental car — confirm departure time + Shinjuku meetup the night before. Both ~2–2.5 hrs by car.', 'decide', { link: { label: 'Fuji live webcams', url: 'https://fujisan-webcam.net' } }),
       N('Book ahead — Omakase', 'Oct 18, 8:30 PM: CONFIRMED. Sushi Yoshikawa Kaido Shinjuku, 7-19-7 Nishi-Shinjuku. 19 courses, ¥14,300/person. Arrive by 8:20 PM. No action needed.', 'book'),
       C('d03-trip', 'Fuji or Nikko?', 'Pick the night before based on the Fuji webcams.', [
@@ -141,15 +149,15 @@ export const DAYS = [
       E('8:30–10:30 PM', 'Sushi Yoshikawa Kaido — omakase', 'CONFIRMED 8:30 PM. 19-course Edomae omakase, 16 counter seats, ~2 hrs. 7-19-7 Nishi-Shinjuku, Sun Rose Shinjuku 101; 10-min walk from Shinjuku West Exit. Confirm no pork, no alcohol at check-in.', {
         id: 'd03-omakase', confirmed: true, place: P('Sushi Yoshikawa Kaido Shinjuku', 35.6957, 139.6978, 'Sushi Yoshikawa Kaido Shinjuku 7-19-7 Nishi-Shinjuku'), travel: { mode: 'taxi', label: 'Taxi ~¥700, 5 min (or JR + 10-min walk)' }, tags: ['food', 'booking'], cost: '¥14,300/person',
       }),
-    ],
+    ])],
   },
 
   // ───────────────────────────── D04 ─────────────────────────────
   {
     id: 'd04', n: 4, date: '2026-10-19', dow: 'Mon', city: 'Tokyo',
-    title: 'Tsukiji + Ginza + Shimokitazawa', tagline: 'Market morning · Ginza shopping · vintage evening',
-    energy: 'MEDIUM', dinner: 'Shinjuku dinner · early night · ship luggage to Kyoto', hotel: 'sotetsu',
-    items: [
+    title: 'Tsukiji + Ginza + Shimokitazawa + Nakano', tagline: 'Market morning · full Ginza shopping day · watches + dinner',
+    energy: 'MEDIUM', dinner: 'Dinner in Shinjuku · early night · ship luggage to Kyoto tonight', hotel: 'sotetsu',
+    items: [MM_AWAY, ...only('nasa', [
       E('8:30 AM', 'Depart hotel', 'JR Yamanote to Shinjuku (5 min) → Marunouchi Line to Ginza (12 min) → 10-min walk to Tsukiji. Arrive ~9:00 AM.', { id: 'd04-depart', place: P('Sotetsu Grand Fresa Takadanobaba', 35.7127, 139.7040), tags: ['transit'] }),
       E('9:00–10:30 AM', 'Tsukiji Outer Market', 'Marutake tamagoyaki (¥400), Tsukiji Tama Sushi nigiri, fresh oysters, tuna don. Go hungry.', {
         id: 'd04-tsukiji', place: P('Tsukiji Outer Market', 35.6654, 139.7707), travel: { mode: 'transit', label: 'JR + Marunouchi Line + 10-min walk, ~30 min' }, tags: ['food'], cost: '¥3,000–4,000/person',
@@ -168,17 +176,21 @@ export const DAYS = [
       E('3:15–5:30 PM', 'Shimokitazawa streetwear', '~2 hrs, jackets and tops. Flamingo Shimokitazawa (vintage outerwear, denim, bombers), New York Joe Exchange (tops, knitwear), Merlot (eclectic). Most open until 8 PM. Bear Pond Espresso: cash only, no phones, queue before opening.', {
         id: 'd04-shimokita', place: P('Shimokitazawa Station', 35.6613, 139.6680), travel: { mode: 'transit', label: 'Ginza Line + Keio Inokashira, ~25 min' }, tags: ['shop'],
       }),
-      E('~5:45 PM', 'Shimokitazawa → Shinjuku', 'Keio Inokashira Line back to Shinjuku (15 min). Arrive ~6:00 PM.', { id: 'd04-to-shinjuku', tags: ['transit'] }),
-      S('Shinjuku — dinner + optional watches'),
-      E('Before dinner', 'Shinjuku watches — optional', 'Komehyo Ginza covered Rolex, Patek, AP, Cartier. Rolex price check: Jackroad Shinjuku (closes 7:30–8 PM), Daikokuya Shinjuku — 5 min from Shinjuku Station. Skip if done.', {
-        id: 'd04-watches', optional: true, place: P('Jackroad Shinjuku', 35.6946, 139.7004, 'Jackroad Shinjuku'), travel: { mode: 'transit', label: 'Keio Inokashira, 15 min' }, tags: ['shop'],
+      E('~5:45 PM', 'Shimokitazawa → Nakano', 'Keio Inokashira Line to Shinjuku (15 min) → JR Chuo Line to Nakano (4 min). Arrive ~6:10 PM, then 5 min north through the Sun Mall arcade.', { id: 'd04-to-nakano', tags: ['transit'] }),
+      S('Nakano Broadway — watch floor'),
+      E('6:15–7:15 PM', 'Nakano Broadway watch floor (3F)', 'Jackroad Nakano (vintage Rolex, AP, Patek; deeper vintage stock than Shinjuku) and KAME-KICHI (~3,000 pieces, Rolex and Cartier, duty-free, some English). Compare both before committing. Bring cash, some dealers prefer it. Passport for duty-free. 1 hour is enough.', {
+        id: 'd04-nakano', place: P('Nakano Broadway', 35.7088, 139.6657, 'Nakano Broadway'), travel: { mode: 'transit', label: 'Keio Inokashira + JR Chuo, ~25 min' }, tags: ['shop'],
+        subplaces: [P('Jackroad Nakano', 35.7090, 139.6658, 'Jackroad Nakano Broadway'), P('KAME-KICHI Nakano', 35.7087, 139.6656, 'KAME-KICHI Nakano Broadway')],
       }),
-      E('6:00–7:30 PM', 'Dinner in Shinjuku', 'Takashimaya Times Square area or ramen/izakaya streets at the East Exit. 2 stops JR back to Takadanobaba. Hakone early start tomorrow.', {
-        id: 'd04-dinner', place: P('Takashimaya Times Square', 35.6876, 139.7024, 'Takashimaya Times Square Shinjuku'), travel: { mode: 'walk', label: 'Walk' }, tags: ['food'],
+      N('Nakano vs Shinjuku watches', 'Nakano is collector-leaning, deeper vintage and discontinued references. Shinjuku (Jackroad / Daikokuya, 4 min by JR) skews to the last 5 years. Spot something tonight? Compare against Shinjuku another day. Nakano is also an option on the D16 free morning and a last call on D17.', 'tip'),
+      E('~7:15 PM', 'Nakano → Shinjuku', 'JR Chuo Line, 4 min. Arrive ~7:20 PM.', { id: 'd04-to-shinjuku', tags: ['transit'] }),
+      S('Shinjuku — dinner (flexible)'),
+      E('7:30 PM+', 'Dinner in Shinjuku', 'No booking, no hard time. Takashimaya Times Square area or the ramen/izakaya streets at the East Exit. 2 stops JR back to Takadanobaba. Eat well, Hakone early start tomorrow.', {
+        id: 'd04-dinner', place: P('Takashimaya Times Square', 35.6876, 139.7024, 'Takashimaya Times Square Shinjuku'), travel: { mode: 'train', label: 'JR Chuo Line, 4 min' }, tags: ['food'],
       }),
       N('Luggage shipping tonight', 'TONIGHT (Oct 19): takuhaibin main luggage to Kyoto Granbell — front desk arranges pickup; arrives Oct 21. Hakone with carry-ons only. Overnight bag: 1–2 nights clothes, toiletries, cameras.', 'warn'),
       N('Pack for Hakone', 'Last Tokyo night. Dinner in Shinjuku (Takashimaya Times Square area) or ramen near hotel.'),
-    ],
+    ])],
   },
 
   // ───────────────────────────── D05 ─────────────────────────────
@@ -186,7 +198,7 @@ export const DAYS = [
     id: 'd05', n: 5, date: '2026-10-20', dow: 'Tue', city: 'Hakone',
     title: 'Hakone — Open Air + Owakudani + Mizunoto', tagline: 'Ryokan day — volcanic valley + onsen',
     energy: 'MEDIUM', dinner: 'Kaiseki at Mizunoto (included)', hotel: 'mizunoto',
-    items: [
+    items: [MM_AWAY, ...only('nasa', [
       N('Traveling light', 'Luggage shipped Oct 19 — carry-ons only. No large bags on Romancecar or mountain trains.', 'tip'),
       S('Takadanobaba → Hakone — route'),
       E('~6:50 AM', 'Check out', 'Carry-ons only.', { id: 'd05-checkout', place: P('Sotetsu Grand Fresa Takadanobaba', 35.7127, 139.7040), tags: ['hotel'] }),
@@ -222,7 +234,7 @@ export const DAYS = [
       E('4:00–6:00 PM', 'Private onsen', 'October is perfect onsen season.', { id: 'd05-onsen', tags: ['hotel'] }),
       E('6:30–8:30 PM', 'Kaiseki dinner', 'Multi-course seasonal cuisine. Eat slowly.', { id: 'd05-kaiseki', tags: ['food'] }),
       E('8:30–10:00 PM', 'Second bath, quiet room time', '', { id: 'd05-bath2', tags: ['hotel'] }),
-    ],
+    ])],
   },
 
   // ───────────────────────────── D06 ─────────────────────────────
@@ -230,7 +242,7 @@ export const DAYS = [
     id: 'd06', n: 6, date: '2026-10-21', dow: 'Wed', city: 'Kyoto',
     title: 'Hakone → Kyoto', tagline: 'Shinkansen day — Hakone to Gion',
     energy: 'LOW', dinner: 'NASA: Gion + date dinner (TBD) · M&M arrive evening', hotel: 'granbell',
-    items: [
+    items: [...only('nasa', [
       E('7:30–9:00 AM', 'Ryokan breakfast', '', { id: 'd06-bfast', place: P('Mizunoto Hakone', 35.2405, 139.0528, '箱根小涌谷温泉 水の音'), tags: ['food'] }),
       E('9:00–10:45 AM', 'Final onsen, packing', '', { id: 'd06-onsen', tags: ['hotel'] }),
       E('11:00 AM', 'Check out — taxi to Odawara', 'Ask front desk to call a taxi to Odawara Station (book the night before). Carry-ons only.', { id: 'd06-checkout', tags: ['hotel'] }),
@@ -257,7 +269,15 @@ export const DAYS = [
       E('7:00 PM', 'NASA date dinner — TBD', 'Gion/Pontocho: kaiseki, kappo, or izakaya. Book once decided. See Suggestions tab.', {
         id: 'd06-dinner', who: 'nasa', tbd: true, tags: ['food'],
       }),
-      N('M&M arrive tonight (Oct 21)', 'They check in during dinner; meet at hotel after. Gion Pontocho 5-min walk from Granbell. Yasaka Shrine open 24hrs.', 'note', { who: 'mm' }),
+      N('M&M arrive tonight', 'They check in while NASA are at dinner; meet at the hotel after. Pontocho is a 5-min walk from the Granbell. Tomorrow is the first full day together.'),
+    ]),
+      S('M&M — arrival'),
+      E('Afternoon (TBC)', 'M&M land in Japan', 'Mariam + Mo arrive. Flight number, airport and landing time still to add — tap edit to fill them in.', {
+        id: 'd06-mm-land', who: 'mm', tbd: true, tags: ['flight'],
+      }),
+      E('Evening', 'M&M check in — Kyoto Granbell', 'Granbell is on Gion-Shijo Station (Keihan Line), 6 nights. NASA are at dinner nearby; meet at the hotel after. Pontocho 5 min on foot, Yasaka Shrine open 24 hrs.', {
+        id: 'd06-mm-checkin', who: 'mm', place: P('Kyoto Granbell Hotel', 35.0036, 135.7711), tags: ['hotel'],
+      }),
     ],
   },
 
@@ -299,7 +319,7 @@ export const DAYS = [
       E('4:30–5:15 PM', 'Amerika-mura streetwear', '5 min from Komehyo. Triangle Park: Wego, Flamingo Osaka, Dogs, BRG — vintage jackets and tops. Most open noon–9 PM.', {
         id: 'd07-amemura', place: P('Amerikamura Triangle Park', 34.6724, 135.4982, 'Triangle Park Amerikamura'), travel: { mode: 'walk', label: '5-min walk' }, tags: ['shop'],
       }),
-      E('5:15–5:45 PM', 'Walk Dotonbori', '10-min walk. Glico sign photo, canal bridges, neon strip.', {
+      E('5:30–5:45 PM', 'Walk Dotonbori', '10-min walk (5:15–5:30). Glico running man photo, canal bridges, neon strip. First Osaka moment for all four.', {
         id: 'd07-dotonbori', place: P('Dotonbori Glico Sign', 34.6687, 135.5012, 'Glico Sign Dotonbori'), travel: { mode: 'walk', label: '10-min walk' }, tags: ['sight'],
       }),
       E('6:00–7:30 PM', 'Dinner in Dotonbori / Namba — TBD', 'Book for four or decide on the day. Seafood, okonomiyaki, ramen. À la carte over set menus for halal/pork-free. See Suggestions.', {
@@ -509,26 +529,25 @@ export const DAYS = [
         id: 'd12-checkin', place: P('Akihabara Washington Hotel', 35.6975, 139.7745), travel: { mode: 'train', label: 'JR Keihin-Tohoku, 5 min' }, tags: ['hotel'],
       }),
       E('5:00 PM', 'JR Akihabara → Yurakucho', '~10 min — into Ginza.', { id: 'd12-to-ginza', tags: ['transit'] }),
-      E('5:15–7:00 PM', 'Ginza — all four', 'Chuo-dori, Itoya (closes 8 PM), Uniqlo Ginza flagship. Coffee break.', {
-        id: 'd12-ginza', place: P('Ginza Chuo-dori', 35.6717, 139.7649, 'Ginza Chuo-dori'), travel: { mode: 'train', label: 'JR to Yurakucho, 10 min' }, tags: ['shop'],
-      }),
       S('All four — Ginza vintage luxury'),
-      E('7:00–8:00 PM', 'Brand Off + Komehyo + Casanova Vintage', 'Brand Off Ginza (Birkin/Kelly floor), Komehyo Ginza (bags + watches, closes ~8:30 PM), Casanova Vintage Ginza — Ginza 6–7 chome. Second pass after D4; stock rotates daily.', {
-        id: 'd12-vintage', place: P('Komehyo Ginza', 35.6700, 139.7632, 'KOMEHYO Ginza'), travel: { mode: 'walk', label: 'Walk' }, tags: ['shop'],
+      E('5:15–7:30 PM', 'Ginza — all four', 'Chuo-dori flagships (Hermès, LOEWE, Dior, Mikimoto, Cartier). Itoya stationery (closes 8 PM). No Uniqlo, NASA did that on D4. Vintage luxury sweep: Brand Off Ginza (Birkin/Kelly floor), Komehyo Ginza (bags + watches, closes ~8:30 PM), Casanova Vintage Ginza. Coffee stop on Chuo-dori.', {
+        id: 'd12-ginza', place: P('Ginza Chuo-dori', 35.6717, 139.7649, 'Ginza Chuo-dori'), travel: { mode: 'train', label: 'JR to Yurakucho, 10 min' }, tags: ['shop'],
+        subplaces: [P('Komehyo Ginza', 35.6700, 139.7632, 'KOMEHYO Ginza'), P('Brand Off Ginza', 35.6703, 139.7636, 'Brand Off Ginza'), P('Casanova Vintage Ginza', 35.6708, 139.7625, 'Casanova Vintage Ginza')],
       }),
-      E('~8:00 PM', 'Split', 'NASA heads toward Yoroniku; M&M into their own evening.', { id: 'd12-split', tags: ['logistics'] }),
+      E('~7:30 PM', 'Split', 'M&M to their date night (hard 9 PM arrival cutoff, ~30–40 min by taxi). NASA toward Marunouchi before Yoroniku.', { id: 'd12-split', tags: ['logistics'] }),
       S('NASA — evening after Ginza'),
       E('8:00–9:10 PM', 'Marunouchi wander', '10-min walk east. Imperial Palace moat, Naka-dori brick arcades, Tokyo Station red-brick facade lit.', {
         id: 'd12-marunouchi', who: 'nasa', place: P('Marunouchi Naka-dori', 35.6800, 139.7640, 'Marunouchi Naka-dori'), travel: { mode: 'walk', label: '10-min walk' }, tags: ['sight'],
       }),
-      E('9:30–11:30 PM', 'Yoroniku よろにく Ebisu', 'CONFIRMED 9:30 PM. Taxi ~15 min, ~¥2,000. A5 wagyu yakiniku, charcoal-grilled tableside. No pork, no alcohol needed.', {
+      E('~9:10 PM', 'Taxi to Ebisu', 'From Marunouchi/Ginza, ~15 min, ~¥2,000. Arrive just ahead of the booking.', { id: 'd12-taxi', who: 'nasa', tags: ['transit'] }),
+      E('9:30–11:30 PM', 'Yoroniku よろにく Ebisu', 'CONFIRMED 9:30 PM. A5 wagyu yakiniku, charcoal-grilled tableside. No pork, no alcohol needed.', {
         id: 'd12-yoroniku', who: 'nasa', confirmed: true, place: P('Yoroniku Ebisu', 35.6475, 139.7100, 'Yoroniku Ebisu'), travel: { mode: 'taxi', label: 'Taxi ~15 min, ~¥2,000' }, tags: ['food', 'booking'],
       }),
       E('~11:30 PM', 'Taxi back to Akihabara', '~25 min, ~¥2,500.', {
         id: 'd12-home', who: 'nasa', place: P('Akihabara Washington Hotel', 35.6975, 139.7745), travel: { mode: 'taxi', label: 'Taxi ~25 min, ~¥2,500' }, tags: ['hotel'],
       }),
       S('M&M — romantic evening'),
-      E('After 8 PM', 'M&M private evening', 'Dinner and the night at your own pace. Back to Akihabara whenever.', { id: 'd12-mm', who: 'mm', tags: ['food'] }),
+      E('~7:30–9:00 PM', 'M&M date night', 'Arrive by the 9 PM cutoff (~30–40 min by taxi from Ginza). Private evening from here, back to Akihabara on your own timeline.', { id: 'd12-mm', who: 'mm', travel: { mode: 'taxi', label: 'Taxi ~30–40 min' }, tags: ['food'] }),
     ],
   },
 
@@ -651,15 +670,12 @@ export const DAYS = [
       N('Morning split', 'Free mornings for both couples — reconvene 5:00–5:30 PM.', 'tip'),
       C('d16-morning', 'Free morning until 3:30 PM', 'No plan. Options:', [
         { id: 'rest', label: 'Sleep in, pack, rest', desc: '', items: [] },
-        { id: 'yanaka', label: 'Yanaka Ginza + Nezu Shrine', desc: 'Nippori, 10 min from hotel — old shitamachi, cats, food stalls, machiya backstreets.',
-          items: [
-            E('Morning', 'Yanaka Ginza', 'Old shitamachi Tokyo, cats, food stalls, machiya backstreets.', { id: 'd16-yanaka', optional: true, place: P('Yanaka Ginza', 35.7277, 139.7653, 'Yanaka Ginza'), travel: { mode: 'train', label: 'JR to Nippori, 10 min' }, tags: ['sight', 'food'] }),
-            E('Late morning', 'Nezu Shrine', 'Torii tunnel, one of Tokyo\'s oldest shrines. 15-min walk from Yanaka Ginza.', { id: 'd16-nezu', optional: true, place: P('Nezu Shrine', 35.7196, 139.7645, 'Nezu Shrine'), travel: { mode: 'walk', label: '15-min walk' }, tags: ['sight'] }),
-          ] },
-        { id: 'omotesando', label: 'Jingumae / Omotesando', desc: 'Revisit Harajuku (D2/D15) or walk the boulevard with coffee.',
+        { id: 'yanaka', label: 'Yanaka Ginza', desc: 'Nippori, 10 min from hotel. Old shitamachi Tokyo, cats, food stalls, wooden machiya backstreets.',
+          items: [E('Morning', 'Yanaka Ginza', 'Old shitamachi Tokyo, cats wandering freely, local food stalls, machiya backstreets.', { id: 'd16-yanaka', optional: true, place: P('Yanaka Ginza', 35.7277, 139.7653, 'Yanaka Ginza'), travel: { mode: 'train', label: 'JR to Nippori, 10 min' }, tags: ['sight', 'food'] })] },
+        { id: 'omotesando', label: 'Jingumae / Omotesando', desc: 'Revisit Harajuku (D2/D15) or walk the boulevard with a proper coffee.',
           items: [E('Morning', 'Omotesando boulevard + coffee', '', { id: 'd16-omotesando', optional: true, place: P('Omotesando', 35.6652, 139.7120, 'Omotesando Tokyo'), travel: { mode: 'train', label: 'JR + Metro, ~30 min' }, tags: ['shop'] })] },
-        { id: 'tsukiji', label: 'Tsukiji Outer Market breakfast / Toyosu Daiwa Sushi', desc: 'Daiwa Sushi at Toyosu tuna omakase (queue from 6:30 AM) or Tsukiji Outer Market stalls.',
-          items: [E('Early morning', 'Tsukiji Outer Market', 'Tamagoyaki, oysters, tuna bowl. Or Daiwa Sushi at Toyosu, queue from 6:30 AM.', { id: 'd16-tsukiji', optional: true, place: P('Tsukiji Outer Market', 35.6654, 139.7707), travel: { mode: 'train', label: 'Hibiya Line, ~20 min' }, tags: ['food'] })] },
+        { id: 'nakano', label: 'Nakano Broadway', desc: 'If the D4 watch run wasn\'t enough. 22 min by JR Chuo-Sobu, opens 10 AM. Jackroad + KAME-KICHI on 3F.',
+          items: [E('10:00 AM', 'Nakano Broadway watch floor', 'Jackroad + KAME-KICHI on 3F. Passport for duty-free.', { id: 'd16-nakano', optional: true, place: P('Nakano Broadway', 35.7088, 139.6657, 'Nakano Broadway'), travel: { mode: 'train', label: 'JR Chuo-Sobu, 22 min' }, tags: ['shop'] })] },
         { id: 'akiba', label: 'Akihabara — last chance', desc: 'Anything unfinished.', items: [] },
       ], { default: 'rest' }),
       E('3:30 PM', 'Hotel — costumes out', 'Laid out in advance.', { id: 'd16-back', place: P('Akihabara Washington Hotel', 35.6975, 139.7745), tags: ['hotel'] }),
@@ -690,7 +706,7 @@ export const DAYS = [
     energy: 'LOW', dinner: 'Airport', hotel: 'washington',
     items: [
       E('9:00–9:30 AM', 'Konbini breakfast', 'Quick and done.', { id: 'd17-bfast', place: P('Akihabara Washington Hotel', 35.6975, 139.7745), tags: ['food'] }),
-      E('9:30–11:00 AM', 'Free time — last shopping, packing', 'Checkout 11 AM.', { id: 'd17-free', tags: ['shop'] }),
+      E('9:30–11:00 AM', 'Free time — last shopping, packing', 'Checkout 11 AM. Nakano Broadway last call if watches are still on the list: 22 min by JR, opens 10 AM, back by 11.', { id: 'd17-free', tags: ['shop'] }),
       E('11:00 AM', 'Check out — bags with concierge', 'Lobby until 1:30 PM: last Akihabara wander, coffee, sort purchases into carry-ons.', { id: 'd17-checkout', tags: ['hotel'] }),
       E('~1:30 PM', 'Group assembles in lobby', 'Collect bags, final sort into carry-ons.', { id: 'd17-lobby', tags: ['logistics'] }),
       E('~1:45 PM', 'Leave for Narita', 'JR Akihabara → Ueno (5 min), Keisei Skyliner → Narita T1 (36 min, ¥2,520). 4+ hrs before NASA\'s 6:15 PM flight, ~2.5 hrs before M&M\'s.', {
@@ -700,9 +716,9 @@ export const DAYS = [
         id: 'd17-narita', place: P('Narita Airport Terminal 1', 35.7654, 140.3860, 'Narita Airport Terminal 1'), travel: { mode: 'train', label: 'Keisei Skyliner, 36 min, ¥2,520' }, tags: ['flight'],
       }),
       E('2:25–5:15 PM', 'Check in · security · immigration · lounge', 'Eat in the lounge. Duty Free: Royce chocolate, matcha Kit Kats, Japanese whisky. Keep ¥10,000 cash for Duty Free.', { id: 'd17-airport', tags: ['food', 'shop'] }),
-      E('~5:15 PM', 'M&M depart', 'Farewell before their gate.', { id: 'd17-mm', who: 'mm', tags: ['flight'] }),
-      E('5:30–6:00 PM', 'Gate', 'Boarding call ~30 min before departure.', { id: 'd17-gate', who: 'nasa', tags: ['flight'] }),
-      E('6:15 PM', 'NASA depart', 'Sayonara.', { id: 'd17-depart', who: 'nasa', tags: ['flight'] }),
+      E('~5:15 PM', 'M&M flight departs', 'Narita T1, ~5:15 PM. One last see-you-on-the-other-side before the gate. Flight number to add.', { id: 'd17-mm', who: 'mm', tags: ['flight'] }),
+      E('5:30–6:00 PM', 'NASA to the gate', 'Boarding call ~30 min before departure.', { id: 'd17-gate', who: 'nasa', tags: ['flight'] }),
+      E('6:15 PM', 'NASA flight departs', 'Narita T1, 6:15 PM. Sayonara. Flight number to add.', { id: 'd17-depart', who: 'nasa', tags: ['flight'] }),
       N('Suica', 'Return at ticket machines for the ¥500 deposit, or keep it — works on your next trip.', 'tip'),
     ],
   },

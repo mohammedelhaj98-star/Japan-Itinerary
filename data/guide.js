@@ -2,6 +2,10 @@
 
 export const BOOKINGS = {
   confirmed: [
+    { title: 'NASA flight in, Narita T1', when: 'Oct 16, D1, lands 4:10 PM', detail: 'Naf + Sara. Then Skyliner to Nippori and Yamanote to Takadanobaba. Flight number not in the plan yet.', day: 'd01', who: 'nasa' },
+    { title: 'M&M flight in', when: 'Oct 21, D6, evening', detail: 'Mariam + Mo meet NASA at Kyoto Granbell that evening. Flight number, airport and landing time still to add.', day: 'd06', who: 'mm' },
+    { title: 'M&M flight out, Narita T1', when: 'Nov 1, D17, ~5:15 PM', detail: 'Both couples ride the Skyliner together from Ueno ~1:45 PM. Flight number to add.', day: 'd17', who: 'mm' },
+    { title: 'NASA flight out, Narita T1', when: 'Nov 1, D17, 6:15 PM', detail: 'At Narita ~2:25 PM, 4+ hrs early. Flight number to add.', day: 'd17', who: 'nasa' },
     { title: 'Omakase Sushi Dinner', when: 'Oct 18, D3, 8:30 PM', detail: 'Sushi Yoshikawa Kaido Shinjuku, 7-19-7 Nishi-Shinjuku, Sun Rose Shinjuku 101. 19 courses, ¥14,300/person. Arrive 8:20 PM.', day: 'd03' },
     { title: 'All hotels', when: 'Whole trip', detail: 'Sotetsu Grand Fresa (Oct 16–20), Mizunoto (Oct 20–21), Kyoto Granbell (Oct 21–27, 6 nights), Akihabara Washington (Oct 27–Nov 1). No Osaka hotel; day trip from Kyoto.' },
     { title: 'Odakyu Romancecar, Hakone 41', when: 'Oct 20, D5, 7:37 AM', detail: 'EMot app. Shinjuku 7:37 → Hakone-Yumoto 9:22. Car 1, right side (C/D). ¥1,300 surcharge confirmed. Hakone Free Pass (¥6,100/person) at Odakyu Shinjuku counter that morning.', day: 'd05' },
