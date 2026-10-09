@@ -391,12 +391,10 @@ export const PLACES = {
   "kind": "shrine"
  },
  "Mizunoto Hakone": {
-  "img": "mizunoto-hakone.webp",
-  "credit": "Bgabel, CC BY-SA 3.0",
-  "file": "https://commons.wikimedia.org/wiki/File:JP-Hakone-motohakone.jpg",
-  "area": "Moto-Hakone",
-  "key": "Moto-Hakone · Lake Ashi south shore",
-  "story": "Moto-Hakone is the small town on Lake Ashi's south shore, close to Hakone Shrine and the boat piers. The old Tokaido road climbs from here through a stone-paved cedar avenue planted in the early Edo period. Evenings are quiet once the day-trippers leave, so it is a good time to soak.",
+  "ja": "水の音",
+  "ro": "Mizu no Oto",
+  "key": "Kowakidani onsen · Kaiseki dinner",
+  "story": "A hot-spring hotel in Kowakidani, part way up the Hakone mountains between Miyanoshita and Lake Ashi, rather than by the lake itself. Stays include its onsen baths and a seasonal kaiseki dinner. Hakone Tozan buses run along Route 1 through Kowakidani.",
   "kind": "hotel"
  },
  "Odawara Station": {

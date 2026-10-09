@@ -15,13 +15,13 @@ export const TRIP = {
   travelers: {
     all: { label: 'Everyone', short: 'All' },
     nasa: { label: 'NASA — Naf + Sara', short: 'NASA' },
-    mm: { label: 'M&M — Mariam + M', short: 'M&M' },
+    mm: { label: 'M&M — Mariam + Mo', short: 'M&M' },
   },
 };
 
 export const HOTELS = [
   { id: 'sotetsu', name: 'Sotetsu Grand Fresa Takadanobaba', city: 'Tokyo', dates: 'Oct 16–20', nights: 4, lat: 35.7127, lng: 139.7040, q: 'Sotetsu Grand Fresa Takadanobaba' },
-  { id: 'mizunoto', name: 'Mizunoto Hakone', city: 'Hakone', dates: 'Oct 20–21', nights: 1, lat: 35.2048, lng: 139.0287, q: 'Hotel Mizunoto Hakone Moto-Hakone' },
+  { id: 'mizunoto', name: 'Mizunoto Hakone', city: 'Hakone', dates: 'Oct 20–21', nights: 1, lat: 35.2405, lng: 139.0528, q: '箱根小涌谷温泉 水の音' },
   { id: 'granbell', name: 'Kyoto Granbell', city: 'Kyoto', dates: 'Oct 21–27', nights: 6, lat: 35.0036, lng: 135.7711, q: 'Kyoto Granbell Hotel' },
   { id: 'washington', name: 'Akihabara Washington Hotel', city: 'Tokyo', dates: 'Oct 27–Nov 1', nights: 5, lat: 35.6975, lng: 139.7745, q: 'Akihabara Washington Hotel' },
 ];
@@ -213,8 +213,8 @@ export const DAYS = [
       E('~1:25–2:00 PM', 'Hakone Shrine + lakeside torii', '5-min walk from pier. Red torii in the lake, cedar approach. Grounds 24 hrs; inner shrine 8:30 AM–5 PM. Free. 35 min.', {
         id: 'd05-shrine', place: P('Hakone Shrine', 35.2047, 139.0254, 'Hakone Shrine'), travel: { mode: 'walk', label: '~20-min lakeside walk (or 1 more stop to Moto-Hakone pier, 5 min from shrine)' }, tags: ['sight'],
       }),
-      E('~2:05 PM', 'To Mizunoto', 'Walk or 5-min taxi. Check in ~2:15–2:30 PM.', {
-        id: 'd05-mizunoto', place: P('Mizunoto Hakone', 35.2048, 139.0287, 'Hotel Mizunoto Hakone'), travel: { mode: 'walk', label: 'Walk or 5-min taxi' }, tags: ['hotel'],
+      E('~2:05 PM', 'To Mizunoto', 'The hotel is up in Kowakidani, not by the lake: taxi about 15–20 min from Moto-Hakone, or the Hakone Tozan bus. Check in ~2:30 PM.', {
+        id: 'd05-mizunoto', place: P('Mizunoto Hakone', 35.2405, 139.0528, '箱根小涌谷温泉 水の音'), travel: { mode: 'taxi', label: 'Taxi ~15–20 min to Kowakidani' }, tags: ['hotel'],
       }),
       N('Note', 'Owakudani ropeway may close briefly for volcanic monitoring — Hakone Tozan Bus bypass exists. Open Air Museum only practical on the Romancecar/Tozan route.', 'warn'),
       S('Mizunoto — afternoon + evening'),
@@ -231,7 +231,7 @@ export const DAYS = [
     title: 'Hakone → Kyoto', tagline: 'Shinkansen day — Hakone to Gion',
     energy: 'LOW', dinner: 'NASA: Gion + date dinner (TBD) · M&M arrive evening', hotel: 'granbell',
     items: [
-      E('7:30–9:00 AM', 'Ryokan breakfast', '', { id: 'd06-bfast', place: P('Mizunoto Hakone', 35.2048, 139.0287, 'Hotel Mizunoto Hakone'), tags: ['food'] }),
+      E('7:30–9:00 AM', 'Ryokan breakfast', '', { id: 'd06-bfast', place: P('Mizunoto Hakone', 35.2405, 139.0528, '箱根小涌谷温泉 水の音'), tags: ['food'] }),
       E('9:00–10:45 AM', 'Final onsen, packing', '', { id: 'd06-onsen', tags: ['hotel'] }),
       E('11:00 AM', 'Check out — taxi to Odawara', 'Ask front desk to call a taxi to Odawara Station (book the night before). Carry-ons only.', { id: 'd06-checkout', tags: ['hotel'] }),
       N('Hakone → Odawara taxi', 'No Shinkansen at Hakone; Odawara is nearest, ~12 km. Taxi ~19 min door-to-door, ¥5,000–7,000 (~¥2,500–3,500/person for 2).\nNozomi does NOT stop at Odawara — Hikari only.', 'tip'),

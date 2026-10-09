@@ -155,7 +155,7 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .frow .m .jp { font-family:var(--mincho); font-size:13px; color:var(--ink2); }
 .frow .tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
 .tag { font-size:11px; font-weight:700; padding:2px 7px; border-radius:6px; background:var(--paper); color:var(--ink2); }
-.tag.halal { background:#e3f4e8; color:#1f7a3f; } .tag.likely { background:#fff3d6; color:#8a5a00; } .tag.veg { background:#e9f3dc; color:#3f6a12; } .tag.fish { background:#e3eefc; color:#1e4fc2; }
+.tag.halal { background:#e3f4e8; color:#1f7a3f; } .tag.pork { background:#fbe3e0; color:#b3261e; } .tag.pork2 { background:#fdeee0; color:#a14e10; } .tag.ok { background:#eef1f4; color:#3f4a55; } .tag.likely { background:#fff3d6; color:#8a5a00; } .tag.veg { background:#e9f3dc; color:#3f6a12; } .tag.fish { background:#e3eefc; color:#1e4fc2; }
 .frow .info { font-size:12.5px; color:var(--ink3); margin-top:4px; }
 .frow .go { flex:none; font-size:13px; font-weight:700; color:var(--blue); padding-top:4px; text-align:right; white-space:nowrap; }
 .empty { padding:18px 16px; font-size:14px; color:var(--ink2); text-align:center; }
@@ -190,6 +190,8 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 import { DAYS, HOTELS } from '../data/itinerary.js';
 import { FOOD } from '../data/guide.js';
 import { PLACES } from '../data/places.js';
+import { DIET } from '../data/diet.js';
+import { HOTEL_JA } from '../data/hotels-ja.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch { return f; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
@@ -206,10 +208,10 @@ const fmtC = (y, c) => { const v = y / RATE[c]; const d = v >= 100 ? 0 : 2; retu
 
 /* ═══════════ 1 · EXPENSES ═══════════ */
 const PEOPLE = [
-  { id: 'naf', name: 'Naf', c: '#2c4f86', couple: 'nasa' }, { id: 'sara', name: 'Sara', c: '#6f4f98', couple: 'nasa' },
-  { id: 'mariam', name: 'Mariam', c: '#cc5a26', couple: 'mm' }, { id: 'm', name: 'M', c: '#b94b74', couple: 'mm' },
+  { id: 'naf', name: 'Naf', ini: 'N', c: '#2c4f86', couple: 'nasa' }, { id: 'sara', name: 'Sara', ini: 'S', c: '#6f4f98', couple: 'nasa' },
+  { id: 'mariam', name: 'Mariam', ini: 'Ma', c: '#cc5a26', couple: 'mm' }, { id: 'm', name: 'Mo', ini: 'Mo', c: '#b94b74', couple: 'mm' },
 ];
-const COUPLES = { nasa: { name: 'NASA', c: '#4b4f9a', ids: ['naf', 'sara'] }, mm: { name: 'M&M', c: '#c25350', ids: ['mariam', 'm'] } };
+const COUPLES = { nasa: { name: 'NASA', ini: 'NA', c: '#4b4f9a', ids: ['naf', 'sara'] }, mm: { name: 'M&M', ini: 'M&M', c: '#c25350', ids: ['mariam', 'm'] } };
 const P = Object.fromEntries(PEOPLE.map((p) => [p.id, p]));
 const CATS = { food: ['Food', '#cc5a26', '🍜'], transport: ['Transport', '#2f5fd0', '🚆'], tickets: ['Tickets', '#6f4f98', '🎟'], shopping: ['Shopping', '#b94b74', '🛍'], hotel: ['Hotel', '#55702f', '🏨'], other: ['Other', '#6b6a64', '•'], settle: ['Settled', '#2f9e57', '✓'] };
 const SPLITS = { all: ['naf', 'sara', 'mariam', 'm'], nasa: ['naf', 'sara'], mm: ['mariam', 'm'] };
@@ -221,7 +223,7 @@ const DEMO = [
   { id: 'd5', title: 'Hakone Freepass ×2', yen: 13000, payer: 'naf', split: SPLITS.nasa, cat: 'tickets', day: 'd05' },
   { id: 'd6', title: 'Kimono rental ×2', yen: 11000, payer: 'mariam', split: SPLITS.mm, cat: 'shopping', day: 'd09' },
 ];
-const ex = { list: ls.get('proto.expenses', null) || DEMO.map((x) => ({ ...x })), demo: !ls.get('proto.expenses', null), cur: ls.get('proto.excur', 'USD'), mode: ls.get('proto.exmode', 'people') };
+const ex = { list: ls.get('proto.expenses', null) || DEMO.map((x) => ({ ...x })), demo: !ls.get('proto.expenses', null), cur: ls.get('proto.excur', 'USD'), mode: ls.get('proto.exmode2', 'couples') };
 const saveEx = () => { ls.set('proto.expenses', ex.list); ex.demo = false; };
 
 /* who-owes-whom: balances, then greedily match the biggest debtor with the biggest creditor (n−1 transfers at most) */
@@ -231,7 +233,7 @@ function balances() {
   return b;
 }
 function transfers(b) {
-  let parties = ex.mode === 'couples' ? Object.entries(COUPLES).map(([k, c]) => ({ id: k, name: c.name, c: c.c, v: c.ids.reduce((s, id) => s + b[id], 0) })) : PEOPLE.map((p) => ({ id: p.id, name: p.name, c: p.c, v: b[p.id] }));
+  let parties = ex.mode === 'couples' ? Object.entries(COUPLES).map(([k, c]) => ({ id: k, name: c.name, ini: c.ini, c: c.c, v: c.ids.reduce((s, id) => s + b[id], 0) })) : PEOPLE.map((p) => ({ id: p.id, name: p.name, ini: p.ini, c: p.c, v: b[p.id] }));
   const cr = parties.filter((p) => p.v > 0.5).map((p) => ({ ...p })).sort((a, z) => z.v - a.v), db = parties.filter((p) => p.v < -0.5).map((p) => ({ ...p, v: -p.v })).sort((a, z) => z.v - a.v);
   const out = [];
   while (cr.length && db.length) { const a = db[0], c = cr[0], amt = Math.min(a.v, c.v); out.push({ from: a, to: c, yen: amt }); a.v -= amt; c.v -= amt; if (a.v < 0.5) db.shift(); if (c.v < 0.5) cr.shift(); db.sort((x, y) => y.v - x.v); cr.sort((x, y) => y.v - x.v); }
@@ -243,18 +245,18 @@ function renderExpenses() {
   const b = balances(), t = transfers(b), total = ex.list.filter((x) => x.cat !== 'settle').reduce((s, x) => s + x.yen, 0);
   const byCat = {}; ex.list.filter((x) => x.cat !== 'settle').forEach((x) => (byCat[x.cat] = (byCat[x.cat] || 0) + x.yen));
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
-  const modeSeg = [['people', 'People'], ['couples', 'Couples']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
+  const modeSeg = [['couples', 'Couples'], ['people', 'People']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
   const groups = {}; [...ex.list].sort((a, z) => (z.day || '').localeCompare(a.day || '') || String(z.id).localeCompare(String(a.id))).forEach((x) => (groups[x.day] = groups[x.day] || []).push(x));
   const balCards = ex.mode === 'couples'
-    ? Object.entries(COUPLES).map(([k, c]) => { const v = c.ids.reduce((s, id) => s + b[id], 0); return `<div class="card"><span class="av" style="--c:${c.c}">${c.name === 'M&M' ? 'M&amp;M' : 'NA'}</span><span><b>${esc(c.name)}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('')
-    : PEOPLE.map((p) => { const v = b[p.id]; return `<div class="card"><span class="av" style="--c:${p.c}">${p.name[0]}</span><span><b>${p.name}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('');
+    ? Object.entries(COUPLES).map(([k, c]) => { const v = c.ids.reduce((s, id) => s + b[id], 0); return `<div class="card"><span class="av" style="--c:${c.c};font-size:11px">${esc(c.ini)}</span><span><b>${esc(c.name)}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('')
+    : PEOPLE.map((p) => { const v = b[p.id]; return `<div class="card"><span class="av" style="--c:${p.c}">${p.ini}</span><span><b>${p.name}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('');
   return `<header class="ph"><small>Shared expenses</small><h1>Who owes whom</h1><p>Log anything someone paid for the group. It splits it and works out the fewest payments to settle up.</p></header>
     ${ex.demo ? '<div class="demo"><span>Showing demo expenses so you can see how it works.</span><button data-clear>Start empty</button></div>' : ''}
     <div class="card tot"><div class="tot-r"><div><small>Trip spend so far</small><b class="big">${fmtY(total)}</b><p class="sub">${fmtC(total, ex.cur)} total · ${fmtC(total / 4, ex.cur)} each on average</p></div><div class="seg" id="curseg">${curSeg}<i></i></div></div>
       <div class="bars">${Object.entries(byCat).map(([k, v]) => `<i style="--c:${CATS[k][1]};width:${(v / total) * 100}%"></i>`).join('')}</div>
       <div class="legend">${Object.entries(byCat).map(([k, v]) => `<span style="--c:${CATS[k][1]}">${CATS[k][0]} ${fmtY(v)}</span>`).join('')}</div></div>
     <p class="sec">Settle up <span class="seg" id="modeseg">${modeSeg}<i></i></span></p>
-    <div class="card settle">${t.length ? t.map((x, i) => `<div class="tr"><span class="av sm" style="--c:${x.from.c}">${esc(x.from.name[0])}</span><span class="arr">${ARROW}</span><span class="av sm" style="--c:${x.to.c}">${esc(x.to.name[0])}</span><span class="who"><b>${esc(x.from.name)}</b> pays <b>${esc(x.to.name)}</b></span><span class="amt"><b>${fmtC(x.yen, ex.cur)}</b><small>${fmtY(x.yen)}</small></span><button class="done" data-paid="${i}">Paid</button></div>`).join('') : '<p class="even">Everyone is square.</p>'}</div>
+    <div class="card settle">${t.length ? t.map((x, i) => `<div class="tr"><span class="av sm" style="--c:${x.from.c}">${esc(x.from.ini)}</span><span class="arr">${ARROW}</span><span class="av sm" style="--c:${x.to.c}">${esc(x.to.ini)}</span><span class="who"><b>${esc(x.from.name)}</b> pays <b>${esc(x.to.name)}</b></span><span class="amt"><b>${fmtC(x.yen, ex.cur)}</b><small>${fmtY(x.yen)}</small></span><button class="done" data-paid="${i}">Paid</button></div>`).join('') : '<p class="even">Everyone is square.</p>'}</div>
     <p class="sec">Balances</p><div class="bal">${balCards}</div>
     <p class="sec">All expenses</p><div class="card xlist">${Object.entries(groups).map(([d, xs]) => `<p class="xday">${dayOf(d) ? `Day ${dayOf(d).n} · ${esc(dayOf(d).title)}` : 'Other'}</p>${xs.map((x) => `<button class="xrow ${x.cat === 'settle' ? 'settle-row' : ''}" data-ex="${x.id}" style="--c:${CATS[x.cat][1]}"><span class="ic">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}</b><small>${P[x.payer].name} paid · ${x.cat === 'settle' ? 'to ' + P[x.split[0]].name : 'for ' + esc(splitLabel(x.split))}</small></span><span class="r"><b>${fmtY(x.yen)}</b><small>${fmtC(x.yen, ex.cur)}</small></span></button>`).join('')}`).join('') || '<p class="empty">No expenses yet. Tap Add expense.</p>'}</div>`;
 }
@@ -275,9 +277,9 @@ function renderSheet() {
   sheet.innerHTML = `<div class="grab"></div><div class="sh-h"><b>${ed.id ? 'Edit expense' : 'Add expense'}</b><button data-x>Cancel</button></div>
     <div class="fld"><span>Amount</span><div class="amt-in"><input id="x-amt" inputmode="decimal" placeholder="0" value="${esc(ed.amt)}"><div class="seg" id="ccyseg" style="align-self:center">${['JPY', 'CAD', 'QAR', 'USD'].map((c) => `<button data-ccy="${c}" class="${ed.ccy === c ? 'on' : ''}">${c === 'JPY' ? '¥' : c}</button>`).join('')}<i></i></div></div></div>
     <label class="fld"><span>What for</span><input id="x-title" placeholder="e.g. Kuromon lunch" value="${esc(ed.title)}" autocomplete="off"></label>
-    <div class="fld"><span>Paid by</span><div class="ppl">${PEOPLE.map((p) => `<button data-payer="${p.id}" class="${ed.payer === p.id ? 'on' : ''}"><span class="av" style="--c:${p.c}">${p.name[0]}</span>${p.name}</button>`).join('')}</div></div>
+    <div class="fld"><span>Paid by</span><div class="ppl">${PEOPLE.map((p) => `<button data-payer="${p.id}" class="${ed.payer === p.id ? 'on' : ''}"><span class="av" style="--c:${p.c}">${p.ini}</span>${p.name}</button>`).join('')}</div></div>
     <div class="fld"><span>Split between</span><div class="chips">${[['all', 'All four'], ['nasa', 'NASA'], ['mm', 'M&amp;M'], ['pick', 'Pick people']].map(([k, l]) => `<button data-split="${k}" class="${ed.splitMode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
-      ${ed.splitMode === 'pick' ? `<div class="ppl multi" style="margin-top:8px">${PEOPLE.map((p) => `<button data-pick="${p.id}" class="${ed.split.includes(p.id) ? 'on' : ''}"><span class="av" style="--c:${p.c}">${p.name[0]}</span>${p.name}</button>`).join('')}</div>` : ''}</div>
+      ${ed.splitMode === 'pick' ? `<div class="ppl multi" style="margin-top:8px">${PEOPLE.map((p) => `<button data-pick="${p.id}" class="${ed.split.includes(p.id) ? 'on' : ''}"><span class="av" style="--c:${p.c}">${p.ini}</span>${p.name}</button>`).join('')}</div>` : ''}</div>
     <div class="fld"><span>Type</span><div class="chips">${Object.entries(CATS).filter(([k]) => k !== 'settle').map(([k, [l, , ic]]) => `<button data-cat="${k}" class="${ed.cat === k ? 'on' : ''}">${ic} ${l}</button>`).join('')}</div></div>
     <p class="preview" id="x-prev">${y ? `${fmtY(y)}${ed.ccy !== 'JPY' ? ` (from ${SYM[ed.ccy]}${esc(ed.amt)})` : ''} · ${fmtY(share)} each for ${esc(splitLabel(ed.split))}` : 'Enter an amount to see the split.'}</p>
     <button class="save" data-save ${y && ed.split.length ? '' : 'disabled'}>${ed.id ? 'Save' : 'Add expense'}</button>
@@ -300,13 +302,7 @@ scrim.addEventListener('click', closeSheet);
 
 /* ═══════════ 2 · TAXI CARDS ═══════════ */
 /* Japanese names and districts confirmed against OpenStreetMap; full addresses for Kyoto and Hakone still need the booking confirmation. */
-const HJA = {
-  sotetsu: { ja: '相鉄グランドフレッサ 高田馬場', addr: '東京都新宿区高田馬場1丁目', zip: '〒169-0075', ok: 'district' },
-  mizunoto: { ja: null, addr: '神奈川県足柄下郡箱根町', zip: '', ok: 'town' },
-  granbell: { ja: '京都グランベルホテル', addr: '京都府京都市東山区', zip: '', ok: 'ward' },
-  washington: { ja: '秋葉原ワシントンホテル', addr: '東京都千代田区神田佐久間町1丁目', zip: '〒101-0025', ok: 'district' },
-};
-const extraAddr = ls.get('proto.hoteladdr', {});
+const HJA = Object.fromEntries(Object.entries(HOTEL_JA).map(([k, v]) => [k, { ja: v.ja, addr: v.addr_ja, zip: v.zip, en: v.addr_en, phone: v.phone }]));
 function tonightHotel() { const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); const d = DAYS.find((x) => x.date === t) || DAYS[0]; return d.hotel; }
 function renderTaxi() {
   const tn = tonightHotel();
@@ -315,23 +311,22 @@ function renderTaxi() {
 }
 const driver = document.getElementById('driver');
 function openDriver(id) {
-  const h = HOTELS.find((x) => x.id === id), j = HJA[id] || {}, full = extraAddr[id];
+  const h = HOTELS.find((x) => x.id === id), j = HJA[id] || {};
   driver.innerHTML = `<button class="x" data-dx aria-label="Close">${X}</button>
     <p class="lbl">Show this to the driver</p><p class="say">このホテルまでお願いします</p><p class="sayr">kono hoteru made onegaishimasu · "Please take me to this hotel"</p>
     <p class="name">${esc(j.ja || h.name)}</p>
-    <p class="addr">${esc(full || [j.zip, j.addr].filter(Boolean).join(' '))}</p>
-    <p class="en">${esc(h.name)} · ${esc(h.city)}</p>
-    ${!full ? `<div class="warn">${j.ja ? 'The name and area are confirmed.' : 'The Japanese name still needs checking.'} Paste the full address from your booking so drivers can find it exactly.<input id="addr-in" placeholder="Full address in Japanese, from the booking" value=""></div>` : ''}
-    <div class="acts"><a class="pri" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.q || h.name)}" target="_blank" rel="noopener">Open in Maps</a><button data-copy="${esc(j.ja || h.name)}">Copy name</button></div>`;
+    <p class="addr">${esc([j.zip, j.addr].filter(Boolean).join(' '))}</p>
+    ${j.phone ? `<p class="addr" style="font-family:var(--sans);font-size:24px;font-weight:700;letter-spacing:.02em">☎ ${esc(j.phone)}</p><p class="sayr">Drivers can type the phone number into their navigation.</p>` : ''}
+    <p class="en">${esc(h.name)} · ${esc(j.en || h.city)}</p>
+    <div class="acts"><a class="pri" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.addr || h.q || h.name)}" target="_blank" rel="noopener">Open in Maps</a>${j.phone ? `<a href="tel:${esc('+81' + j.phone.replace(/^0/, '').replace(/-/g, ''))}">Call hotel</a>` : ''}<button data-copy="${esc((j.ja || h.name) + ' ' + (j.addr || ''))}">Copy</button></div>`;
   driver.classList.add('on'); driver.dataset.h = id;
 }
 driver.addEventListener('click', (e) => { if (e.target.closest('[data-dx]')) driver.classList.remove('on'); const c = e.target.closest('[data-copy]'); if (c) { navigator.clipboard && navigator.clipboard.writeText(c.dataset.copy); c.textContent = 'Copied'; } });
-driver.addEventListener('change', (e) => { if (e.target.id === 'addr-in' && e.target.value.trim()) { extraAddr[driver.dataset.h] = e.target.value.trim(); ls.set('proto.hoteladdr', extraAddr); openDriver(driver.dataset.h); } });
 
 /* ═══════════ 3 · FOOD NEARBY ═══════════ */
 const SPOTS = [];
 for (const d of DAYS) { const all = d.items.flatMap((it) => (it.type === 'choice' ? it.options.flatMap((o) => o.items || []) : [it])); for (const it of all) if (it.type === 'event' && it.place && !SPOTS.some((s) => s.name === it.place.name)) SPOTS.push({ name: it.place.name, lat: it.place.lat, lng: it.place.lng, day: d.n }); }
-const fd = { where: ls.get('proto.fwhere', 'Dotonbori Glico Sign'), here: null, radius: 800, show: { halal: true, likely: true, veg: true, fish: false }, res: null, err: '', sel: null };
+const fd = { allGuide: false, where: ls.get('proto.fwhere', 'Dotonbori Glico Sign'), here: null, radius: 800, show: { halal: true, likely: true, veg: true, fish: false }, res: null, err: '', sel: null };
 const KIND = { halal: ['Halal', 'halal', '#1f7a3f'], likely: ['Muslim-friendly cuisine, ask', 'likely', '#b07a00'], veg: ['Vegetarian', 'veg', '#3f6a12'], fish: ['Fish or seafood', 'fish', '#1e4fc2'] };
 function classify(t) {
   const k = []; const cu = (t.cuisine || '').toLowerCase();
@@ -362,7 +357,10 @@ async function searchFood() {
 let fmap = null, flayer = null;
 function renderFood() {
   const c = center(); const shown = Array.isArray(fd.res) ? fd.res.filter((x) => x.kinds.some((k) => fd.show[k])) : [];
-  const guide = FOOD.flatMap((g) => g.items || []).filter((x) => x.lat).map((x) => ({ ...x, m: dist(c.lat, c.lng, x.lat, x.lng) })).filter((x) => x.m < 2500).sort((a, b) => a.m - b.m).slice(0, 4);
+  const guideAll = FOOD.flatMap((g) => g.items || []).filter((x) => x.lat).map((x) => ({ ...x, m: dist(c.lat, c.lng, x.lat, x.lng) })).sort((a, b) => a.m - b.m);
+  const guide = fd.allGuide ? guideAll.filter((x) => x.m < 60000) : guideAll.filter((x) => x.m < 2500).slice(0, 5);
+  const porkTag = (d) => !d ? '' : d.pork === 'main' ? '<span class="tag pork">Pork-based</span>' : d.pork === 'some' ? '<span class="tag pork2">Pork on menu</span>' : d.pork === 'none' ? '<span class="tag ok">No pork found</span>' : '<span class="tag">Pork: ask</span>';
+  const halTag = (d) => !d ? '' : d.halal === 'certified' ? '<span class="tag halal">Halal option</span>' : d.halal === 'muslim-friendly' ? '<span class="tag halal">Muslim-friendly</span>' : '';
   const walk = (m) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`) + ` · ${Math.max(1, Math.round(m / 80))} min walk`;
   return `<header class="ph"><small>Food nearby</small><h1>Halal &amp; pork-free</h1><p>Searches OpenStreetMap around you, or around any stop on the trip. Tags in Japan are patchy, so always ask.</p></header>
     <div class="card where"><div class="where-r"><select id="f-where" aria-label="Search around">${fd.here ? '<option selected>My location</option>' : ''}${SPOTS.map((s) => `<option ${!fd.here && s.name === fd.where ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select><button class="here press" data-here>${LOC}Near me</button></div>
@@ -372,7 +370,8 @@ function renderFood() {
     <p class="sec">${fd.res === 'loading' ? 'Searching…' : `${shown.length} place${shown.length === 1 ? '' : 's'} within ${fd.radius} m`}</p>
     <div class="card fl">${fd.res === 'loading' ? '<p class="empty">Looking around…</p>' : shown.length ? shown.slice(0, 25).map((x, i) => `<button class="frow" data-food="${x.id}" style="--c:${KIND[x.kinds[0]][2]}"><span class="n">${i + 1}</span><span class="m"><b>${esc(x.name)}</b>${x.ja ? `<span class="jp">${esc(x.ja)}</span>` : ''}<span class="tags">${x.kinds.map((k) => `<span class="tag ${KIND[k][1]}">${KIND[k][0]}</span>`).join('')}${x.cuisine ? `<span class="tag">${esc(x.cuisine)}</span>` : ''}</span><span class="info" style="display:block">${walk(x.m)}${x.hours ? ' · ' + esc(x.hours) : ''}</span></span><a class="go" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}&travelmode=walking" target="_blank" rel="noopener">Go ›</a></button>`).join('') : '<p class="empty">Nothing tagged here yet. Try 1.5 km, turn on Fish or seafood, or use the guide picks below.</p>'}</div>
     <button class="card porkcard press" data-pork><span><b>豚肉とアルコールが入ったものは食べられません</b><small>"I can't eat anything with pork or alcohol" · tap to show staff</small></span></button>
-    ${guide.length ? `<p class="sec">From your guide, nearby</p><div class="card fl">${guide.map((x) => `<a class="frow" style="--c:#2c4f86;text-decoration:none" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}&travelmode=walking" target="_blank" rel="noopener"><span class="n">★</span><span class="m"><b>${esc(x.name)}</b><span class="info" style="display:block">${esc(x.meta || '')}</span><span class="info" style="display:block;color:var(--ink2)">${esc(x.text || '')}</span><span class="info" style="display:block">${walk(x.m)}</span></span><span class="go">Go ›</span></a>`).join('')}</div>` : ''}
+    <p class="sec">${fd.allGuide ? 'Your guide, checked for pork' : 'From your guide, nearby'}<button data-allguide>${fd.allGuide ? 'Nearby only' : 'See all in this city'}</button></p>
+    <div class="card fl">${guide.length ? guide.map((x) => { const d = DIET[x.name]; return `<a class="frow" style="--c:${d && d.pork === 'main' ? '#c62d22' : d && d.halal === 'certified' ? '#1f7a3f' : '#2c4f86'};text-decoration:none" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}&travelmode=walking" target="_blank" rel="noopener"><span class="n">★</span><span class="m"><b>${esc(x.name)}</b><span class="tags">${porkTag(d)}${halTag(d)}</span>${d ? `<span class="info" style="display:block;color:var(--ink);margin-top:6px">${esc(d.note)}</span>` : ''}${d && d.alt ? `<span class="info" style="display:block;color:#1f7a3f;font-weight:700;margin-top:3px">Halal nearby: ${esc(d.alt)}</span>` : ''}<span class="info" style="display:block">${esc(x.meta || '')} · ${walk(x.m)}</span></span><span class="go">Go ›</span></a>`; }).join('') : '<p class="empty">No guide picks within 2.5 km. Tap See all in this city.</p>'}</div>
     <p class="honest">"Muslim-friendly cuisine" means the cuisine is often halal (Indian, Turkish, Indonesian and so on), not that it's certified. Fish and udon places are usually pork-free, but broths and sauces can use mirin or sake.</p>`;
 }
 function mountFoodMap() {
@@ -405,7 +404,7 @@ fab.addEventListener('click', () => openEx(null));
 page.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
   const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
-  const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('proto.exmode', ex.mode); return render(); }
+  const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('proto.exmode2', ex.mode); return render(); }
   if (t('[data-clear]')) { ex.list = []; saveEx(); return render(); }
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couples' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couples' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
     ex.list.push({ id: 's' + Date.now().toString(36), title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); saveEx(); return render(); }
@@ -414,6 +413,7 @@ page.addEventListener('click', (e) => {
   if (t('[data-here]')) { if (!navigator.geolocation) { fd.err = 'Location is not available on this device.'; return render(); }
     navigator.geolocation.getCurrentPosition((p) => { fd.here = { name: 'My location', lat: p.coords.latitude, lng: p.coords.longitude }; searchFood(); }, () => { fd.err = 'Could not get your location. Check location permission, or pick a stop instead.'; render(); }, { enableHighAccuracy: true, timeout: 10000 }); return; }
   const sh = t('[data-show]'); if (sh) { fd.show[sh.dataset.show] = !fd.show[sh.dataset.show]; return render(); }
+  if (t('[data-allguide]')) { fd.allGuide = !fd.allGuide; return render(); }
   if (t('[data-radius]')) { fd.radius = fd.radius > 800 ? 800 : 1500; return searchFood(); }
   if (t('[data-pork]')) { driver.innerHTML = `<button class="x" data-dx aria-label="Close">${X}</button><p class="lbl">Show this to staff</p><p class="name" style="margin-top:40px">豚肉とアルコールが入ったものは食べられません</p><p class="sayr" style="margin-top:14px">butaniku to arukōru ga haitta mono wa taberaremasen</p><p class="en">"I can't eat anything that contains pork or alcohol."</p><p class="say" style="margin-top:30px;font-size:22px">これは豚肉が入っていますか</p><p class="sayr">kore wa butaniku ga haitte imasu ka · "Does this contain pork?"</p>`; driver.classList.add('on'); return; }
   const fr = t('[data-food]'); if (fr && !t('a')) { document.querySelectorAll('.fpin.sel').forEach((p) => p.classList.remove('sel')); const pin = document.querySelector(`[data-fp="${fr.dataset.food}"]`); if (pin) { pin.classList.add('sel'); const x = fd.res.find((r) => r.id === fr.dataset.food); fmap.panTo([x.lat, x.lng]); } }

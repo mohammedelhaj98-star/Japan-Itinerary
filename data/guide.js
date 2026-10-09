@@ -76,7 +76,7 @@ export const FOOD = [
       { name: 'Okonomiyaki: Kiji (Umeda) or Chibo (Dotonbori)', meta: '¥1,200–1,800, no reservation', text: 'Osaka savory pancake. Kiji more local; Chibo on the Dotonbori route.', lat: 34.6686, lng: 135.5030 },
       { name: 'Kinryu Ramen 24h, Dotonbori', meta: '¥850, no reservation', text: 'Giant golden dragon sign. Reliable soy ramen, midnight or post-dinner.', lat: 34.6685, lng: 135.5025 },
       { name: 'Kuromon Ichiba crawl (already in plan)', meta: '¥2,500–3,500/person walking', text: 'Giant Nihon scallop skewer, Daiwa wagyu nigiri, Maruhachi sea urchin, Kani Douraku crab tasting. Slowly, many stalls; this is lunch.', lat: 34.6655, lng: 135.5063 },
-      { star: true, name: 'Mooken cream puffs', meta: '¥300–500, walk-in, Dotonbori/Namba', text: 'Famous Osaka cream puffs; find during the Dotonbori crawl.' },
+      { star: true, name: 'Mooken cream puffs', meta: '¥300–500, walk-in, Shinsaibashi', text: 'Famous Osaka cream puffs, a short walk north of Dotonbori in Shinsaibashi.' },
     ],
     cafes: [
       { name: '% Arabica Osaka, Kitahama', text: 'Canal-side, north of Namba. Coffee stop en route to Osaka Castle.', lat: 34.6915, lng: 135.5070 },
@@ -90,7 +90,7 @@ export const FOOD = [
       { name: 'Yurakucho yakitori under the tracks', meta: '¥3,000–4,500, no reservation, evenings', text: 'Old yakitori stalls under the Yamanote Line at Yurakucho Station. Best old-Tokyo atmosphere. Any free evening.', lat: 35.6745, lng: 139.7630 },
       { name: 'Afuri ramen', meta: '¥1,200–1,500, no reservation', text: 'Yuzu shio (citrus salt) ramen, light, aromatic. Fallback if Fuunji missed. Multiple locations.' },
       { name: 'Kanda Yabu Soba (historic)', meta: '¥1,500, no reservation, closed Tuesdays', text: 'Tokyo\'s most historic soba, 1880. Cold zaru soba. Easy walk from Akihabara base.', lat: 35.6960, lng: 139.7700 },
-      { star: true, name: 'Kitsuneya beef bowl, Ningyocho', meta: '¥800–1,200, no reservation, tiny counter', text: 'Legendary hole-in-the-wall gyudon; deep offal-and-beef bowl. Short detour, any free afternoon.', lat: 35.6855, lng: 139.7830 },
+      { star: true, name: 'Kitsuneya beef bowl, Tsukiji', meta: '¥800–1,200, no reservation, tiny counter', text: 'Legendary hole-in-the-wall gyudon; deep offal-and-beef bowl. Inside Tsukiji Outer Market; pair it with the market morning. Any free afternoon.', lat: 35.6655, lng: 139.7707 },
       { name: 'Shodai potato curry noodles', meta: '¥1,200–1,500, check hours', text: 'Rich potato-based curry noodles, unlike anything else on the trip. Check current location first.' },
       { name: 'Convenience store culture', meta: '¥100–500 per item', text: '7-Eleven: egg salad sando (¥220), hot karaage (¥130), strawberry daifuku (¥180), onigiri; nikuman pork bun (avoid). Hot coffee ¥100.' },
     ],
@@ -200,7 +200,7 @@ export const SUGGESTIONS = [
   ] },
   { id: 's-d16-morning', day: 'd16', slot: 'Free Halloween morning', title: 'Last free morning in Tokyo', picks: [
     { name: 'Daiwa Sushi at Toyosu (tuna omakase)', why: 'The unscheduled must-eat. Queue from 6:30 AM, done by 9.', lat: 35.6450, lng: 139.7850 },
-    { name: 'Kitsuneya gyudon, Ningyocho', why: 'Legendary tiny-counter beef bowl, 15 min from Akihabara. Early lunch.', lat: 35.6855, lng: 139.7830 },
+    { name: 'Kitsuneya gyudon, Tsukiji', why: 'Legendary tiny-counter beef bowl in Tsukiji Outer Market. Early lunch.', lat: 35.6655, lng: 139.7707 },
     { name: 'Yanaka Ginza + Nezu Shrine', why: 'Old shitamachi Tokyo 10 min from the hotel. Cats, food stalls, torii tunnel at Nezu.', lat: 35.7277, lng: 139.7653 },
   ] },
   { id: 's-anytime', day: null, slot: 'Any free hour', title: 'Fill any gap', picks: [
