@@ -28,7 +28,7 @@ const STEPS = [
   { page: 'trip', el: '.pass.open [data-stamp]', t: 'Stamp it', x: 'When you\'ve done a stop, stamp it so everyone can see. <b>Tap Stamp.</b>', pre: (e) => e.drawer.close(), done: (e) => e.store.isChecked(e.ui.sel) },
   { page: 'trip', el: '#grab', noscroll: true, t: 'Bigger map', x: '<b>Swipe the stops down from here, or tap the handle,</b> to give the map the whole screen.', pre: (e) => { e.drawer.close(); window.scrollTo(0, 0); }, done: (e) => e.mapMax.isOn() },
   { page: 'trip', el: '#grab', noscroll: true, t: 'Bring them back', x: '<b>Tap the handle again</b> (or swipe up).', done: (e) => !e.mapMax.isOn() },
-  { page: 'trip', el: '#ttBtn', t: 'Trip tools', x: 'Expenses, bookings, food, taxi cards and Settings. <b>Tap +.</b>', pre: (e) => e.drawer.close(), done: () => !!document.querySelector('#tt.open') },
+  { page: 'trip', el: '#ttBtn', t: 'Trip tools', x: 'Expenses, bookings, ideas, taxi cards and Settings, with the card colours on top. <b>Tap +.</b>', pre: (e) => e.drawer.close(), done: () => !!document.querySelector('#tt.open') },
   { page: 'trip', el: '.tt-opt[href$="v=1"]', t: 'Expenses', x: '<b>Tap Expenses.</b>', nav: toolsUrl(1), pre: () => { const tt = document.getElementById('tt'); if (tt && !tt.classList.contains('open')) document.getElementById('ttBtn').click(); } },
   // ── tools page ──
   { page: 'tools', el: '.card.tot', t: 'Shared expenses', x: 'What the group has spent, in yen and your currency. Below it: who owes whom, settled by couple or person.', pre: (e) => e.setTab(0) },
@@ -37,10 +37,11 @@ const STEPS = [
   { page: 'tools', el: '.xsw', t: 'Swipe to delete', x: 'Made a mistake? <b>Swipe an expense left, tap Delete and confirm.</b> There\'s an Undo too.', allow: '.cfm-bg.on', snap: (e) => e.exCount(), done: (e, s0) => e.exCount() < s0 },
   { page: 'tools', el: pick(2), t: 'Bookings', x: '<b>Tap Bookings.</b>', done: (e) => e.getTab() === 1 },
   { page: 'tools', el: '.bk.todo [data-bkmark]', t: 'Booked something?', x: 'Everything booked and still to book. <b>Tap Mark as booked</b> and it moves to Booked for everyone.', pre: (e) => e.setTab(1), snap: (e) => booked(e.store.state), done: (e, s0) => booked(e.store.state) > s0 },
-  { page: 'tools', el: pick(4), t: 'Food', x: '<b>Tap Food.</b>', done: (e) => e.getTab() === 3, post: (e) => e.setFoodView('ideas') },
-  { page: 'tools', el: () => document.getElementById('sg-text')?.closest('.card'), t: 'Suggest a place', x: 'Ideas go to all four phones. <b>Type one and tap Post for everyone.</b>', pre: (e) => { e.setTab(3); e.setFoodView('ideas'); }, snap: (e) => (e.store.state.suggestions || []).length, done: (e, s0) => (e.store.state.suggestions || []).length > s0 },
+  { page: 'tools', el: pick(4), t: 'Ideas', x: 'Notes for food, shops and places to see. <b>Tap Ideas.</b>', done: (e) => e.getTab() === 3, post: (e) => e.setFoodView('food') },
+  { page: 'tools', el: () => document.getElementById('sg-text')?.closest('.card'), t: 'Suggest a place', x: 'Ideas go to all four phones. <b>Type one and tap Post for everyone.</b>', pre: (e) => { e.setTab(3); e.setFoodView('food'); }, snap: (e) => (e.store.state.suggestions || []).length, done: (e, s0) => (e.store.state.suggestions || []).length > s0 },
   { page: 'tools', el: '[data-vote]', t: 'Vote', x: '<b>Tap Vote</b> on an idea you like. Everyone sees who voted.', snap: (e) => votes(e.store.state), done: (e, s0) => votes(e.store.state) !== s0 },
-  { page: 'tools', el: '[data-fview="nearby"]', t: 'Halal & pork-free nearby', x: '<b>Tap Nearby</b> to search around you or any stop on the trip.', done: (e) => e.getFoodView() === 'nearby' },
+  { page: 'tools', el: '[data-fview="shop"]', t: 'Shops & places', x: 'Stores you want to see and places to visit get their own lists, so nothing gets lost. <b>Tap Shops.</b>', done: (e) => e.getFoodView() === 'shop' },
+  { page: 'tools', el: '[data-fview="nearby"]', t: 'Halal & pork-free nearby', x: '<b>Tap Halal</b> to find halal and pork-free food around you or any stop on the trip.', done: (e) => e.getFoodView() === 'nearby' },
   { page: 'tools', el: pick(3), t: 'Taxi cards', x: '<b>Tap Taxi.</b>', done: (e) => e.getTab() === 2 },
   { page: 'tools', el: '.hcard', t: 'Show the driver', x: 'Each card says, in Japanese, "please take me to this hotel". <b>Tap a hotel.</b>', pre: (e) => e.setTab(2), done: (e) => e.driverOpen() },
   { page: 'tools', el: pick(5), t: 'Settings', x: 'Close the card with ✕ when you\'re done showing it. <b>Then tap Settings.</b>', allow: '#driver.on', done: (e) => e.getTab() === 4 },
@@ -177,7 +178,7 @@ export function runTour() {
       }
       s0 = st.snap ? st.snap(env) : null; last = ''; ready = true;
       card.className = 'tour-card';
-      card.innerHTML = `<div class="tour-h"><small>${i + 1} of ${STEPS.length}</small><span class="pr"><i></i>Practice · nothing is saved</span></div><h3>${st.t}</h3><p>${st.x}</p><div class="row">${st.last ? '' : '<button class="end" data-tend>End</button>'}<span class="sp"></span><span class="ok">✓ Nice</span>${i && !st.last ? '<button data-tback>Back</button>' : ''}<button class="go" data-tnext>${st.last ? 'Back to the trip' : st.done ? 'Skip' : 'Next'}</button></div>`;
+      card.innerHTML = `<div class="tour-h"><small>${i + 1} of ${STEPS.length}</small><span class="pr"><i></i>Practice · nothing is saved</span></div><h3>${st.t}</h3><p>${typeof st.x === 'function' ? st.x(env) : st.x}</p><div class="row">${st.last ? '' : '<button class="end" data-tend>End</button>'}<span class="sp"></span><span class="ok">✓ Nice</span>${i && !st.last ? '<button data-tback>Back</button>' : ''}<button class="go" data-tnext>${st.last ? 'Back to the trip' : st.done ? 'Skip' : 'Next'}</button></div>`;
       if (st.nav) { const a = target(); if (a) a.addEventListener('click', () => { i++; save(); }, { once: true }); }
       // the slow poll catches what no event announces (a store update, a panel opening by itself) and a target that moved
       poll = setInterval(() => { check(); if (!raf && place()) kick(); }, 250);

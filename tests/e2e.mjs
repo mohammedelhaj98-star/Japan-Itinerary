@@ -15,12 +15,13 @@ const KV = {
   async delete(k) { store.delete(k); meta.delete(k); },
   async list({ prefix = '' } = {}) { return { keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name, metadata: meta.get(name) })), list_complete: true }; },
 };
+const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost:8790');
   if (u.pathname.startsWith('/api/')) {
     const chunks = []; for await (const c of req) chunks.push(c);
-    const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: { TRIP_KV: KV } });
+    const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: { TRIP_KV: KV, TRIP_PIN: PIN } });
     res.writeHead(r.status, { 'content-type': 'application/json' }); return res.end(await r.text());
   }
   let p = decodeURIComponent(u.pathname); if (p === '/japan') { res.writeHead(301, { location: '/japan/' }); return res.end(); }
@@ -36,6 +37,7 @@ const browser = await chromium.launch({ ...(process.env.CHROMIUM ? { executableP
 const SH = REPO + '/tests/shots/'; fs.mkdirSync(SH, { recursive: true });
 let pass = 0, fail = 0; const ok = (name, c, info = '') => { c ? pass++ : fail++; console.log(c ? 'PASS' : 'FAIL', name, info); };
 const phone = async (time) => { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, serviceWorkers: 'block' }); const page = await ctx.newPage(); if (time) await page.clock.install({ time: new Date(time) }); const errs = []; page.on('pageerror', (e) => errs.push(e.message)); return { ctx, page, errs }; };
+const enterPin = async (pg, pin = PIN) => { await pg.waitForSelector('#s-pin.on', { timeout: 5000 }); for (const d of pin) { await pg.tap(`[data-k="${d}"]`); await pg.waitForTimeout(60); } };
 const openPass = (page) => page.evaluate(() => { const o = document.querySelector('.pass.open'); return o ? o.dataset.id : null; });
 const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.pass:not(.open)')].map((el) => [el.dataset.id, new DOMMatrix(getComputedStyle(el).transform).m42]).sort((a, b) => a[1] - b[1]).map((x) => x[0]));
 
@@ -43,7 +45,14 @@ const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.
 const A = await phone();
 await A.page.goto(B + '/japan/'); await A.page.waitForURL(/\/\?next=japan/); ok('first visit goes to welcome', true, A.page.url());
 await A.page.waitForTimeout(800); await A.page.screenshot({ path: SH + 'hub-who.png' });
-await A.page.tap('[data-me="m"]'); await A.page.waitForURL(/\/japan\//); await A.page.waitForTimeout(2500);
+ok('welcome offers a guest option', !!(await A.page.$('[data-guest]')));
+await A.page.tap('[data-me="m"]'); await A.page.waitForTimeout(300);
+ok('picking a person asks for the PIN once', !!(await A.page.$('#s-pin.on')));
+await enterPin(A.page, '1234'); await A.page.waitForTimeout(700);
+ok('a wrong PIN is refused', /not it/.test(await A.page.textContent('#pin-msg')) && !(await A.page.evaluate(() => localStorage.getItem('trips.pin'))) && /\?next=japan/.test(A.page.url()));
+await A.page.screenshot({ path: SH + 'hub-pin.png' });
+await A.page.waitForTimeout(500); await enterPin(A.page); await A.page.waitForURL(/\/japan\//); await A.page.waitForTimeout(2500);
+ok('the right PIN is kept on the phone', (await A.page.evaluate(() => localStorage.getItem('trips.pin'))) === PIN);
 const eb = await A.page.textContent('.top'); ok('Mo lands on M&M view at Day 6', /Day 6/.test(eb), eb);
 await A.page.screenshot({ path: SH + 'mm-start.png' });
 await A.page.tap('[data-who="all"]'); await A.page.waitForTimeout(500);
@@ -67,9 +76,10 @@ ok('pile now starts at the stop after', pile1[0] === pile0[1], pile1[0]);
 
 // 3 · expenses shared between two phones
 const N = await phone();
-await N.page.goto(B + '/'); await N.page.tap('[data-me="naf"]'); await N.page.waitForTimeout(500); await N.page.tap('[data-trip="japan"]'); await N.page.waitForURL(/\/japan\//);
+await N.page.goto(B + '/'); await N.page.tap('[data-me="naf"]'); await enterPin(N.page); await N.page.waitForTimeout(600); await N.page.tap('[data-trip="japan"]'); await N.page.waitForURL(/\/japan\//);
 await N.page.goto(B + '/japan/prototypes/tools?v=1'); await N.page.waitForTimeout(1500);
 ok('sync line online', /Shared with all four/.test(await N.page.textContent('.ph')));
+ok('home button stacked on Add expense', await N.page.evaluate(() => { const h = document.querySelector('.homefab').getBoundingClientRect(), f = document.getElementById('fab').getBoundingClientRect(); return h.bottom <= f.top - 4 && Math.abs(h.right - f.right) < 2; }));
 await N.page.tap('#fab'); await N.page.waitForTimeout(500);
 await N.page.fill('#x-amt', '4400'); const ti = await N.page.$('#x-title'); if (ti) await ti.fill('Fuunji ramen test');
 await N.page.screenshot({ path: SH + 'ex-form.png' });
@@ -128,8 +138,11 @@ ok("Naf's colour/photo used in expenses", await A.page.evaluate(() => [...docume
 await A.page.goto(B + '/?switch=1'); await A.page.waitForTimeout(1500);
 ok("hub shows Naf's photo", await A.page.$eval('[data-me="naf"] .av', (e) => e.classList.contains('ph')));
 // 3d · settings: unstamp + export
-await fetch(B + '/api/checks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'd03-omakase', value: true }) });
-await fetch(B + '/api/checks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'd01-land', value: true }) });
+const api = (path, body, pin = PIN) => fetch(B + '/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', ...(pin ? { 'x-trip-pin': pin } : {}) }, body: JSON.stringify(body) });
+ok('a change without the PIN is refused', (await api('checks', { id: 'd03-omakase', value: true }, null)).status === 403 && (await api('checks', { id: 'd03-omakase', value: true }, '0000')).status === 403 && !/omakase/.test(store.get('checks') || ''));
+ok('unlock checks the PIN', (await api('unlock', { pin: '0000' }, null)).status === 403 && (await api('unlock', { pin: PIN }, null)).status === 200);
+await api('checks', { id: 'd03-omakase', value: true });
+await api('checks', { id: 'd01-land', value: true });
 await N.page.goto(B + '/japan/prototypes/tools?v=5'); await N.page.waitForTimeout(1500);
 ok('settings shows a Stamped stops row with the count', /2 stamped/.test(await N.page.textContent('[data-sub="stamps"]')) && !(await N.page.$('[data-unstamp]')));
 await N.page.tap('[data-sub="stamps"]'); await N.page.waitForTimeout(500);
@@ -161,6 +174,16 @@ await A.page.goto(B + '/japan/prototypes/tools?v=4'); await A.page.waitForTimeou
 await A.page.selectOption('#idea-day', 'all'); await A.page.waitForTimeout(300);
 await A.page.tap('[data-vote]'); await A.page.waitForTimeout(800);
 ok('Mo votes, vote stored by name', /"votes":\["m"\]/.test(store.get('suggestions') || ''));
+// ideas for shops and places, not just food
+await N.page.tap('[data-fview="shop"]'); await N.page.waitForTimeout(400);
+ok('Shops list starts empty', /Shops to check out/.test(await N.page.textContent('#page')) && !/Chibo Diversity/.test(await N.page.textContent('#page')));
+await N.page.selectOption('#idea-day', 'all'); await N.page.fill('#sg-text', 'Beams Japan in Shinjuku'); await N.page.tap('[data-sgpost]'); await N.page.waitForTimeout(800);
+ok('a shop idea is saved as a shop', (JSON.parse(store.get('suggestions') || '[]').find((x) => /Beams/.test(x.text)) || {}).kind === 'shop');
+ok('Shops shows it with a map link', /Beams Japan/.test(await N.page.textContent('#page')) && !!(await N.page.$('.sg-map')));
+await N.page.tap('[data-fview="food"]'); await N.page.waitForTimeout(400);
+ok('Food ideas leave the shop out', !/Beams Japan/.test(await N.page.textContent('#page')) && /Chibo Diversity/.test(await N.page.textContent('#page')));
+await N.page.tap('[data-fview="place"]'); await N.page.waitForTimeout(400);
+ok('Places list has its own heading', /Places to see/.test(await N.page.textContent('#page')));
 await A.page.screenshot({ path: SH + 'ideas.png' });
 await N.page.tap('[data-fview="nearby"]'); await N.page.waitForTimeout(500);
 ok('Nearby view is the halal finder', /Halal &? ?pork-free|Halal & pork-free/.test(await N.page.textContent('#page')) && /f=nearby/.test(N.page.url()));
@@ -181,7 +204,7 @@ ok('M&M filter hides NASA-only bookings', !/Yoroniku/.test(await N.page.textCont
 await N.page.tap('[data-bkwho="all"]');
 // 4 · trip day at 4 PM JST: open on the stop happening now; scrub away; Now brings it back
 const C = await phone('2026-10-22T07:00:00Z');
-await C.page.goto(B + '/japan/'); await C.page.waitForURL(/next=japan/); await C.page.tap('[data-me="sara"]'); await C.page.waitForURL(/\/japan\//); await C.page.waitForTimeout(2500);
+await C.page.goto(B + '/japan/'); await C.page.waitForURL(/next=japan/); await C.page.tap('[data-me="sara"]'); await enterPin(C.page); await C.page.waitForURL(/\/japan\//); await C.page.waitForTimeout(2500);
 const nowId = await openPass(C.page); ok('opens on the 4 PM stop', nowId === 'd07-shinsaibashi', nowId);
 ok('now marker drawn', !!(await C.page.$('#nowmk')));
 await C.page.screenshot({ path: SH + 'now-4pm.png' });
@@ -240,19 +263,70 @@ ok('Today button returns to today', /Day 7/.test(await C.page.textContent('#dayp
 // practice tour from Settings (every step is walked through in tests/tour.mjs)
 await C.page.goto(B + '/japan/prototypes/tools?v=5'); await C.page.waitForTimeout(1200);
 await C.page.tap('a[href="../?tour=1"]'); await C.page.waitForSelector('.tour-card', { timeout: 8000 }).catch(() => {}); await C.page.waitForTimeout(600);
-ok('practice tour starts on Day 7', /^1 of 29/.test(await C.page.textContent('.tour-card .tour-h small').catch(() => '')) && /Day 7/.test(await C.page.textContent('#dayp')));
+ok('practice tour starts on Day 7', /^1 of \d+/.test(await C.page.textContent('.tour-card .tour-h small').catch(() => '')) && /Day 7/.test(await C.page.textContent('#dayp')));
 ok('practice tour says nothing is saved', /nothing is saved/i.test(await C.page.textContent('.tour-card')));
 await C.page.screenshot({ path: SH + 'tour-1.png' });
 await C.page.tap('[data-tend]'); await C.page.waitForTimeout(1800);
 ok('End leaves practice mode', !(await C.page.$('.tour')) && !(await C.page.evaluate(() => sessionStorage.getItem('tour.on'))));
 // tools bubble still opens
 await C.page.tap('#ttBtn'); await C.page.waitForTimeout(400); ok('tools bubble opens', await C.page.$eval('#tt', (e) => e.classList.contains('open')));
+await C.page.waitForTimeout(400);
+ok('tools bubble shows the card colours', await C.page.$eval('.tt-key', (e) => getComputedStyle(e).opacity === '1' && /Sight/.test(e.textContent) && /Ticket/.test(e.textContent)));
+await C.page.screenshot({ path: SH + 'tt-key.png' });
+// one-handed way home: from the trip to Ideas and back again
+const hl0 = await C.page.evaluate(() => history.length);
+await C.page.tap('.tt-opt[href$="v=4"]'); await C.page.waitForURL(/tools\?v=4/); await C.page.waitForTimeout(1200);
+ok('Ideas tab named Ideas', /Ideas/.test(await C.page.textContent('.proto-picker-item[data-active]')));
+const hb = await C.page.$eval('.homefab', (e) => { const r = e.getBoundingClientRect(); return [r.right, r.bottom, innerWidth, innerHeight]; });
+ok('home button sits low on the right', hb[0] > hb[2] - 40 && hb[1] > hb[3] - 160, hb.join());
+await C.page.screenshot({ path: SH + 'homefab.png' });
+await C.page.tap('.homefab'); await C.page.waitForURL((u) => !/tools/.test(u.toString())); await C.page.waitForTimeout(1500);
+ok('home button goes back to the trip', /\/japan\/(\?|$)/.test(C.page.url()) && /Day/.test(await C.page.textContent('#dayp')));
+ok('it went back in history (no new page)', (await C.page.evaluate(() => history.length)) === hl0 + 1);
+
+// guest: sees the trip, changes nothing, no money
+{
+  const G = await phone('2026-10-22T07:00:00Z'); const g = G.page;
+  const before = store.get('updatedAt');
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  ok('guest is welcomed as a guest', /Hi there/.test(await g.textContent('#hi')) && /guest/i.test(await g.textContent('#switch')));
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  ok('guest opens the trip without a PIN', /Day/.test(await g.textContent('#dayp')));
+  ok('guest has no stamp or edit buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear')].every((e) => !e.offsetParent)));
+  await g.evaluate(() => { const b = document.querySelector('[data-stamp]'); b && b.click(); }); await g.waitForTimeout(500);
+  ok('guest tap on stamp does nothing', !Object.keys(JSON.parse(store.get('checks') || '{}')).some((k) => k.startsWith('d07')));
+  await g.tap('#ttBtn'); await g.waitForTimeout(400);
+  ok('guest tools have no Expenses', !(await g.$('.tt-opt[href$="v=1"]')) && !!(await g.$('.tt-opt[href$="v=2"]')));
+  await g.screenshot({ path: SH + 'guest-trip.png' });
+  await g.goto(B + '/japan/prototypes/tools?v=1'); await g.waitForTimeout(1500);
+  ok('guest asking for expenses gets Bookings', /Booked & to book/.test(await g.textContent('#page')) && await g.$eval('.proto-picker-item', (e) => e.hidden));
+  ok('guest cannot mark bookings', !(await g.$('[data-bkmark]')));
+  await g.goto(B + '/japan/prototypes/tools?v=4'); await g.waitForTimeout(1500);
+  ok('guest sees ideas but cannot post', /Chibo Diversity/.test(await g.textContent('#page')) && !(await g.$('#sg-text')) && await g.$eval('[data-vote]', (e) => e.disabled));
+  await g.goto(B + '/japan/prototypes/tools?v=5'); await g.waitForTimeout(1500);
+  ok('guest settings say guest', /Guest/.test(await g.textContent('.me')) && !(await g.$('[data-pcolor]')) && !/Show money in/.test(await g.textContent('#page')));
+  await g.screenshot({ path: SH + 'guest-settings.png', fullPage: true });
+  ok('guest wrote nothing', store.get('updatedAt') === before);
+  ok('no page errors G', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+// one of the four on a phone from before the PIN: asked once, then straight in
+{
+  const O = await phone(); const o = O.page;
+  await o.addInitScript(() => { if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', '1'); localStorage.setItem('trips.me', '"sara"'); } });
+  await o.goto(B + '/japan/'); await o.waitForURL(/\?next=japan/); await o.waitForTimeout(500);
+  ok('existing phone is asked for the PIN', !!(await o.$('#s-pin.on')) && /Hi Sara/.test(await o.textContent('#pin-hi')));
+  await enterPin(o); await o.waitForURL(/\/japan\//); await o.waitForTimeout(1500);
+  await o.goto(B + '/japan/'); await o.waitForTimeout(1500);
+  ok('and then opens straight away', /\/japan\/(\?|$)/.test(o.url()) && /Day/.test(await o.textContent('#dayp').catch(() => '')), o.url());
+  await O.ctx.close();
+}
 
 // offline: today + next 2 days saved ahead (real service worker), then the network goes away
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const pg = await ctx.newPage(); await pg.clock.install({ time: new Date('2026-10-22T07:00:00Z') });
-  await pg.addInitScript(() => { localStorage.setItem('trips.me', '"naf"'); });
+  await pg.addInitScript(() => { localStorage.setItem('trips.me', '"naf"'); localStorage.setItem('trips.pin', '6666'); });
   const done = pg.waitForEvent('console', { predicate: (m) => /precached/.test(m.text()), timeout: 40000 }).catch(() => null);
   await pg.addInitScript(() => navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', (e) => e.data && e.data.type === 'precached' && console.log('precached ' + e.data.saved + '/' + e.data.total)));
   await pg.goto(B + '/japan/'); await pg.waitForTimeout(2000);

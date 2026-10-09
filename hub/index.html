@@ -77,6 +77,31 @@ h1 em { font-style:italic; }
 .soon small { font-size:12.5px; }
 .switch { display:inline-flex; align-items:center; gap:6px; margin-top:20px; padding:8px 14px 8px 8px; border-radius:999px; background:rgba(20,20,10,.05); font-size:13.5px; font-weight:700; color:var(--ink2); }
 .switch .av { width:24px; height:24px; border-radius:50%; display:grid; place-items:center; color:#fff; font-size:11px; background:var(--c); background-size:cover; background-position:center; }
+/* guest */
+.guest { grid-column:1 / -1; display:flex; align-items:center; gap:12px; height:64px; margin-top:4px; padding:0 14px; border-radius:22px; border:1.5px dashed rgba(20,20,10,.2); text-align:left; color:var(--ink2); transition:transform 200ms var(--ease); }
+.guest:active { transform:scale(.97); }
+.guest i { width:40px; height:40px; flex:none; border-radius:50%; display:grid; place-items:center; background:rgba(20,20,10,.06); font-style:normal; font-size:19px; }
+.guest b { display:block; font-size:16px; color:var(--ink); line-height:1.15; }
+.guest small { font-size:12px; color:var(--ink3); }
+
+/* PIN, once per phone: a keypad, so the 6 sits under the right thumb */
+.wrap.pin { padding-top:27dvh; }
+body.pin .hero { height:30dvh; } /* the photo steps back so the PIN text reads cleanly */
+.hero { transition:height 420ms var(--ease); }
+.dots { display:flex; justify-content:center; gap:18px; margin:26px 0 8px; }
+.dots i { width:15px; height:15px; border-radius:50%; box-shadow:inset 0 0 0 2px var(--ink); transition:background 120ms ease, transform 160ms var(--ease); }
+.dots i.on { background:var(--ink); transform:scale(1.08); }
+.dots.bad { animation:shake 360ms var(--ease); }
+.dots.bad i { box-shadow:inset 0 0 0 2px var(--red); }
+.dots.wait i.on { animation:blink 700ms ease infinite alternate; }
+@keyframes shake { 20% { transform:translateX(-10px); } 40% { transform:translateX(9px); } 60% { transform:translateX(-6px); } 80% { transform:translateX(3px); } }
+@keyframes blink { to { opacity:.35; } }
+.pin-msg { min-height:22px; text-align:center; font-size:14px; font-weight:700; color:var(--red); }
+.pad { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-top:12px; }
+.pad button { height:64px; border-radius:22px; background:#fff; box-shadow:0 0 0 1px var(--line), 0 8px 20px -16px rgba(0,0,0,.35); font-size:26px; font-weight:700; transition:transform 120ms var(--ease), background 120ms ease; }
+.pad button:active { transform:scale(.94); background:#efece5; }
+.pad button.k2 { background:none; box-shadow:none; font-size:15px; color:var(--ink2); }
+@media (prefers-reduced-motion: reduce) { .dots.bad { animation:none; } }
 @media (prefers-reduced-motion: reduce) { .step.on { animation:none; } .hero img { transition:opacity 300ms ease; transform:none; } }
 </style>
 </head>
@@ -89,6 +114,14 @@ h1 em { font-style:italic; }
     <h1 id="who-h">Who's <em>this?</em></h1>
     <p class="lede">Pick your name once. This phone will remember you.</p>
     <div class="people" id="people"></div>
+  </section>
+  <section class="step" id="s-pin" aria-labelledby="pin-h">
+    <p class="eb" id="pin-hi">Hi</p>
+    <h1 id="pin-h">Enter the <em>PIN</em></h1>
+    <p class="lede">Just once on this phone, so you can stamp stops, log expenses and change the plan.</p>
+    <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <p class="pin-msg" id="pin-msg" role="status"></p>
+    <div class="pad" id="pad" aria-label="PIN keypad"><button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button><button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button><button class="k2" data-pinback>Back</button><button data-k="0">0</button><button class="k2" data-k="del" aria-label="Delete">⌫</button></div>
   </section>
   <section class="step" id="s-trip" aria-labelledby="trip-h">
     <p class="eb" id="hi">Hi</p>
@@ -117,16 +150,55 @@ const avStyle = (p) => `--c:${p.c}${p.photo ? `;background-image:url('${p.photo}
 fetch('/api/state', { cache: 'no-store' }).then((r) => r.json()).then((st) => {
   const pf = st.profiles || {}; let changed = false;
   for (const p of PEOPLE) { const x = pf[p.id]; if (!x) continue; if (x.color) { p.c = x.color; changed = true; } if (x.photo) { p.photo = `/api/photo/${p.id}?v=${x.photo}`; changed = true; } }
-  if (changed) (document.getElementById('s-trip').classList.contains('on') ? renderTrips : renderWho)();
+  if (changed && $('#s-trip').classList.contains('on')) renderTrips(); else if (changed && $('#s-who').classList.contains('on')) renderWho();
 }).catch(() => {});
 const next = new URLSearchParams(location.search).get('next');
 
-function show(id) { document.querySelectorAll('.step').forEach((s) => s.classList.toggle('on', s.id === id)); scrollTo(0, 0); }
+function show(id) { document.querySelectorAll('.step').forEach((s) => s.classList.toggle('on', s.id === id)); $('.wrap').classList.toggle('pin', id === 's-pin'); document.body.classList.toggle('pin', id === 's-pin'); scrollTo(0, 0); }
+
+// The PIN is checked by the server (/api/unlock) and kept on this phone; every change the app sends carries it.
+const hasPin = () => { try { return !!localStorage.getItem('trips.pin'); } catch { return false; } };
+const GUEST = { id: 'guest', name: 'Guest', ini: '👋', c: '#86847c' };
+let pinFor = null, typed = '';
+function showPin(id) {
+  pinFor = id; typed = ''; drawDots(); $('#pin-msg').textContent = '';
+  $('#pin-hi').textContent = `Hi ${byId[id].name}`;
+  show('s-pin');
+}
+function drawDots() { $('#dots').querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', i < typed.length)); }
+async function tryPin() {
+  const dots = $('#dots'); dots.classList.add('wait');
+  let ok = false, msg = '';
+  try {
+    const r = await fetch('/api/unlock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: typed }), cache: 'no-store' });
+    ok = r.ok; if (!ok) msg = r.status === 403 ? "That's not it. Try again." : 'Something went wrong. Try again.';
+  } catch { msg = 'No connection. Try again when you\'re online.'; }
+  dots.classList.remove('wait');
+  if (ok) { try { localStorage.setItem('trips.pin', typed); } catch {} return choose(pinFor); }
+  $('#pin-msg').textContent = msg; dots.classList.remove('bad'); void dots.offsetWidth; dots.classList.add('bad');
+  if (navigator.vibrate) navigator.vibrate(60);
+  setTimeout(() => { typed = ''; drawDots(); }, 380);
+}
+function key(k) {
+  if (typed.length >= 4 && k !== 'del') return;
+  if (k === 'del') typed = typed.slice(0, -1); else typed += k;
+  $('#pin-msg').textContent = ''; drawDots();
+  if (typed.length === 4) tryPin();
+}
+// Signed in as one of the four (or as a guest): remember it and carry on to the trip.
+function choose(id) {
+  ls.set('trips.me', id);
+  // Open the Japan plan on your couple's view (you can still switch to All); guests see everyone's.
+  ls.set('japan2026.whoMix', id === 'guest' ? 'all' : byId[id].couple);
+  const t = next && TRIPS.find((x) => x.id === next);
+  setTimeout(() => { if (t) location.replace(t.href); else renderTrips(); }, 160);
+}
 
 function renderWho() {
   const me = ls.get('trips.me');
   const group = (k, label) => `<p class="couple">${label}</p>` + PEOPLE.filter((p) => p.couple === k).map((p) => `<button class="person ${me === p.id ? 'on' : ''}" data-me="${p.id}"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span><span><b>${p.name}</b><small>${label}</small></span></button>`).join('');
-  $('#people').innerHTML = group('nasa', 'NASA') + group('mm', 'M&amp;M');
+  $('#people').innerHTML = group('nasa', 'NASA') + group('mm', 'M&amp;M')
+    + `<button class="guest" data-guest><i>👋</i><span><b>Just looking</b><small>Guest: see the whole trip, change nothing</small></span></button>`;
   show('s-who');
 }
 
@@ -141,32 +213,36 @@ function status(t) {
 const range = (t) => { const f = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); const n = Math.round((new Date(t.end) - new Date(t.start)) / 864e5) + 1; return `${f(t.start)} – ${f(t.end)} · ${n} days`; };
 
 function renderTrips() {
-  const me = byId[ls.get('trips.me')];
-  $('#hi').textContent = `Hi ${me.name}`;
+  const me = byId[ls.get('trips.me')] || GUEST, guest = me === GUEST;
+  $('#hi').textContent = guest ? 'Hi there' : `Hi ${me.name}`;
   $('#trips').innerHTML = TRIPS.map((t, i) => `<a class="trip" href="${t.href}" data-trip="${t.id}"><img src="${t.img}" alt="" loading="${i ? 'lazy' : 'eager'}">${i === 0 ? `<span class="go">${esc(status(t))}</span>` : ''}<span class="jp">${t.ja}</span><span class="in"><span><h2>${esc(t.name)} ${t.year}</h2><p>${esc(range(t))}<br>${esc(t.blurb)}</p></span><span class="pill">Open</span></span></a>`).join('')
     + '<div class="soon"><i>+</i><span><b>Next trip</b><small>Plan it and it shows up here.</small></span></div>';
-  $('#switch').innerHTML = `<span class="av ${me.photo ? 'ph' : ''}" style="${avStyle(me)}">${me.ini}</span>Not ${esc(me.name)}? Switch`;
+  $('#switch').innerHTML = guest ? `<span class="av" style="--c:#86847c">👋</span>Looking as a guest. One of the four? Switch` : `<span class="av ${me.photo ? 'ph' : ''}" style="${avStyle(me)}">${me.ini}</span>Not ${esc(me.name)}? Switch`;
   show('s-trip');
 }
 
 document.addEventListener('click', (e) => {
   const p = e.target.closest('[data-me]');
   if (p) {
-    const id = p.dataset.me;
-    ls.set('trips.me', id);
-    // Open the Japan plan on your couple's view (you can still switch to All).
-    ls.set('japan2026.whoMix', byId[id].couple);
-    p.classList.add('on');
-    const t = next && TRIPS.find((x) => x.id === next);
-    setTimeout(() => { if (t) location.replace(t.href); else renderTrips(); }, 160);
+    const id = p.dataset.me; p.classList.add('on');
+    if (hasPin()) choose(id); else setTimeout(() => showPin(id), 140);
     return;
   }
+  if (e.target.closest('[data-guest]')) { try { localStorage.removeItem('trips.pin'); } catch {} return choose('guest'); }
+  const k = e.target.closest('[data-k]'); if (k) return key(k.dataset.k);
+  if (e.target.closest('[data-pinback]')) return renderWho();
   const tr = e.target.closest('[data-trip]');
   if (tr) ls.set('trips.last', tr.dataset.trip);
   if (e.target.closest('#switch')) renderWho();
 });
 
-if (byId[ls.get('trips.me')] && !new URLSearchParams(location.search).has('switch')) renderTrips(); else renderWho();
+addEventListener('keydown', (e) => { if (!$('#s-pin').classList.contains('on')) return; if (/^[0-9]$/.test(e.key)) key(e.key); else if (e.key === 'Backspace') key('del'); });
+
+const meNow = ls.get('trips.me');
+if (new URLSearchParams(location.search).has('switch')) renderWho();
+else if (byId[meNow] && !hasPin()) showPin(meNow); // one of the four on a phone that hasn't had the PIN yet
+else if (byId[meNow] || meNow === 'guest') renderTrips();
+else renderWho();
 </script>
 </body>
 </html>

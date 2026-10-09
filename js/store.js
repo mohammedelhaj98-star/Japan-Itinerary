@@ -13,6 +13,11 @@ export const SANDBOX = (() => { try { return sessionStorage.getItem('tour.on') =
 const SB_KEY = 'tour.state';
 const sbGet = () => { try { return JSON.parse(sessionStorage.getItem(SB_KEY)); } catch { return null; } };
 
+// Guests (picked on the trips page) can look at everything but change nothing. The four of us unlock changes once
+// per phone with the group's PIN, kept in localStorage and sent with every change; the server checks it.
+export const GUEST = (() => { try { return JSON.parse(localStorage.getItem('trips.me')) === 'guest'; } catch { return false; } })();
+const pinOf = () => { try { return localStorage.getItem('trips.pin') || ''; } catch { return ''; } };
+
 function lsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; }
 }
@@ -36,7 +41,7 @@ export function setDisplayName(name) { lsSet(LS_NAME, String(name || '').slice(0
 
 export const store = {
   state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, profiles: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {})),
-  mode: SANDBOX ? 'sandbox' : 'connecting', // connecting | online | local | sandbox
+  mode: SANDBOX ? 'sandbox' : 'connecting', // connecting | online | local | sandbox | locked (the PIN was refused)
   lastError: null,
   listeners: new Set(),
   _timer: null,
@@ -54,19 +59,23 @@ export const store = {
   async api(path, body) {
     const res = await fetch('/api/' + path, {
       method: body ? 'POST' : 'GET',
-      headers: body ? { 'content-type': 'application/json' } : undefined,
+      headers: body ? { 'content-type': 'application/json', 'x-trip-pin': pinOf() } : undefined,
       body: body ? JSON.stringify(body) : undefined,
       cache: 'no-store',
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    if (!res.ok) { const err = new Error(data.error || ('HTTP ' + res.status)); err.pin = !!data.pin; throw err; }
     return data;
   },
 
   async start() {
     if (SANDBOX) {
       // Start the practice from a read-only copy of the real trip (once per tour), then stay offline.
-      if (!sbGet()) { try { const remote = await this.api('state'); this.state = { ...this.state, ...remote }; } catch { /* practice from the local copy */ } this.persist(); }
+      if (!sbGet()) {
+        try { const remote = await this.api('state'); this.state = { ...this.state, ...remote }; } catch { /* practice from the local copy */ }
+        if (GUEST) this.state.expenses = {}; // a guest practises on an empty expense list: the real one stays private
+        this.persist();
+      }
       this.mode = 'sandbox'; this.emit(); return;
     }
     await this.refresh();
@@ -82,7 +91,7 @@ export const store = {
     if (SANDBOX) return;
     try {
       const v = await this.api('version');
-      if (v.updatedAt && v.updatedAt === this.state.updatedAt && this.mode === 'online') return;
+      if (v.updatedAt && v.updatedAt === this.state.updatedAt && (this.mode === 'online' || this.mode === 'locked')) return;
       await this.refresh();
     } catch (err) {
       this.setMode('local', err.message);
@@ -95,7 +104,7 @@ export const store = {
       const remote = await this.api('state');
       this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), profiles: { ...(remote.profiles || {}), ...this._pfRecent() }, updatedAt: remote.updatedAt || null };
       this.persist();
-      this.setMode('online');
+      this.setMode(this.mode === 'locked' && !pinOf() ? 'locked' : 'online');
       this.emit();
     } catch (err) {
       this.setMode('local', err.message);
@@ -105,6 +114,7 @@ export const store = {
   // Optimistic update then sync. On API failure, keep the local change (local mode).
   async _mutate(localFn, path, body, applyRemote) {
     if (SANDBOX) { localFn(this.state); this.persist(); this.emit(); return; }
+    if (GUEST) return; // view only (the pages hide every way to change things; this is the backstop)
     localFn(this.state);
     this.persist();
     this.emit();
@@ -115,8 +125,17 @@ export const store = {
       this.setMode('online');
       this.emit();
     } catch (err) {
+      if (err.pin) return this._locked();
       this.setMode('local', err.message);
     }
+  },
+  // The server refused the PIN (none saved on this phone, or it changed): forget it, drop the change that didn't save,
+  // and show "locked" until the PIN is entered again on the trips page.
+  async _locked() {
+    try { localStorage.removeItem('trips.pin'); } catch { /* ignore */ }
+    this._exRecent.clear(); this._pf.clear();
+    await this.refresh();
+    this.setMode('locked', 'Enter the PIN to save changes');
   },
 
   isChecked(id) { return !!this.state.checks[id]; },
@@ -187,12 +206,12 @@ export const store = {
     );
   },
 
-  addSuggestion({ text, name, day }) {
+  addSuggestion({ text, name, day, kind = 'food' }) {
     const author = deviceId();
-    const temp = { id: 'tmp-' + Date.now(), text, name: name || 'Anonymous', day: day || null, author, votes: [], ts: new Date().toISOString(), pending: !SANDBOX };
+    const temp = { id: 'tmp-' + Date.now(), text, name: name || 'Anonymous', day: day || null, kind, author, votes: [], ts: new Date().toISOString(), pending: !SANDBOX };
     return this._mutate(
       (s) => { s.suggestions.unshift(temp); },
-      'suggestions', { text, name, day, author },
+      'suggestions', { text, name, day, kind, author },
       (d, s) => { if (d.suggestions) s.suggestions = d.suggestions; },
     );
   },

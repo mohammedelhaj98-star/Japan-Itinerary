@@ -11,10 +11,14 @@
 //   POST /api/expenses                { id, value:object|null }  (add or edit a shared expense; null deletes)
 //   POST /api/profile                 { id, color?, photo?:dataURL|null }  (a person's colour and photo)
 //   GET  /api/photo/:id               → the person's photo (image bytes)
-//   POST /api/suggestions             { text, name, day, author }
+//   POST /api/unlock                  { pin }  → { ok } when the PIN is right (the hub asks for it once per phone)
+//   POST /api/suggestions             { text, name, day, author, kind? }  (kind: food | shop | place)
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
 
+// Changes need the group's PIN (the TRIP_PIN secret on the Pages project), sent by the app as an x-trip-pin header.
+// Reading is open, so a guest can look around without being able to change anything. With no TRIP_PIN set, changes are open.
+//
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
 
@@ -26,6 +30,7 @@ const MAX_CUSTOM = 800;
 const MAX_EXPENSES = 1500;
 const PEOPLE = ['naf', 'sara', 'mariam', 'm'];
 const MAX_PHOTO = 400000; // a data URL; the app sends ~256px JPEGs, far smaller than this
+const IDEA_KINDS = ['food', 'shop', 'place'];
 const EX_CATS = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other', 'settle'];
 
 async function readKey(kv, key, fallback) {
@@ -112,7 +117,7 @@ export async function onRequest({ request, env }) {
   }
 
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' } });
+    return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type, x-trip-pin' } });
   }
 
   if (path === 'health') return json({ ok: true, kv: !!kv });
@@ -130,6 +135,10 @@ export async function onRequest({ request, env }) {
     if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405);
     let body = {};
     try { body = await request.json(); } catch { return json({ error: 'invalid JSON' }, 400); }
+
+    const pin = env.TRIP_PIN ? String(env.TRIP_PIN) : '';
+    if (path === 'unlock') return pin && String(body.pin ?? '') !== pin ? json({ error: 'wrong pin' }, 403) : json({ ok: true });
+    if (pin && request.headers.get('x-trip-pin') !== pin) return json({ error: 'pin required', pin: true }, 403);
 
     if (path === 'checks' || path === 'choices') {
       if (!isId(body.id)) return json({ error: 'bad id' }, 400);
@@ -196,6 +205,7 @@ export async function onRequest({ request, env }) {
         id: 'sg-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
         text, name: clean(body.name, MAX_NAME) || 'Anonymous',
         day: isId(body.day || '') ? body.day : null,
+        kind: IDEA_KINDS.includes(body.kind) ? body.kind : 'food',
         author: isId(body.author || '') ? body.author : null,
         votes: [], ts: new Date().toISOString(),
       };

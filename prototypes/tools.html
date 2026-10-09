@@ -43,6 +43,9 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .scard { margin:0 12px; padding:16px; }
 .foodseg { display:flex; justify-content:center; padding:2px 16px 0; }
 .seg.big button { padding:7px 22px; font-size:14px; }
+.foodseg .seg.big button { padding:7px 15px; }
+.sg-map { font-size:12.5px; font-weight:700; color:var(--ink2); text-decoration:none; }
+.sg-guest { font-size:14px; color:var(--ink2); }
 .daysel { width:100%; height:40px; border-radius:12px; border:1px solid var(--line); background:#fff; padding:0 10px; font:inherit; font-size:14px; margin-bottom:10px; }
 #sg-text { width:100%; border-radius:12px; border:1px solid var(--line); padding:10px 12px; font:inherit; font-size:16px; resize:vertical; margin-bottom:10px; background:#fff; }
 .bigb:disabled { opacity:.4; }
@@ -270,6 +273,9 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 .porkcard b { display:block; font-family:var(--mincho); font-size:17px; line-height:1.35; }
 .porkcard small { display:block; font-size:12.5px; color:var(--ink3); margin-top:2px; }
 
+/* one-handed way back to the trip: under the right thumb, stacked on Add expense (or in its place on the other tabs) */
+.homefab { position:fixed; right:max(16px, calc(50% - 214px)); bottom:calc(80px + env(safe-area-inset-bottom)); z-index:600; transition:transform 280ms var(--ease); width:56px; height:56px; border-radius:50%; display:grid; place-items:center; background:rgba(252,250,246,.94); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:var(--ink); box-shadow:0 14px 30px -12px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.06); }
+body.has-fab .homefab { transform:translate3d(0,-68px,0); }
 .tback { position:fixed; top:calc(10px + env(safe-area-inset-top)); left:max(12px, calc(50% - 218px)); z-index:820; display:flex; align-items:center; gap:4px; height:36px; padding:0 14px 0 9px; border-radius:999px; background:rgba(252,250,246,.9); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:#141412; font-size:14px; font-weight:700; text-decoration:none; box-shadow:0 6px 18px -8px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,10,.08); }
 .sync { display:inline-block; margin-top:8px; font-size:12px; font-weight:700; color:var(--ink3); }
 .sync.on::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; background:#2e8a4e; margin-right:6px; vertical-align:1px; }
@@ -284,7 +290,8 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 </style>
 </head>
 <body>
-<a class="tback press" href="../" onclick="if (document.referrer.startsWith(location.origin) &amp;&amp; history.length &gt; 1) { event.preventDefault(); history.back(); }" aria-label="Back to the trip"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Trip</a>
+<a class="homefab press" href="../" data-home aria-label="Back to the trip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-6.5 8 6.5"/><path d="M6.5 9.5V19h11V9.5"/><path d="M10 19v-5h4v5"/></svg></a>
+<a class="tback press" href="../" data-home aria-label="Back to the trip"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Trip</a>
 <main class="page" id="page"></main>
 <button class="fab press" id="fab" hidden><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Add expense</button>
 <div class="scrim" id="scrim"></div>
@@ -295,7 +302,7 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
   <button class="proto-picker-item" data-active aria-current="true">Expenses</button>
   <button class="proto-picker-item">Bookings</button>
   <button class="proto-picker-item">Taxi</button>
-  <button class="proto-picker-item">Food</button>
+  <button class="proto-picker-item">Ideas</button>
   <button class="proto-picker-item">Settings</button>
 </nav>
 <script src="../vendor/leaflet/leaflet.js"></script>
@@ -306,7 +313,7 @@ import { buildTripDocx } from '../js/export-docx.js?v=9';
 import { PLACES } from '../data/places.js?v=9';
 import { DIET } from '../data/diet.js?v=9';
 import { HOTEL_JA } from '../data/hotels-ja.js?v=9';
-import { store, SANDBOX } from '../js/store.js?v=9';
+import { store, SANDBOX, GUEST } from '../js/store.js?v=9';
 import { runTour } from '../js/tour.js?v=9';
 import { CAT, MODE, PROFILE_COLORS } from '../js/colors.js?v=9';
 
@@ -338,9 +345,12 @@ const CATS = { food: ['Food', '#cc5a26', '🍜'], transport: ['Transport', '#2f5
 const SPLITS = { all: ['naf', 'sara', 'mariam', 'm'], nasa: ['naf', 'sara'], mm: ['mariam', 'm'] };
 // Expenses live in the shared trip store (Cloudflare KV), so every phone sees the same list.
 const ME = (() => { try { return JSON.parse(localStorage.getItem('trips.me')); } catch { return null; } })();
+// Guests can look at bookings, ideas, taxi cards and settings, but change nothing and don't see the expenses.
+// In the practice tour they can try everything (on an empty expense list; nothing is saved anyway).
+const VIEW = GUEST && !SANDBOX;
 const ex = { get list() { return Object.entries(store.getExpenses()).map(([id, x]) => ({ id, ...x })).filter((x) => P[x.payer] && x.split && x.split.every((id) => P[id]) && CATS[x.cat]); }, cur: ls.get('proto.excur', 'USD'), mode: ls.get('proto.exmode2', 'couples') };
 const saveExpense = (id, rec) => store.setExpense(id, rec ? { title: rec.title, yen: rec.yen, payer: rec.payer, split: rec.split, cat: rec.cat, day: rec.day || null, ...(ME && P[ME] ? { by: ME } : {}) } : null);
-const syncLine = () => store.mode === 'sandbox' ? '<span class="sync off">Practice mode: nothing here is saved</span>' : store.mode === 'online' ? '<span class="sync on">Shared with all four phones</span>' : store.mode === 'local' ? '<span class="sync off">Offline: saved on this phone, will sync when back online</span>' : '<span class="sync">Connecting…</span>';
+const syncLine = () => store.mode === 'locked' ? '<span class="sync off">Locked: <a href="/?next=japan">enter the PIN</a> to save changes</span>' : store.mode === 'sandbox' ? '<span class="sync off">Practice mode: nothing here is saved</span>' : store.mode === 'online' ? '<span class="sync on">Shared with all four phones</span>' : store.mode === 'local' ? '<span class="sync off">Offline: saved on this phone, will sync when back online</span>' : '<span class="sync">Connecting…</span>';
 
 /* who-owes-whom: balances, then greedily match the biggest debtor with the biggest creditor (n−1 transfers at most) */
 function balances() {
@@ -512,30 +522,43 @@ async function searchFood() {
   render();
 }
 let fmap = null, flayer = null;
-/* ═══════════ FOOD: Ideas (group suggestions + picks for open slots) · Nearby (halal finder) ═══════════ */
-let foodView = new URLSearchParams(location.search).get('f') === 'nearby' ? 'nearby' : 'ideas';
+/* ═══════════ IDEAS: the group's notes on food, shops and places to see (+ picks for open meals) · Halal (nearby finder) ═══════════ */
+// Each idea has a kind; ideas posted before kinds existed are food.
+const KINDS = {
+  food: { tab: 'Food', small: 'Ideas · food', h: 'Where should we eat?', p: 'Post a place or a plan change for everyone to vote on, and see picks for the meals still open.', ph: 'suggest a restaurant, a detour, a must-try…' },
+  shop: { tab: 'Shops', small: 'Ideas · shops', h: 'Shops to check out', p: 'Note a store, market or shopping street you want to see, so it doesn\'t get lost. Everyone can vote.', ph: 'a store, a market, a shopping street…' },
+  place: { tab: 'Places', small: 'Ideas · places', h: 'Places to see', p: 'A temple, a view, a museum, a detour: note it here for everyone to vote on.', ph: 'a temple, a viewpoint, a museum…' },
+};
+const fq = new URLSearchParams(location.search).get('f');
+let foodView = fq === 'nearby' || KINDS[fq] ? fq : 'food';
 const ideas = { day: ls.get('proto.ideaday', 'all'), draft: '' };
 function renderFood() {
-  const seg = `<div class="foodseg"><div class="seg big" id="foodseg">${[['ideas', 'Ideas'], ['nearby', 'Nearby']].map(([k, l]) => `<button data-fview="${k}" class="${foodView === k ? 'on' : ''}">${l}</button>`).join('')}<i></i></div></div>`;
-  return seg + (foodView === 'nearby' ? renderNearby() : renderIdeas());
+  const seg = `<div class="foodseg"><div class="seg big" id="foodseg">${[...Object.entries(KINDS).map(([k, v]) => [k, v.tab]), ['nearby', 'Halal']].map(([k, l]) => `<button data-fview="${k}" class="${foodView === k ? 'on' : ''}">${l}</button>`).join('')}<i></i></div></div>`;
+  return seg + (foodView === 'nearby' ? renderNearby() : renderIdeas(foodView));
 }
-function renderIdeas() {
+function renderIdeas(kind) {
+  const K = KINDS[kind] || KINDS.food;
   const day = ideas.day; const dayOk = (d) => day === 'all' || !d || d === day;
   const me = P[ME];
-  const list = (store.state.suggestions || []).filter((x) => dayOk(x.day)).sort((a, z) => (z.votes || []).length - (a.votes || []).length || String(z.ts).localeCompare(String(a.ts)));
+  const list = (store.state.suggestions || []).filter((x) => (x.kind || 'food') === kind && dayOk(x.day)).sort((a, z) => (z.votes || []).length - (a.votes || []).length || String(z.ts).localeCompare(String(a.ts)));
   const curated = SUGGESTIONS.filter((x) => dayOk(x.day));
   const dayOpts = `<option value="all" ${day === 'all' ? 'selected' : ''}>All days</option>${DAYS.map((d) => `<option value="${d.id}" ${day === d.id ? 'selected' : ''}>Day ${d.n} · ${esc(d.title)}</option>`).join('')}`;
   const voters = (v) => (v || []).map((id) => P[id]).filter(Boolean);
   const card = (x) => { const vs = voters(x.votes); const mine = me && (x.votes || []).includes(me.id); const d = x.day && dayOf(x.day);
     return `<div class="card scard sg ${x.pending ? 'pending' : ''}"><div class="sg-t">${esc(x.text)}</div><div class="sg-m"><span>${esc(x.name || 'Someone')}${d ? ` · Day ${d.n}` : ''}</span>
       <span class="sg-v">${vs.map((p) => `<span class="av sm ${p.photo ? 'ph' : ''}" style="${avStyle(p)}" title="${p.name}">${p.ini}</span>`).join('')}</span>
+      <a class="sg-map" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.text.split('\n')[0].slice(0, 80))}" target="_blank" rel="noopener">Map</a>
       <button class="vote ${mine ? 'on' : ''}" data-vote="${esc(x.id)}" ${me ? '' : 'disabled'}>${mine ? 'Voted' : 'Vote'} · ${(x.votes || []).length}</button>
       ${x.author === deviceOf() ? `<button class="sg-del" data-sgdel="${esc(x.id)}" aria-label="Delete">Delete</button>` : ''}</div></div>`; };
-  return `<header class="ph"><small>Food · ideas</small><h1>Where should we eat?</h1><p>Post a place or a plan change for everyone to vote on, and see picks for the meals still open.</p></header>
-    <div class="card scard"><select class="daysel" id="idea-day" aria-label="Filter by day">${dayOpts}</select>
-      <textarea id="sg-text" rows="2" maxlength="600" placeholder="${me ? `${me.name}, suggest a restaurant, a detour, a must-try…` : 'Pick who you are in Settings to post'}">${esc(ideas.draft)}</textarea>
-      <button class="bigb" data-sgpost ${me ? '' : 'disabled'}>Post for everyone${day !== 'all' && dayOf(day) ? ` · Day ${dayOf(day).n}` : ''}</button></div>
-    <p class="sec">From the group${list.length ? ` · ${list.length}` : ''}</p>${list.length ? `<div class="bk-list">${list.map(card).join('')}</div>` : '<div class="card scard"><p class="sub">No suggestions yet. Post the first one above.</p></div>'}
+  const composer = VIEW ? `<div class="card scard"><select class="daysel" id="idea-day" aria-label="Filter by day">${dayOpts}</select><p class="sg-guest">The group's ideas. Guests can look; only the four of us can post and vote.</p></div>`
+    : `<div class="card scard"><select class="daysel" id="idea-day" aria-label="Filter by day">${dayOpts}</select>
+      <textarea id="sg-text" rows="2" maxlength="600" placeholder="${me ? `${me.name}, ${K.ph}` : 'Pick who you are in Settings to post'}">${esc(ideas.draft)}</textarea>
+      <button class="bigb" data-sgpost ${me ? '' : 'disabled'}>Post for everyone${day !== 'all' && dayOf(day) ? ` · Day ${dayOf(day).n}` : ''}</button></div>`;
+  const group = `<p class="sec">From the group${list.length ? ` · ${list.length}` : ''}</p>${list.length ? `<div class="bk-list">${list.map(card).join('')}</div>` : `<div class="card scard"><p class="sub">${VIEW ? 'Nothing here yet.' : 'Nothing yet. Post the first one above.'}</p></div>`}`;
+  if (kind !== 'food') return `<header class="ph"><small>${K.small}</small><h1>${K.h}</h1><p>${K.p}</p></header>${composer}${group}`;
+  return `<header class="ph"><small>${K.small}</small><h1>${K.h}</h1><p>${K.p}</p></header>
+    ${composer}
+    ${group}
     <p class="sec">Picks for the open meals</p><div class="bk-list">${curated.map((x) => { const d = x.day && dayOf(x.day);
       return `<div class="card scard idea"><div class="bk-h"><span class="bst todo">${esc(x.slot)}</span>${x.who ? `<span class="bchip ${x.who}">${x.who === 'nasa' ? 'NASA' : 'M&amp;M'}</span>` : ''}</div><b>${esc(x.title)}</b>
         ${x.picks.map((pk) => `<div class="pick"><div><b>${esc(pk.name)}</b><p>${esc(pk.why)}</p></div>${pk.lat ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pk.name.replace(/\(.*\)/, '').trim())}" target="_blank" rel="noopener">Map</a>` : ''}</div>`).join('')}
@@ -553,8 +576,8 @@ function bkCard(b, state) {
   const who = b.who ? `<span class="bchip ${b.who}">${b.who === 'nasa' ? 'NASA' : 'M&amp;M'}</span>` : '';
   const status = state === 'done' ? '<span class="bst ok">Booked</span>' : state === 'marked' ? '<span class="bst ok">Marked booked</span>' : b.urgent ? '<span class="bst now">Book now</span>' : '<span class="bst todo">To book</span>';
   const acts = [
-    state === 'todo' ? `<button class="pri" data-bkmark="${bkId(b)}">Mark as booked</button>` : '',
-    state === 'marked' ? `<button data-bkunmark="${bkId(b)}">Not booked yet</button>` : '',
+    state === 'todo' && !VIEW ? `<button class="pri" data-bkmark="${bkId(b)}">Mark as booked</button>` : '',
+    state === 'marked' && !VIEW ? `<button data-bkunmark="${bkId(b)}">Not booked yet</button>` : '',
     b.tel ? `<a href="tel:${esc(b.tel)}">Call</a>` : '',
     d ? `<a href="../?d=${d.id}">Open day ${d.n}</a>` : '',
   ].filter(Boolean).join('');
@@ -579,6 +602,7 @@ function renderSettings() {
       <div class="btns"><label>${me.photo ? 'Change photo' : 'Add photo'}<input type="file" accept="image/*" id="pf-photo"></label>${me.photo ? '<button data-rmphoto>Remove</button>' : ''}</div></div></div>
       <p class="sub" style="margin-top:14px">Your colour</p><div class="sw">${PROFILE_COLORS.map((c) => `<button data-pcolor="${c}" class="${me.c === c ? 'on' : ''}" style="--c:${c}" aria-label="Colour ${c}"></button>`).join('')}</div>
       <p class="sub" id="pf-msg" style="margin-top:12px">Your photo and colour show on all four phones.</p></div>`
+    : GUEST ? `<div class="card scard"><div class="me"><span class="av" style="--c:#86847c">👋</span><div><b>Guest</b><small>Looking around · nothing can be changed from this phone</small></div></div><div class="setrow"><span>One of the four?</span><a href="/?switch=1">Switch</a></div></div>`
     : '<div class="card scard"><p>Pick who you are first.</p><div class="setrow"><a href="/?switch=1">Choose your name</a></div></div>';
   const everyone = `<div class="card scard everyone">${PEOPLE.map((p) => `<div><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span>${p.name}<small>${p.couple === 'nasa' ? 'NASA' : 'M&amp;M'}</small></div>`).join('')}</div>`;
   const kinds = [['sight', 'Sights, temples, views'], ['food', 'Meals, markets, snacks'], ['shop', 'Shopping'], ['hotel', 'Hotels, check-in, admin'], ['booking', 'Booked: tickets, tables, classes'], ['plan', 'Plans with no place yet']];
@@ -589,13 +613,13 @@ function renderSettings() {
       <p class="sub" style="margin-top:12px">A faded card is stamped as done. Dashed outline means optional. NASA or M&amp;M on a card means it's only for that couple.</p></div>`;
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
   const modeSeg = [['couples', 'Couples'], ['people', 'People']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
-  const prefs = `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div></div>`;
+  const prefs = VIEW ? '' : `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div></div>`;
   if (sub === 'stamps') return renderStamps();
   const nSt = Object.keys(store.state.checks || {}).length;
   const stamps = `<button class="card scard navrow" data-sub="stamps"><span><b>Stamped stops</b><small>${nSt ? `${nSt} stamped · see and unstamp them` : 'Nothing stamped yet'}</small></span><span class="cnt">${nSt || ''}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>`;
-  const exp = `<div class="card scard"><p class="sub" style="margin-bottom:12px">A Word file laid out like the original itinerary, with everything as it is now: edited and added stops, choices made, bookings marked, stamps and expenses.</p><button class="bigb" data-export>Download Word file (.docx)</button><p class="sub" id="ex-msg" style="margin-top:10px"></p></div>`;
+  const exp = `<div class="card scard"><p class="sub" style="margin-bottom:12px">A Word file laid out like the original itinerary, with everything as it is now: edited and added stops, choices made, bookings marked, stamps${VIEW ? '' : ' and expenses'}.</p><button class="bigb" data-export>Download Word file (.docx)</button><p class="sub" id="ex-msg" style="margin-top:10px"></p></div>`;
   return `<header class="ph"><small>Settings</small><h1>You &amp; the trip</h1><p>Your profile, what the colours mean, and how money is shown.</p></header>
-    ${mine}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}<p class="sec">Expenses</p>${prefs}<p class="sec">Export the trip</p>${exp}`;
+    ${mine}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}${VIEW ? '' : `<p class="sec">Expenses</p>${prefs}`}<p class="sec">Export the trip</p>${exp}`;
 }
 // Stamped stops by day, using each stop's current (edited) title. Stamps on stops that no longer exist are listed under Other so they can still be cleared.
 // Settings sub-page (Stamped stops) lives in the URL as ?v=5&p=stamps, so back and refresh behave.
@@ -604,8 +628,8 @@ function setSub(v, push = true) { sub = v; const u = new URL(location); if (v) u
 addEventListener('popstate', () => { sub = new URLSearchParams(location.search).get('p') || ''; render(); });
 function renderStamps() {
   const st = stamped(); const n = st.reduce((k, [, l]) => k + l.length, 0);
-  const list = st.length ? `<div class="card scard">${st.map(([d, l]) => `<p class="stday">${d ? `Day ${d.n} · ${esc(d.title)}` : 'Other'}</p>${l.map((e) => `<div class="strow"><span>${e.time ? `<small>${esc(e.time)}</small>` : ''}${esc(e.title)}</span><button data-unstamp="${e.id}">Unstamp</button></div>`).join('')}`).join('')}</div>
-      <div class="card scard" style="margin-top:12px"><div class="setrow"><span>${n} stamped</span><button class="linkb" data-unstampall>Unstamp all</button></div></div>`
+  const list = st.length ? `<div class="card scard">${st.map(([d, l]) => `<p class="stday">${d ? `Day ${d.n} · ${esc(d.title)}` : 'Other'}</p>${l.map((e) => `<div class="strow"><span>${e.time ? `<small>${esc(e.time)}</small>` : ''}${esc(e.title)}</span>${VIEW ? '' : `<button data-unstamp="${e.id}">Unstamp</button>`}</div>`).join('')}`).join('')}</div>
+      ${VIEW ? '' : `<div class="card scard" style="margin-top:12px"><div class="setrow"><span>${n} stamped</span><button class="linkb" data-unstampall>Unstamp all</button></div></div>`}`
     : '<div class="card scard"><p class="sub">Nothing stamped yet. Stamp a pass on the trip page when you\'ve done it.</p></div>';
   return `<button class="subback" data-subback><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Settings</button>
     <header class="ph"><small>Settings</small><h1>Stamped stops</h1><p>Everything marked as done, by day. Unstamping changes it on all four phones.</p></header>${list}`;
@@ -625,7 +649,7 @@ function askConfirm(title, text, yes, fn) {
 async function exportDocx() {
   const msg = document.getElementById('ex-msg'); if (msg) msg.textContent = 'Getting the latest from everyone…';
   await store.refresh();
-  const blob = buildTripDocx({ TRIP, DAYS, HOTELS, BOOKINGS, FOOD, TIPS, state: store.state, people: PEOPLE, me: ME && P[ME] ? P[ME].name : '' });
+  const blob = buildTripDocx({ TRIP, DAYS, HOTELS, BOOKINGS, FOOD, TIPS, state: VIEW ? { ...store.state, expenses: {} } : store.state, people: PEOPLE, me: ME && P[ME] ? P[ME].name : '' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Japan 2026 itinerary (updated ${new Date().toISOString().slice(0, 10)}).docx`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
   if (msg) msg.textContent = store.mode === 'online' ? 'Downloaded, with everyone\'s latest changes.' : 'Downloaded. Offline, so it has the changes this phone last saw.';
@@ -676,20 +700,26 @@ let tab = Math.max(0, (parseInt(new URLSearchParams(location.search).get('v'), 1
 function render() {
   const y = scrollY;
   syncPeople(); page.innerHTML = [renderExpenses, renderBookings, renderTaxi, renderFood, renderSettings][tab]();
-  fab.hidden = tab !== 0;
+  fab.hidden = tab !== 0; document.body.classList.toggle('has-fab', tab === 0);
   page.querySelectorAll('.seg').forEach(moveSeg);
   if (tab === 3 && foodView === 'nearby') { mountFoodMap(); if (fd.res == null) searchFood(); }
   window.scrollTo(0, y);
 }
-function setTab(i) { if (i !== 4 && sub) { sub = ''; const u0 = new URL(location); u0.searchParams.delete('p'); history.replaceState(null, '', u0); } tab = i; items.forEach((el, j) => el.toggleAttribute('data-active', j === i)); const el = items[i]; hl.style.width = el.offsetWidth + 'px'; hl.style.transform = `translateX(${el.offsetLeft}px)`; const u = new URL(location); u.searchParams.set('v', i + 1); history.replaceState(null, '', u); window.scrollTo(0, 0); render(); }
+function setTab(i) { if (VIEW && i === 0) i = 1; if (i !== 4 && sub) { sub = ''; const u0 = new URL(location); u0.searchParams.delete('p'); history.replaceState(null, '', u0); } tab = i; items.forEach((el, j) => el.toggleAttribute('data-active', j === i)); const el = items[i]; hl.style.width = el.offsetWidth + 'px'; hl.style.transform = `translateX(${el.offsetLeft}px)`; const u = new URL(location); u.searchParams.set('v', i + 1); history.replaceState(null, '', u); window.scrollTo(0, 0); render(); }
 items.forEach((el, i) => el.addEventListener('click', () => setTab(i)));
+// Back to the trip: when we came from it, go back in history so the browser shows the page it kept (no reload, the map
+// stays where it was). Opened some other way, just load it.
+document.querySelectorAll('[data-home]').forEach((a) => a.addEventListener('click', (e) => {
+  let fromTrip = false; try { const r = new URL(document.referrer); fromTrip = r.origin === location.origin && /\/japan\/(index\.html)?$/.test(r.pathname); } catch {}
+  if (fromTrip && history.length > 1) { e.preventDefault(); history.go(history.state && history.state.sub ? -2 : -1); } // the Stamped stops page adds one history entry
+}));
 fab.addEventListener('click', () => openEx(null));
 page.addEventListener('input', (e) => { if (e.target.id === 'sg-text') ideas.draft = e.target.value; });
 page.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
   const fv = t('[data-fview]'); if (fv) { foodView = fv.dataset.fview; const u = new URL(location); u.searchParams.set('f', foodView); history.replaceState(null, '', u); return render(); }
-  if (t('[data-sgpost]') && ME) { const ta = document.getElementById('sg-text'); const text = (ta.value || '').trim(); if (!text) { ta.focus(); return; } ideas.draft = ''; store.addSuggestion({ text, name: P[ME].name, day: ideas.day === 'all' ? null : ideas.day }); render(); return; }
-  const vt = t('[data-vote]'); if (vt && ME) { store.toggleVote(vt.dataset.vote, ME); return render(); }
+  if (t('[data-sgpost]') && P[ME]) { const ta = document.getElementById('sg-text'); const text = (ta.value || '').trim(); if (!text) { ta.focus(); return; } ideas.draft = ''; store.addSuggestion({ text, name: P[ME].name, day: ideas.day === 'all' ? null : ideas.day, kind: KINDS[foodView] ? foodView : 'food' }); render(); return; }
+  const vt = t('[data-vote]'); if (vt && P[ME]) { store.toggleVote(vt.dataset.vote, ME); return render(); }
   const sd = t('[data-sgdel]'); if (sd) { const id = sd.dataset.sgdel; return askConfirm('Delete this suggestion?', 'It disappears for everyone.', 'Delete', () => { store.deleteSuggestion(id); render(); }); }
   const bw = t('[data-bkwho]'); if (bw) { bk.who = bw.dataset.bkwho; ls.set('proto.bkwho', bk.who); return render(); }
   const bm = t('[data-bkmark]'); if (bm) { const id = bm.dataset.bkmark; store.setChoice(id, 'booked'); render(); return undoable('Marked as booked', () => store.setChoice(id, '')); }
@@ -699,8 +729,8 @@ page.addEventListener('click', (e) => {
   const us = t('[data-unstamp]'); if (us) { const id = us.dataset.unstamp; store.toggleCheck(id); render(); return undoable('Unstamped', () => { if (!store.isChecked(id)) store.toggleCheck(id); }); }
   if (t('[data-unstampall]')) { const ids = Object.keys(store.state.checks || {}); return askConfirm('Unstamp everything?', `${ids.length} stamped stop${ids.length === 1 ? '' : 's'} go back to not done, on all four phones.`, 'Unstamp all', () => { ids.forEach((id) => store.isChecked(id) && store.toggleCheck(id)); render(); undoable(`Unstamped ${ids.length}`, () => ids.forEach((id) => !store.isChecked(id) && store.toggleCheck(id))); }); }
   if (t('[data-export]')) { exportDocx(); return; }
-  const pc = t('[data-pcolor]'); if (pc && ME) { store.setProfile(ME, { color: pc.dataset.pcolor }); return render(); }
-  if (t('[data-rmphoto]') && ME) { store.setProfile(ME, { photo: null }); return render(); }
+  const pc = t('[data-pcolor]'); if (pc && P[ME]) { store.setProfile(ME, { color: pc.dataset.pcolor }); return render(); }
+  if (t('[data-rmphoto]') && P[ME]) { store.setProfile(ME, { photo: null }); return render(); }
   const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
   const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('proto.exmode2', ex.mode); return render(); }
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couples' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couples' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
@@ -717,21 +747,24 @@ page.addEventListener('click', (e) => {
 });
 page.addEventListener('change', async (e) => {
   if (e.target.id === 'idea-day') { ideas.day = e.target.value; ls.set('proto.ideaday', ideas.day); return render(); }
-  if (e.target.id === 'pf-photo' && ME && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) msg.textContent = 'Uploading…'; try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) msg.textContent = err.message; } return; }
+  if (e.target.id === 'pf-photo' && P[ME] && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) msg.textContent = 'Uploading…'; try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) msg.textContent = err.message; } return; }
  if (e.target.id === 'f-where') { if (e.target.value === 'My location') return; fd.here = null; fd.where = e.target.value; ls.set('proto.fwhere', fd.where); searchFood(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); driver.classList.remove('on'); } });
+if (VIEW) { items[0].hidden = true; document.body.classList.add('guest'); }
 setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
 // Re-draw the expense list when another phone adds or changes something (not while the edit sheet is open).
 let exSig = '';
 store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode + JSON.stringify(store.getExpenses()) + JSON.stringify(Object.fromEntries(Object.entries(pf).map(([k, v]) => [k, [v.color, v.photo]]))); if (sig === exSig) return; exSig = sig; if ((tab === 0 || tab === 4) && !document.getElementById('sheet').classList.contains('on')) render(); });
 let ckSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.checks || {}); if (sig === ckSig) return; ckSig = sig; if (tab === 4 && !cfmBg.classList.contains('on')) render(); });
-let sgSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.suggestions || []); if (sig === sgSig) return; sgSig = sig; if (tab === 3 && foodView === 'ideas' && document.activeElement?.id !== 'sg-text') render(); });
+let sgSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.suggestions || []); if (sig === sgSig) return; sgSig = sig; if (tab === 3 && foodView !== 'nearby' && document.activeElement?.id !== 'sg-text') render(); });
 let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });
 store.start();
+// The PIN was refused (it changed, or this phone lost it): enter it again on the trips page, then come back to the trip.
+store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) location.replace('/?next=japan'); });
 window.__tourEnv = {
   page: 'tools', store,
   getTab: () => tab, setTab: (i) => { if (tab !== i) setTab(i); },
-  getFoodView: () => foodView, setFoodView: (v) => { if (foodView !== v) { foodView = v; render(); } },
+  getFoodView: () => foodView, setFoodView: (v) => { if (v === 'ideas') v = 'food'; if (foodView !== v) { foodView = v; render(); } },
   exCount: () => ex.list.length, sheetOpen: () => sheet.classList.contains('on'), closeSheet: () => closeSheet(),
   driverOpen: () => driver.classList.contains('on'),
 };
