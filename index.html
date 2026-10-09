@@ -92,7 +92,7 @@ body.scrolled .topfade { opacity:1; }
 .fact.cd small { color:rgba(255,255,255,.6); }
 
 /* ── sun-arc dial ── */
-.dial { position:relative; margin:6px auto 0; width:100%; max-width:420px; padding:0 8px; touch-action:none; -webkit-user-select:none; user-select:none; }
+.dial { position:relative; margin:4px auto 0; width:100%; max-width:340px; padding:0 8px; touch-action:none; -webkit-user-select:none; user-select:none; }
 #arc { width:100%; display:block; overflow:visible; }
 #arc .trk { fill:none; stroke-width:20; stroke-linecap:round; }
 #arc .ev { fill:none; stroke-width:20; transition:opacity 300ms; }
@@ -101,6 +101,18 @@ body.scrolled .topfade { opacity:1; }
 #arc .tk { stroke:#cfc9bc; stroke-width:1.5; stroke-linecap:round; }
 #arc text { font:500 10px var(--sans); fill:var(--ink3); text-anchor:middle; dominant-baseline:central; }
 #arc .sunmark text { font-size:9px; fill:#c48a12; }
+#leftarc { fill:none; stroke:var(--red); stroke-width:4; stroke-linecap:round; opacity:.9; }
+.dc-s { font-size:12px; font-weight:700; color:var(--ink3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:26ch; margin-left:auto; margin-right:auto; min-height:1.3em; }
+.dc-s b { color:var(--red); font-weight:700; }
+/* the day as a thin line on the left edge, once the dial is scrolled away */
+.rail { position:fixed; left:0; top:calc(96px + env(safe-area-inset-top)); bottom:calc(150px + env(safe-area-inset-bottom)); width:14px; z-index:880; padding:0; opacity:0; pointer-events:none; transform:translate3d(-8px,0,0); transition:opacity 220ms ease, transform 320ms var(--ease); }
+body.pastdial .rail { opacity:1; pointer-events:auto; transform:none; }
+.rail .tr { position:absolute; left:3px; top:0; bottom:0; width:4px; border-radius:2px; background:rgba(20,20,10,.12); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); box-shadow:0 0 0 1px rgba(255,255,255,.5); overflow:hidden; }
+.rail .sg { position:absolute; left:0; right:0; border-radius:2px; }
+.rail .sg.done { opacity:.3; }
+.rail .rk { position:absolute; left:0; width:10px; height:10px; margin-top:-5px; border-radius:50%; background:#ffc53d; box-shadow:0 0 0 2.5px #fff, 0 3px 8px rgba(0,0,0,.35); }
+.rail .rn { position:absolute; left:0; width:12px; height:2.5px; margin-top:-1px; border-radius:2px; background:var(--red); }
+@media (prefers-reduced-motion: reduce) { .rail { transition:opacity 150ms ease; transform:none; } }
 #nowmk line { stroke:var(--red); stroke-width:2.5; stroke-linecap:round; }
 #nowmk text { font-size:9.5px; font-weight:700; fill:var(--red); }
 .nowb { position:absolute; top:2px; right:12px; z-index:2; display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border-radius:999px; background:#fff; color:var(--ink); font-size:12.5px; font-weight:700; box-shadow:0 0 0 1px var(--line), 0 4px 12px -6px rgba(0,0,0,.3); }
@@ -109,7 +121,7 @@ body.scrolled .topfade { opacity:1; }
 #knob .k2 { transition:opacity 300ms; }
 .dc { position:absolute; left:0; right:0; bottom:2px; text-align:center; pointer-events:none; }
 .dc-k { font-size:12px; font-weight:700; color:var(--kc,var(--ink3)); letter-spacing:.02em; transition:color 200ms; }
-.dc-t { font-family:var(--serif); font-size:58px; line-height:.9; letter-spacing:-.02em; }
+.dc-t { font-family:var(--serif); font-size:46px; line-height:.9; letter-spacing:-.02em; }
 .dc-t small { font-family:var(--sans); font-size:13px; letter-spacing:0; margin-left:3px; color:var(--ink3); }
 .dc-n { font-size:14.5px; font-weight:700; margin:4px auto 0; max-width:17ch; line-height:1.25; min-height:1.25em; transition:opacity 140ms, filter 140ms; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dc-n
@@ -635,7 +647,7 @@ function renderSheet() {
     <header class="hd"><div class="hd-r"><p class="eb">Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p><div class="rr"><div class="seg" id="who">${whoBtns}<i></i></div><button class="gear press" id="gear" aria-label="Edit trip">${I.pen}</button></div></div>
       <h1>${esc(day.title)}</h1>${day.tagline ? `<p class="tg">${esc(day.tagline)}</p>` : ''}</header>
     <div class="facts">${daysTo > 0 ? `<span class="fact cd">${daysTo} <small>days to go</small></span>` : ''}<span class="fact" id="wx"><small>Weather…</small></span><span class="fact">${I.sunrise}${fmt(sun.rise).join(' ')}</span><span class="fact">${I.sunset}${fmt(sun.set).join(' ')}</span><span class="fact"><small>Dinner</small> ${esc(day.dinner)}</span></div>
-    <div class="dial" id="dial"><svg id="arc" viewBox="0 0 360 196"></svg><div class="dc"><p class="dc-k" id="dck"></p><p class="dc-t" id="dct"></p><p class="dc-n" id="dcn"></p></div>${tripDay ? `<button class="nowb press" id="nowb">${isToday() ? 'Now' : 'Today'}</button>` : ''}</div>
+    <div class="dial" id="dial"><svg id="arc" viewBox="0 0 360 196"></svg><div class="dc"><p class="dc-k" id="dck"></p><p class="dc-t" id="dct"></p><p class="dc-n" id="dcn"></p><p class="dc-s" id="dcs"></p></div>${tripDay ? `<button class="nowb press" id="nowb">${isToday() ? 'Now' : 'Today'}</button>` : ''}</div>
     <div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button></div>
     <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
@@ -653,7 +665,7 @@ function moveSeg(seg) { if (!seg) return; const on = seg.querySelector('button.o
 function buildDial(sun) {
   const svg = document.getElementById('arc'), wrap = document.getElementById('dial');
   const sp = events.map((e) => ({ e, s: span(e) })).filter((x) => x.s);
-  if (!sp.length) { wrap.style.display = 'none'; return { focus() {}, refresh() {} }; }
+  if (!sp.length) { wrap.style.display = 'none'; document.getElementById('rail')?.remove(); return { focus() {}, refresh() {} }; }
   const t0 = Math.floor(Math.min(...sp.map((x) => x.s[0])) / 60) * 60 - 30, t1 = Math.ceil(Math.max(...sp.map((x) => x.s[1])) / 60) * 60 + 30;
   const A0 = -90, A1 = 90, CX = 180, CY = 180, R = 150;
   const ang = (m) => A0 + ((Math.max(t0, Math.min(t1, m)) - t0) / (t1 - t0)) * (A1 - A0), minAt = (a) => t0 + ((a - A0) / (A1 - A0)) * (t1 - t0);
@@ -670,20 +682,44 @@ function buildDial(sun) {
   for (let h = hs; h <= he; h++) { const a = ang(h * 60); const [x0, y0] = pt(a, R + 15), [x1, y1] = pt(a, R + 20); g += `<line class="tk" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>`; if ((h - hs) % step === 0) { const [tx, ty] = pt(a, R - 24); g += `<text x="${tx}" y="${ty}">${h % 12 || 12}${h < 12 ? 'a' : 'p'}</text>`; } }
   if (sun.set > t0 && sun.set < t1) { const [x, y] = pt(aSet, R + 30); g += `<g class="sunmark"><text x="${x}" y="${y}">sunset</text></g>`; }
   if (isToday()) { const m = nowMin(); if (m > t0 && m < t1) { const a = ang(m); const [x0, y0] = pt(a, R - 13), [x1, y1] = pt(a, R + 22), [tx, ty] = pt(a, R + 34); g += `<g id="nowmk"><line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/><text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}">now</text></g>`; } }
+  if (isToday()) g += '<path id="leftarc" d=""/>';
   g += `<g id="knob"><circle class="k1" r="16" fill="#ffc53d"/><circle class="k2" r="11" cx="5" cy="-4" fill="#d6d5e2" opacity="0"/></g>`;
   svg.innerHTML = g;
   const knob = svg.querySelector('#knob'), k1 = knob.querySelector('.k1'), k2 = knob.querySelector('.k2');
+  const dur = (n) => { n = Math.max(0, Math.round(n)); const h = Math.floor(n / 60), mm = n % 60; return h ? `${h} h${mm ? ' ' + mm + ' min' : ''}` : `${mm} min`; };
+  const at12 = (m) => fmt(m).join(' ');
+  // Under the stop name: time left if it's happening now, otherwise when it starts and what comes after.
+  const info = (x0) => {
+    const el = document.getElementById('dcs'); if (!el || !x0) return;
+    const i = sp.indexOf(x0), nx = sp[i + 1], now = nowMin(), today = isToday();
+    const then = nx ? `Next ${esc(nx.e.title)} at ${at12(nx.s[0])}` : 'Last stop of the day';
+    let t;
+    if (today && now >= x0.s[0] && now < x0.s[1]) t = `<b>${dur(x0.s[1] - now)} left</b> · ${then}`;
+    else if (today && now < x0.s[0]) t = `<b>Starts in ${dur(x0.s[0] - now)}</b> · ${at12(x0.s[0])}`;
+    else t = then;
+    el.innerHTML = t;
+    const la = svg.querySelector('#leftarc');
+    if (la) { const live = sp.find((x) => x.s[0] <= now && now < x.s[1]); la.setAttribute('d', live && now > t0 && now < t1 ? arc(ang(now), Math.max(ang(now) + 0.5, Math.min(A1, ang(live.s[1]) - 0.7)), R - 16) : ''); }
+  };
+  // Rail: the same day, as a thin vertical line on the left once you've scrolled past the dial.
+  document.getElementById('rail')?.remove();
+  const rail = document.createElement('button'); rail.className = 'rail'; rail.id = 'rail'; rail.setAttribute('aria-label', 'Back to the day dial');
+  const fr = (m) => ((Math.max(t0, Math.min(t1, m)) - t0) / (t1 - t0)) * 100;
+  rail.innerHTML = `<span class="tr">${sp.map(({ e, s: q }) => `<i class="sg ${done(e.id) ? 'done' : ''}" data-rs="${e.id}" style="top:${fr(q[0]).toFixed(2)}%;height:${Math.max(0.8, fr(q[1]) - fr(q[0]) - 0.4).toFixed(2)}%;background:${isTicket(e) ? legHex(e) : catOf(e).c}"></i>`).join('')}</span>${isToday() ? `<span class="rn" style="top:${fr(nowMin()).toFixed(2)}%"></span>` : ''}<span class="rk"></span>`;
+  document.body.appendChild(rail);
+  const rk = rail.querySelector('.rk');
+  rail.addEventListener('click', () => { const r = wrap.getBoundingClientRect(); window.scrollTo({ top: scrollY + r.top - 110, behavior: RM ? 'auto' : 'smooth' }); });
   let curId = null, flyT = 0;
   const at = (m) => { let best = null; for (const x of sp) if (x.s[0] <= m + 0.5) best = x; return best || sp[0]; };
   const A = new Spring(A0, (a) => {
-    const [x, y] = pt(a, R); knob.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+    const [x, y] = pt(a, R); knob.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`); rk.style.top = fr(minAt(a)).toFixed(2) + '%';
     const m = minAt(a); const night = m >= sun.set || m < sun.rise; k1.setAttribute('fill', night ? '#f4f1ff' : '#ffc53d'); k2.setAttribute('opacity', night ? 1 : 0);
     const [tm, ap] = fmt(Math.round(m / 5) * 5); document.getElementById('dct').innerHTML = `${tm}<small>${ap}</small>`;
     const x0 = at(m); const nx = nextEv();
     wrap.style.setProperty('--kc', isTicket(x0.e) ? legHex(x0.e) : catOf(x0.e).c);
     const live = isToday() && Math.abs(m - nowMin()) < 8 && m >= x0.s[0] && m < x0.s[1];
     document.getElementById('dck').textContent = live ? 'Right now' : nx && nx.id === x0.e.id ? 'Next up' : done(x0.e.id) ? 'Done' : m > x0.s[1] ? 'Then, free time' : 'Then';
-    if (x0.e.id !== curId) { curId = x0.e.id; buzz(4); const n = document.getElementById('dcn'); n.classList.add('swap'); setTimeout(() => { n.textContent = x0.e.title; n.classList.remove('swap'); }, 110);
+    if (x0.e.id !== curId) { curId = x0.e.id; buzz(4); info(x0); const n = document.getElementById('dcn'); n.classList.add('swap'); setTimeout(() => { n.textContent = x0.e.title; n.classList.remove('swap'); }, 110);
       if (scrubbing) { clearTimeout(flyT); stackApi && stackApi.select(curId, { fromDial: true }); flyT = setTimeout(() => focusMap(curId), 120); } }
   }, 0.05);
   let scrubbing = false;
@@ -695,11 +731,11 @@ function buildDial(sun) {
   const end = (ev) => { if (!drag || ev.pointerId !== drag.id) return; drag = null; const v = T.vel(); const p = Math.max(A0, Math.min(A1, A.x + project(v, 0.995))); const m = minAt(p); let best = sp[0]; for (const x of sp) if (Math.abs(x.s[0] - m) < Math.abs(best.s[0] - m)) best = x; A.done = () => { scrubbing = false; A.done = null; }; A.to(ang(best.s[0]) + 0.01, { response: 0.5, damping: 0.86, velocity: v }); };
   wrap.addEventListener('pointerup', end); wrap.addEventListener('pointercancel', end);
   return {
-    focus(id, instant) { const m = startOf(id); if (m == null) return; curId = id; document.getElementById('dcn').textContent = (events.find((e) => e.id === id) || {}).title || ''; if (instant) { A.set(ang(m) + 0.01); } else A.to(ang(m) + 0.01, { response: 0.55, damping: 0.88 }); },
+    focus(id, instant) { const m = startOf(id); if (m == null) return; curId = id; info(sp.find((y) => y.e.id === id)); document.getElementById('dcn').textContent = (events.find((e) => e.id === id) || {}).title || ''; if (instant) { A.set(ang(m) + 0.01); } else A.to(ang(m) + 0.01, { response: 0.55, damping: 0.88 }); },
     initAt(m) { A.set(A0); requestAnimationFrame(() => A.to(ang(m) + 0.01, { response: 0.8, damping: 0.9 })); },
     toMin(m) { A.to(ang(m) + 0.01, { response: 0.6, damping: 0.88 }); },
-    tickNow() { const g0 = svg.querySelector('#nowmk'); if (!g0) return; const m = nowMin(); const a = ang(m); const [x0, y0] = pt(a, R - 13), [x1, y1] = pt(a, R + 22), [tx, ty] = pt(a, R + 34); const ln = g0.querySelector('line'), tx0 = g0.querySelector('text'); ln.setAttribute('x1', x0.toFixed(1)); ln.setAttribute('y1', y0.toFixed(1)); ln.setAttribute('x2', x1.toFixed(1)); ln.setAttribute('y2', y1.toFixed(1)); tx0.setAttribute('x', tx.toFixed(1)); tx0.setAttribute('y', ty.toFixed(1)); },
-    refresh() { svg.querySelectorAll('[data-arc]').forEach((p) => p.classList.toggle('done', done(p.dataset.arc))); A.apply(A.x); },
+    tickNow() { info(sp.find((y) => y.e.id === curId)); const rn = rail.querySelector('.rn'); if (rn) rn.style.top = fr(nowMin()).toFixed(2) + '%'; const g0 = svg.querySelector('#nowmk'); if (!g0) return; const m = nowMin(); const a = ang(m); const [x0, y0] = pt(a, R - 13), [x1, y1] = pt(a, R + 22), [tx, ty] = pt(a, R + 34); const ln = g0.querySelector('line'), tx0 = g0.querySelector('text'); ln.setAttribute('x1', x0.toFixed(1)); ln.setAttribute('y1', y0.toFixed(1)); ln.setAttribute('x2', x1.toFixed(1)); ln.setAttribute('y2', y1.toFixed(1)); tx0.setAttribute('x', tx.toFixed(1)); tx0.setAttribute('y', ty.toFixed(1)); },
+    refresh() { rail.querySelectorAll('[data-rs]').forEach((p) => p.classList.toggle('done', done(p.dataset.rs))); svg.querySelectorAll('[data-arc]').forEach((p) => p.classList.toggle('done', done(p.dataset.arc))); A.apply(A.x); },
   };
 }
 
@@ -999,7 +1035,8 @@ let lastSig = customSig();
 store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig !== lastSig) { lastSig = sig; renderDay({ keepScroll: true, keepSel: true }); if (setp.classList.contains('on')) renderSettings(); return; } stackApi.refresh(); dialApi.refresh(); syncPins(); });
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });
 setInterval(() => { if (dialApi && dialApi.tickNow) dialApi.tickNow(); }, 60000);
-window.addEventListener('scroll', () => { const sh = document.getElementById('sheet'); document.body.classList.toggle('scrolled', sh.getBoundingClientRect().top < 70); }, { passive: true });
+const pastDial = () => { const d = document.getElementById('dial'); document.body.classList.toggle('pastdial', !!d && d.style.display !== 'none' && d.getBoundingClientRect().bottom < 90); };
+window.addEventListener('scroll', () => { const sh = document.getElementById('sheet'); document.body.classList.toggle('scrolled', sh.getBoundingClientRect().top < 70); pastDial(); }, { passive: true });
 buildMap(); renderDay(); store.start(); refreshFx();
 </script>
 <div class="tt-veil" id="ttVeil"></div>

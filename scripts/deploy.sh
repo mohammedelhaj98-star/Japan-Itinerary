@@ -15,6 +15,10 @@ cat > dist/_redirects <<'EOF'
 /japan/prototypes/mix  /japan/ 301
 /japan/prototypes/mix.html  /japan/ 301
 EOF
+# Stamp this deploy's version on script/data imports. The ourtrips.date zone caches JS for 4 hours in browsers
+# whatever _headers says, so each deploy needs new URLs for phones to pick up new code and data.
+V=$(date +%s)
+find dist/japan -name '*.html' -exec sed -i -E "s#(\.js)\?v=[0-9]+'#\1?v=$V'#g" {} +
 # Code and data must never come stale from the browser cache (Pages defaults JS to 4 hours). Photos can cache.
 cat > dist/_headers <<'EOF'
 /
