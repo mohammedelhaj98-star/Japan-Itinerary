@@ -41,6 +41,14 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .av.ph { background-size:cover; background-position:center; color:transparent; }
 /* settings */
 .scard { margin:0 12px; padding:16px; }
+.navrow { display:flex; align-items:center; gap:10px; width:calc(100% - 24px); text-align:left; }
+.navrow > span:first-child { flex:1; min-width:0; }
+.navrow b { display:block; font-size:15.5px; }
+.navrow small { display:block; font-size:12.5px; color:var(--ink3); margin-top:2px; }
+.navrow .cnt { font-size:13px; font-weight:700; color:#fff; background:var(--ok); border-radius:999px; padding:2px 9px; }
+.navrow .cnt:empty { display:none; }
+.navrow svg { color:var(--ink3); flex:none; }
+.subback { display:inline-flex; align-items:center; gap:2px; margin:0 16px 4px; height:34px; padding:0 14px 0 8px; border-radius:999px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:14px; font-weight:700; }
 .stday { margin:10px 0 2px; font-size:12px; font-weight:700; color:var(--ink3); text-transform:uppercase; letter-spacing:.05em; }
 .stday:first-child { margin-top:0; }
 .strow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line); font-size:14.5px; }
@@ -529,13 +537,26 @@ function renderSettings() {
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
   const modeSeg = [['couples', 'Couples'], ['people', 'People']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
   const prefs = `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div></div>`;
-  const st = stamped();
-  const stamps = `<div class="card scard">${st.length ? `${st.map(([d, list]) => `<p class="stday">${d ? `Day ${d.n} · ${esc(d.title)}` : 'Other'}</p>${list.map((e) => `<div class="strow"><span>${e.time ? `<small>${esc(e.time)}</small>` : ''}${esc(e.title)}</span><button data-unstamp="${e.id}">Unstamp</button></div>`).join('')}`).join('')}<div class="setrow"><span>${st.reduce((n, [, l]) => n + l.length, 0)} stamped</span><button class="linkb" data-unstampall>Unstamp all</button></div>` : '<p class="sub">Nothing stamped yet. Stamp a pass on the trip page when you\'ve done it.</p>'}</div>`;
+  if (sub === 'stamps') return renderStamps();
+  const nSt = Object.keys(store.state.checks || {}).length;
+  const stamps = `<button class="card scard navrow" data-sub="stamps"><span><b>Stamped stops</b><small>${nSt ? `${nSt} stamped · see and unstamp them` : 'Nothing stamped yet'}</small></span><span class="cnt">${nSt || ''}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>`;
   const exp = `<div class="card scard"><p class="sub" style="margin-bottom:12px">A Word file laid out like the original itinerary, with everything as it is now: edited and added stops, choices made, bookings marked, stamps and expenses.</p><button class="bigb" data-export>Download Word file (.docx)</button><p class="sub" id="ex-msg" style="margin-top:10px"></p></div>`;
   return `<header class="ph"><small>Settings</small><h1>You &amp; the trip</h1><p>Your profile, what the colours mean, and how money is shown.</p></header>
     ${mine}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}<p class="sec">Expenses</p>${prefs}<p class="sec">Export the trip</p>${exp}`;
 }
 // Stamped stops by day, using each stop's current (edited) title. Stamps on stops that no longer exist are listed under Other so they can still be cleared.
+// Settings sub-page (Stamped stops) lives in the URL as ?v=5&p=stamps, so back and refresh behave.
+let sub = new URLSearchParams(location.search).get('p') || '';
+function setSub(v, push = true) { sub = v; const u = new URL(location); if (v) u.searchParams.set('p', v); else u.searchParams.delete('p'); if (push) history.pushState({ sub: v }, '', u); else history.replaceState({ sub: v }, '', u); window.scrollTo(0, 0); render(); }
+addEventListener('popstate', () => { sub = new URLSearchParams(location.search).get('p') || ''; render(); });
+function renderStamps() {
+  const st = stamped(); const n = st.reduce((k, [, l]) => k + l.length, 0);
+  const list = st.length ? `<div class="card scard">${st.map(([d, l]) => `<p class="stday">${d ? `Day ${d.n} · ${esc(d.title)}` : 'Other'}</p>${l.map((e) => `<div class="strow"><span>${e.time ? `<small>${esc(e.time)}</small>` : ''}${esc(e.title)}</span><button data-unstamp="${e.id}">Unstamp</button></div>`).join('')}`).join('')}</div>
+      <div class="card scard" style="margin-top:12px"><div class="setrow"><span>${n} stamped</span><button class="linkb" data-unstampall>Unstamp all</button></div></div>`
+    : '<div class="card scard"><p class="sub">Nothing stamped yet. Stamp a pass on the trip page when you\'ve done it.</p></div>';
+  return `<button class="subback" data-subback><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Settings</button>
+    <header class="ph"><small>Settings</small><h1>Stamped stops</h1><p>Everything marked as done, by day. Unstamping changes it on all four phones.</p></header>${list}`;
+}
 function stamped() {
   const checks = store.state.checks || {}, C = store.state.custom || {}; const byId = {};
   for (const d of DAYS) for (const it of d.items) { if (it.type === 'event') byId[it.id] = { ...it, d }; if (it.type === 'choice') for (const o of it.options) for (const y of o.items || []) byId[y.id] = { ...y, d }; }
@@ -607,7 +628,7 @@ function render() {
   if (tab === 3) { mountFoodMap(); if (fd.res == null) searchFood(); }
   window.scrollTo(0, y);
 }
-function setTab(i) { tab = i; items.forEach((el, j) => el.toggleAttribute('data-active', j === i)); const el = items[i]; hl.style.width = el.offsetWidth + 'px'; hl.style.transform = `translateX(${el.offsetLeft}px)`; const u = new URL(location); u.searchParams.set('v', i + 1); history.replaceState(null, '', u); window.scrollTo(0, 0); render(); }
+function setTab(i) { if (i !== 4 && sub) { sub = ''; const u0 = new URL(location); u0.searchParams.delete('p'); history.replaceState(null, '', u0); } tab = i; items.forEach((el, j) => el.toggleAttribute('data-active', j === i)); const el = items[i]; hl.style.width = el.offsetWidth + 'px'; hl.style.transform = `translateX(${el.offsetLeft}px)`; const u = new URL(location); u.searchParams.set('v', i + 1); history.replaceState(null, '', u); window.scrollTo(0, 0); render(); }
 items.forEach((el, i) => el.addEventListener('click', () => setTab(i)));
 fab.addEventListener('click', () => openEx(null));
 page.addEventListener('click', (e) => {
@@ -615,6 +636,8 @@ page.addEventListener('click', (e) => {
   const bw = t('[data-bkwho]'); if (bw) { bk.who = bw.dataset.bkwho; ls.set('proto.bkwho', bk.who); return render(); }
   const bm = t('[data-bkmark]'); if (bm) { const id = bm.dataset.bkmark; store.setChoice(id, 'booked'); render(); return undoable('Marked as booked', () => store.setChoice(id, '')); }
   const bu = t('[data-bkunmark]'); if (bu) { const id = bu.dataset.bkunmark; store.setChoice(id, ''); render(); return undoable('Moved back to To book', () => store.setChoice(id, 'booked')); }
+  const sb = t('[data-sub]'); if (sb) return setSub(sb.dataset.sub);
+  if (t('[data-subback]')) { if (history.state && history.state.sub) history.back(); else setSub('', false); return; }
   const us = t('[data-unstamp]'); if (us) { const id = us.dataset.unstamp; store.toggleCheck(id); render(); return undoable('Unstamped', () => { if (!store.isChecked(id)) store.toggleCheck(id); }); }
   if (t('[data-unstampall]')) { const ids = Object.keys(store.state.checks || {}); return askConfirm('Unstamp everything?', `${ids.length} stamped stop${ids.length === 1 ? '' : 's'} go back to not done, on all four phones.`, 'Unstamp all', () => { ids.forEach((id) => store.isChecked(id) && store.toggleCheck(id)); render(); undoable(`Unstamped ${ids.length}`, () => ids.forEach((id) => !store.isChecked(id) && store.toggleCheck(id))); }); }
   if (t('[data-export]')) { exportDocx(); return; }
