@@ -5,3 +5,5 @@ node_modules/
 dist/
 hub/img/group.webp
 hub/img/group-tiny.webp
+tests/shots/
+node_modules

@@ -1,0 +1,12 @@
+{
+  "name": "our-trips",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/e2e.mjs",
+    "deploy": "bash scripts/deploy.sh"
+  },
+  "devDependencies": {
+    "playwright": "1.64.0"
+  }
+}

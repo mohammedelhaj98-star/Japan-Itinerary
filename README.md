@@ -68,9 +68,6 @@ Design skills used to build and review it live in `.claude/skills/` (Impeccable,
 
 ```
 index.html            app shell
-css/app.css           styles (light + dark)
-js/app.js             UI: days, map tab, bookings, guide, ideas, search
-js/map.js             Leaflet map, OSRM routing, Google Maps links
 js/store.js           shared state client (API + localStorage fallback)
 data/itinerary.js     the trip
 data/guide.js         bookings, food, tips, suggestions
@@ -78,3 +75,15 @@ functions/api/        Cloudflare Pages Function (KV-backed API)
 vendor/leaflet/       Leaflet 1.9.4 (BSD-2)
 sw.js, manifest.webmanifest, icons/   PWA
 ```
+
+## Tests
+
+`npm install && npm test` builds the site into `dist/`, serves it like Cloudflare Pages with the real API on an
+in-memory KV, and drives several simulated phones through the app (84 checks: welcome, M&M view, passes, shared
+expenses, profiles, bookings, food ideas, stamps, Word export, map gestures, tour, offline). Set `CHROMIUM` to use a
+specific browser binary. Screenshots land in `tests/shots/`.
+
+## Syncing and Cloudflare limits
+
+Phones check `GET /api/version` (one KV read) every 20 s while the app is on screen, and fetch `/api/state` only when
+it changed. Normal use does no KV list operations (capped at 1,000/day on the free plan); each change costs 2 writes.
