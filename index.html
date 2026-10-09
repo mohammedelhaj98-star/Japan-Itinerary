@@ -5,6 +5,8 @@
 <script>
 // First visit on this phone: ask who it is on the trips page, then come back here.
 try { if (/^\/japan(\/|$)/.test(location.pathname) && !localStorage.getItem('trips.me')) location.replace('/?next=japan'); } catch (e) {}
+// ?tour=1 (from Settings) starts the practice tour: practice mode on, step 1, and a fresh practice copy.
+try { var tq = new URLSearchParams(location.search); if (tq.get('tour') === '1') { sessionStorage.setItem('tour.on', '1'); sessionStorage.setItem('tour.step', '0'); sessionStorage.removeItem('tour.state'); tq.delete('tour'); history.replaceState(null, '', location.pathname + (tq.toString() ? '?' + tq : '')); } } catch (e) {}
 </script>
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -93,24 +95,6 @@ body.scrolled .topfade { opacity:1; }
 .cal-l span { display:inline-flex; align-items:center; gap:5px; }
 .cal-l i { width:12px; height:3px; border-radius:2px; background:var(--cc); }
 .cal-l i.dot { width:6px; height:6px; border-radius:50%; background:#6f4f98; }
-/* guided tour */
-.tour { position:fixed; inset:0; z-index:1200; }
-.tour-hole { position:fixed; border-radius:18px; box-shadow:0 0 0 9999px rgba(14,12,8,.58), 0 0 0 3px #fff; pointer-events:none; }
-body.tour-nodd .dd { opacity:0; pointer-events:none; transition:opacity 150ms ease; }
-.tour.nohole .tour-hole { width:0 !important; height:0 !important; left:50% !important; top:50% !important; box-shadow:0 0 0 9999px rgba(14,12,8,.58); }
-.tour-card { position:fixed; left:50%; width:min(calc(100vw - 28px), 360px); transform:translateX(-50%); padding:16px 16px 12px; border-radius:20px; background:#fbf9f5; box-shadow:0 20px 50px -18px rgba(0,0,0,.55); }
-.tour-card small { font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red); }
-.tour-card h3 { margin:4px 0 6px; font-size:18px; letter-spacing:-.01em; }
-.tour-card p { font-size:14.5px; line-height:1.45; color:var(--ink2); }
-.tour-card .row { display:flex; align-items:center; gap:8px; margin-top:14px; }
-.tour-card .row .sp { flex:1; }
-.tour-card button { height:40px; padding:0 16px; border-radius:12px; font-weight:700; font-size:14.5px; background:rgba(0,0,0,.06); }
-.tour-card button.go { background:var(--ink); color:#fff; }
-.tour-card button.skip { background:none; color:var(--ink3); padding:0 4px; }
-.tour-dots { display:flex; gap:4px; }
-.tour-dots i { width:6px; height:6px; border-radius:50%; background:rgba(0,0,0,.15); }
-.tour-dots i.on { background:var(--ink); }
-@media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card { transition:none; } }
 .dayp b { display:block; max-width:100%; font-size:15px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .yen { font:700 18px var(--sans); }
 
@@ -488,7 +472,8 @@ body.mapmax .mapmax-hint { display:block; }
 <script type="module">
 import { DAYS, HOTELS } from './data/itinerary.js?v=9';
 import { PLACES } from './data/places.js?v=9';
-import { store } from './js/store.js?v=9';
+import { store, SANDBOX } from './js/store.js?v=9';
+import { runTour } from './js/tour.js?v=9';
 import { CAT, MODE } from './js/colors.js?v=9';
 
 /* ═══ motion engine: interruptible springs (Apple response/damping) ═══ */
@@ -521,7 +506,7 @@ const tracker = () => { const s = []; return { add(v) { const t = performance.no
 const project = (v, d = 0.998) => ((v / 1000) * d) / (1 - d);
 const rubber = (o, dim, c = 0.55) => (o * dim * c) / (dim + c * Math.abs(o));
 const buzz = (ms = 8) => { if (!(navigator.userActivation && navigator.userActivation.hasBeenActive)) return; try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
-const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch { return f; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch { return f; } }, set(k, v) { if (SANDBOX) return; try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 
 /* ═══ helpers ═══ */
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -622,7 +607,7 @@ const KNOW = {
 const qs = new URLSearchParams(location.search);
 const todayJST = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const tripDay = DAYS.find((d) => d.date === todayJST);
-const ui = { dayId: qs.get('d') || (tripDay ? tripDay.id : DAYS[0].id), who: ls.get('japan2026.whoMix', 'all'), sel: null };
+const ui = SANDBOX ? { dayId: 'd07', who: 'all', sel: null } : { dayId: qs.get('d') || (tripDay ? tripDay.id : DAYS[0].id), who: ls.get('japan2026.whoMix', 'all'), sel: null };
 let day, events, asides, stops, map, layers = [], pinEls = {}, dialApi = null, stackApi = null;
 const nowMin = () => { const t = new Date(Date.now() + 9 * 3600e3); return t.getUTCHours() * 60 + t.getUTCMinutes(); };
 
@@ -1205,7 +1190,7 @@ function lastCheckpoint(now = Date.now()) {
   const j = new Date(now + 9 * 3600e3); const dayStart = Date.UTC(j.getUTCFullYear(), j.getUTCMonth(), j.getUTCDate()) - 9 * 3600e3;
   return [0, 12, 15, 18, 21].map((h) => dayStart + h * 3600e3).filter((t) => t <= now).pop();
 }
-function autoOpen() { const seen = +ls.get(DD_SEEN, 0); if (seen >= lastCheckpoint()) return; ls.set(DD_SEEN, Date.now()); if (!drawer.isOpen()) setTimeout(() => drawer.open(), RM ? 0 : 380); }
+function autoOpen() { if (SANDBOX) return; const seen = +ls.get(DD_SEEN, 0); if (seen >= lastCheckpoint()) return; ls.set(DD_SEEN, Date.now()); if (!drawer.isOpen()) setTimeout(() => drawer.open(), RM ? 0 : 380); }
 const drawer = (() => {
   const dd = document.getElementById('dd'), tab = document.getElementById('ddtab'), scrim = document.getElementById('ddscrim');
   const W = () => dd.querySelector('.dd-in').offsetWidth;
@@ -1269,60 +1254,14 @@ const mapMax = (() => {
   addEventListener('resize', () => { if (on) Y.set(travel()); });
   return { set, isOn: () => on };
 })();
-/* ═══ guided tour (started from Settings: /japan/?tour=1) ═══ */
-function startTour() {
-  if (document.querySelector('.tour')) return;
-  // Each step names its target; when a target isn't on the page (a day with no set times has no dial), the next one in the list is used.
-  const steps = [
-    { el: ['#dayp'], t: 'Day bar', x: 'Tap it for a calendar of the whole trip and jump to any day. The arrows either side step back and forward a day.', pre: () => { if (mapMax.isOn()) mapMax.set(false); drawer.close(); window.scrollTo(0, 0); } },
-    { el: ['#ddtab'], dd: true, t: 'The day tab', x: 'Who\'s going, the weather, dinner and the dial live in here. Tap the tab or drag it out. It opens by itself the first time each day and after 12, 3, 6 and 9 PM.', pre: () => drawer.close() },
-    { el: ['#dial', '.dd-list'], dd: true, t: 'The dial', x: ['The day as a clock. Drag the sun to scrub through the stops. Booked stops show their start time, and the red tick is now. Now jumps back to the current time.', 'On a day with no set times, the day\'s stops are listed here instead of the dial.'], pre: () => drawer.open() },
-    { el: ['#who'], dd: true, t: 'Everyone, NASA or M&M', x: 'Show the whole group\'s plan or just one couple\'s. M&M\'s view starts on Oct 21.', pre: () => drawer.open() },
-    { el: ['.pass.open', '.pass'], t: 'Passes', x: 'Each stop is a pass. Use the arrows or swipe sideways to move through the day. The one you leave goes to the bottom of the pile.', pre: () => drawer.close() },
-    { el: ['.pass.open [data-stamp]', '.pass [data-stamp]'], t: 'Stamp it', x: 'Stamp a stop once you\'ve done it. It shows as done on all four phones. Unstamp from Settings.', pre: () => drawer.close() },
-    { el: ['#grab'], t: 'Bigger map', x: 'Swipe the stops down from the top to give the map the whole screen. Swipe up or tap the handle to bring them back.', pre: () => { drawer.close(); window.scrollTo(0, 0); } },
-    { el: ['#ttBtn'], t: 'Trip tools', x: 'Expenses, bookings, taxi cards, food ideas and Settings. You can start this tour again from Settings any time.', pre: () => drawer.close() },
-  ];
-  const FIXED = ['#dayp', '#ddtab', '#ttBtn']; // on-screen controls that never need scrolling to
-  let i = 0, raf = 0, sel = null, last = '';
-  const wrap = document.createElement('div'); wrap.className = 'tour'; wrap.innerHTML = '<div class="tour-hole"></div><div class="tour-card" role="dialog" aria-modal="true" aria-live="polite"></div>'; document.body.appendChild(wrap);
-  const hole = wrap.querySelector('.tour-hole'), card = wrap.querySelector('.tour-card');
-  const visible = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 1 && r.height > 1 && getComputedStyle(el).visibility !== 'hidden'; };
-  const target = () => { const st = steps[i]; for (const q of st.el) { const el = document.querySelector(q); if (visible(el)) return [q, el, st.el.indexOf(q)]; } return [null, null, -1]; };
-  // Follow the target every frame, so the spotlight stays on it while the panel slides or the page settles.
-  const track = () => {
-    raf = requestAnimationFrame(track);
-    const el = sel && document.querySelector(sel); const pad = 6;
-    if (!visible(el)) { wrap.classList.add('nohole'); const key = 'none'; if (key !== last) { last = key; card.style.top = Math.max(12, (innerHeight - card.offsetHeight) / 2) + 'px'; } return; }
-    wrap.classList.remove('nohole');
-    const r = el.getBoundingClientRect(); const h = Math.min(r.height, innerHeight * 0.42);
-    const box = [r.left - pad, r.top - pad, r.width + pad * 2, h + pad * 2].map((v) => Math.round(v));
-    const key = box.join(','); if (key === last) return; last = key;
-    Object.assign(hole.style, { left: box[0] + 'px', top: box[1] + 'px', width: box[2] + 'px', height: box[3] + 'px' });
-    const ch = card.offsetHeight, below = box[1] + box[3] + 12, above = box[1] - 12 - ch;
-    card.style.top = (below + ch <= innerHeight - 10 ? below : above >= 10 ? above : Math.max(10, innerHeight - ch - 10)) + 'px';
-  };
-  const show = () => {
-    const st = steps[i]; st.pre && st.pre(); document.body.classList.toggle('tour-nodd', !st.dd);
-    setTimeout(() => {
-      const [q, el, alt] = target(); sel = q; card.dataset.sel = q || '';
-      // bring an in-page target into view (fixed controls and the day panel are always on screen)
-      if (el && !FIXED.includes(q) && !el.closest('.dd')) { const r = el.getBoundingClientRect(); const room = innerHeight - 230; if (r.top < 90 || r.top + Math.min(r.height, innerHeight * 0.42) > room) window.scrollTo(0, Math.max(0, scrollY + r.top - 110)); }
-      const text = Array.isArray(st.x) ? st.x[Math.max(0, alt)] || st.x[0] : st.x;
-      card.innerHTML = `<small>${i + 1} of ${steps.length}</small><h3>${st.t}</h3><p>${text}</p><div class="row"><div class="tour-dots">${steps.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div><span class="sp"></span>${i === steps.length - 1 ? '' : '<button class="skip" data-tskip>Skip</button>'}${i ? '<button data-tback>Back</button>' : ''}<button class="go" data-tnext>${i === steps.length - 1 ? 'Done' : 'Next'}</button></div>`;
-      last = ''; card.querySelector('[data-tnext]').focus({ preventScroll: true });
-    }, 80);
-  };
-  const end = () => { cancelAnimationFrame(raf); wrap.remove(); document.body.classList.remove('tour-nodd'); removeEventListener('keydown', key); drawer.close(); const u = new URL(location); u.searchParams.delete('tour'); history.replaceState(null, '', u); };
-  const go = (d) => { const j = i + d; if (j < 0) return; if (j >= steps.length) return end(); i = j; show(); };
-  const key = (e) => { if (e.key === 'Escape') end(); else if (e.key === 'ArrowRight') go(1); else if (e.key === 'ArrowLeft') go(-1); };
-  wrap.addEventListener('pointerdown', (e) => e.stopPropagation());
-  wrap.addEventListener('click', (e) => { e.stopPropagation(); if (e.target.closest('[data-tnext]')) go(1); else if (e.target.closest('[data-tback]')) go(-1); else if (e.target.closest('[data-tskip]')) end(); });
-  addEventListener('keydown', key);
-  show(); track();
-}
 buildMap(); renderDay(); store.start(); refreshFx(); drawer.init();
-if (new URLSearchParams(location.search).get('tour') === '1') setTimeout(startTour, 700);
+window.__tourEnv = {
+  page: 'trip', ui, store, drawer, mapMax,
+  calOpen: () => cal.classList.contains('on'),
+  toDay7: () => { if (day.id !== 'd07') { ui.dayId = 'd07'; renderDay(); } },
+  reset: () => { if (mapMax.isOn()) mapMax.set(false); drawer.close(); if (cal.classList.contains('on')) calOpen(false); const tt = document.getElementById('tt'); if (tt) tt.classList.remove('open'); if (day.id !== 'd07' || ui.who !== 'all') { ui.dayId = 'd07'; ui.who = 'all'; renderDay(); } window.scrollTo(0, 0); },
+};
+if (SANDBOX) setTimeout(runTour, 500);
 /* ═══ offline: save today and the next 2 days (photos; pages and data are kept by the service worker) ═══ */
 function saveAhead() {
   if (!('serviceWorker' in navigator) || !navigator.onLine) return;

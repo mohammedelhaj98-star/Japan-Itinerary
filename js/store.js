@@ -7,6 +7,12 @@ const LS_DEVICE = 'japan2026.device';
 const LS_NAME = 'japan2026.name';
 const POLL_MS = 20000;
 
+// Practice mode (the guided tour): changes live only in this tab's sessionStorage, nothing is sent to the
+// server or written to localStorage, and syncing pauses. Ending the tour drops it all.
+export const SANDBOX = (() => { try { return sessionStorage.getItem('tour.on') === '1'; } catch { return false; } })();
+const SB_KEY = 'tour.state';
+const sbGet = () => { try { return JSON.parse(sessionStorage.getItem(SB_KEY)); } catch { return null; } };
+
 function lsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; }
 }
@@ -16,6 +22,8 @@ function lsSet(key, value) {
 
 export function deviceId() {
   let id = lsGet(LS_DEVICE, null);
+  // practice mode: a phone without an id gets a temporary one that is forgotten with the practice
+  if (!id && SANDBOX) { try { id = sessionStorage.getItem('tour.device'); if (!id) { id = 'dv-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); sessionStorage.setItem('tour.device', id); } } catch {} return id; }
   if (!id) {
     id = 'dv-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
     lsSet(LS_DEVICE, id);
@@ -27,15 +35,15 @@ export function getDisplayName() { return lsGet(LS_NAME, ''); }
 export function setDisplayName(name) { lsSet(LS_NAME, String(name || '').slice(0, 40)); }
 
 export const store = {
-  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, profiles: {}, updatedAt: null }, lsGet(LS_KEY, {})),
-  mode: 'connecting', // connecting | online | local
+  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, profiles: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {})),
+  mode: SANDBOX ? 'sandbox' : 'connecting', // connecting | online | local | sandbox
   lastError: null,
   listeners: new Set(),
   _timer: null,
 
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
   emit() { for (const fn of this.listeners) { try { fn(this.state, this); } catch (e) { console.error(e); } } },
-  persist() { lsSet(LS_KEY, this.state); },
+  persist() { if (SANDBOX) { try { sessionStorage.setItem(SB_KEY, JSON.stringify(this.state)); } catch { /* ignore */ } return; } lsSet(LS_KEY, this.state); },
 
   setMode(mode, err) {
     const changed = this.mode !== mode || (err && err !== this.lastError);
@@ -56,6 +64,11 @@ export const store = {
   },
 
   async start() {
+    if (SANDBOX) {
+      // Start the practice from a read-only copy of the real trip (once per tour), then stay offline.
+      if (!sbGet()) { try { const remote = await this.api('state'); this.state = { ...this.state, ...remote }; } catch { /* practice from the local copy */ } this.persist(); }
+      this.mode = 'sandbox'; this.emit(); return;
+    }
     await this.refresh();
     if (this._timer) clearInterval(this._timer);
     // Cheap check every 20s while the app is on screen: one KV read for the version stamp. The full state
@@ -66,6 +79,7 @@ export const store = {
   },
 
   async check() {
+    if (SANDBOX) return;
     try {
       const v = await this.api('version');
       if (v.updatedAt && v.updatedAt === this.state.updatedAt && this.mode === 'online') return;
@@ -76,6 +90,7 @@ export const store = {
   },
 
   async refresh() {
+    if (SANDBOX) return;
     try {
       const remote = await this.api('state');
       this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), profiles: { ...(remote.profiles || {}), ...this._pfRecent() }, updatedAt: remote.updatedAt || null };
@@ -89,6 +104,7 @@ export const store = {
 
   // Optimistic update then sync. On API failure, keep the local change (local mode).
   async _mutate(localFn, path, body, applyRemote) {
+    if (SANDBOX) { localFn(this.state); this.persist(); this.emit(); return; }
     localFn(this.state);
     this.persist();
     this.emit();
@@ -173,7 +189,7 @@ export const store = {
 
   addSuggestion({ text, name, day }) {
     const author = deviceId();
-    const temp = { id: 'tmp-' + Date.now(), text, name: name || 'Anonymous', day: day || null, author, votes: [], ts: new Date().toISOString(), pending: true };
+    const temp = { id: 'tmp-' + Date.now(), text, name: name || 'Anonymous', day: day || null, author, votes: [], ts: new Date().toISOString(), pending: !SANDBOX };
     return this._mutate(
       (s) => { s.suggestions.unshift(temp); },
       'suggestions', { text, name, day, author },

@@ -237,14 +237,14 @@ await C.page.tap('[data-cal="d14"]'); await C.page.waitForTimeout(1200);
 ok('tapping a day jumps there', /Day 14/.test(await C.page.textContent('#dayp')) && !(await C.page.$eval('#cal', (e) => e.classList.contains('on'))));
 await C.page.tap('#dayp'); await C.page.waitForTimeout(300); await C.page.tap('[data-cal-today]'); await C.page.waitForTimeout(1200);
 ok('Today button returns to today', /Day 7/.test(await C.page.textContent('#dayp')));
-// guided tour from Settings
+// practice tour from Settings (every step is walked through in tests/tour.mjs)
 await C.page.goto(B + '/japan/prototypes/tools?v=5'); await C.page.waitForTimeout(1200);
-await C.page.tap('a[href="../?tour=1"]'); await C.page.waitForURL(/tour=1/); await C.page.waitForTimeout(1500);
-ok('tour starts on the trip page', /1 of 8/.test(await C.page.textContent('.tour-card')));
-for (let k = 2; k <= 8; k++) { await C.page.tap('[data-tnext]'); await C.page.waitForTimeout(600); if (k === 3 || k === 5 || k === 7) await C.page.screenshot({ path: SH + `tour-${k}.png` }); }
-ok('tour reaches the last step', /8 of 8/.test(await C.page.textContent('.tour-card')));
-await C.page.tap('[data-tnext]'); await C.page.waitForTimeout(400);
-ok('Done closes the tour', !(await C.page.$('.tour')) && !/tour=1/.test(C.page.url()));
+await C.page.tap('a[href="../?tour=1"]'); await C.page.waitForSelector('.tour-card', { timeout: 8000 }).catch(() => {}); await C.page.waitForTimeout(600);
+ok('practice tour starts on Day 7', /^1 of 29/.test(await C.page.textContent('.tour-card .tour-h small').catch(() => '')) && /Day 7/.test(await C.page.textContent('#dayp')));
+ok('practice tour says nothing is saved', /nothing is saved/i.test(await C.page.textContent('.tour-card')));
+await C.page.screenshot({ path: SH + 'tour-1.png' });
+await C.page.tap('[data-tend]'); await C.page.waitForTimeout(1800);
+ok('End leaves practice mode', !(await C.page.$('.tour')) && !(await C.page.evaluate(() => sessionStorage.getItem('tour.on'))));
 // tools bubble still opens
 await C.page.tap('#ttBtn'); await C.page.waitForTimeout(400); ok('tools bubble opens', await C.page.$eval('#tt', (e) => e.classList.contains('open')));
 
