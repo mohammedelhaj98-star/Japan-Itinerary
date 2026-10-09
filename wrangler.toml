@@ -1,0 +1,8 @@
+# Cloudflare Pages config. Deploy with: scripts/deploy.sh
+name = "japan2026"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-01"
+
+[[kv_namespaces]]
+binding = "TRIP_KV"
+id = "60f44ad8c3904423a35f7213856cebd8"
