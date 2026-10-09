@@ -102,32 +102,53 @@ export function runTour() {
   const inFixed = (el) => { for (let e = el; e && e !== document.body; e = e.parentElement) if (getComputedStyle(e).position === 'fixed') return true; return false; };
   const setBox = (el, x, y, w, h) => Object.assign(el.style, { left: x + 'px', top: y + 'px', width: Math.max(0, w) + 'px', height: Math.max(0, h) + 'px' });
 
-  // Every frame: dim everything except the target (which stays tappable), keep the card beside it.
-  const frame = () => {
-    raf = requestAnimationFrame(frame);
+  const flag = (c, on) => { if (wrap.classList.contains(c) !== on) wrap.classList.toggle(c, on); }; // only touch the DOM on a real change
+
+  // Dim everything except the target (which stays tappable) and keep the card beside it. Returns whether anything moved.
+  const place = () => {
     const st = STEPS[i];
-    const paused = st.allow && [].concat(st.allow).some((s) => visible(document.querySelector(s)));
-    wrap.classList.toggle('paused', !!paused); if (paused) { last = ''; return; }
+    const paused = !!st.allow && [].concat(st.allow).some((s) => visible(document.querySelector(s)));
+    flag('paused', paused); if (paused) { const was = last; last = 'paused'; return was !== 'paused'; }
     const el = st.page === env.page ? target() : null; const W = innerWidth, H = innerHeight;
     if (!el) {
-      wrap.classList.add('nohole');
-      if (last !== 'none') { last = 'none'; setBox(bt, 0, 0, W, H); setBox(bb, 0, 0, 0, 0); setBox(bl, 0, 0, 0, 0); setBox(br, 0, 0, 0, 0); card.style.top = Math.max(60, (H - card.offsetHeight) / 2) + 'px'; }
-      return;
+      flag('nohole', true);
+      if (last === 'none') return false;
+      last = 'none'; setBox(bt, 0, 0, W, H); setBox(bb, 0, 0, 0, 0); setBox(bl, 0, 0, 0, 0); setBox(br, 0, 0, 0, 0); card.style.top = Math.max(60, (H - card.offsetHeight) / 2) + 'px';
+      return true;
     }
-    wrap.classList.remove('nohole');
+    flag('nohole', false);
     const r = el.getBoundingClientRect(), pad = 6;
     // the hole is the whole target as far as it's on screen, so every part of it (a sheet's button too) can be tapped
     const top = Math.max(0, r.top - pad), bot = Math.min(H, r.bottom + pad);
     const x = Math.round(r.left - pad), y = Math.round(top), w = Math.round(r.width + pad * 2), h = Math.round(Math.max(0, bot - top));
-    const key = [x, y, w, h, W, H].join(); if (key === last) return; last = key;
+    const key = [x, y, w, h, W, H].join(); if (key === last) return false; last = key;
     setBox(bt, 0, 0, W, y); setBox(bb, 0, y + h, W, H - y - h); setBox(bl, 0, y, x, h); setBox(br, x + w, y, W - x - w, h);
     setBox(ring, x, y, w, h);
     let ch = card.offsetHeight, below = y + h + 12, above = y - 12 - ch;
     if (below + ch > H - 10 && above < 44 && !card.classList.contains('mini')) { card.classList.add('mini'); ch = card.offsetHeight; above = y - 10 - ch; }
-    if (card.classList.contains('mini') && above >= 8) { card.style.top = above + 'px'; return; }
+    if (card.classList.contains('mini') && above >= 8) { card.style.top = above + 'px'; return true; }
     // beside the target if it fits; otherwise over the side of it with more room (a tall sheet: its header, not its button)
     card.style.top = (below + ch <= H - 10 ? below : above >= 44 ? above : y > H - y - h ? 10 : Math.max(10, H - ch - 10)) + 'px';
+    return true;
   };
+  // Follow the target frame by frame only while something is moving (a scroll, a swipe, a panel sliding);
+  // once it has sat still for a moment, sleep until the next touch, scroll or resize. Measuring the page
+  // every frame for the whole tour halved the frame rate on phones.
+  let still = 0;
+  const frame = () => { raf = 0; still = place() ? 0 : still + 1; if (still < 24) raf = requestAnimationFrame(frame); };
+  const kick = () => { still = 0; if (!raf) raf = requestAnimationFrame(frame); };
+  for (const ev of ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'click', 'wheel', 'scroll', 'resize', 'keydown', 'input', 'transitionrun', 'animationstart']) addEventListener(ev, kick, { capture: true, passive: true });
+
+  // Did the person just do the step? Checked right after each tap or keystroke, plus a slow poll as a fallback.
+  let checkT = 0, ready = false; // ready: the step's card is up and its before-snapshot taken
+  const check = () => {
+    const st = STEPS[i]; if (!ready || !st.done || moving || st.page !== env.page) return;
+    let ok = false; try { ok = st.done(env, s0); } catch { ok = false; }
+    if (!ok) return; clearInterval(poll); card.classList.add('done'); moving = true;
+    setTimeout(() => { moving = false; if (STEPS[i] === st) go(1); }, 300);
+  };
+  const soon = () => { clearTimeout(checkT); checkT = setTimeout(check, 60); };
+  for (const ev of ['pointerup', 'touchend', 'click', 'input', 'change', 'keyup']) addEventListener(ev, soon, { capture: true, passive: true });
 
   const save = () => ss.set(K_STEP, String(i));
   const go = (d) => {
@@ -140,7 +161,7 @@ export function runTour() {
     i = j; save(); show();
   };
   const show = () => {
-    clearInterval(poll); const st = STEPS[i];
+    clearInterval(poll); ready = false; const st = STEPS[i];
     if (st.page !== env.page) {
       // the practice continues on the other page
       card.className = 'tour-card'; last = '';
@@ -148,22 +169,20 @@ export function runTour() {
       return;
     }
     st.pre && st.pre(env);
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       const el = target();
       // bring an in-page target into view; fixed controls and the day panel are always on screen
       if (el && !st.noscroll && !inFixed(el)) {
         const r = el.getBoundingClientRect(); if (r.top < 80 || r.top + Math.min(r.height, innerHeight * 0.5) > innerHeight - 240) el.scrollIntoView({ block: 'center', behavior: 'instant' });
       }
-      s0 = st.snap ? st.snap(env) : null; last = '';
+      s0 = st.snap ? st.snap(env) : null; last = ''; ready = true;
       card.className = 'tour-card';
       card.innerHTML = `<div class="tour-h"><small>${i + 1} of ${STEPS.length}</small><span class="pr"><i></i>Practice · nothing is saved</span></div><h3>${st.t}</h3><p>${st.x}</p><div class="row">${st.last ? '' : '<button class="end" data-tend>End</button>'}<span class="sp"></span><span class="ok">✓ Nice</span>${i && !st.last ? '<button data-tback>Back</button>' : ''}<button class="go" data-tnext>${st.last ? 'Back to the trip' : st.done ? 'Skip' : 'Next'}</button></div>`;
       if (st.nav) { const a = target(); if (a) a.addEventListener('click', () => { i++; save(); }, { once: true }); }
-      if (st.done) poll = setInterval(() => {
-        let ok = false; try { ok = st.done(env, s0); } catch { ok = false; }
-        if (!ok) return; clearInterval(poll); card.classList.add('done'); moving = true;
-        setTimeout(() => { moving = false; if (STEPS[i] === st) go(1); }, 650);
-      }, 200);
-    }, 120);
+      // the slow poll catches what no event announces (a store update, a panel opening by itself) and a target that moved
+      poll = setInterval(() => { check(); if (!raf && place()) kick(); }, 250);
+      kick();
+    });
   };
 
   const onClick = (e) => {
@@ -175,5 +194,5 @@ export function runTour() {
   wrap.addEventListener('click', onClick);
   wrap.addEventListener('pointerdown', (e) => e.stopPropagation());
   addEventListener('keydown', (e) => { if (e.key === 'Escape') endTour(true); });
-  show(); frame();
+  show(); kick();
 }

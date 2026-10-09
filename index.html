@@ -1261,7 +1261,7 @@ window.__tourEnv = {
   toDay7: () => { if (day.id !== 'd07') { ui.dayId = 'd07'; renderDay(); } },
   reset: () => { if (mapMax.isOn()) mapMax.set(false); drawer.close(); if (cal.classList.contains('on')) calOpen(false); const tt = document.getElementById('tt'); if (tt) tt.classList.remove('open'); if (day.id !== 'd07' || ui.who !== 'all') { ui.dayId = 'd07'; ui.who = 'all'; renderDay(); } window.scrollTo(0, 0); },
 };
-if (SANDBOX) setTimeout(runTour, 500);
+if (SANDBOX) setTimeout(runTour, 60);
 /* ═══ offline: save today and the next 2 days (photos; pages and data are kept by the service worker) ═══ */
 function saveAhead() {
   if (!('serviceWorker' in navigator) || !navigator.onLine) return;
