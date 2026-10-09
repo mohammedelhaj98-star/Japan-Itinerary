@@ -7,6 +7,7 @@
 //   POST /api/checks                  { id, value:boolean }
 //   POST /api/choices                 { id, value:string }
 //   POST /api/custom                  { id, value:object|null }  (edit, hide or add a stop; null resets/removes)
+//   POST /api/expenses                { id, value:object|null }  (add or edit a shared expense; null deletes)
 //   POST /api/suggestions             { text, name, day, author }
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
@@ -19,6 +20,9 @@ const MAX_TEXT = 1200;
 const MAX_NAME = 40;
 const MAX_SUGGESTIONS = 500;
 const MAX_CUSTOM = 800;
+const MAX_EXPENSES = 1500;
+const PEOPLE = ['naf', 'sara', 'mariam', 'm'];
+const EX_CATS = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other', 'settle'];
 
 async function readKey(kv, key, fallback) {
   const v = await kv.get(key, 'json');
@@ -26,11 +30,22 @@ async function readKey(kv, key, fallback) {
 }
 
 async function readState(kv) {
-  const [checks, choices, suggestions, custom] = await Promise.all([
-    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}),
+  const [checks, choices, suggestions, custom, expenses] = await Promise.all([
+    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv),
   ]);
   const updatedAt = await kv.get('updatedAt');
-  return { checks, choices, suggestions, custom, updatedAt: updatedAt || null };
+  return { checks, choices, suggestions, custom, expenses, updatedAt: updatedAt || null };
+}
+
+async function readExpenses(kv) {
+  const out = {};
+  let cursor;
+  do {
+    const page = await kv.list({ prefix: 'ex:', cursor });
+    for (const k of page.keys) out[k.name.slice(3)] = k.metadata || (await kv.get(k.name, 'json'));
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+  return out;
 }
 
 async function writeKey(kv, key, value) {
@@ -61,6 +76,17 @@ function cleanCustom(v) {
   }
   if (typeof v.ts === 'string') out.ts = clean(v.ts, 40);
   return Object.keys(out).length ? out : null;
+}
+
+// A shared expense. Amounts are whole yen; split lists who it was for.
+function cleanExpense(v) {
+  if (!v || typeof v !== 'object') return null;
+  const yen = num(v.yen, 0, 100000000);
+  const split = Array.isArray(v.split) ? PEOPLE.filter((p) => v.split.includes(p)) : [];
+  if (yen == null || !PEOPLE.includes(v.payer) || !split.length || !EX_CATS.includes(v.cat)) return null;
+  const out = { title: clean(v.title, 90) || 'Expense', yen: Math.round(yen), payer: v.payer, split, cat: v.cat, day: isId(v.day || '') ? v.day : null };
+  if (PEOPLE.includes(v.by)) out.by = v.by;
+  return out;
 }
 
 export async function onRequest({ request, env }) {
@@ -107,6 +133,23 @@ export async function onRequest({ request, env }) {
       } else delete map[body.id];
       await writeKey(kv, 'custom', map);
       return json({ ok: true, custom: map });
+    }
+
+    if (path === 'expenses') {
+      if (!isId(body.id)) return json({ error: 'bad id' }, 400);
+      const key = 'ex:' + body.id;
+      if (body.value === null) await kv.delete(key);
+      else {
+        const value = cleanExpense(body.value);
+        if (!value) return json({ error: 'bad expense' }, 400);
+        const prev = await kv.get(key, 'json');
+        if (!prev && Object.keys(await readExpenses(kv)).length >= MAX_EXPENSES) return json({ error: 'too many expenses' }, 429);
+        const rec = { ...value, ts: (prev && prev.ts) || new Date().toISOString() };
+        // One key per expense, so two phones adding at once never overwrite each other. The record rides in metadata so a list() returns everything.
+        await kv.put(key, JSON.stringify(rec), { metadata: rec });
+      }
+      await kv.put('updatedAt', new Date().toISOString());
+      return json({ ok: true, expenses: await readExpenses(kv) });
     }
 
     if (path === 'suggestions') {

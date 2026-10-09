@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+<script>
+// First visit on this phone: ask who it is on the trips page, then come back here.
+try { if (/^\/japan(\/|$)/.test(location.pathname) && !localStorage.getItem('trips.me')) location.replace('/?next=japan'); } catch (e) {}
+</script>
+
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Japan 2026</title>
   <meta name="description" content="Japan 2026 — 17-day itinerary with maps, bookings, food guide and suggestions.">

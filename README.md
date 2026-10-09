@@ -22,6 +22,7 @@ OSRM public routing for walking/driving legs, Cloudflare Pages for hosting, Clou
 ## Deploy
 
 Live at https://ourtrips.date/japan/ (`/` and `/Japan` redirect there; Pages project `japan2026`, KV namespace `japan2026-state` bound as `TRIP_KV` in `wrangler.toml`).
+The site root (`hub/`) is the trips page: it asks who you are once per phone and lists trips, Japan first. The Japan app is at `/japan/`; expenses, ticks, choices and edits are shared through KV (each expense is its own `ex:<id>` key). The group photo `hub/img/group.webp` is kept out of git; put it back in `hub/img/` before deploying from a fresh clone.
 To publish changes, run `scripts/deploy.sh` with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set. It uploads only the public site files.
 
 ### Setting up from scratch in the dashboard

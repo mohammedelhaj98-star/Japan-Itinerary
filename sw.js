@@ -1,5 +1,5 @@
 // Service worker: cache the app shell for offline use. Map tiles and /api are network-first.
-const VERSION = 'japan2026-v7';
+const VERSION = 'japan2026-v8';
 const SHELL = [
   './', './index.html', './css/app.css', './js/app.js', './js/map.js', './js/store.js',
   './data/itinerary.js', './data/places.js', './data/guide.js', './classic.html', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css',

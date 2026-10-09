@@ -3,3 +3,5 @@ node_modules/
 .DS_Store
 .impeccable/review/
 dist/
+hub/img/group.webp
+hub/img/group-tiny.webp

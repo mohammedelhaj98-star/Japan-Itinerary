@@ -165,6 +165,9 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .porkcard small { display:block; font-size:12.5px; color:var(--ink3); margin-top:2px; }
 
 .tback { position:fixed; top:calc(10px + env(safe-area-inset-top)); left:max(12px, calc(50% - 218px)); z-index:820; display:flex; align-items:center; gap:4px; height:36px; padding:0 14px 0 9px; border-radius:999px; background:rgba(252,250,246,.9); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:#141412; font-size:14px; font-weight:700; text-decoration:none; box-shadow:0 6px 18px -8px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,10,.08); }
+.sync { display:inline-block; margin-top:8px; font-size:12px; font-weight:700; color:var(--ink3); }
+.sync.on::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; background:#2e8a4e; margin-right:6px; vertical-align:1px; }
+.sync.off { color:#b5651d; }
 /* picker */
 .proto-picker { position:fixed; bottom:calc(20px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:800; display:flex; align-items:center; gap:2px; padding:4px; border-radius:999px; background:rgba(10,10,10,.82); -webkit-backdrop-filter:blur(12px) saturate(1.4); backdrop-filter:blur(12px) saturate(1.4); box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.24); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:13px; line-height:1; }
 .proto-picker-highlight { position:absolute; top:4px; left:0; height:28px; border-radius:999px; background:rgba(255,255,255,.14); }
@@ -194,6 +197,7 @@ import { FOOD } from '../data/guide.js';
 import { PLACES } from '../data/places.js';
 import { DIET } from '../data/diet.js';
 import { HOTEL_JA } from '../data/hotels-ja.js';
+import { store } from '../js/store.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch { return f; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
@@ -217,16 +221,11 @@ const COUPLES = { nasa: { name: 'NASA', ini: 'NA', c: '#4b4f9a', ids: ['naf', 's
 const P = Object.fromEntries(PEOPLE.map((p) => [p.id, p]));
 const CATS = { food: ['Food', '#cc5a26', '🍜'], transport: ['Transport', '#2f5fd0', '🚆'], tickets: ['Tickets', '#6f4f98', '🎟'], shopping: ['Shopping', '#b94b74', '🛍'], hotel: ['Hotel', '#55702f', '🏨'], other: ['Other', '#6b6a64', '•'], settle: ['Settled', '#2f9e57', '✓'] };
 const SPLITS = { all: ['naf', 'sara', 'mariam', 'm'], nasa: ['naf', 'sara'], mm: ['mariam', 'm'] };
-const DEMO = [
-  { id: 'd1', title: 'Skyliner tickets ×4', yen: 10280, payer: 'naf', split: SPLITS.all, cat: 'transport', day: 'd01' },
-  { id: 'd2', title: 'Fuunji ramen', yen: 4400, payer: 'm', split: SPLITS.all, cat: 'food', day: 'd02' },
-  { id: 'd3', title: 'Omakase, Sushi Yoshikawa', yen: 57200, payer: 'sara', split: SPLITS.all, cat: 'food', day: 'd03' },
-  { id: 'd4', title: 'Taxi back to the hotel', yen: 2800, payer: 'mariam', split: SPLITS.all, cat: 'transport', day: 'd03' },
-  { id: 'd5', title: 'Hakone Freepass ×2', yen: 13000, payer: 'naf', split: SPLITS.nasa, cat: 'tickets', day: 'd05' },
-  { id: 'd6', title: 'Kimono rental ×2', yen: 11000, payer: 'mariam', split: SPLITS.mm, cat: 'shopping', day: 'd09' },
-];
-const ex = { list: ls.get('proto.expenses', null) || DEMO.map((x) => ({ ...x })), demo: !ls.get('proto.expenses', null), cur: ls.get('proto.excur', 'USD'), mode: ls.get('proto.exmode2', 'couples') };
-const saveEx = () => { ls.set('proto.expenses', ex.list); ex.demo = false; };
+// Expenses live in the shared trip store (Cloudflare KV), so every phone sees the same list.
+const ME = (() => { try { return JSON.parse(localStorage.getItem('trips.me')); } catch { return null; } })();
+const ex = { get list() { return Object.entries(store.getExpenses()).map(([id, x]) => ({ id, ...x })).filter((x) => P[x.payer] && x.split && x.split.every((id) => P[id]) && CATS[x.cat]); }, cur: ls.get('proto.excur', 'USD'), mode: ls.get('proto.exmode2', 'couples') };
+const saveExpense = (id, rec) => store.setExpense(id, rec ? { title: rec.title, yen: rec.yen, payer: rec.payer, split: rec.split, cat: rec.cat, day: rec.day || null, ...(ME && P[ME] ? { by: ME } : {}) } : null);
+const syncLine = () => store.mode === 'online' ? '<span class="sync on">Shared with all four phones</span>' : store.mode === 'local' ? '<span class="sync off">Offline: saved on this phone, will sync when back online</span>' : '<span class="sync">Connecting…</span>';
 
 /* who-owes-whom: balances, then greedily match the biggest debtor with the biggest creditor (n−1 transfers at most) */
 function balances() {
@@ -252,8 +251,7 @@ function renderExpenses() {
   const balCards = ex.mode === 'couples'
     ? Object.entries(COUPLES).map(([k, c]) => { const v = c.ids.reduce((s, id) => s + b[id], 0); return `<div class="card"><span class="av" style="--c:${c.c};font-size:11px">${esc(c.ini)}</span><span><b>${esc(c.name)}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('')
     : PEOPLE.map((p) => { const v = b[p.id]; return `<div class="card"><span class="av" style="--c:${p.c}">${p.ini}</span><span><b>${p.name}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('');
-  return `<header class="ph"><small>Shared expenses</small><h1>Who owes whom</h1><p>Log anything someone paid for the group. It splits it and works out the fewest payments to settle up.</p></header>
-    ${ex.demo ? '<div class="demo"><span>Showing demo expenses so you can see how it works.</span><button data-clear>Start empty</button></div>' : ''}
+  return `<header class="ph"><small>Shared expenses</small><h1>Who owes whom</h1><p>Log anything someone paid for the group. It splits it and works out the fewest payments to settle up.</p>${syncLine()}</header>
     <div class="card tot"><div class="tot-r"><div><small>Trip spend so far</small><b class="big">${fmtY(total)}</b><p class="sub">${fmtC(total, ex.cur)} total · ${fmtC(total / 4, ex.cur)} each on average</p></div><div class="seg" id="curseg">${curSeg}<i></i></div></div>
       <div class="bars">${Object.entries(byCat).map(([k, v]) => `<i style="--c:${CATS[k][1]};width:${(v / total) * 100}%"></i>`).join('')}</div>
       <div class="legend">${Object.entries(byCat).map(([k, v]) => `<span style="--c:${CATS[k][1]}">${CATS[k][0]} ${fmtY(v)}</span>`).join('')}</div></div>
@@ -269,7 +267,7 @@ const todayId = () => { const t = new Date(Date.now() + 9 * 3600e3).toISOString(
 function openEx(id) {
   const x = id ? ex.list.find((y) => y.id === id) : null;
   ed = x ? { ...x, split: [...x.split], amt: String(x.yen), ccy: 'JPY', splitMode: x.split.length === 4 ? 'all' : x.split.join() === SPLITS.nasa.join() ? 'nasa' : x.split.join() === SPLITS.mm.join() ? 'mm' : 'pick' }
-    : { id: null, title: '', amt: '', ccy: 'JPY', payer: ls.get('proto.me', 'naf'), split: [...SPLITS.all], splitMode: 'all', cat: 'food', day: todayId() };
+    : { id: null, title: '', amt: '', ccy: 'JPY', payer: ME && P[ME] ? ME : ls.get('proto.me', 'naf'), split: [...SPLITS.all], splitMode: 'all', cat: 'food', day: todayId() };
   renderSheet(); scrim.classList.add('on'); sheet.classList.add('on'); setTimeout(() => { const a = document.getElementById('x-amt'); if (a && !id) a.focus(); }, 380);
 }
 function closeSheet() { sheet.classList.remove('on'); scrim.classList.remove('on'); ed = null; }
@@ -297,8 +295,8 @@ sheet.addEventListener('click', (e) => {
   const s = t('[data-split]'); if (s) { ed.splitMode = s.dataset.split; if (SPLITS[ed.splitMode]) ed.split = [...SPLITS[ed.splitMode]]; return renderSheet(); }
   const k = t('[data-pick]'); if (k) { const id = k.dataset.pick; ed.split = ed.split.includes(id) ? ed.split.filter((x) => x !== id) : PEOPLE.map((x) => x.id).filter((x) => x === id || ed.split.includes(x)); return renderSheet(); }
   const g = t('[data-cat]'); if (g) { ed.cat = g.dataset.cat; return renderSheet(); }
-  if (t('[data-save]')) { const rec = { id: ed.id || 'x' + Date.now().toString(36), title: ed.title.trim() || CATS[ed.cat][0], yen: edYen(), payer: ed.payer, split: ed.split, cat: ed.cat, day: ed.day }; if (ex.demo) { ex.list = [...ex.list]; } const i = ex.list.findIndex((x) => x.id === rec.id); if (i >= 0) ex.list[i] = rec; else ex.list.push(rec); saveEx(); closeSheet(); return render(); }
-  if (t('[data-delx]')) { ex.list = ex.list.filter((x) => x.id !== ed.id); saveEx(); closeSheet(); return render(); }
+  if (t('[data-save]')) { const rec = { id: ed.id || 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: ed.title.trim() || CATS[ed.cat][0], yen: edYen(), payer: ed.payer, split: ed.split, cat: ed.cat, day: ed.day }; saveExpense(rec.id, rec); closeSheet(); return render(); }
+  if (t('[data-delx]')) { saveExpense(ed.id, null); closeSheet(); return render(); }
 });
 scrim.addEventListener('click', closeSheet);
 
@@ -407,9 +405,8 @@ page.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
   const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
   const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('proto.exmode2', ex.mode); return render(); }
-  if (t('[data-clear]')) { ex.list = []; saveEx(); return render(); }
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couples' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couples' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
-    ex.list.push({ id: 's' + Date.now().toString(36), title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); saveEx(); return render(); }
+    saveExpense('s' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); return render(); }
   const xr = t('[data-ex]'); if (xr) return openEx(xr.dataset.ex);
   const h = t('[data-hotel]'); if (h) return openDriver(h.dataset.hotel);
   if (t('[data-here]')) { if (!navigator.geolocation) { fd.err = 'Location is not available on this device.'; return render(); }
@@ -423,6 +420,10 @@ page.addEventListener('click', (e) => {
 page.addEventListener('change', (e) => { if (e.target.id === 'f-where') { if (e.target.value === 'My location') return; fd.here = null; fd.where = e.target.value; ls.set('proto.fwhere', fd.where); searchFood(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); driver.classList.remove('on'); } });
 setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
+// Re-draw the expense list when another phone adds or changes something (not while the edit sheet is open).
+let exSig = '';
+store.subscribe(() => { const sig = store.mode + JSON.stringify(store.getExpenses()); if (sig === exSig) return; exSig = sig; if (tab === 0 && !document.getElementById('sheet').classList.contains('on')) render(); });
+store.start();
 </script>
 </body>
 </html>
