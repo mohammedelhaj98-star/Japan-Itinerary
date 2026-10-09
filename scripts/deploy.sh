@@ -6,13 +6,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 rm -rf dist && mkdir -p dist/japan
 cp -r hub/. dist/
-cp -r index.html classic.html manifest.webmanifest sw.js css data icons img js vendor prototypes dist/japan/
+cp -r index.html manifest.webmanifest sw.js data icons img js vendor prototypes dist/japan/
 cat > dist/_redirects <<'EOF'
 /japan   /japan/ 301
 /Japan   /japan/ 301
 /Japan/* /japan/:splat 301
 /JAPAN   /japan/ 301
 /japan/prototypes/mix  /japan/ 301
+/japan/classic  /japan/ 301
+/japan/classic.html  /japan/ 301
 /japan/prototypes/mix.html  /japan/ 301
 EOF
 # Stamp this deploy's version on script/data imports. The ourtrips.date zone caches JS for 4 hours in browsers
@@ -30,8 +32,6 @@ cat > dist/_headers <<'EOF'
 /japan/js/*
   Cache-Control: no-cache
 /japan/data/*
-  Cache-Control: no-cache
-/japan/css/*
   Cache-Control: no-cache
 /japan/prototypes/*
   Cache-Control: no-cache

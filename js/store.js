@@ -58,9 +58,21 @@ export const store = {
   async start() {
     await this.refresh();
     if (this._timer) clearInterval(this._timer);
-    this._timer = setInterval(() => this.refresh(), POLL_MS);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.refresh(); });
+    // Cheap check every 20s while the app is on screen: one KV read for the version stamp. The full state
+    // (which costs KV list operations, limited on the free plan) is fetched only when something changed.
+    this._timer = setInterval(() => { if (document.visibilityState !== 'hidden') this.check(); }, POLL_MS);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.check(); });
     window.addEventListener('online', () => this.refresh());
+  },
+
+  async check() {
+    try {
+      const v = await this.api('version');
+      if (v.updatedAt && v.updatedAt === this.state.updatedAt && this.mode === 'online') return;
+      await this.refresh();
+    } catch (err) {
+      this.setMode('local', err.message);
+    }
   },
 
   async refresh() {
@@ -168,8 +180,8 @@ export const store = {
       (d, s) => { if (d.suggestions) s.suggestions = d.suggestions; },
     );
   },
-  toggleVote(id) {
-    const voter = deviceId();
+  toggleVote(id, who) {
+    const voter = who || deviceId();
     return this._mutate(
       (s) => { const it = s.suggestions.find((x) => x.id === id); if (!it) return; const v = new Set(it.votes || []); if (v.has(voter)) v.delete(voter); else v.add(voter); it.votes = [...v]; },
       'suggestions/' + id + '/vote', { voter },

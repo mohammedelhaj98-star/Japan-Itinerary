@@ -3,6 +3,7 @@
 //
 // Routes:
 //   GET  /api/health                  → { ok, kv }
+//   GET  /api/version                 → { updatedAt }  (one read: phones poll this, and fetch /api/state only when it changes)
 //   GET  /api/state                   → { checks, choices, suggestions, custom, updatedAt }
 //   POST /api/checks                  { id, value:boolean }
 //   POST /api/choices                 { id, value:string }
@@ -40,23 +41,19 @@ async function readState(kv) {
   return { checks, choices, suggestions, custom, expenses, profiles, updatedAt: updatedAt || null };
 }
 
-async function readExpenses(kv) {
+// Expenses and profiles are single records (like checks and custom), so a normal read never needs a KV list
+// (list operations are capped on the free plan). The first read after the switch migrates any per-item keys.
+async function readMap(kv, key, prefix) {
+  const v = await kv.get(key, 'json');
+  if (v) return v;
   const out = {};
-  let cursor;
-  do {
-    const page = await kv.list({ prefix: 'ex:', cursor });
-    for (const k of page.keys) out[k.name.slice(3)] = k.metadata || (await kv.get(k.name, 'json'));
-    cursor = page.list_complete ? null : page.cursor;
-  } while (cursor);
+  const page = await kv.list({ prefix });
+  for (const k of page.keys) out[k.name.slice(prefix.length)] = k.metadata || (await kv.get(k.name, 'json'));
+  await kv.put(key, JSON.stringify(out));
   return out;
 }
-
-async function readProfiles(kv) {
-  const out = {};
-  const page = await kv.list({ prefix: 'pf:' });
-  for (const k of page.keys) out[k.name.slice(3)] = k.metadata || (await kv.get(k.name, 'json'));
-  return out;
-}
+const readExpenses = (kv) => readMap(kv, 'expenses', 'ex:');
+const readProfiles = (kv) => readMap(kv, 'profiles', 'pf:');
 
 async function writeKey(kv, key, value) {
   await kv.put(key, JSON.stringify(value));
@@ -122,6 +119,10 @@ export async function onRequest({ request, env }) {
   if (!kv) return json({ error: 'KV namespace TRIP_KV is not bound. See README.' }, 503);
 
   try {
+    if (request.method === 'GET' && path === 'version') {
+      return json({ updatedAt: (await kv.get('updatedAt')) || null });
+    }
+
     if (request.method === 'GET' && path === 'state') {
       return json(await readState(kv));
     }
@@ -157,26 +158,22 @@ export async function onRequest({ request, env }) {
 
     if (path === 'expenses') {
       if (!isId(body.id)) return json({ error: 'bad id' }, 400);
-      const key = 'ex:' + body.id;
-      if (body.value === null) await kv.delete(key);
+      const map = await readExpenses(kv);
+      if (body.value === null) delete map[body.id];
       else {
         const value = cleanExpense(body.value);
         if (!value) return json({ error: 'bad expense' }, 400);
-        const prev = await kv.get(key, 'json');
-        if (!prev && Object.keys(await readExpenses(kv)).length >= MAX_EXPENSES) return json({ error: 'too many expenses' }, 429);
-        const rec = { ...value, ts: (prev && prev.ts) || new Date().toISOString() };
-        // One key per expense, so two phones adding at once never overwrite each other. The record rides in metadata so a list() returns everything.
-        await kv.put(key, JSON.stringify(rec), { metadata: rec });
+        if (!map[body.id] && Object.keys(map).length >= MAX_EXPENSES) return json({ error: 'too many expenses' }, 429);
+        map[body.id] = { ...value, ts: (map[body.id] && map[body.id].ts) || new Date().toISOString() };
       }
-      await kv.put('updatedAt', new Date().toISOString());
-      return json({ ok: true, expenses: await readExpenses(kv) });
+      await writeKey(kv, 'expenses', map);
+      return json({ ok: true, expenses: map });
     }
 
     if (path === 'profile') {
       if (!PEOPLE.includes(body.id)) return json({ error: 'bad person' }, 400);
-      const key = 'pf:' + body.id;
-      const prev = (await kv.get(key, 'json')) || {};
-      const rec = { ...prev };
+      const map = await readProfiles(kv);
+      const rec = { ...(map[body.id] || {}) };
       if (body.color !== undefined) { if (!/^#[0-9a-f]{6}$/i.test(body.color || '')) return json({ error: 'bad colour' }, 400); rec.color = body.color.toLowerCase(); }
       if (body.photo === null) { await kv.delete('ph:' + body.id); delete rec.photo; }
       else if (body.photo !== undefined) {
@@ -185,9 +182,9 @@ export async function onRequest({ request, env }) {
         rec.photo = Date.now();
       }
       rec.ts = new Date().toISOString();
-      await kv.put(key, JSON.stringify(rec), { metadata: rec });
-      await kv.put('updatedAt', rec.ts);
-      return json({ ok: true, profiles: { ...(await readProfiles(kv)), [body.id]: rec } });
+      map[body.id] = rec;
+      await writeKey(kv, 'profiles', map);
+      return json({ ok: true, profiles: map });
     }
 
     if (path === 'suggestions') {

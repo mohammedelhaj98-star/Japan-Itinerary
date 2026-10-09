@@ -41,6 +41,26 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .av.ph { background-size:cover; background-position:center; color:transparent; }
 /* settings */
 .scard { margin:0 12px; padding:16px; }
+.foodseg { display:flex; justify-content:center; padding:2px 16px 0; }
+.seg.big button { padding:7px 22px; font-size:14px; }
+.daysel { width:100%; height:40px; border-radius:12px; border:1px solid var(--line); background:#fff; padding:0 10px; font:inherit; font-size:14px; margin-bottom:10px; }
+#sg-text { width:100%; border-radius:12px; border:1px solid var(--line); padding:10px 12px; font:inherit; font-size:16px; resize:vertical; margin-bottom:10px; background:#fff; }
+.bigb:disabled { opacity:.4; }
+.sg-t { font-size:15.5px; line-height:1.4; white-space:pre-wrap; }
+.sg-m { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12.5px; color:var(--ink3); flex-wrap:wrap; }
+.sg-m > span:first-child { flex:1; min-width:0; }
+.sg-v { display:flex; }
+.sg-v .av { margin-left:-6px; box-shadow:0 0 0 2px #fff; }
+.vote { height:30px; padding:0 12px; border-radius:999px; background:rgba(0,0,0,.06); font-size:13px; font-weight:700; color:var(--ink); }
+.vote.on { background:var(--ink); color:#fff; }
+.sg-del { font-size:12.5px; font-weight:700; color:var(--red); }
+.sg.pending { opacity:.6; }
+.idea > b { display:block; font-size:16px; margin-bottom:4px; }
+.pick { display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-top:1px solid var(--line); }
+.pick > div { flex:1; min-width:0; }
+.pick b { font-size:14.5px; }
+.pick p { margin:2px 0 0; font-size:13px; color:var(--ink2); }
+.pick a { flex:none; height:30px; padding:0 12px; display:inline-flex; align-items:center; border-radius:999px; background:rgba(0,0,0,.06); font-size:12.5px; font-weight:700; text-decoration:none; color:var(--ink); }
 .navrow { display:flex; align-items:center; gap:10px; width:calc(100% - 24px); text-align:left; }
 .navrow > span:first-child { flex:1; min-width:0; }
 .navrow b { display:block; font-size:15.5px; }
@@ -280,7 +300,7 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script type="module">
 import { TRIP, DAYS, HOTELS } from '../data/itinerary.js?v=9';
-import { FOOD, BOOKINGS, TIPS } from '../data/guide.js?v=9';
+import { FOOD, BOOKINGS, TIPS, SUGGESTIONS } from '../data/guide.js?v=9';
 import { buildTripDocx } from '../js/export-docx.js?v=9';
 import { PLACES } from '../data/places.js?v=9';
 import { DIET } from '../data/diet.js?v=9';
@@ -490,6 +510,37 @@ async function searchFood() {
   render();
 }
 let fmap = null, flayer = null;
+/* ═══════════ FOOD: Ideas (group suggestions + picks for open slots) · Nearby (halal finder) ═══════════ */
+let foodView = new URLSearchParams(location.search).get('f') === 'nearby' ? 'nearby' : 'ideas';
+const ideas = { day: ls.get('proto.ideaday', 'all'), draft: '' };
+function renderFood() {
+  const seg = `<div class="foodseg"><div class="seg big" id="foodseg">${[['ideas', 'Ideas'], ['nearby', 'Nearby']].map(([k, l]) => `<button data-fview="${k}" class="${foodView === k ? 'on' : ''}">${l}</button>`).join('')}<i></i></div></div>`;
+  return seg + (foodView === 'nearby' ? renderNearby() : renderIdeas());
+}
+function renderIdeas() {
+  const day = ideas.day; const dayOk = (d) => day === 'all' || !d || d === day;
+  const me = P[ME];
+  const list = (store.state.suggestions || []).filter((x) => dayOk(x.day)).sort((a, z) => (z.votes || []).length - (a.votes || []).length || String(z.ts).localeCompare(String(a.ts)));
+  const curated = SUGGESTIONS.filter((x) => dayOk(x.day));
+  const dayOpts = `<option value="all" ${day === 'all' ? 'selected' : ''}>All days</option>${DAYS.map((d) => `<option value="${d.id}" ${day === d.id ? 'selected' : ''}>Day ${d.n} · ${esc(d.title)}</option>`).join('')}`;
+  const voters = (v) => (v || []).map((id) => P[id]).filter(Boolean);
+  const card = (x) => { const vs = voters(x.votes); const mine = me && (x.votes || []).includes(me.id); const d = x.day && dayOf(x.day);
+    return `<div class="card scard sg ${x.pending ? 'pending' : ''}"><div class="sg-t">${esc(x.text)}</div><div class="sg-m"><span>${esc(x.name || 'Someone')}${d ? ` · Day ${d.n}` : ''}</span>
+      <span class="sg-v">${vs.map((p) => `<span class="av sm ${p.photo ? 'ph' : ''}" style="${avStyle(p)}" title="${p.name}">${p.ini}</span>`).join('')}</span>
+      <button class="vote ${mine ? 'on' : ''}" data-vote="${esc(x.id)}" ${me ? '' : 'disabled'}>${mine ? 'Voted' : 'Vote'} · ${(x.votes || []).length}</button>
+      ${x.author === deviceOf() ? `<button class="sg-del" data-sgdel="${esc(x.id)}" aria-label="Delete">Delete</button>` : ''}</div></div>`; };
+  return `<header class="ph"><small>Food · ideas</small><h1>Where should we eat?</h1><p>Post a place or a plan change for everyone to vote on, and see picks for the meals still open.</p></header>
+    <div class="card scard"><select class="daysel" id="idea-day" aria-label="Filter by day">${dayOpts}</select>
+      <textarea id="sg-text" rows="2" maxlength="600" placeholder="${me ? `${me.name}, suggest a restaurant, a detour, a must-try…` : 'Pick who you are in Settings to post'}">${esc(ideas.draft)}</textarea>
+      <button class="bigb" data-sgpost ${me ? '' : 'disabled'}>Post for everyone${day !== 'all' && dayOf(day) ? ` · Day ${dayOf(day).n}` : ''}</button></div>
+    <p class="sec">From the group${list.length ? ` · ${list.length}` : ''}</p>${list.length ? `<div class="bk-list">${list.map(card).join('')}</div>` : '<div class="card scard"><p class="sub">No suggestions yet. Post the first one above.</p></div>'}
+    <p class="sec">Picks for the open meals</p><div class="bk-list">${curated.map((x) => { const d = x.day && dayOf(x.day);
+      return `<div class="card scard idea"><div class="bk-h"><span class="bst todo">${esc(x.slot)}</span>${x.who ? `<span class="bchip ${x.who}">${x.who === 'nasa' ? 'NASA' : 'M&amp;M'}</span>` : ''}</div><b>${esc(x.title)}</b>
+        ${x.picks.map((pk) => `<div class="pick"><div><b>${esc(pk.name)}</b><p>${esc(pk.why)}</p></div>${pk.lat ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pk.name.replace(/\(.*\)/, '').trim())}" target="_blank" rel="noopener">Map</a>` : ''}</div>`).join('')}
+        ${d ? `<div class="bk-a"><a href="../?d=${d.id}">Open day ${d.n}</a></div>` : ''}</div>`; }).join('') || '<div class="card scard"><p class="sub">No open meals on this day.</p></div>'}</div>`;
+}
+const deviceOf = () => { try { return JSON.parse(localStorage.getItem('japan2026.device')); } catch { return null; } };
+
 /* ═══════════ BOOKINGS ═══════════ */
 // Everything booked, and everything still to book. Marking a pending one as booked is shared with all four phones.
 const bkId = (b) => 'bk-' + b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
@@ -585,14 +636,14 @@ function squarePhoto(file) {
     img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Could not read that image')); }; img.src = url; });
 }
 
-function renderFood() {
+function renderNearby() {
   const c = center(); const shown = Array.isArray(fd.res) ? fd.res.filter((x) => x.kinds.some((k) => fd.show[k])) : [];
   const guideAll = FOOD.flatMap((g) => g.items || []).filter((x) => x.lat).map((x) => ({ ...x, m: dist(c.lat, c.lng, x.lat, x.lng) })).sort((a, b) => a.m - b.m);
   const guide = fd.allGuide ? guideAll.filter((x) => x.m < 60000) : guideAll.filter((x) => x.m < 2500).slice(0, 5);
   const porkTag = (d) => !d ? '' : d.pork === 'main' ? '<span class="tag pork">Pork-based</span>' : d.pork === 'some' ? '<span class="tag pork2">Pork on menu</span>' : d.pork === 'none' ? '<span class="tag ok">No pork found</span>' : '<span class="tag">Pork: ask</span>';
   const halTag = (d) => !d ? '' : d.halal === 'certified' ? '<span class="tag halal">Halal option</span>' : d.halal === 'muslim-friendly' ? '<span class="tag halal">Muslim-friendly</span>' : '';
   const walk = (m) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`) + ` · ${Math.max(1, Math.round(m / 80))} min walk`;
-  return `<header class="ph"><small>Food nearby</small><h1>Halal &amp; pork-free</h1><p>Searches OpenStreetMap around you, or around any stop on the trip. Tags in Japan are patchy, so always ask.</p></header>
+  return `<header class="ph"><small>Food · nearby</small><h1>Halal &amp; pork-free</h1><p>Searches OpenStreetMap around you, or around any stop on the trip. Tags in Japan are patchy, so always ask.</p></header>
     <div class="card where"><div class="where-r"><select id="f-where" aria-label="Search around">${fd.here ? '<option selected>My location</option>' : ''}${SPOTS.map((s) => `<option ${!fd.here && s.name === fd.where ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select><button class="here press" data-here>${LOC}Near me</button></div>
       <div class="chips">${Object.entries(KIND).map(([k, [l]]) => `<button data-show="${k}" class="${fd.show[k] ? 'on' : ''}">${l.split(',')[0]}</button>`).join('')}<button data-radius class="${fd.radius > 800 ? 'on' : ''}">${fd.radius > 800 ? '1.5 km' : '800 m'}</button></div></div>
     <div class="fmap" id="fmap"></div>
@@ -625,14 +676,19 @@ function render() {
   syncPeople(); page.innerHTML = [renderExpenses, renderBookings, renderTaxi, renderFood, renderSettings][tab]();
   fab.hidden = tab !== 0;
   page.querySelectorAll('.seg').forEach(moveSeg);
-  if (tab === 3) { mountFoodMap(); if (fd.res == null) searchFood(); }
+  if (tab === 3 && foodView === 'nearby') { mountFoodMap(); if (fd.res == null) searchFood(); }
   window.scrollTo(0, y);
 }
 function setTab(i) { if (i !== 4 && sub) { sub = ''; const u0 = new URL(location); u0.searchParams.delete('p'); history.replaceState(null, '', u0); } tab = i; items.forEach((el, j) => el.toggleAttribute('data-active', j === i)); const el = items[i]; hl.style.width = el.offsetWidth + 'px'; hl.style.transform = `translateX(${el.offsetLeft}px)`; const u = new URL(location); u.searchParams.set('v', i + 1); history.replaceState(null, '', u); window.scrollTo(0, 0); render(); }
 items.forEach((el, i) => el.addEventListener('click', () => setTab(i)));
 fab.addEventListener('click', () => openEx(null));
+page.addEventListener('input', (e) => { if (e.target.id === 'sg-text') ideas.draft = e.target.value; });
 page.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
+  const fv = t('[data-fview]'); if (fv) { foodView = fv.dataset.fview; const u = new URL(location); u.searchParams.set('f', foodView); history.replaceState(null, '', u); return render(); }
+  if (t('[data-sgpost]') && ME) { const ta = document.getElementById('sg-text'); const text = (ta.value || '').trim(); if (!text) { ta.focus(); return; } ideas.draft = ''; store.addSuggestion({ text, name: P[ME].name, day: ideas.day === 'all' ? null : ideas.day }); render(); return; }
+  const vt = t('[data-vote]'); if (vt && ME) { store.toggleVote(vt.dataset.vote, ME); return render(); }
+  const sd = t('[data-sgdel]'); if (sd) { const id = sd.dataset.sgdel; return askConfirm('Delete this suggestion?', 'It disappears for everyone.', 'Delete', () => { store.deleteSuggestion(id); render(); }); }
   const bw = t('[data-bkwho]'); if (bw) { bk.who = bw.dataset.bkwho; ls.set('proto.bkwho', bk.who); return render(); }
   const bm = t('[data-bkmark]'); if (bm) { const id = bm.dataset.bkmark; store.setChoice(id, 'booked'); render(); return undoable('Marked as booked', () => store.setChoice(id, '')); }
   const bu = t('[data-bkunmark]'); if (bu) { const id = bu.dataset.bkunmark; store.setChoice(id, ''); render(); return undoable('Moved back to To book', () => store.setChoice(id, 'booked')); }
@@ -658,6 +714,7 @@ page.addEventListener('click', (e) => {
   const fr = t('[data-food]'); if (fr && !t('a')) { document.querySelectorAll('.fpin.sel').forEach((p) => p.classList.remove('sel')); const pin = document.querySelector(`[data-fp="${fr.dataset.food}"]`); if (pin) { pin.classList.add('sel'); const x = fd.res.find((r) => r.id === fr.dataset.food); fmap.panTo([x.lat, x.lng]); } }
 });
 page.addEventListener('change', async (e) => {
+  if (e.target.id === 'idea-day') { ideas.day = e.target.value; ls.set('proto.ideaday', ideas.day); return render(); }
   if (e.target.id === 'pf-photo' && ME && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) msg.textContent = 'Uploading…'; try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) msg.textContent = err.message; } return; }
  if (e.target.id === 'f-where') { if (e.target.value === 'My location') return; fd.here = null; fd.where = e.target.value; ls.set('proto.fwhere', fd.where); searchFood(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); driver.classList.remove('on'); } });
@@ -666,6 +723,7 @@ setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
 let exSig = '';
 store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode + JSON.stringify(store.getExpenses()) + JSON.stringify(Object.fromEntries(Object.entries(pf).map(([k, v]) => [k, [v.color, v.photo]]))); if (sig === exSig) return; exSig = sig; if ((tab === 0 || tab === 4) && !document.getElementById('sheet').classList.contains('on')) render(); });
 let ckSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.checks || {}); if (sig === ckSig) return; ckSig = sig; if (tab === 4 && !cfmBg.classList.contains('on')) render(); });
+let sgSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.suggestions || []); if (sig === sgSig) return; sgSig = sig; if (tab === 3 && foodView === 'ideas' && document.activeElement?.id !== 'sg-text') render(); });
 let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });
 store.start();
 </script>
