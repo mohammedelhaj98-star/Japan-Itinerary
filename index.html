@@ -89,6 +89,22 @@ body.scrolled .topfade { opacity:1; }
 .cal-l span { display:inline-flex; align-items:center; gap:5px; }
 .cal-l i { width:12px; height:3px; border-radius:2px; background:var(--cc); }
 .cal-l i.dot { width:6px; height:6px; border-radius:50%; background:#6f4f98; }
+/* guided tour */
+.tour { position:fixed; inset:0; z-index:1200; }
+.tour-hole { position:fixed; border-radius:18px; box-shadow:0 0 0 9999px rgba(14,12,8,.58), 0 0 0 3px #fff; transition:top 320ms var(--ease), left 320ms var(--ease), width 320ms var(--ease), height 320ms var(--ease); pointer-events:none; }
+.tour-card { position:fixed; left:50%; width:min(calc(100vw - 28px), 360px); transform:translateX(-50%); padding:16px 16px 12px; border-radius:20px; background:#fbf9f5; box-shadow:0 20px 50px -18px rgba(0,0,0,.55); transition:top 320ms var(--ease); }
+.tour-card small { font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red); }
+.tour-card h3 { margin:4px 0 6px; font-size:18px; letter-spacing:-.01em; }
+.tour-card p { font-size:14.5px; line-height:1.45; color:var(--ink2); }
+.tour-card .row { display:flex; align-items:center; gap:8px; margin-top:14px; }
+.tour-card .row .sp { flex:1; }
+.tour-card button { height:40px; padding:0 16px; border-radius:12px; font-weight:700; font-size:14.5px; background:rgba(0,0,0,.06); }
+.tour-card button.go { background:var(--ink); color:#fff; }
+.tour-card button.skip { background:none; color:var(--ink3); padding:0 4px; }
+.tour-dots { display:flex; gap:4px; }
+.tour-dots i { width:6px; height:6px; border-radius:50%; background:rgba(0,0,0,.15); }
+.tour-dots i.on { background:var(--ink); }
+@media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card { transition:none; } }
 .dayp b { display:block; max-width:100%; font-size:15px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .yen { font:700 18px var(--sans); }
 
@@ -1230,7 +1246,56 @@ const mapMax = (() => {
   addEventListener('resize', () => { if (on) Y.set(travel()); });
   return { set, isOn: () => on };
 })();
+/* ═══ guided tour (started from Settings: /japan/?tour=1) ═══ */
+function startTour() {
+  const steps = [
+    { el: '#dayp', t: 'Day bar', x: 'Tap it for a calendar of the whole trip and jump to any day. The arrows either side step back and forward a day.', pre: () => { drawer.close(); window.scrollTo(0, 0); } },
+    { el: '#ddtab', t: 'The day tab', x: 'Who\'s going, the weather, dinner and the dial live in here. Tap the tab or drag it out. It opens by itself the first time each morning and after 12, 3, 6 and 9 PM.' },
+    { el: '#dial', t: 'The dial', x: 'The day as a clock. Drag the sun to scrub through the stops. Booked stops show their start time, and the red tick is now. Now jumps back to the current time.', pre: () => drawer.open(), wait: 450 },
+    { el: '#who', t: 'Everyone, NASA or M&M', x: 'Show the whole group\'s plan or just one couple\'s. M&M\'s view starts on Oct 21.' },
+    { el: '.pass.open', t: 'Passes', x: 'Each stop is a pass. Use the arrows or swipe sideways to move through the day. The one you leave goes to the bottom of the pile.', pre: () => drawer.close(), wait: 450, top: true },
+    { el: '.pass.open [data-stamp]', t: 'Stamp it', x: 'Stamp a stop once you\'ve done it. It shows as done on all four phones. Unstamp from Settings.' },
+    { el: '#grab', t: 'Bigger map', x: 'Swipe the stops down from the top to give the map the whole screen. Swipe up or tap the handle to bring them back.', pre: () => window.scrollTo(0, 0), wait: 300 },
+    { el: '#ttBtn', t: 'Trip tools', x: 'Expenses, bookings, taxi cards, food ideas and Settings. You can restart this tour from Settings any time.' },
+  ];
+  let i = 0;
+  const wrap = document.createElement('div'); wrap.className = 'tour'; wrap.innerHTML = '<div class="tour-hole"></div><div class="tour-card" role="dialog" aria-live="polite"></div>'; document.body.appendChild(wrap);
+  const hole = wrap.querySelector('.tour-hole'), card = wrap.querySelector('.tour-card');
+  const place = () => {
+    const st = steps[i]; const el = document.querySelector(st.el); if (!el) return;
+    if (st.top) { const r0 = el.getBoundingClientRect(); if (r0.top < 80 || r0.top > innerHeight * 0.5) window.scrollTo({ top: scrollY + r0.top - 120 }); }
+    const r = el.getBoundingClientRect(); const pad = 6; const h = Math.min(r.height, innerHeight * 0.42);
+    Object.assign(hole.style, { top: r.top - pad + 'px', left: r.left - pad + 'px', width: r.width + pad * 2 + 'px', height: h + pad * 2 + 'px' });
+    const below = r.top + h + pad + 16; const cardH = card.offsetHeight || 190;
+    card.style.top = (below + cardH < innerHeight - 10 ? below : Math.max(10, r.top - pad - 16 - cardH)) + 'px';
+  };
+  const show = () => {
+    const st = steps[i]; st.pre && st.pre();
+    card.innerHTML = `<small>${i + 1} of ${steps.length}</small><h3>${st.t}</h3><p>${st.x}</p><div class="row"><div class="tour-dots">${steps.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div><span class="sp"></span><button class="skip" data-tskip>${i === steps.length - 1 ? '' : 'Skip'}</button>${i ? '<button data-tback>Back</button>' : ''}<button class="go" data-tnext>${i === steps.length - 1 ? 'Done' : 'Next'}</button></div>`;
+    setTimeout(place, st.wait || 60);
+  };
+  const end = () => { wrap.remove(); removeEventListener('resize', place); const u = new URL(location); u.searchParams.delete('tour'); history.replaceState(null, '', u); };
+  wrap.addEventListener('click', (e) => {
+    if (e.target.closest('[data-tnext]')) { if (i === steps.length - 1) return end(); i++; return show(); }
+    if (e.target.closest('[data-tback]')) { i = Math.max(0, i - 1); return show(); }
+    if (e.target.closest('[data-tskip]')) end();
+  });
+  addEventListener('resize', place); show();
+}
 buildMap(); renderDay(); store.start(); refreshFx(); drawer.init();
+if (new URLSearchParams(location.search).get('tour') === '1') setTimeout(startTour, 700);
+/* ═══ offline: save today and the next 2 days (photos; pages and data are kept by the service worker) ═══ */
+function saveAhead() {
+  if (!('serviceWorker' in navigator) || !navigator.onLine) return;
+  const start = tripDay ? DAYS.indexOf(tripDay) : Date.parse(todayJST) < Date.parse(DAYS[0].date) ? 0 : -1; if (start < 0) return;
+  const urls = new Set();
+  for (const d of DAYS.slice(start, start + 3)) {
+    const h = HOTELS.find((x) => x.id === d.hotel); const hp = h && PLACES[h.name]; if (hp) { urls.add(imgUrl(hp)); urls.add(thumbUrl(hp)); }
+    for (const e of dayItems(d, { who: 'all' })) { const pi = e.place && PLACES[e.place.name]; if (pi && pi.img) { urls.add(imgUrl(pi)); urls.add(thumbUrl(pi)); } }
+  }
+  navigator.serviceWorker.ready.then((reg) => reg.active && reg.active.postMessage({ type: 'precache', urls: [...urls].filter(Boolean) })).catch(() => {});
+}
+setTimeout(saveAhead, 4000);
 </script>
 <div class="tt-veil" id="ttVeil"></div>
 <nav class="tt" id="tt" aria-label="Trip tools">
