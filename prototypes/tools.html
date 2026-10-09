@@ -41,6 +41,27 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .av.ph { background-size:cover; background-position:center; color:transparent; }
 /* settings */
 .scard { margin:0 12px; padding:16px; }
+.bk-top { display:flex; align-items:center; gap:8px; padding:4px 16px 0; }
+.bk-top .seg { margin-left:auto; }
+.bnum { font-size:13px; color:var(--ink3); padding:6px 11px; border-radius:999px; background:#fff; box-shadow:0 0 0 1px var(--line); }
+.bnum b { color:var(--ok); font-size:14px; }
+.bnum.todo b { color:#b5651d; }
+.bk-list { display:grid; gap:10px; }
+.bk { border-left:4px solid var(--ok); }
+.bk.todo { border-left-color:#d48a1e; }
+.bk-h { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+.bk-h small { margin-left:auto; font-size:12px; color:var(--ink3); font-weight:700; }
+.bk > b { display:block; font-size:16px; line-height:1.25; }
+.bk > p { margin:5px 0 0; font-size:13.5px; color:var(--ink2); line-height:1.45; }
+.bst { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:3px 8px; border-radius:999px; }
+.bst.ok { background:color-mix(in srgb, var(--ok) 14%, #fff); color:var(--ok); }
+.bst.todo { background:#fbf0dd; color:#a86512; }
+.bst.now { background:var(--red); color:#fff; }
+.bchip { font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; background:rgba(0,0,0,.06); }
+.bchip.nasa { color:#2c4f86; } .bchip.mm { color:#c25350; }
+.bk-a { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.bk-a a, .bk-a button { display:inline-flex; align-items:center; height:34px; padding:0 13px; border-radius:999px; background:rgba(0,0,0,.06); font-size:13px; font-weight:700; text-decoration:none; color:var(--ink); }
+.bk-a .pri { background:var(--ink); color:#fff; }
 .scard .sub { margin:0; font-size:13px; color:var(--ink3); }
 .scard .sw + .sub, .scard .key + .sub { margin-top:12px; }
 .me { display:flex; align-items:center; gap:16px; }
@@ -235,14 +256,15 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 <nav class="proto-picker" aria-label="Prototype tools">
   <span class="proto-picker-highlight" aria-hidden="true"></span>
   <button class="proto-picker-item" data-active aria-current="true">Expenses</button>
-  <button class="proto-picker-item">Taxi cards</button>
-  <button class="proto-picker-item">Food nearby</button>
+  <button class="proto-picker-item">Bookings</button>
+  <button class="proto-picker-item">Taxi</button>
+  <button class="proto-picker-item">Food</button>
   <button class="proto-picker-item">Settings</button>
 </nav>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script type="module">
 import { DAYS, HOTELS } from '../data/itinerary.js?v=9';
-import { FOOD } from '../data/guide.js?v=9';
+import { FOOD, BOOKINGS } from '../data/guide.js?v=9';
 import { PLACES } from '../data/places.js?v=9';
 import { DIET } from '../data/diet.js?v=9';
 import { HOTEL_JA } from '../data/hotels-ja.js?v=9';
@@ -451,6 +473,35 @@ async function searchFood() {
   render();
 }
 let fmap = null, flayer = null;
+/* ═══════════ BOOKINGS ═══════════ */
+// Everything booked, and everything still to book. Marking a pending one as booked is shared with all four phones.
+const bkId = (b) => 'bk-' + b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+const bk = { who: ls.get('proto.bkwho', 'all') };
+const dayN = (id) => { const d = dayOf(id); return d ? d.n : 99; };
+function bkCard(b, state) {
+  const d = b.day && dayOf(b.day);
+  const who = b.who ? `<span class="bchip ${b.who}">${b.who === 'nasa' ? 'NASA' : 'M&amp;M'}</span>` : '';
+  const status = state === 'done' ? '<span class="bst ok">Booked</span>' : state === 'marked' ? '<span class="bst ok">Marked booked</span>' : b.urgent ? '<span class="bst now">Book now</span>' : '<span class="bst todo">To book</span>';
+  const acts = [
+    state === 'todo' ? `<button class="pri" data-bkmark="${bkId(b)}">Mark as booked</button>` : '',
+    state === 'marked' ? `<button data-bkunmark="${bkId(b)}">Not booked yet</button>` : '',
+    b.tel ? `<a href="tel:${esc(b.tel)}">Call</a>` : '',
+    d ? `<a href="../?d=${d.id}">Open day ${d.n}</a>` : '',
+  ].filter(Boolean).join('');
+  return `<div class="card scard bk ${state}"><div class="bk-h">${status}${who}<small>${esc(b.when)}</small></div><b>${esc(b.title)}</b><p>${esc(b.detail)}</p>${acts ? `<div class="bk-a">${acts}</div>` : ''}</div>`;
+}
+function renderBookings() {
+  const show = (b) => bk.who === 'all' || !b.who || b.who === bk.who;
+  const marked = (b) => store.getChoice(bkId(b), '') === 'booked';
+  const todo = BOOKINGS.closer.filter((b) => show(b) && !marked(b)).sort((a, z) => (z.urgent ? 1 : 0) - (a.urgent ? 1 : 0) || dayN(a.day) - dayN(z.day));
+  const done = [...BOOKINGS.confirmed.map((b) => [b, 'done']), ...BOOKINGS.closer.filter(marked).map((b) => [b, 'marked'])].filter(([b]) => show(b)).sort(([a], [z]) => dayN(a.day) - dayN(z.day));
+  const seg = [['all', 'All'], ['nasa', 'NASA'], ['mm', 'M&amp;M']].map(([k, l]) => `<button data-bkwho="${k}" class="${bk.who === k ? 'on' : ''}">${l}</button>`).join('');
+  return `<header class="ph"><small>Bookings</small><h1>Booked &amp; to book</h1><p>Everything that's confirmed, and everything still to book or sort out on the day.</p></header>
+    <div class="bk-top"><span class="bnum"><b>${done.length}</b> booked</span><span class="bnum todo"><b>${todo.length}</b> to book</span><div class="seg" id="bkseg">${seg}<i></i></div></div>
+    <p class="sec">To book</p>${todo.length ? `<div class="bk-list">${todo.map((b) => bkCard(b, 'todo')).join('')}</div>` : '<div class="card scard"><p class="sub">Nothing left to book. 🎉</p></div>'}
+    <p class="sec">Booked</p><div class="bk-list">${done.map(([b, st]) => bkCard(b, st)).join('')}</div>`;
+}
+
 /* ═══════════ 4 · SETTINGS ═══════════ */
 function renderSettings() {
   const me = P[ME];
@@ -516,10 +567,10 @@ const picker = document.querySelector('.proto-picker'), hl = picker.querySelecto
 let tab = Math.max(0, (parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
 function render() {
   const y = scrollY;
-  syncPeople(); page.innerHTML = [renderExpenses, renderTaxi, renderFood, renderSettings][tab]();
+  syncPeople(); page.innerHTML = [renderExpenses, renderBookings, renderTaxi, renderFood, renderSettings][tab]();
   fab.hidden = tab !== 0;
   page.querySelectorAll('.seg').forEach(moveSeg);
-  if (tab === 2) { mountFoodMap(); if (fd.res == null) searchFood(); }
+  if (tab === 3) { mountFoodMap(); if (fd.res == null) searchFood(); }
   window.scrollTo(0, y);
 }
 function setTab(i) { tab = i; items.forEach((el, j) => el.toggleAttribute('data-active', j === i)); const el = items[i]; hl.style.width = el.offsetWidth + 'px'; hl.style.transform = `translateX(${el.offsetLeft}px)`; const u = new URL(location); u.searchParams.set('v', i + 1); history.replaceState(null, '', u); window.scrollTo(0, 0); render(); }
@@ -527,6 +578,9 @@ items.forEach((el, i) => el.addEventListener('click', () => setTab(i)));
 fab.addEventListener('click', () => openEx(null));
 page.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
+  const bw = t('[data-bkwho]'); if (bw) { bk.who = bw.dataset.bkwho; ls.set('proto.bkwho', bk.who); return render(); }
+  const bm = t('[data-bkmark]'); if (bm) { const id = bm.dataset.bkmark; store.setChoice(id, 'booked'); render(); return undoable('Marked as booked', () => store.setChoice(id, '')); }
+  const bu = t('[data-bkunmark]'); if (bu) { const id = bu.dataset.bkunmark; store.setChoice(id, ''); render(); return undoable('Moved back to To book', () => store.setChoice(id, 'booked')); }
   const pc = t('[data-pcolor]'); if (pc && ME) { store.setProfile(ME, { color: pc.dataset.pcolor }); return render(); }
   if (t('[data-rmphoto]') && ME) { store.setProfile(ME, { photo: null }); return render(); }
   const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
@@ -550,7 +604,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeShe
 setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
 // Re-draw the expense list when another phone adds or changes something (not while the edit sheet is open).
 let exSig = '';
-store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode + JSON.stringify(store.getExpenses()) + JSON.stringify(Object.fromEntries(Object.entries(pf).map(([k, v]) => [k, [v.color, v.photo]]))); if (sig === exSig) return; exSig = sig; if ((tab === 0 || tab === 3) && !document.getElementById('sheet').classList.contains('on')) render(); });
+store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode + JSON.stringify(store.getExpenses()) + JSON.stringify(Object.fromEntries(Object.entries(pf).map(([k, v]) => [k, [v.color, v.photo]]))); if (sig === exSig) return; exSig = sig; if ((tab === 0 || tab === 4) && !document.getElementById('sheet').classList.contains('on')) render(); });
+let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });
 store.start();
 </script>
 </body>
