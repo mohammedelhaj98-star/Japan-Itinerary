@@ -22,6 +22,7 @@ try { if (/^\/japan(\/|$)/.test(location.pathname) && !localStorage.getItem('tri
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Zen+Old+Mincho:wght@700&display=swap">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="./vendor/maplibre/maplibre-gl.css">
 <style>
 @font-face { font-family:'Zen Kaku'; font-weight:400; font-display:swap; src:url(./vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku'; font-weight:500; font-display:swap; src:url(./vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
@@ -48,6 +49,9 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 /* ── map + floating chrome ── */
 #map { position:fixed; inset:0; z-index:0; background:#e9e6df; }
 #map .leaflet-tile-pane { filter:saturate(.5) contrast(.92) brightness(1.06) sepia(.08); }
+#map .leaflet-top.leaflet-right { top:calc(var(--top) + 58px); }
+.mt-logo { display:block; margin:0 6px 0 0; line-height:0; }
+.mt-logo img { height:16px; opacity:.85; }
 #map .leaflet-control-attribution { font-size:9px; background:rgba(255,255,255,.6); }
 .leaflet-div-icon { background:transparent; border:0; }
 .pin { width:30px; height:30px; border-radius:50%; background:#fff; border:2.5px solid var(--c); font:700 12.5px var(--sans); display:grid; place-items:center; box-shadow:0 4px 10px -3px rgba(0,0,0,.35); position:relative; transition:transform 320ms cubic-bezier(.3,1.5,.5,1), background 200ms, color 200ms; }
@@ -477,6 +481,8 @@ body.mapmax .mapmax-hint { display:block; }
 <section class="setp" id="setp" aria-label="Edit trip"></section>
 <div class="jpcard" id="jpcard" role="dialog" aria-label="Phrases in Japanese"></div>
 <script src="./vendor/leaflet/leaflet.js"></script>
+<script src="./vendor/maplibre/maplibre-gl.js"></script>
+<script src="./vendor/maplibre/leaflet-maplibre-gl.js"></script>
 <script type="module">
 import { DAYS, HOTELS } from './data/itinerary.js?v=9';
 import { PLACES } from './data/places.js?v=9';
@@ -864,10 +870,25 @@ function buildStack() {
 }
 
 /* ═══ map ═══ */
+const MAPTILER_KEY = 'vMM3bXi0hwBAmshjuXX4'; // restricted to ourtrips.date in the MapTiler account
 function buildMap() {
-  map = L.map('map', { zoomControl: false, attributionControl: true });
-  map.attributionControl.setPrefix(false);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+  map = L.map('map', { zoomControl: false, attributionControl: false });
+  L.control.attribution({ position: 'topright', prefix: false }).addTo(map);
+  map.setView([35.68, 139.76], 12); // a view must exist before the drawn map layer is added; each day refits it
+  // English-labelled MapTiler map (free plan, key locked to ourtrips.date), drawn on the phone so labels can use English names.
+  // Falls back to the plain OpenStreetMap tiles if the phone can't draw it or MapTiler refuses (e.g. monthly quota reached).
+  const osm = () => { if (map._osm) return; map._osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map); };
+  let gl = null;
+  try {
+    const c = document.createElement('canvas'); const webgl = !!(c.getContext('webgl2') || c.getContext('webgl'));
+    if (!window.L.maplibreGL || !window.maplibregl || !webgl) throw new Error('no webgl');
+    gl = L.maplibreGL({ style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`, attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener">© MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>' }).addTo(map);
+    const ml = gl.getMaplibreMap();
+    const english = () => { for (const l of ml.getStyle().layers) if (l.type === 'symbol' && ml.getLayoutProperty(l.id, 'text-field') != null) ml.setLayoutProperty(l.id, 'text-field', ['coalesce', ['get', 'name:en'], ['get', 'name_en'], ['get', 'name:latin'], ['get', 'name']]); };
+    ml.once('styledata', english);
+    ml.on('error', (e) => { const st = e && e.error && e.error.status; if (st === 401 || st === 403 || st === 429) { gl && map.removeLayer(gl); gl = null; osm(); } });
+    const logo = L.control({ position: 'topright' }); logo.onAdd = () => { const a = L.DomUtil.create('a', 'mt-logo'); a.href = 'https://www.maptiler.com'; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = '<img src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler">'; return a; }; logo.addTo(map);
+  } catch (err) { console.warn('map: using OpenStreetMap tiles', err && err.message); osm(); }
   map.on('zoomend', () => declutter());
 }
 function mapPad() { return { paddingTopLeft: [30, 80], paddingBottomRight: [30, document.body.classList.contains('mapmax') ? 170 : Math.round(innerHeight * 0.6)] }; }

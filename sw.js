@@ -1,14 +1,14 @@
 // Service worker: keeps the trip usable offline.
 // - App shell (pages, code, data, fonts): network-first, cached copy when offline.
 // - Day assets (today + next 2 days): the page sends the list of photos; they're saved ahead of time in 'days'.
-// - Map tiles: saved as you view them (OpenStreetMap's tile policy rules out bulk pre-downloading).
+// - Map tiles (MapTiler, OpenStreetMap fallback): saved as you view them; no bulk pre-downloading.
 // - /api: always network; the app keeps its own offline copy of shared state.
-const VERSION = 'japan2026-v10';
+const VERSION = 'japan2026-v11';
 const KEEP = [VERSION, 'tiles', 'days'];
 const SHELL = [
   './', './index.html', './prototypes/tools.html', './js/store.js', './js/colors.js', './js/export-docx.js',
   './data/itinerary.js', './data/places.js', './data/guide.js', './data/diet.js', './data/hotels-ja.js',
-  './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css', './vendor/leaflet/images/marker-icon.png', './vendor/leaflet/images/marker-icon-2x.png', './vendor/leaflet/images/marker-shadow.png',
+  './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css', './vendor/maplibre/maplibre-gl.js', './vendor/maplibre/maplibre-gl.css', './vendor/maplibre/leaflet-maplibre-gl.js', './vendor/leaflet/images/marker-icon.png', './vendor/leaflet/images/marker-icon-2x.png', './vendor/leaflet/images/marker-shadow.png',
   './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png',
   './vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2', './vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2', './vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2',
 ];
@@ -47,7 +47,8 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   if (url.pathname.startsWith('/api/')) return; // always network
   if (url.origin !== location.origin) {
-    if (/tile\.openstreetmap\.org/.test(url.host)) {
+    // Map tiles, styles, fonts and icons: saved as you view them (MapTiler's terms allow a personal browser cache).
+    if (/tile\.openstreetmap\.org/.test(url.host) || url.host === 'api.maptiler.com') {
       e.respondWith(caches.open('tiles').then(async (c) => {
         try { const r = await fetch(e.request); if (r.ok) c.put(e.request, r.clone()); return r; } catch { return (await c.match(e.request)) || Response.error(); }
       }));
