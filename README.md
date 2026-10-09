@@ -19,7 +19,12 @@ OSRM public routing for walking/driving legs, Cloudflare Pages for hosting, Clou
 - **Today** — opens on the current trip day automatically; ← → keys move between days on desktop.
 - **PWA** — add to home screen; the app shell and recently viewed map tiles are cached for offline use.
 
-## Deploy on Cloudflare Pages (your domain)
+## Deploy
+
+Live at https://ourtrips.date/japan/ (`/` and `/Japan` redirect there; Pages project `japan2026`, KV namespace `japan2026-state` bound as `TRIP_KV` in `wrangler.toml`).
+To publish changes, run `scripts/deploy.sh` with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set. It uploads only the public site files.
+
+### Setting up from scratch in the dashboard
 
 1. **Create the Pages project** — Cloudflare dashboard → *Workers & Pages* → *Create* → *Pages* → *Connect to Git* → pick this repo and branch.
    - Framework preset: **None**
