@@ -882,7 +882,7 @@ function buildMap() {
   try {
     const c = document.createElement('canvas'); const webgl = !!(c.getContext('webgl2') || c.getContext('webgl'));
     if (!window.L.maplibreGL || !window.maplibregl || !webgl) throw new Error('no webgl');
-    gl = L.maplibreGL({ style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`, attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener">© MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>' }).addTo(map);
+    gl = L.maplibreGL({ style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}` }).addTo(map); // the style carries the © MapTiler © OpenStreetMap credit
     const ml = gl.getMaplibreMap();
     const english = () => { for (const l of ml.getStyle().layers) if (l.type === 'symbol' && ml.getLayoutProperty(l.id, 'text-field') != null) ml.setLayoutProperty(l.id, 'text-field', ['coalesce', ['get', 'name:en'], ['get', 'name_en'], ['get', 'name:latin'], ['get', 'name']]); };
     ml.once('styledata', english);
