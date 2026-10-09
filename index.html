@@ -63,6 +63,32 @@ body.scrolled .topfade { opacity:1; }
 .tb:disabled { opacity:.35; }
 .dayp { flex:1 1 0; width:0; min-width:0; overflow:hidden; max-width:250px; padding:6px 16px; text-align:center; line-height:1.15; display:block; }
 .dayp small { display:block; font-size:11.5px; color:var(--ink3); font-weight:500; }
+/* mini calendar from the day bar */
+.cal-bg { position:fixed; inset:0; z-index:940; background:rgba(20,16,10,.18); opacity:0; pointer-events:none; transition:opacity 180ms ease; }
+.cal-bg.on { opacity:1; pointer-events:auto; }
+.cal { position:fixed; z-index:945; top:calc(var(--top) + 60px); left:50%; width:min(calc(100vw - 20px), 380px); padding:14px 12px 12px; border-radius:24px; background:#faf8f4; box-shadow:0 0 0 .5px rgba(0,0,0,.06), 0 24px 60px -20px rgba(0,0,0,.5); transform:translate3d(-50%,-8px,0) scale(.96); transform-origin:50% 0; opacity:0; pointer-events:none; transition:opacity 160ms ease, transform 260ms var(--ease); }
+.cal.on { opacity:1; pointer-events:auto; transform:translate3d(-50%,0,0) scale(1); }
+.cal-h { display:flex; align-items:baseline; justify-content:space-between; padding:0 6px 10px; }
+.cal-h b { font-size:15px; }
+.cal-h button { font-size:13px; font-weight:700; color:var(--red); }
+.cal-g { display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; }
+.cal-g .wd { text-align:center; font-size:10.5px; font-weight:700; color:var(--ink3); letter-spacing:.04em; padding-bottom:2px; }
+.cal-g .c { position:relative; aspect-ratio:1 / 1.08; border-radius:13px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; background:#fff; box-shadow:0 0 0 1px var(--line); font-variant-numeric:tabular-nums; transition:transform 140ms var(--ease); }
+.cal-g .c:active { transform:scale(.94); }
+.cal-g .c b { font-size:16px; line-height:1; }
+.cal-g .c small { font-size:9.5px; font-weight:700; color:var(--ink3); }
+.cal-g .c::after { content:''; position:absolute; left:28%; right:28%; bottom:5px; height:3px; border-radius:2px; background:var(--cc); }
+.cal-g .c.out { background:none; box-shadow:none; color:rgba(20,20,10,.22); pointer-events:none; }
+.cal-g .c.out::after { display:none; }
+.cal-g .c.cur { background:var(--ink); color:#fff; box-shadow:none; }
+.cal-g .c.cur small { color:rgba(255,255,255,.7); }
+.cal-g .c.today { box-shadow:0 0 0 2px var(--red); }
+.cal-g .c.off { opacity:.35; }
+.cal-g .c .bk { position:absolute; top:5px; right:6px; width:5px; height:5px; border-radius:50%; background:#6f4f98; }
+.cal-l { display:flex; flex-wrap:wrap; gap:6px 12px; padding:12px 6px 0; font-size:12px; color:var(--ink2); }
+.cal-l span { display:inline-flex; align-items:center; gap:5px; }
+.cal-l i { width:12px; height:3px; border-radius:2px; background:var(--cc); }
+.cal-l i.dot { width:6px; height:6px; border-radius:50%; background:#6f4f98; }
 .dayp b { display:block; max-width:100%; font-size:15px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .yen { font:700 18px var(--sans); }
 
@@ -422,13 +448,14 @@ body.mapmax .mapmax-hint { display:block; }
 <div class="topfade"></div>
 <div class="top">
   <button class="tb glass press" id="prev" aria-label="Previous day"></button>
-  <button class="tb glass dayp press" id="dayp"><small id="dayp-s"></small><b id="dayp-b"></b></button>
+  <button class="tb glass dayp press" id="dayp" aria-haspopup="dialog" aria-expanded="false"><small id="dayp-s"></small><b id="dayp-b"></b></button>
   <button class="tb glass press" id="next" aria-label="Next day"></button>
   <button class="tb glass press yen" id="kitbtn" aria-label="Currency and travel kit">¥</button>
 </div>
 <div class="wrap"><div class="spacer"></div><main class="sheet" id="sheet"></main></div>
 <div class="dd-scrim" id="ddscrim"></div><aside class="dd" id="dd" aria-label="Day dial"><div class="dd-in" id="ddin"></div><button class="dd-tab" id="ddtab" aria-label="Show the day dial" aria-expanded="false"><span class="dd-rail" id="ddrail"></span></button></aside>
 <div class="scrim" id="scrim"></div>
+<div class="cal-bg" id="calbg"></div><div class="cal" id="cal" role="dialog" aria-label="Jump to a day"></div>
 <section class="kit" id="kit" aria-label="Travel kit"><div class="kit-h"><div class="grab" style="margin:0"></div></div><div class="kit-b" id="kitb"></div></section>
 <section class="kit ed" id="ed" aria-label="Edit stop"><div class="kit-h"><div class="grab" style="margin:0"></div></div><div class="kit-b" id="edb"></div></section>
 <section class="setp" id="setp" aria-label="Edit trip"></section>
@@ -1051,7 +1078,34 @@ function renderDay({ keepScroll, keepSel, selId } = {}) {
 function go(delta) { let i = DAYS.indexOf(day) + delta; while (i >= 0 && i < DAYS.length && !hasEvents(DAYS[i])) i += delta; if (i < 0 || i >= DAYS.length) return; ui.dayId = DAYS[i].id; renderDay(); }
 document.getElementById('prev').addEventListener('click', () => go(-1));
 document.getElementById('next').addEventListener('click', () => go(1));
-document.getElementById('dayp').addEventListener('click', () => { if (tripDay) { ui.dayId = tripDay.id; renderDay(); } else window.scrollTo({ top: 0, behavior: 'smooth' }); });
+/* ═══ mini calendar: tap the day bar, jump to any day ═══ */
+const CITY_C = { Tokyo: '#2c4f86', Hakone: '#2f9e57', Kyoto: '#b94b74', Osaka: '#d7731a' };
+const cal = document.getElementById('cal'), calBg = document.getElementById('calbg');
+function renderCal() {
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const first = new Date(DAYS[0].date + 'T00:00:00Z'), last = new Date(DAYS[DAYS.length - 1].date + 'T00:00:00Z');
+  const start = new Date(first); start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7)); // Monday on or before
+  const end = new Date(last); end.setUTCDate(end.getUTCDate() + (6 - ((end.getUTCDay() + 6) % 7)));
+  const byDate = Object.fromEntries(DAYS.map((d) => [d.date, d]));
+  let cells = ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((w) => `<span class="wd">${w}</span>`).join('');
+  for (let t = new Date(start); t <= end; t.setUTCDate(t.getUTCDate() + 1)) {
+    const d = byDate[iso(t)];
+    if (!d) { cells += `<span class="c out"><b>${t.getUTCDate()}</b></span>`; continue; }
+    const booked = dayItems(d, { who: ui.who }).some((x) => x.type === 'event' && x.confirmed);
+    cells += `<button class="c ${d.id === day.id ? 'cur' : ''} ${tripDay && tripDay.id === d.id ? 'today' : ''} ${hasEvents(d) ? '' : 'off'}" data-cal="${d.id}" style="--cc:${CITY_C[d.city] || '#86847c'}" aria-label="Day ${d.n}, ${esc(d.title)}">${booked ? '<i class="bk"></i>' : ''}<b>${t.getUTCDate()}</b><small>D${d.n}</small></button>`;
+  }
+  const m0 = first.toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' }), m1 = last.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  cal.innerHTML = `<div class="cal-h"><b>${m0} – ${m1}</b>${tripDay ? '<button data-cal-today>Today</button>' : ''}</div><div class="cal-g">${cells}</div>
+    <div class="cal-l">${Object.entries(CITY_C).map(([c, col]) => `<span><i style="--cc:${col}"></i>${c}</span>`).join('')}<span><i class="dot"></i>Booking</span></div>`;
+}
+const calOpen = (on) => { if (on) renderCal(); cal.classList.toggle('on', on); calBg.classList.toggle('on', on); document.getElementById('dayp').setAttribute('aria-expanded', String(on)); if (on) buzz(4); };
+document.getElementById('dayp').addEventListener('click', () => calOpen(!cal.classList.contains('on')));
+calBg.addEventListener('click', () => calOpen(false));
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && cal.classList.contains('on')) calOpen(false); });
+cal.addEventListener('click', (e) => {
+  const c = e.target.closest('[data-cal]'); const go2 = c ? c.dataset.cal : e.target.closest('[data-cal-today]') && tripDay ? tripDay.id : null;
+  if (!go2) return; calOpen(false); if (go2 !== day.id) { ui.dayId = go2; renderDay(); buzz(6); }
+});
 document.getElementById('kitbtn').addEventListener('click', openKit);
 document.getElementById('dd').addEventListener('click', (e) => {
   if (e.target.closest('#nowb')) { recenterNow(); return; }
