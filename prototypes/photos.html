@@ -69,7 +69,9 @@ h1,h2,h3,p { margin:0; }
 /* "on the plan" preview */
 .sec { padding:22px 20px 8px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700; }
 .pass { margin:0 14px; border-radius:22px; overflow:hidden; color:#fff; background:linear-gradient(165deg, color-mix(in srgb, var(--c) 82%, #fff) 0, var(--c) 40%, color-mix(in srgb, var(--c) 80%, #000) 100%); box-shadow:0 14px 30px -18px rgba(0,0,0,.5); }
-.pass .hero { height:150px; background-size:cover; background-position:center; position:relative; }
+.pass .hero { height:150px; background-size:cover; background-position:center; position:relative; overflow:hidden; }
+.pass .hero > img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.pass .hero .chosen { position:absolute; right:12px; top:12px; z-index:1; padding:4px 9px; border-radius:999px; background:rgba(255,255,255,.92); color:#141412; font-size:11.5px; font-weight:700; }
 .pass .hero::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.55)); }
 .pass .t { position:absolute; left:16px; right:16px; bottom:12px; z-index:1; }
 .pass .t small { font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; opacity:.9; }
@@ -184,13 +186,25 @@ body.sel .selbar { transform:none; }
 .vw .top .mid b { display:block; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .vw .top .mid small { font-size:12px; opacity:.7; }
 .vw .rb { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.14); display:grid; place-items:center; flex:none; color:#fff; }
-.vw .rb.hearted { color:var(--heart); }
+/* the heart: a floating button under the right thumb, just above Info */
+.vw .hfab { position:absolute; right:14px; bottom:calc(100% + 4px); width:58px; height:58px; border-radius:50%; background:rgba(255,255,255,.16); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); display:grid; place-items:center; color:#fff; box-shadow:0 10px 26px -12px rgba(0,0,0,.7); }
+.vw .hfab svg { width:28px; height:28px; overflow:visible; }
+.vw .hfab path { fill:transparent; stroke:#fff; stroke-width:2.1; stroke-linejoin:round; transition:fill 160ms ease, stroke 160ms ease; }
+.vw .hfab.on { background:rgba(255,55,95,.22); }
+.vw .hfab.on path { fill:var(--heart); stroke:var(--heart); }
+.vw .hfab .n { position:absolute; left:50%; top:calc(100% + 1px); transform:translateX(-50%); font-size:11.5px; font-weight:700; white-space:nowrap; text-shadow:0 1px 4px rgba(0,0,0,.6); }
+.vw .hfab[hidden] { display:none; }
+.mini { position:fixed; z-index:90; width:16px; height:16px; margin:-8px 0 0 -8px; pointer-events:none; color:var(--heart); }
+.bigheart { position:absolute; left:50%; top:46%; z-index:2; width:120px; height:120px; margin:-60px 0 0 -60px; pointer-events:none; color:#fff; filter:drop-shadow(0 6px 24px rgba(255,55,95,.55)); }
+.cov { position:absolute; left:5px; top:5px; z-index:1; padding:2px 7px 2px 5px; border-radius:7px; background:#fff; color:#141412; font-size:10.5px; font-weight:700; display:flex; align-items:center; gap:3px; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+.th .cov + .new { top:26px; }
 .vw .cap { position:absolute; left:0; right:0; bottom:0; z-index:3; padding:22px 0 calc(10px + env(safe-area-inset-bottom)); color:#fff; background:linear-gradient(0deg, rgba(0,0,0,.75), rgba(0,0,0,0)); transition:opacity 200ms, transform 320ms var(--ease); }
 .vw .capt { display:flex; align-items:center; gap:10px; padding:0 16px; }
 .vw .capt .faces { position:static; margin-right:4px; }
 .vw .capt .faces i { width:24px; height:24px; font-size:10px; box-shadow:0 0 0 2px #000; }
 .vw .capt b { display:block; font-size:14.5px; }
 .vw .capt small { display:block; font-size:12.5px; opacity:.75; }
+.vw .capt { padding-right:16px; }
 .vw .capt .up { margin-left:auto; display:flex; flex-direction:column; align-items:center; font-size:11px; font-weight:700; opacity:.8; }
 /* filmstrip */
 .fs { display:flex; gap:3px; overflow-x:auto; padding:12px 50vw 2px; scrollbar-width:none; scroll-behavior:smooth; }
@@ -215,6 +229,7 @@ body.sel .selbar { transform:none; }
 .info .tagrow[disabled] button { pointer-events:none; }
 .info .vmap { height:150px; border-radius:16px; overflow:hidden; margin-top:4px; background:#2a2926; }
 .info .row { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.info .row button.chosen { background:#fff; color:#141412; }
 .info .row a, .info .row button { height:40px; padding:0 14px; border-radius:12px; background:rgba(255,255,255,.12); color:#fff; font-size:14px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
 .info .kv { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:13.5px; margin-top:4px; }
 .info .kv span:nth-child(odd) { opacity:.55; }
@@ -277,8 +292,8 @@ body.guest [data-select] { display:none; }
 <div class="scrim" id="scrim"></div>
 <section class="sheet" id="sheet" aria-modal="true" role="dialog"></section>
 <div class="vw" id="vw" role="dialog" aria-label="Photo viewer"><div class="track" id="track"></div>
-  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><button class="rb" data-heart aria-label="Favourite"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" fill="currentColor"/></svg></button></div>
-  <div class="cap"><div class="capt" id="vcapt"></div><div class="fs" id="fs"></div></div>
+  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><span style="width:40px"></span></div>
+  <div class="cap"><button class="hfab" data-heart aria-label="Love this photo" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-7.6-10.4A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.6 2.7c0 5.8-7.6 10.4-7.6 10.4z"/></svg><span class="n" id="hcount"></span></button><div class="capt" id="vcapt"></div><div class="fs" id="fs"></div></div>
   <section class="info" id="vinfo"></section></div>
 <div class="story" id="story"><div class="stage" id="stage"></div><div class="bars" id="sbars"></div><div class="shead" id="shead"></div></div>
 <div class="toast" id="toast" role="status"></div>
@@ -332,6 +347,9 @@ for (const d of DAYS.slice(0, 9)) {
 
 /* ── state ── */
 const ui = { people: new Set(), kind: 'all', q: '', viewer: 'member', sel: new Set(), cols: 3 };
+// the photo chosen to stand for a stop: it replaces the stock picture on that stop's pass on the plan
+const covers = {}; let lastCover = null;
+const isCover = (p) => p.stop && covers[p.stop] === p.id;
 const member = () => ui.viewer === 'member';
 const qOk = (p) => { if (!ui.q) return true; const s = stopOf(p), d = dayById[p.day]; const hay = `${s ? s.title : 'other moments'} ${d.title} day ${d.n}`.toLowerCase(); return ui.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w)); };
 const visible = () => photos.filter((p) => !p.hidden
@@ -340,7 +358,7 @@ const visible = () => photos.filter((p) => !p.hidden
 const imgTag = (p) => p.url
   ? (p.isVideo ? `<video src="${p.url}#t=0.1" muted playsinline preload="metadata"></video>` : `<img draggable="false" src="${p.url}" alt="" loading="lazy">`)
   : `<img draggable="false" src="${p.img}" alt="" loading="lazy" style="object-position:${p.crop.x}% ${p.crop.y}%;transform:scale(${p.crop.z});filter:hue-rotate(${p.crop.hue}deg) brightness(${p.crop.br})">`;
-const thumb = (p, ix, big) => `<button class="th ${big ? 'big' : ''}" data-pid="${p.id}" data-ix="${ix}" aria-label="Photo">${imgTag(p)}${isVid(p) ? `<span class="vd"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>${p.video || ''}</span>` : ''}${faces(p.in)}${p.hearts.length ? '<span class="hrt">♥</span>' : ''}${p.fresh ? '<span class="new">New</span>' : ''}<span class="ck"></span></button>`;
+const thumb = (p, ix, big) => `<button class="th ${big ? 'big' : ''}" data-pid="${p.id}" data-ix="${ix}" aria-label="Photo">${imgTag(p)}${isVid(p) ? `<span class="vd"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>${p.video || ''}</span>` : ''}${faces(p.in)}${p.hearts.length ? '<span class="hrt">♥</span>' : ''}${isCover(p) ? '<span class="cov">★ Plan photo</span>' : ''}${p.fresh ? '<span class="new">New</span>' : ''}<span class="ck"></span></button>`;
 
 /* ── filters (rendered once; only their state changes) ── */
 $('#ppl').innerHTML = PIDS.map((id) => `<button class="pp press" data-pp="${id}" aria-pressed="false"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}</button>`).join('');
@@ -377,12 +395,14 @@ function render({ keepDay } = {}) {
   const tripDays = DAYS.filter((d) => photos.some((p) => p.day === d.id && !p.hidden));
   $('#dstrip').innerHTML = tripDays.map((d) => `<button data-jump="${d.id}" class="${byDay[d.id] ? '' : 'none'}">Day ${d.n}<small>${(byDay[d.id] || []).length}</small></button>`).join('');
   // the sample pass (only when nothing is filtered, so it's comparable)
-  const d7 = stopsOfDay('d07'); const best = d7.map((s) => [s, photos.filter((p) => !p.hidden && p.stop === s.id)]).sort((a, b) => b[1].length - a[1].length)[0];
+  const d7 = stopsOfDay('d07'); let best = d7.map((s) => [s, photos.filter((p) => !p.hidden && p.stop === s.id)]).sort((a, b) => b[1].length - a[1].length)[0];
+  if (lastCover && covers[lastCover.stop]) { const s = stopsOfDay(lastCover.day).find((x) => x.id === lastCover.stop); if (s) best = [s, photos.filter((p) => !p.hidden && p.stop === s.id)]; }
+  const cov = best && photos.find((p) => p.id === covers[best[0].id] && !p.hidden); const bestDay = best && dayById[cov ? cov.day : 'd07'];
   const pass = !filtered && best && best[1].length ? `<p class="sec">On the plan</p>
     <button class="pass press" data-strip="${best[0].id}" style="--c:${kindColor(best[0])};display:block;width:calc(100% - 28px);text-align:left">
-      <div class="hero" style="background-image:url('${placeImg(best[0])}')"><div class="t"><small>Day 7 · ${esc(best[0].time)}</small><b>${esc(best[0].title)}</b></div></div>
+      <div class="hero">${cov ? imgTag(cov) + '<span class="chosen">★ Your photo</span>' : `<img draggable="false" src="${placeImg(best[0]) || ''}" alt="">`}<div class="t"><small>Day ${bestDay.n} · ${esc(best[0].time)}</small><b>${esc(best[0].title)}</b></div></div>
       <div class="pstrip">${best[1].slice(0, 4).map((p) => `<span class="pt">${imgTag(p)}</span>`).join('')}<span class="cnt">📷 ${best[1].length}</span></div></button>
-    <p class="passnote">How a stop's pass would look on the trip page. Tap it to open that stop's photos.</p>` : '';
+    <p class="passnote">${cov ? 'Its picture is now the photo you chose for this stop.' : 'How a stop\'s pass would look on the trip page. Tap it to open that stop\'s photos. Open a photo, swipe up and tap “Use as this stop\'s photo” to change its picture.'}</p>` : '';
   const days = DAYS.filter((d) => byDay[d.id]).map((d) => {
     const ps = byDay[d.id].sort((a, b) => a.takenAt - b.takenAt);
     const stops = stopsOfDay(d.id).filter((s) => ps.some((p) => p.stop === s.id));
@@ -587,7 +607,8 @@ function drawViewer() {
   setTrack(0, false);
   const p = vlist[vi], s = stopOf(p), d = dayById[p.day], who = PEOPLE[p.by];
   $('#vtitle').innerHTML = `<b>${esc(s ? s.title : 'Other moments')}</b><small>Day ${d.n} · ${fmtMin(jstOf(p.takenAt, DAYS).min)} · ${vi + 1} of ${vlist.length}</small>`;
-  const mine = p.hearts.includes(ME); const hb = $('[data-heart]'); hb.classList.toggle('hearted', mine); hb.style.display = member() || p.hearts.length ? '' : 'none';
+  const mine = p.hearts.includes(ME); const hb = $('[data-heart]'); hb.classList.toggle('on', mine); hb.setAttribute('aria-pressed', mine); hb.hidden = !member();
+  $('#hcount').textContent = p.hearts.length > 1 || (p.hearts.length && !mine) ? p.hearts.length : '';
   $('#vcapt').innerHTML = `${p.in.length ? faces(p.in) : ''}<span><b>${p.in.length ? names(p.in) : 'No one tagged'}</b><small>${p.hearts.length ? `♥ ${names(p.hearts)}` : `Taken by ${who.name}`}${p.video ? ' · demo video' : ''}</small></span><span class="up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 14l6-6 6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Info</span>`;
   drawFilmstrip();
   if (vw.classList.contains('showinfo')) drawInfo();
@@ -607,7 +628,7 @@ function drawInfo() {
     <p class="lbl">Who's in it</p><div class="tagrow" ${member() ? '' : 'disabled'}>${PIDS.map((id) => `<button data-vtag="${id}" class="${p.in.includes(id) ? 'on' : ''}"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}</button>`).join('')}</div>
     ${s && s.place ? `<p class="lbl">Where</p><div class="vmap" id="vmap"></div>` : ''}
     <p class="lbl">Details</p><div class="kv"><span>Taken</span><span>${fmtMin(jstOf(p.takenAt, DAYS).min)}, ${fmtDate(d)}</span><span>By</span><span>${PEOPLE[p.by].name}</span><span>Loved by</span><span>${p.hearts.length ? names(p.hearts) : 'no one yet'}</span></div>
-    <div class="row"><a href="../?d=${d.id}">Open on the plan</a>${member() ? '<button data-vassign>Move to another stop</button><button data-vhide>Hide</button>' : ''}</div>`;
+    <div class="row">${member() && s ? (isCover(p) ? '<button class="chosen" data-vcover>★ The photo for this stop</button>' : '<button data-vcover>★ Use as this stop\'s photo</button>') : ''}<a href="../?d=${d.id}">Open on the plan</a>${member() ? '<button data-vassign>Move to another stop</button><button data-vhide>Hide</button>' : ''}</div>`;
   destroyMap();
   if (s && s.place && window.L) requestAnimationFrame(() => { const el = document.getElementById('vmap'); if (!el) return; vmap = L.map(el, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false }).setView([s.place.lat, s.place.lng], 15); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(vmap); L.circleMarker([s.place.lat, s.place.lng], { radius: 8, color: '#fff', weight: 3, fillColor: kindColor(s), fillOpacity: 1 }).addTo(vmap); });
 }
@@ -670,13 +691,37 @@ addEventListener('keydown', (e) => { if (!vw.classList.contains('on')) return; i
 vw.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
   if (t('[data-vclose]')) return closeViewer();
-  if (t('[data-heart]')) { if (!member()) return; const p = vlist[vi]; const had = p.hearts.includes(ME); p.hearts = had ? p.hearts.filter((x) => x !== ME) : [...p.hearts, ME]; if (!had) $('[data-heart]').animate([{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 320, easing: 'cubic-bezier(.23,1,.32,1)' }); drawViewer(); render(); return; }
+  if (t('[data-heart]')) { if (!member()) return; const p = vlist[vi]; const had = p.hearts.includes(ME); p.hearts = had ? p.hearts.filter((x) => x !== ME) : [...p.hearts, ME]; heartFx(!had); drawViewer(); render(); return; }
+  if (t('[data-vcover]')) { const p = vlist[vi], s = stopOf(p); if (!s) return; const prev = covers[s.id] || null; if (prev === p.id) delete covers[s.id]; else { covers[s.id] = p.id; lastCover = { day: p.day, stop: s.id }; }
+    drawInfo(); render(); toast(prev === p.id ? `${s.title} is back to its usual picture` : `Now the photo for ${s.title} on the plan`, () => { if (prev) covers[s.id] = prev; else delete covers[s.id]; if (vw.classList.contains('on')) drawInfo(); }); return; }
   const fsb = t('[data-fs]'); if (fsb) { vi = +fsb.dataset.fs; return drawViewer(); }
   if (t('.capt')) { setInfo(true); setTrack(0, true); return; }
   const vt = t('[data-vtag]'); if (vt && member()) { const p = vlist[vi], id = vt.dataset.vtag; p.in = p.in.includes(id) ? p.in.filter((x) => x !== id) : PIDS.filter((x) => x === id || p.in.includes(x)); drawViewer(); render(); return; }
   if (t('[data-vassign]')) return openAssign([vlist[vi].id]);
   if (t('[data-vhide]')) { hide([vlist[vi].id]); return drawViewer(); }
 });
+
+const HEART = '<svg viewBox="0 0 24 24" width="100%" height="100%"><path d="M12 20.3s-7.6-4.6-7.6-10.4A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.6 2.7c0 5.8-7.6 10.4-7.6 10.4z" fill="currentColor"/></svg>';
+function heartFx(on) {
+  const b = $('[data-heart]'); const svg = b.querySelector('svg');
+  if (navigator.vibrate) navigator.vibrate(on ? 12 : 6);
+  if (!on) { svg.animate([{ transform: 'scale(1)' }, { transform: 'scale(.72)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'cubic-bezier(.23,1,.32,1)' }); return; }
+  // the button: squash, then pop past full size with a little wiggle
+  svg.animate([{ transform: 'scale(1) rotate(0)' }, { transform: 'scale(.7) rotate(-10deg)', offset: .25 }, { transform: 'scale(1.32) rotate(8deg)', offset: .6 }, { transform: 'scale(.94) rotate(-3deg)', offset: .82 }, { transform: 'scale(1) rotate(0)' }], { duration: 520, easing: 'ease-out' });
+  b.animate([{ boxShadow: '0 0 0 0 rgba(255,55,95,.55)' }, { boxShadow: '0 0 0 18px rgba(255,55,95,0)' }], { duration: 520, easing: 'ease-out' });
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // a little burst of tiny hearts floating up from the button
+  const r = b.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  for (let k = 0; k < 8; k++) {
+    const m = document.createElement('i'); m.className = 'mini'; m.innerHTML = HEART; m.style.left = cx + 'px'; m.style.top = cy + 'px';
+    m.style.color = ['#ff375f', '#ff6b8a', '#ff9db2', '#ffffff'][k % 4]; document.body.appendChild(m);
+    const ang = -Math.PI / 2 + (k - 3.5) * 0.32 + (Math.random() - 0.5) * 0.3, dist = 46 + Math.random() * 46, s = 0.55 + Math.random() * 0.6;
+    m.animate([{ transform: 'translate(0,0) scale(.2)', opacity: 1 }, { transform: `translate(${Math.cos(ang) * dist * 0.6}px,${Math.sin(ang) * dist * 0.6}px) scale(${s})`, opacity: 1, offset: 0.45 }, { transform: `translate(${Math.cos(ang) * dist}px,${Math.sin(ang) * dist - 24}px) scale(${s * 0.6}) rotate(${(Math.random() - 0.5) * 50}deg)`, opacity: 0 }], { duration: 700 + Math.random() * 250, delay: k * 18, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' }).finished.then(() => m.remove());
+  }
+  // and a big heart that pops on the photo itself
+  const big = document.createElement('div'); big.className = 'bigheart'; big.innerHTML = HEART; vw.appendChild(big);
+  big.animate([{ transform: 'scale(.3)', opacity: 0 }, { transform: 'scale(1.15)', opacity: 0.95, offset: 0.35 }, { transform: 'scale(.95)', opacity: 0.95, offset: 0.55 }, { transform: 'scale(1)', opacity: 0.9, offset: 0.75 }, { transform: 'scale(1.25) translateY(-12px)', opacity: 0 }], { duration: 820, easing: 'ease-out', fill: 'forwards' }).finished.then(() => big.remove());
+}
 
 /* ═══ relive the day: an auto-playing story, stop by stop ═══ */
 const story = $('#story');
