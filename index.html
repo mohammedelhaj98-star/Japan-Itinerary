@@ -69,6 +69,10 @@ body.scrolled .topfade { opacity:1; }
 /* ── sheet (native scroll = native momentum) ── */
 .wrap { position:relative; z-index:400; pointer-events:none; max-width:460px; margin:0 auto; }
 .spacer { height:42vh; height:42svh; }
+.wrap { will-change:transform; }
+body.mapmax .sheet .grab { width:56px; background:rgba(0,0,0,.28); }
+.mapmax-hint { display:none; text-align:center; font-size:12px; font-weight:700; color:var(--ink3); margin:-6px 0 8px; }
+body.mapmax .mapmax-hint { display:block; }
 .sheet { pointer-events:auto; min-height:100vh; border-radius:30px 30px 0 0; background:rgba(248,246,241,.9); -webkit-backdrop-filter:blur(26px) saturate(1.6); backdrop-filter:blur(26px) saturate(1.6); box-shadow:0 -1px 0 rgba(255,255,255,.9) inset, 0 -14px 40px -18px rgba(0,0,0,.35); padding:8px 0 calc(40px + env(safe-area-inset-bottom)); }
 .grab { width:38px; height:5px; border-radius:3px; background:rgba(0,0,0,.16); margin:0 auto 12px; }
 .fadein > * { animation:rise 520ms var(--ease) both; }
@@ -664,7 +668,7 @@ function renderSheet() {
   }).join('');
   const know = (KNOW[day.city] || []).map(([t, x]) => `<div class="card"><small>${esc(day.city)}</small><h3>${esc(t)}</h3><p>${withFx(x)}</p></div>`).join('');
   const hpi = PLACES[h0.name] || {};
-  sh.innerHTML = `<div class="fadein"><div class="grab"></div>
+  sh.innerHTML = `<div class="fadein"><div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
     <div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button></div>
     <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
@@ -799,7 +803,9 @@ function buildMap() {
   map.attributionControl.setPrefix(false);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
 }
-function mapPad() { return { paddingTopLeft: [30, 80], paddingBottomRight: [30, Math.round(innerHeight * 0.6)] }; }
+function mapPad() { return { paddingTopLeft: [30, 80], paddingBottomRight: [30, document.body.classList.contains('mapmax') ? 170 : Math.round(innerHeight * 0.6)] }; }
+let dayPts = [];
+const fitDay = (animate) => { if (dayPts.length) map.fitBounds(dayPts, { ...mapPad(), maxZoom: 15, animate: !!animate && !RM }); };
 function renderMap() {
   layers.forEach((l) => l.remove()); layers = []; pinEls = {};
   const h0 = hotel();
@@ -808,7 +814,7 @@ function renderMap() {
   const lines = [];
   for (let i = 1; i < stops.length; i++) { const a = stops[i - 1].e.place, b = stops[i].e.place, e = stops[i].e; const pl = L.polyline([[a.lat, a.lng], [b.lat, b.lng]], { color: legHex(e), weight: 5, opacity: 0.9, lineCap: 'round' }).addTo(map); layers.push(pl); lines.push({ pl, dashed: e.travel && !/walk|taxi|drive/.test(e.travel.mode) }); }
   const pts = stops.map((s) => [s.e.place.lat, s.e.place.lng]); if (h0.lat && pts.length < 2) pts.push([h0.lat, h0.lng]);
-  if (pts.length) map.fitBounds(pts, { ...mapPad(), maxZoom: 15, animate: false });
+  dayPts = pts; if (pts.length) map.fitBounds(pts, { ...mapPad(), maxZoom: 15, animate: false });
   setTimeout(() => {
     stops.forEach((s) => (pinEls[s.n] = document.querySelector(`.pin[data-pin="${s.n}"]`))); syncPins();
     lines.forEach(({ pl, dashed }, i) => { const p = pl._path; if (!p) return; const len = p.getTotalLength(); if (RM) { p.style.strokeDasharray = dashed ? '2 10' : ''; return; } p.style.strokeDasharray = len; p.style.strokeDashoffset = len; p.getBoundingClientRect(); p.style.transition = `stroke-dashoffset 800ms cubic-bezier(.77,0,.175,1) ${200 + i * 120}ms`; p.style.strokeDashoffset = 0; setTimeout(() => { p.style.transition = ''; p.style.strokeDasharray = dashed ? '2 10' : ''; p.style.strokeDashoffset = ''; }, 1050 + i * 120); });
@@ -1073,7 +1079,7 @@ const drawer = (() => {
   // drag: from the tab (open or closed), from the left screen edge (closed), or the drawer's own padding (open)
   const T = tracker(); let g = null;
   const start = (e, from) => { g = { id: e.pointerId, x0: e.clientX, y0: e.clientY, base: X.x, from, moved: false }; X.stop(); T.reset(); T.add(X.x); };
-  tab.addEventListener('pointerdown', (e) => { start(e, 'tab'); try { tab.setPointerCapture(e.pointerId); } catch {} });
+  tab.addEventListener('pointerdown', (e) => { if (typeof mapMax !== 'undefined' && mapMax.isOn()) mapMax.set(false); start(e, 'tab'); try { tab.setPointerCapture(e.pointerId); } catch {} });
   dd.addEventListener('pointerdown', (e) => { if (!open || e.target.closest('#ddtab, .dial, .facts, button, a')) return; start(e, 'body'); });
   document.addEventListener('pointerdown', (e) => {
     if (dd.contains(e.target)) return;
@@ -1098,7 +1104,34 @@ const drawer = (() => {
   // reading on into the day tucks it away
   addEventListener('scroll', () => { if (open && Math.abs(scrollY - sinceScroll) > 80) set(false); }, { passive: true });
   addEventListener('resize', () => set(open, { instant: true }));
-  return { open: () => set(true), close: () => set(false), isOpen: () => open, init() { set(false, { instant: true }); setTimeout(() => set(true), RM ? 0 : 380); } };
+  return { open: () => { set(true); }, close: () => set(false), isOpen: () => open, init() { set(false, { instant: true }); setTimeout(() => set(true), RM ? 0 : 380); } };
+})();
+/* ═══ swipe the stops down to give the map the whole screen ═══ */
+const mapMax = (() => {
+  const wrapEl = document.querySelector('.wrap'), PEEK = 150;
+  const travel = () => Math.max(0, innerHeight - document.querySelector('.spacer').offsetHeight - PEEK);
+  let on = false;
+  const Y = new Spring(0, (y) => { wrapEl.style.transform = y > 0.5 ? `translate3d(0,${y.toFixed(1)}px,0)` : ''; }, 0.3);
+  const set = (v, { velocity } = {}) => {
+    on = v; document.body.classList.toggle('mapmax', v);
+    Y.to(v ? travel() : 0, { response: 0.46, damping: 0.86, velocity });
+    if (v) { drawer.close(); setTimeout(() => fitDay(true), 60); } else setTimeout(() => ui.sel && focusMap(ui.sel), 120);
+  };
+  const sheetEl = document.getElementById('sheet'); const T = tracker(); let t = null;
+  sheetEl.addEventListener('touchstart', (e) => { if (e.touches.length !== 1) return; if (!on && scrollY > 2) return; const p = e.touches[0]; t = { x0: p.clientX, y0: p.clientY, on: false, base: Y.x }; T.reset(); }, { passive: true });
+  sheetEl.addEventListener('touchmove', (e) => {
+    if (!t) return; const p = e.touches[0]; const dx = p.clientX - t.x0, dy = p.clientY - t.y0;
+    if (!t.on) { if (Math.abs(dy) < 8 || Math.abs(dx) > Math.abs(dy)) { if (Math.abs(dx) > 10) t = null; return; } if (!on && dy < 0) { t = null; return; } t.on = true; Y.stop(); }
+    e.preventDefault();
+    let y = t.base + dy; const max = travel(); y = y < 0 ? 0 : y > max ? max + rubber(y - max, 120) : y;
+    Y.set(y); T.add(y);
+  }, { passive: false });
+  const end = () => { if (!t) return; const was = t; t = null; if (!was.on) return; const v = T.vel(); const to = Y.x + project(v, 0.99); set(to > travel() / 2, { velocity: v }); buzz(5); };
+  sheetEl.addEventListener('touchend', end); sheetEl.addEventListener('touchcancel', end);
+  // tap the handle (or the strip while the map is big) to switch; mouse users get the same with a click
+  sheetEl.addEventListener('click', (e) => { if (e.target.closest('#grab, .mapmax-hint') || (on && !e.target.closest('button, a'))) { e.stopPropagation(); set(!on); } }, true);
+  addEventListener('resize', () => { if (on) Y.set(travel()); });
+  return { set, isOn: () => on };
 })();
 buildMap(); renderDay(); store.start(); refreshFx(); drawer.init();
 </script>
