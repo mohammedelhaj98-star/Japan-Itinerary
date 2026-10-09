@@ -192,12 +192,12 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 </nav>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script type="module">
-import { DAYS, HOTELS } from '../data/itinerary.js';
-import { FOOD } from '../data/guide.js';
-import { PLACES } from '../data/places.js';
-import { DIET } from '../data/diet.js';
-import { HOTEL_JA } from '../data/hotels-ja.js';
-import { store } from '../js/store.js';
+import { DAYS, HOTELS } from '../data/itinerary.js?v=9';
+import { FOOD } from '../data/guide.js?v=9';
+import { PLACES } from '../data/places.js?v=9';
+import { DIET } from '../data/diet.js?v=9';
+import { HOTEL_JA } from '../data/hotels-ja.js?v=9';
+import { store } from '../js/store.js?v=9';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch { return f; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };

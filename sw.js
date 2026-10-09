@@ -1,5 +1,5 @@
 // Service worker: cache the app shell for offline use. Map tiles and /api are network-first.
-const VERSION = 'japan2026-v8';
+const VERSION = 'japan2026-v9';
 const SHELL = [
   './', './index.html', './css/app.css', './js/app.js', './js/map.js', './js/store.js',
   './data/itinerary.js', './data/places.js', './data/guide.js', './classic.html', './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css',
@@ -30,7 +30,8 @@ self.addEventListener('fetch', (e) => {
   e.respondWith((async () => {
     const cache = await caches.open(VERSION);
     try {
-      const r = await fetch(e.request);
+      // Always revalidate, so a script stuck in the browser's HTTP cache can't outlive a deploy.
+      const r = await fetch(e.request, { cache: 'no-cache' });
       if (r.ok) cache.put(e.request, r.clone());
       return r;
     } catch {

@@ -15,5 +15,26 @@ cat > dist/_redirects <<'EOF'
 /japan/prototypes/mix  /japan/ 301
 /japan/prototypes/mix.html  /japan/ 301
 EOF
+# Code and data must never come stale from the browser cache (Pages defaults JS to 4 hours). Photos can cache.
+cat > dist/_headers <<'EOF'
+/
+  Cache-Control: no-cache
+/japan/
+  Cache-Control: no-cache
+/japan/*.html
+  Cache-Control: no-cache
+/japan/js/*
+  Cache-Control: no-cache
+/japan/data/*
+  Cache-Control: no-cache
+/japan/css/*
+  Cache-Control: no-cache
+/japan/prototypes/*
+  Cache-Control: no-cache
+/japan/sw.js
+  Cache-Control: no-cache
+/japan/img/*
+  Cache-Control: public, max-age=604800
+EOF
 [ "${BUILD_ONLY:-}" = 1 ] && exit 0
 npx -y wrangler@4 pages deploy --branch main "$@"
