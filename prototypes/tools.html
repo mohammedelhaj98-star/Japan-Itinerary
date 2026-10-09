@@ -41,6 +41,14 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .av.ph { background-size:cover; background-position:center; color:transparent; }
 /* settings */
 .scard { margin:0 12px; padding:16px; }
+.stday { margin:10px 0 2px; font-size:12px; font-weight:700; color:var(--ink3); text-transform:uppercase; letter-spacing:.05em; }
+.stday:first-child { margin-top:0; }
+.strow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line); font-size:14.5px; }
+.strow span { min-width:0; }
+.strow small { display:block; font-size:12px; color:var(--ink3); }
+.strow button { flex:none; height:32px; padding:0 12px; border-radius:999px; background:rgba(0,0,0,.06); font-size:13px; font-weight:700; }
+.linkb { color:var(--red); font-weight:700; font-size:14px; }
+.bigb { width:100%; height:48px; border-radius:14px; background:var(--ink); color:#fff; font-weight:700; font-size:15px; }
 .bk-top { display:flex; align-items:center; gap:8px; padding:4px 16px 0; }
 .bk-top .seg { margin-left:auto; }
 .bnum { font-size:13px; color:var(--ink3); padding:6px 11px; border-radius:999px; background:#fff; box-shadow:0 0 0 1px var(--line); }
@@ -263,8 +271,9 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 </nav>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script type="module">
-import { DAYS, HOTELS } from '../data/itinerary.js?v=9';
-import { FOOD, BOOKINGS } from '../data/guide.js?v=9';
+import { TRIP, DAYS, HOTELS } from '../data/itinerary.js?v=9';
+import { FOOD, BOOKINGS, TIPS } from '../data/guide.js?v=9';
+import { buildTripDocx } from '../js/export-docx.js?v=9';
 import { PLACES } from '../data/places.js?v=9';
 import { DIET } from '../data/diet.js?v=9';
 import { HOTEL_JA } from '../data/hotels-ja.js?v=9';
@@ -520,9 +529,34 @@ function renderSettings() {
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
   const modeSeg = [['couples', 'Couples'], ['people', 'People']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
   const prefs = `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div></div>`;
+  const st = stamped();
+  const stamps = `<div class="card scard">${st.length ? `${st.map(([d, list]) => `<p class="stday">${d ? `Day ${d.n} · ${esc(d.title)}` : 'Other'}</p>${list.map((e) => `<div class="strow"><span>${e.time ? `<small>${esc(e.time)}</small>` : ''}${esc(e.title)}</span><button data-unstamp="${e.id}">Unstamp</button></div>`).join('')}`).join('')}<div class="setrow"><span>${st.reduce((n, [, l]) => n + l.length, 0)} stamped</span><button class="linkb" data-unstampall>Unstamp all</button></div>` : '<p class="sub">Nothing stamped yet. Stamp a pass on the trip page when you\'ve done it.</p>'}</div>`;
+  const exp = `<div class="card scard"><p class="sub" style="margin-bottom:12px">A Word file laid out like the original itinerary, with everything as it is now: edited and added stops, choices made, bookings marked, stamps and expenses.</p><button class="bigb" data-export>Download Word file (.docx)</button><p class="sub" id="ex-msg" style="margin-top:10px"></p></div>`;
   return `<header class="ph"><small>Settings</small><h1>You &amp; the trip</h1><p>Your profile, what the colours mean, and how money is shown.</p></header>
-    ${mine}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Expenses</p>${prefs}`;
+    ${mine}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}<p class="sec">Expenses</p>${prefs}<p class="sec">Export the trip</p>${exp}`;
 }
+// Stamped stops by day, using each stop's current (edited) title. Stamps on stops that no longer exist are listed under Other so they can still be cleared.
+function stamped() {
+  const checks = store.state.checks || {}, C = store.state.custom || {}; const byId = {};
+  for (const d of DAYS) for (const it of d.items) { if (it.type === 'event') byId[it.id] = { ...it, d }; if (it.type === 'choice') for (const o of it.options) for (const y of o.items || []) byId[y.id] = { ...y, d }; }
+  for (const [id, c] of Object.entries(C)) { if (c.added) byId[id] = { id, title: c.title || 'New stop', time: c.time || '', d: dayOf(c.day) }; else if (byId[id]) { if (c.title) byId[id].title = c.title; if (c.time) byId[id].time = c.time; } }
+  const groups = new Map();
+  for (const id of Object.keys(checks)) { const e = byId[id] || { id, title: id, d: null }; const k = e.d ? e.d.id : 'zz'; if (!groups.has(k)) groups.set(k, [e.d, []]); groups.get(k)[1].push(e); }
+  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);
+}
+function askConfirm(title, text, yes, fn) {
+  cfmBg.querySelector('.cfm').innerHTML = `<h3 id="cfm-h">${esc(title)}</h3><p>${esc(text)}</p><div class="row"><button data-cno>Cancel</button><button class="d" data-cyes>${esc(yes)}</button></div>`;
+  cfmYes = fn; cfmBg.classList.add('on'); setTimeout(() => cfmBg.querySelector('[data-cno]').focus(), 50);
+}
+async function exportDocx() {
+  const msg = document.getElementById('ex-msg'); if (msg) msg.textContent = 'Getting the latest from everyone…';
+  await store.refresh();
+  const blob = buildTripDocx({ TRIP, DAYS, HOTELS, BOOKINGS, FOOD, TIPS, state: store.state, people: PEOPLE, me: ME && P[ME] ? P[ME].name : '' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Japan 2026 itinerary (updated ${new Date().toISOString().slice(0, 10)}).docx`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  if (msg) msg.textContent = store.mode === 'online' ? 'Downloaded, with everyone\'s latest changes.' : 'Downloaded. Offline, so it has the changes this phone last saw.';
+}
+
 // A photo is cropped to a 256px square and sent as a small JPEG.
 function squarePhoto(file) {
   return new Promise((res, rej) => { const img = new Image(); const url = URL.createObjectURL(file);
@@ -581,6 +615,9 @@ page.addEventListener('click', (e) => {
   const bw = t('[data-bkwho]'); if (bw) { bk.who = bw.dataset.bkwho; ls.set('proto.bkwho', bk.who); return render(); }
   const bm = t('[data-bkmark]'); if (bm) { const id = bm.dataset.bkmark; store.setChoice(id, 'booked'); render(); return undoable('Marked as booked', () => store.setChoice(id, '')); }
   const bu = t('[data-bkunmark]'); if (bu) { const id = bu.dataset.bkunmark; store.setChoice(id, ''); render(); return undoable('Moved back to To book', () => store.setChoice(id, 'booked')); }
+  const us = t('[data-unstamp]'); if (us) { const id = us.dataset.unstamp; store.toggleCheck(id); render(); return undoable('Unstamped', () => { if (!store.isChecked(id)) store.toggleCheck(id); }); }
+  if (t('[data-unstampall]')) { const ids = Object.keys(store.state.checks || {}); return askConfirm('Unstamp everything?', `${ids.length} stamped stop${ids.length === 1 ? '' : 's'} go back to not done, on all four phones.`, 'Unstamp all', () => { ids.forEach((id) => store.isChecked(id) && store.toggleCheck(id)); render(); undoable(`Unstamped ${ids.length}`, () => ids.forEach((id) => !store.isChecked(id) && store.toggleCheck(id))); }); }
+  if (t('[data-export]')) { exportDocx(); return; }
   const pc = t('[data-pcolor]'); if (pc && ME) { store.setProfile(ME, { color: pc.dataset.pcolor }); return render(); }
   if (t('[data-rmphoto]') && ME) { store.setProfile(ME, { photo: null }); return render(); }
   const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
@@ -605,6 +642,7 @@ setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
 // Re-draw the expense list when another phone adds or changes something (not while the edit sheet is open).
 let exSig = '';
 store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode + JSON.stringify(store.getExpenses()) + JSON.stringify(Object.fromEntries(Object.entries(pf).map(([k, v]) => [k, [v.color, v.photo]]))); if (sig === exSig) return; exSig = sig; if ((tab === 0 || tab === 4) && !document.getElementById('sheet').classList.contains('on')) render(); });
+let ckSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.checks || {}); if (sig === ckSig) return; ckSig = sig; if (tab === 4 && !cfmBg.classList.contains('on')) render(); });
 let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });
 store.start();
 </script>
