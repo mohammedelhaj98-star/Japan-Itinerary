@@ -38,6 +38,36 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .seg i { position:absolute; top:3px; bottom:3px; left:0; border-radius:999px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.12); transition:transform 260ms var(--ease), width 260ms var(--ease); }
 .av { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; color:#fff; font-size:13px; font-weight:700; flex:none; background:var(--c); }
 .av.sm { width:24px; height:24px; font-size:10.5px; }
+.av.ph { background-size:cover; background-position:center; color:transparent; }
+/* settings */
+.scard { margin:0 12px; padding:16px; }
+.scard .sub { margin:0; font-size:13px; color:var(--ink3); }
+.scard .sw + .sub, .scard .key + .sub { margin-top:12px; }
+.me { display:flex; align-items:center; gap:16px; }
+.me .av { width:84px; height:84px; font-size:28px; box-shadow:0 0 0 3px #fff, 0 6px 18px -6px rgba(0,0,0,.35); }
+.me b { display:block; font-size:22px; line-height:1.15; }
+.me small { color:var(--ink3); font-size:13px; }
+.me .btns { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.me .btns label, .me .btns button { display:inline-flex; align-items:center; height:34px; padding:0 14px; border-radius:999px; background:rgba(0,0,0,.06); font-size:13.5px; font-weight:700; cursor:pointer; }
+.me .btns label input { display:none; }
+.sw { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+.sw button { width:34px; height:34px; border-radius:50%; background:var(--c); box-shadow:0 0 0 1px rgba(0,0,0,.08) inset; }
+.sw button.on { box-shadow:0 0 0 3px #fff, 0 0 0 5px var(--c); }
+.everyone { display:flex; justify-content:space-between; gap:6px; }
+.everyone div { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; font-size:13px; font-weight:700; }
+.everyone .av { width:48px; height:48px; font-size:16px; }
+.everyone small { font-size:11px; font-weight:500; color:var(--ink3); }
+.key { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
+.key div { display:flex; align-items:center; gap:10px; font-size:14px; }
+.key i { flex:none; width:30px; height:20px; border-radius:6px; background:var(--c); }
+.key i.tk { background:#f3eee3; box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.1); position:relative; }
+.key i.tk::after { content:''; position:absolute; left:6px; right:6px; top:50%; height:3px; margin-top:-1.5px; border-radius:2px; background:var(--c); }
+.key i.ln { height:5px; border-radius:3px; }
+.key i.ln.dash { background:repeating-linear-gradient(90deg, var(--c) 0 6px, transparent 6px 10px); }
+.key small { display:block; color:var(--ink3); font-size:12px; line-height:1.25; }
+.setrow { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px 0; border-top:1px solid var(--line); font-size:14.5px; }
+.setrow:first-child { border-top:0; padding-top:2px; }
+.setrow a { font-weight:700; text-decoration:none; color:var(--blue); }
 .demo { margin:0 12px 6px; padding:10px 14px; border-radius:14px; background:#fff6dd; color:#7a5a00; font-size:13px; display:flex; gap:10px; align-items:center; justify-content:space-between; }
 .demo button { font-weight:700; color:#7a5a00; text-decoration:underline; }
 
@@ -190,7 +220,7 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .proto-picker { position:fixed; bottom:calc(20px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:800; display:flex; align-items:center; gap:2px; padding:4px; border-radius:999px; background:rgba(10,10,10,.82); -webkit-backdrop-filter:blur(12px) saturate(1.4); backdrop-filter:blur(12px) saturate(1.4); box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.24); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:13px; line-height:1; }
 .proto-picker-highlight { position:absolute; top:4px; left:0; height:28px; border-radius:999px; background:rgba(255,255,255,.14); }
 .proto-picker[data-ready] .proto-picker-highlight { transition:transform 250ms var(--ease), width 250ms var(--ease); }
-.proto-picker-item { position:relative; white-space:nowrap; height:28px; padding:0 13px; border-radius:999px; color:rgba(255,255,255,.55); }
+.proto-picker-item { position:relative; white-space:nowrap; height:28px; padding:0 11px; border-radius:999px; color:rgba(255,255,255,.55); }
 .proto-picker-item[data-active] { color:#fff; }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { transition-duration:1ms !important; animation-duration:1ms !important; } }
 </style>
@@ -207,6 +237,7 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
   <button class="proto-picker-item" data-active aria-current="true">Expenses</button>
   <button class="proto-picker-item">Taxi cards</button>
   <button class="proto-picker-item">Food nearby</button>
+  <button class="proto-picker-item">Settings</button>
 </nav>
 <script src="../vendor/leaflet/leaflet.js"></script>
 <script type="module">
@@ -216,6 +247,7 @@ import { PLACES } from '../data/places.js?v=9';
 import { DIET } from '../data/diet.js?v=9';
 import { HOTEL_JA } from '../data/hotels-ja.js?v=9';
 import { store } from '../js/store.js?v=9';
+import { CAT, MODE, PROFILE_COLORS } from '../js/colors.js?v=9';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch { return f; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
@@ -237,6 +269,10 @@ const PEOPLE = [
 ];
 const COUPLES = { nasa: { name: 'NASA', ini: 'NA', c: '#4b4f9a', ids: ['naf', 'sara'] }, mm: { name: 'M&M', ini: 'M&M', c: '#c25350', ids: ['mariam', 'm'] } };
 const P = Object.fromEntries(PEOPLE.map((p) => [p.id, p]));
+const BASE_C = Object.fromEntries(PEOPLE.map((p) => [p.id, p.c]));
+// Each person's chosen colour and photo (shared through the API) layered over the defaults.
+function syncPeople() { const pf = store.getProfiles(); for (const p of PEOPLE) { p.c = (pf[p.id] && pf[p.id].color) || BASE_C[p.id]; p.photo = store.photoUrl(p.id); } }
+const avStyle = (x) => `--c:${x.c}${x.photo ? `;background-image:url('${x.photo}')` : ''}`;
 const CATS = { food: ['Food', '#cc5a26', '🍜'], transport: ['Transport', '#2f5fd0', '🚆'], tickets: ['Tickets', '#6f4f98', '🎟'], shopping: ['Shopping', '#b94b74', '🛍'], hotel: ['Hotel', '#55702f', '🏨'], other: ['Other', '#6b6a64', '•'], settle: ['Settled', '#2f9e57', '✓'] };
 const SPLITS = { all: ['naf', 'sara', 'mariam', 'm'], nasa: ['naf', 'sara'], mm: ['mariam', 'm'] };
 // Expenses live in the shared trip store (Cloudflare KV), so every phone sees the same list.
@@ -252,7 +288,7 @@ function balances() {
   return b;
 }
 function transfers(b) {
-  let parties = ex.mode === 'couples' ? Object.entries(COUPLES).map(([k, c]) => ({ id: k, name: c.name, ini: c.ini, c: c.c, v: c.ids.reduce((s, id) => s + b[id], 0) })) : PEOPLE.map((p) => ({ id: p.id, name: p.name, ini: p.ini, c: p.c, v: b[p.id] }));
+  let parties = ex.mode === 'couples' ? Object.entries(COUPLES).map(([k, c]) => ({ id: k, name: c.name, ini: c.ini, c: c.c, v: c.ids.reduce((s, id) => s + b[id], 0) })) : PEOPLE.map((p) => ({ id: p.id, name: p.name, ini: p.ini, c: p.c, photo: p.photo, v: b[p.id] }));
   const cr = parties.filter((p) => p.v > 0.5).map((p) => ({ ...p })).sort((a, z) => z.v - a.v), db = parties.filter((p) => p.v < -0.5).map((p) => ({ ...p, v: -p.v })).sort((a, z) => z.v - a.v);
   const out = [];
   while (cr.length && db.length) { const a = db[0], c = cr[0], amt = Math.min(a.v, c.v); out.push({ from: a, to: c, yen: amt }); a.v -= amt; c.v -= amt; if (a.v < 0.5) db.shift(); if (c.v < 0.5) cr.shift(); db.sort((x, y) => y.v - x.v); cr.sort((x, y) => y.v - x.v); }
@@ -268,13 +304,13 @@ function renderExpenses() {
   const groups = {}; [...ex.list].sort((a, z) => (z.day || '').localeCompare(a.day || '') || String(z.id).localeCompare(String(a.id))).forEach((x) => (groups[x.day] = groups[x.day] || []).push(x));
   const balCards = ex.mode === 'couples'
     ? Object.entries(COUPLES).map(([k, c]) => { const v = c.ids.reduce((s, id) => s + b[id], 0); return `<div class="card"><span class="av" style="--c:${c.c};font-size:11px">${esc(c.ini)}</span><span><b>${esc(c.name)}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('')
-    : PEOPLE.map((p) => { const v = b[p.id]; return `<div class="card"><span class="av" style="--c:${p.c}">${p.ini}</span><span><b>${p.name}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('');
+    : PEOPLE.map((p) => { const v = b[p.id]; return `<div class="card"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span><span><b>${p.name}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('');
   return `<header class="ph"><small>Shared expenses</small><h1>Who owes whom</h1><p>Log anything someone paid for the group. It splits it and works out the fewest payments to settle up.</p>${syncLine()}</header>
     <div class="card tot"><div class="tot-r"><div><small>Trip spend so far</small><b class="big">${fmtY(total)}</b><p class="sub">${fmtC(total, ex.cur)} total · ${fmtC(total / 4, ex.cur)} each on average</p></div><div class="seg" id="curseg">${curSeg}<i></i></div></div>
       <div class="bars">${Object.entries(byCat).map(([k, v]) => `<i style="--c:${CATS[k][1]};width:${(v / total) * 100}%"></i>`).join('')}</div>
       <div class="legend">${Object.entries(byCat).map(([k, v]) => `<span style="--c:${CATS[k][1]}">${CATS[k][0]} ${fmtY(v)}</span>`).join('')}</div></div>
     <p class="sec">Settle up <span class="seg" id="modeseg">${modeSeg}<i></i></span></p>
-    <div class="card settle">${t.length ? t.map((x, i) => `<div class="tr"><span class="av sm" style="--c:${x.from.c}">${esc(x.from.ini)}</span><span class="arr">${ARROW}</span><span class="av sm" style="--c:${x.to.c}">${esc(x.to.ini)}</span><span class="who"><b>${esc(x.from.name)}</b> pays <b>${esc(x.to.name)}</b></span><span class="amt"><b>${fmtC(x.yen, ex.cur)}</b><small>${fmtY(x.yen)}</small></span><button class="done" data-paid="${i}">Paid</button></div>`).join('') : '<p class="even">Everyone is square.</p>'}</div>
+    <div class="card settle">${t.length ? t.map((x, i) => `<div class="tr"><span class="av sm ${x.from.photo ? 'ph' : ''}" style="${avStyle(x.from)}">${esc(x.from.ini)}</span><span class="arr">${ARROW}</span><span class="av sm ${x.to.photo ? 'ph' : ''}" style="${avStyle(x.to)}">${esc(x.to.ini)}</span><span class="who"><b>${esc(x.from.name)}</b> pays <b>${esc(x.to.name)}</b></span><span class="amt"><b>${fmtC(x.yen, ex.cur)}</b><small>${fmtY(x.yen)}</small></span><button class="done" data-paid="${i}">Paid</button></div>`).join('') : '<p class="even">Everyone is square.</p>'}</div>
     <p class="sec">Balances</p><div class="bal">${balCards}</div>
     <p class="sec">All expenses</p><div class="card xlist">${Object.entries(groups).map(([d, xs]) => `<p class="xday">${dayOf(d) ? `Day ${dayOf(d).n} · ${esc(dayOf(d).title)}` : 'Other'}</p>${xs.map((x) => `<div class="xsw" data-sw="${x.id}"><button class="xdel" data-delask="${x.id}">Delete</button><button class="xrow ${x.cat === 'settle' ? 'settle-row' : ''}" data-ex="${x.id}" style="--c:${CATS[x.cat][1]}"><span class="ic">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}</b><small>${P[x.payer].name} paid · ${x.cat === 'settle' ? 'to ' + P[x.split[0]].name : 'for ' + esc(splitLabel(x.split))}</small></span><span class="r"><b>${fmtY(x.yen)}</b><small>${fmtC(x.yen, ex.cur)}</small></span></button></div>`).join('')}`).join('') || '<p class="empty">No expenses yet. Tap Add expense.</p>'}</div>`;
 }
@@ -295,10 +331,10 @@ function renderSheet() {
   sheet.innerHTML = `<div class="grab"></div><div class="sh-h"><b>${ed.id ? 'Edit expense' : 'Add expense'}</b><button data-x>Cancel</button></div>
     <div class="fld"><span>Amount</span><div class="amt-in"><input id="x-amt" inputmode="decimal" placeholder="0" value="${esc(ed.amt)}"><div class="seg" id="ccyseg" style="align-self:center">${['JPY', 'CAD', 'QAR', 'USD'].map((c) => `<button data-ccy="${c}" class="${ed.ccy === c ? 'on' : ''}">${c === 'JPY' ? '¥' : c}</button>`).join('')}<i></i></div></div></div>
     <label class="fld"><span>What for</span><input id="x-title" placeholder="e.g. Kuromon lunch" value="${esc(ed.title)}" autocomplete="off"></label>
-    <div class="fld"><span>Paid by</span><div class="ppl">${PEOPLE.map((p) => `<button data-payer="${p.id}" class="${ed.payer === p.id ? 'on' : ''}"><span class="av" style="--c:${p.c}">${p.ini}</span>${p.name}</button>`).join('')}</div></div>
+    <div class="fld"><span>Paid by</span><div class="ppl">${PEOPLE.map((p) => `<button data-payer="${p.id}" class="${ed.payer === p.id ? 'on' : ''}"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span>${p.name}</button>`).join('')}</div></div>
     <div class="fld"><span>Split between</span><div class="chips">${[['all', 'All four'], ['couple', 'Couples'], ['pick', 'Pick people']].map(([k, l]) => `<button data-split="${k}" class="${ed.splitMode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       ${ed.splitMode === 'couple' ? `<div class="chips subchips">${[['nasa', 'NASA · Naf + Sara'], ['mm', 'M&amp;M · Mariam + Mo']].map(([k, l]) => `<button data-couple="${k}" class="${ed.split.join() === SPLITS[k].join() ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}
-      ${ed.splitMode === 'pick' ? `<div class="ppl multi" style="margin-top:8px">${PEOPLE.map((p) => `<button data-pick="${p.id}" class="${ed.split.includes(p.id) ? 'on' : ''}"><span class="av" style="--c:${p.c}">${p.ini}</span>${p.name}</button>`).join('')}</div>` : ''}</div>
+      ${ed.splitMode === 'pick' ? `<div class="ppl multi" style="margin-top:8px">${PEOPLE.map((p) => `<button data-pick="${p.id}" class="${ed.split.includes(p.id) ? 'on' : ''}"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span>${p.name}</button>`).join('')}</div>` : ''}</div>
     <div class="fld"><span>Type</span><div class="chips">${Object.entries(CATS).filter(([k]) => k !== 'settle').map(([k, [l, , ic]]) => `<button data-cat="${k}" class="${ed.cat === k ? 'on' : ''}">${ic} ${l}</button>`).join('')}</div></div>
     <p class="preview" id="x-prev">${y ? `${fmtY(y)}${ed.ccy !== 'JPY' ? ` (from ${SYM[ed.ccy]}${esc(ed.amt)})` : ''} · ${fmtY(share)} each for ${esc(splitLabel(ed.split))}` : 'Enter an amount to see the split.'}</p>
     <button class="save" data-save ${y && ed.split.length ? '' : 'disabled'}>${ed.id ? 'Save' : 'Add expense'}</button>
@@ -415,6 +451,34 @@ async function searchFood() {
   render();
 }
 let fmap = null, flayer = null;
+/* ═══════════ 4 · SETTINGS ═══════════ */
+function renderSettings() {
+  const me = P[ME];
+  const mine = me ? `<div class="card scard"><div class="me"><span class="av ${me.photo ? 'ph' : ''}" style="${avStyle(me)}">${me.ini}</span><div><b>${me.name}</b><small>${me.couple === 'nasa' ? 'NASA' : 'M&amp;M'} · this phone</small>
+      <div class="btns"><label>${me.photo ? 'Change photo' : 'Add photo'}<input type="file" accept="image/*" id="pf-photo"></label>${me.photo ? '<button data-rmphoto>Remove</button>' : ''}</div></div></div>
+      <p class="sub" style="margin-top:14px">Your colour</p><div class="sw">${PROFILE_COLORS.map((c) => `<button data-pcolor="${c}" class="${me.c === c ? 'on' : ''}" style="--c:${c}" aria-label="Colour ${c}"></button>`).join('')}</div>
+      <p class="sub" id="pf-msg" style="margin-top:12px">Your photo and colour show on all four phones.</p></div>`
+    : '<div class="card scard"><p>Pick who you are first.</p><div class="setrow"><a href="/?switch=1">Choose your name</a></div></div>';
+  const everyone = `<div class="card scard everyone">${PEOPLE.map((p) => `<div><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span>${p.name}<small>${p.couple === 'nasa' ? 'NASA' : 'M&amp;M'}</small></div>`).join('')}</div>`;
+  const kinds = [['sight', 'Sights, temples, views'], ['food', 'Meals, markets, snacks'], ['shop', 'Shopping'], ['hotel', 'Hotels, check-in, admin'], ['booking', 'Booked: tickets, tables, classes'], ['plan', 'Plans with no place yet']];
+  const lines = [['walk', 'Walk', false], ['taxi', 'Taxi or drive', false], ['train', 'Train, subway, bus', true], ['boat', 'Boat or ropeway', true], ['flight', 'Flight', true]];
+  const key = `<div class="card scard"><div class="key">${kinds.map(([k, t]) => `<div><i style="--c:${CAT[k][0]}"></i><span>${CAT[k][1]}<small>${t}</small></span></div>`).join('')}
+      <div><i class="tk" style="--c:${MODE.train[0]}"></i><span>Ticket card<small>A journey; the stripe is how you travel</small></span></div></div>
+      <p class="sub" style="margin:14px 0 8px">Route lines on the map</p><div class="key">${lines.map(([k, t, dash]) => `<div><i class="ln ${dash ? 'dash' : ''}" style="--c:${MODE[k][0]}"></i><span>${t}</span></div>`).join('')}</div>
+      <p class="sub" style="margin-top:12px">A faded card is stamped as done. Dashed outline means optional. NASA or M&amp;M on a card means it's only for that couple.</p></div>`;
+  const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
+  const modeSeg = [['couples', 'Couples'], ['people', 'People']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
+  const prefs = `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div></div>`;
+  return `<header class="ph"><small>Settings</small><h1>You &amp; the trip</h1><p>Your profile, what the colours mean, and how money is shown.</p></header>
+    ${mine}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Expenses</p>${prefs}`;
+}
+// A photo is cropped to a 256px square and sent as a small JPEG.
+function squarePhoto(file) {
+  return new Promise((res, rej) => { const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = () => { const n = Math.min(img.naturalWidth, img.naturalHeight), S = 256; const c = document.createElement('canvas'); c.width = c.height = S; c.getContext('2d').drawImage(img, (img.naturalWidth - n) / 2, (img.naturalHeight - n) / 2, n, n, 0, 0, S, S); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.84)); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Could not read that image')); }; img.src = url; });
+}
+
 function renderFood() {
   const c = center(); const shown = Array.isArray(fd.res) ? fd.res.filter((x) => x.kinds.some((k) => fd.show[k])) : [];
   const guideAll = FOOD.flatMap((g) => g.items || []).filter((x) => x.lat).map((x) => ({ ...x, m: dist(c.lat, c.lng, x.lat, x.lng) })).sort((a, b) => a.m - b.m);
@@ -452,7 +516,7 @@ const picker = document.querySelector('.proto-picker'), hl = picker.querySelecto
 let tab = Math.max(0, (parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
 function render() {
   const y = scrollY;
-  page.innerHTML = [renderExpenses, renderTaxi, renderFood][tab]();
+  syncPeople(); page.innerHTML = [renderExpenses, renderTaxi, renderFood, renderSettings][tab]();
   fab.hidden = tab !== 0;
   page.querySelectorAll('.seg').forEach(moveSeg);
   if (tab === 2) { mountFoodMap(); if (fd.res == null) searchFood(); }
@@ -463,6 +527,8 @@ items.forEach((el, i) => el.addEventListener('click', () => setTab(i)));
 fab.addEventListener('click', () => openEx(null));
 page.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
+  const pc = t('[data-pcolor]'); if (pc && ME) { store.setProfile(ME, { color: pc.dataset.pcolor }); return render(); }
+  if (t('[data-rmphoto]') && ME) { store.setProfile(ME, { photo: null }); return render(); }
   const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
   const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('proto.exmode2', ex.mode); return render(); }
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couples' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couples' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
@@ -477,12 +543,14 @@ page.addEventListener('click', (e) => {
   if (t('[data-pork]')) { driver.innerHTML = `<button class="x" data-dx aria-label="Close">${X}</button><p class="lbl">Show this to staff</p><p class="name" style="margin-top:40px">豚肉とアルコールが入ったものは食べられません</p><p class="sayr" style="margin-top:14px">butaniku to arukōru ga haitta mono wa taberaremasen</p><p class="en">"I can't eat anything that contains pork or alcohol."</p><p class="say" style="margin-top:30px;font-size:22px">これは豚肉が入っていますか</p><p class="sayr">kore wa butaniku ga haitte imasu ka · "Does this contain pork?"</p>`; driver.classList.add('on'); return; }
   const fr = t('[data-food]'); if (fr && !t('a')) { document.querySelectorAll('.fpin.sel').forEach((p) => p.classList.remove('sel')); const pin = document.querySelector(`[data-fp="${fr.dataset.food}"]`); if (pin) { pin.classList.add('sel'); const x = fd.res.find((r) => r.id === fr.dataset.food); fmap.panTo([x.lat, x.lng]); } }
 });
-page.addEventListener('change', (e) => { if (e.target.id === 'f-where') { if (e.target.value === 'My location') return; fd.here = null; fd.where = e.target.value; ls.set('proto.fwhere', fd.where); searchFood(); } });
+page.addEventListener('change', async (e) => {
+  if (e.target.id === 'pf-photo' && ME && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) msg.textContent = 'Uploading…'; try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) msg.textContent = err.message; } return; }
+ if (e.target.id === 'f-where') { if (e.target.value === 'My location') return; fd.here = null; fd.where = e.target.value; ls.set('proto.fwhere', fd.where); searchFood(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); driver.classList.remove('on'); } });
 setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
 // Re-draw the expense list when another phone adds or changes something (not while the edit sheet is open).
 let exSig = '';
-store.subscribe(() => { const sig = store.mode + JSON.stringify(store.getExpenses()); if (sig === exSig) return; exSig = sig; if (tab === 0 && !document.getElementById('sheet').classList.contains('on')) render(); });
+store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode + JSON.stringify(store.getExpenses()) + JSON.stringify(Object.fromEntries(Object.entries(pf).map(([k, v]) => [k, [v.color, v.photo]]))); if (sig === exSig) return; exSig = sig; if ((tab === 0 || tab === 3) && !document.getElementById('sheet').classList.contains('on')) render(); });
 store.start();
 </script>
 </body>

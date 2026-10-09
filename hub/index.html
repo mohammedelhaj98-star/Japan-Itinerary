@@ -53,7 +53,8 @@ h1 em { font-style:italic; }
 .couple::after { content:''; flex:1; height:1px; background:var(--line); }
 .person { display:flex; align-items:center; gap:12px; height:68px; padding:0 14px; border-radius:22px; background:#fff; box-shadow:0 0 0 1px var(--line), 0 8px 22px -14px rgba(0,0,0,.3); text-align:left; transition:transform 200ms var(--ease), box-shadow 200ms ease; }
 .person:active { transform:scale(.97); }
-.person .av { width:40px; height:40px; flex:none; border-radius:50%; display:grid; place-items:center; color:#fff; font-size:15px; font-weight:700; background:var(--c); }
+.person .av { width:40px; height:40px; flex:none; border-radius:50%; display:grid; place-items:center; color:#fff; font-size:15px; font-weight:700; background:var(--c); background-size:cover; background-position:center; }
+.av.ph { color:transparent; }
 .person b { font-size:18px; display:block; line-height:1.1; }
 .person small { font-size:12px; color:var(--ink3); }
 .person.on { box-shadow:0 0 0 2px var(--ink), 0 10px 26px -14px rgba(0,0,0,.4); }
@@ -75,7 +76,7 @@ h1 em { font-style:italic; }
 .soon b { display:block; color:var(--ink2); font-size:16px; }
 .soon small { font-size:12.5px; }
 .switch { display:inline-flex; align-items:center; gap:6px; margin-top:20px; padding:8px 14px 8px 8px; border-radius:999px; background:rgba(20,20,10,.05); font-size:13.5px; font-weight:700; color:var(--ink2); }
-.switch .av { width:24px; height:24px; border-radius:50%; display:grid; place-items:center; color:#fff; font-size:11px; background:var(--c); }
+.switch .av { width:24px; height:24px; border-radius:50%; display:grid; place-items:center; color:#fff; font-size:11px; background:var(--c); background-size:cover; background-position:center; }
 @media (prefers-reduced-motion: reduce) { .step.on { animation:none; } .hero img { transition:opacity 300ms ease; transform:none; } }
 </style>
 </head>
@@ -111,13 +112,20 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const photo = $('#photo'); if (photo.complete) photo.classList.add('in'); else photo.addEventListener('load', () => photo.classList.add('in'));
 
 const byId = Object.fromEntries(PEOPLE.map((p) => [p.id, p]));
+// Everyone's chosen colour and photo, set in the trip's Settings tab.
+const avStyle = (p) => `--c:${p.c}${p.photo ? `;background-image:url('${p.photo}')` : ''}`;
+fetch('/api/state', { cache: 'no-store' }).then((r) => r.json()).then((st) => {
+  const pf = st.profiles || {}; let changed = false;
+  for (const p of PEOPLE) { const x = pf[p.id]; if (!x) continue; if (x.color) { p.c = x.color; changed = true; } if (x.photo) { p.photo = `/api/photo/${p.id}?v=${x.photo}`; changed = true; } }
+  if (changed) (document.getElementById('s-trip').classList.contains('on') ? renderTrips : renderWho)();
+}).catch(() => {});
 const next = new URLSearchParams(location.search).get('next');
 
 function show(id) { document.querySelectorAll('.step').forEach((s) => s.classList.toggle('on', s.id === id)); scrollTo(0, 0); }
 
 function renderWho() {
   const me = ls.get('trips.me');
-  const group = (k, label) => `<p class="couple">${label}</p>` + PEOPLE.filter((p) => p.couple === k).map((p) => `<button class="person ${me === p.id ? 'on' : ''}" data-me="${p.id}"><span class="av" style="--c:${p.c}">${p.ini}</span><span><b>${p.name}</b><small>${label}</small></span></button>`).join('');
+  const group = (k, label) => `<p class="couple">${label}</p>` + PEOPLE.filter((p) => p.couple === k).map((p) => `<button class="person ${me === p.id ? 'on' : ''}" data-me="${p.id}"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span><span><b>${p.name}</b><small>${label}</small></span></button>`).join('');
   $('#people').innerHTML = group('nasa', 'NASA') + group('mm', 'M&amp;M');
   show('s-who');
 }
@@ -137,7 +145,7 @@ function renderTrips() {
   $('#hi').textContent = `Hi ${me.name}`;
   $('#trips').innerHTML = TRIPS.map((t, i) => `<a class="trip" href="${t.href}" data-trip="${t.id}"><img src="${t.img}" alt="" loading="${i ? 'lazy' : 'eager'}">${i === 0 ? `<span class="go">${esc(status(t))}</span>` : ''}<span class="jp">${t.ja}</span><span class="in"><span><h2>${esc(t.name)} ${t.year}</h2><p>${esc(range(t))}<br>${esc(t.blurb)}</p></span><span class="pill">Open</span></span></a>`).join('')
     + '<div class="soon"><i>+</i><span><b>Next trip</b><small>Plan it and it shows up here.</small></span></div>';
-  $('#switch').innerHTML = `<span class="av" style="--c:${me.c}">${me.ini}</span>Not ${esc(me.name)}? Switch`;
+  $('#switch').innerHTML = `<span class="av ${me.photo ? 'ph' : ''}" style="${avStyle(me)}">${me.ini}</span>Not ${esc(me.name)}? Switch`;
   show('s-trip');
 }
 

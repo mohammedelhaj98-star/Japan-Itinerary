@@ -27,7 +27,7 @@ export function getDisplayName() { return lsGet(LS_NAME, ''); }
 export function setDisplayName(name) { lsSet(LS_NAME, String(name || '').slice(0, 40)); }
 
 export const store = {
-  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, updatedAt: null }, lsGet(LS_KEY, {})),
+  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, profiles: {}, updatedAt: null }, lsGet(LS_KEY, {})),
   mode: 'connecting', // connecting | online | local
   lastError: null,
   listeners: new Set(),
@@ -66,7 +66,7 @@ export const store = {
   async refresh() {
     try {
       const remote = await this.api('state');
-      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), updatedAt: remote.updatedAt || null };
+      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), profiles: { ...(remote.profiles || {}), ...this._pfRecent() }, updatedAt: remote.updatedAt || null };
       this.persist();
       this.setMode('online');
       this.emit();
@@ -139,6 +139,23 @@ export const store = {
       (s) => { s.expenses = this._overlayExpenses(s.expenses); },
       'expenses', { id, value: value || null },
       (d, s) => { if (d.expenses) s.expenses = this._overlayExpenses(d.expenses); },
+    );
+  },
+
+  // Profiles: colour and photo per person. The photo itself is served by /api/photo/<id>?v=<photo stamp>.
+  _pf: new Map(),
+  _pfRecent() { const out = {}; const now = Date.now(); for (const [id, r] of this._pf) { if (now - r.t > 90000) this._pf.delete(id); else out[id] = r.v; } return out; },
+  getProfiles() { return this.state.profiles || {}; },
+  photoUrl(id) { const p = (this.state.profiles || {})[id]; if (!p || !p.photo) return ''; return p.local || `/api/photo/${id}?v=${p.photo}`; },
+  setProfile(id, patch, localPhoto) {
+    const cur = { ...((this.state.profiles || {})[id] || {}) };
+    if (patch.color !== undefined) cur.color = patch.color;
+    if (patch.photo === null) { delete cur.photo; delete cur.local; } else if (patch.photo) { cur.photo = Date.now(); cur.local = localPhoto || patch.photo; }
+    this._pf.set(id, { v: cur, t: Date.now() });
+    return this._mutate(
+      (s) => { s.profiles = { ...(s.profiles || {}), [id]: cur }; },
+      'profile', { id, ...patch },
+      (d, s) => { if (d.profiles) { const keep = d.profiles[id] && cur.local && d.profiles[id].photo ? { ...d.profiles[id], local: cur.local } : d.profiles[id]; s.profiles = { ...d.profiles, [id]: keep }; this._pf.set(id, { v: keep, t: Date.now() }); } },
     );
   },
 

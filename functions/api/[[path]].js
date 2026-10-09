@@ -8,6 +8,8 @@
 //   POST /api/choices                 { id, value:string }
 //   POST /api/custom                  { id, value:object|null }  (edit, hide or add a stop; null resets/removes)
 //   POST /api/expenses                { id, value:object|null }  (add or edit a shared expense; null deletes)
+//   POST /api/profile                 { id, color?, photo?:dataURL|null }  (a person's colour and photo)
+//   GET  /api/photo/:id               → the person's photo (image bytes)
 //   POST /api/suggestions             { text, name, day, author }
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
@@ -22,6 +24,7 @@ const MAX_SUGGESTIONS = 500;
 const MAX_CUSTOM = 800;
 const MAX_EXPENSES = 1500;
 const PEOPLE = ['naf', 'sara', 'mariam', 'm'];
+const MAX_PHOTO = 400000; // a data URL; the app sends ~256px JPEGs, far smaller than this
 const EX_CATS = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other', 'settle'];
 
 async function readKey(kv, key, fallback) {
@@ -30,11 +33,11 @@ async function readKey(kv, key, fallback) {
 }
 
 async function readState(kv) {
-  const [checks, choices, suggestions, custom, expenses] = await Promise.all([
-    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv),
+  const [checks, choices, suggestions, custom, expenses, profiles] = await Promise.all([
+    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv), readProfiles(kv),
   ]);
   const updatedAt = await kv.get('updatedAt');
-  return { checks, choices, suggestions, custom, expenses, updatedAt: updatedAt || null };
+  return { checks, choices, suggestions, custom, expenses, profiles, updatedAt: updatedAt || null };
 }
 
 async function readExpenses(kv) {
@@ -45,6 +48,13 @@ async function readExpenses(kv) {
     for (const k of page.keys) out[k.name.slice(3)] = k.metadata || (await kv.get(k.name, 'json'));
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
+  return out;
+}
+
+async function readProfiles(kv) {
+  const out = {};
+  const page = await kv.list({ prefix: 'pf:' });
+  for (const k of page.keys) out[k.name.slice(3)] = k.metadata || (await kv.get(k.name, 'json'));
   return out;
 }
 
@@ -93,6 +103,16 @@ export async function onRequest({ request, env }) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
   const kv = env.TRIP_KV;
+
+  const ph = path.match(/^photo\/([a-z]+)$/);
+  if (request.method === 'GET' && ph && kv) {
+    const data = await kv.get('ph:' + ph[1]);
+    const m = data && /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(data);
+    if (!m) return new Response('not found', { status: 404 });
+    const bin = atob(m[2]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    // the app asks for /api/photo/<id>?v=<when it changed>, so each version can be cached for good
+    return new Response(bytes, { headers: { 'content-type': m[1], 'cache-control': 'public, max-age=31536000, immutable' } });
+  }
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' } });
@@ -150,6 +170,24 @@ export async function onRequest({ request, env }) {
       }
       await kv.put('updatedAt', new Date().toISOString());
       return json({ ok: true, expenses: await readExpenses(kv) });
+    }
+
+    if (path === 'profile') {
+      if (!PEOPLE.includes(body.id)) return json({ error: 'bad person' }, 400);
+      const key = 'pf:' + body.id;
+      const prev = (await kv.get(key, 'json')) || {};
+      const rec = { ...prev };
+      if (body.color !== undefined) { if (!/^#[0-9a-f]{6}$/i.test(body.color || '')) return json({ error: 'bad colour' }, 400); rec.color = body.color.toLowerCase(); }
+      if (body.photo === null) { await kv.delete('ph:' + body.id); delete rec.photo; }
+      else if (body.photo !== undefined) {
+        if (typeof body.photo !== 'string' || body.photo.length > MAX_PHOTO || !/^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(body.photo)) return json({ error: 'bad photo' }, 400);
+        await kv.put('ph:' + body.id, body.photo);
+        rec.photo = Date.now();
+      }
+      rec.ts = new Date().toISOString();
+      await kv.put(key, JSON.stringify(rec), { metadata: rec });
+      await kv.put('updatedAt', rec.ts);
+      return json({ ok: true, profiles: { ...(await readProfiles(kv)), [body.id]: rec } });
     }
 
     if (path === 'suggestions') {
