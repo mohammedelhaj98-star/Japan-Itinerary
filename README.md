@@ -21,7 +21,7 @@ OSRM public routing for walking/driving legs, Cloudflare Pages for hosting, Clou
 
 ## Deploy
 
-Live at https://japan2026-ejk.pages.dev (Pages project `japan2026`, KV namespace `japan2026-state` bound as `TRIP_KV` in `wrangler.toml`).
+Live at https://ourtrips.date/japan/ (`/` and `/Japan` redirect there; Pages project `japan2026`, KV namespace `japan2026-state` bound as `TRIP_KV` in `wrangler.toml`).
 To publish changes, run `scripts/deploy.sh` with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set. It uploads only the public site files.
 
 ### Setting up from scratch in the dashboard
