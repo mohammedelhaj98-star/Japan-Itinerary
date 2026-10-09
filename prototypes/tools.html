@@ -72,7 +72,25 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .xday { padding:10px 16px 4px; font-size:12px; font-weight:700; color:var(--ink3); background:#fbfaf7; border-top:1px solid var(--line); }
 .xday:first-child { border-top:0; }
 .xrow { display:flex; align-items:center; gap:12px; width:100%; padding:11px 16px; text-align:left; border-top:1px solid var(--line); }
-.xday + .xrow { border-top:0; }
+.xday + .xsw .xrow { border-top:0; }
+.xsw { position:relative; overflow:hidden; }
+.xsw .xrow { position:relative; z-index:1; background:#fff; touch-action:pan-y; will-change:transform; }
+.xsw .xrow.snap { transition:transform 300ms var(--ease); }
+.xdel { position:absolute; right:0; top:0; bottom:0; width:96px; display:grid; place-items:center; background:var(--red); color:#fff; font-weight:700; font-size:14px; }
+.cfm-bg { position:fixed; inset:0; z-index:1200; background:rgba(20,16,10,.35); display:grid; place-items:center; padding:24px; opacity:0; pointer-events:none; transition:opacity 180ms ease; }
+.cfm-bg.on { opacity:1; pointer-events:auto; }
+.cfm { width:100%; max-width:330px; border-radius:22px; background:#fbf9f5; padding:20px 18px 14px; box-shadow:0 24px 60px -20px rgba(0,0,0,.5); transform:scale(.96); transition:transform 220ms var(--ease); }
+.cfm-bg.on .cfm { transform:none; }
+.cfm h3 { margin:0 0 6px; font-size:18px; }
+.cfm p { margin:0 0 16px; color:var(--ink2); font-size:14.5px; }
+.cfm .row { display:flex; gap:8px; }
+.cfm .row button { flex:1; height:46px; border-radius:14px; font-weight:700; font-size:15px; background:rgba(0,0,0,.06); }
+.cfm .row button.d { background:var(--red); color:#fff; }
+.toast { position:fixed; left:50%; bottom:calc(76px + env(safe-area-inset-bottom)); z-index:1100; display:flex; align-items:center; gap:14px; max-width:calc(100% - 32px); padding:10px 10px 10px 16px; border-radius:16px; background:rgba(20,20,18,.92); color:#fff; font-size:14px; box-shadow:0 12px 30px -10px rgba(0,0,0,.5); transform:translate3d(-50%,20px,0); opacity:0; pointer-events:none; transition:opacity 180ms ease, transform 300ms var(--ease); }
+.toast.on { transform:translate3d(-50%,0,0); opacity:1; pointer-events:auto; }
+.toast span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.toast button { flex:none; height:34px; padding:0 14px; border-radius:10px; background:rgba(255,255,255,.16); color:#fff; font-weight:700; }
+.subchips { display:flex; gap:6px; margin-top:8px; }
 .xrow .ic { width:36px; height:36px; border-radius:12px; display:grid; place-items:center; background:color-mix(in srgb, var(--c) 14%, #fff); color:var(--c); flex:none; font-size:16px; }
 .xrow .m { flex:1; min-width:0; }
 .xrow .m b { display:block; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -258,7 +276,7 @@ function renderExpenses() {
     <p class="sec">Settle up <span class="seg" id="modeseg">${modeSeg}<i></i></span></p>
     <div class="card settle">${t.length ? t.map((x, i) => `<div class="tr"><span class="av sm" style="--c:${x.from.c}">${esc(x.from.ini)}</span><span class="arr">${ARROW}</span><span class="av sm" style="--c:${x.to.c}">${esc(x.to.ini)}</span><span class="who"><b>${esc(x.from.name)}</b> pays <b>${esc(x.to.name)}</b></span><span class="amt"><b>${fmtC(x.yen, ex.cur)}</b><small>${fmtY(x.yen)}</small></span><button class="done" data-paid="${i}">Paid</button></div>`).join('') : '<p class="even">Everyone is square.</p>'}</div>
     <p class="sec">Balances</p><div class="bal">${balCards}</div>
-    <p class="sec">All expenses</p><div class="card xlist">${Object.entries(groups).map(([d, xs]) => `<p class="xday">${dayOf(d) ? `Day ${dayOf(d).n} · ${esc(dayOf(d).title)}` : 'Other'}</p>${xs.map((x) => `<button class="xrow ${x.cat === 'settle' ? 'settle-row' : ''}" data-ex="${x.id}" style="--c:${CATS[x.cat][1]}"><span class="ic">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}</b><small>${P[x.payer].name} paid · ${x.cat === 'settle' ? 'to ' + P[x.split[0]].name : 'for ' + esc(splitLabel(x.split))}</small></span><span class="r"><b>${fmtY(x.yen)}</b><small>${fmtC(x.yen, ex.cur)}</small></span></button>`).join('')}`).join('') || '<p class="empty">No expenses yet. Tap Add expense.</p>'}</div>`;
+    <p class="sec">All expenses</p><div class="card xlist">${Object.entries(groups).map(([d, xs]) => `<p class="xday">${dayOf(d) ? `Day ${dayOf(d).n} · ${esc(dayOf(d).title)}` : 'Other'}</p>${xs.map((x) => `<div class="xsw" data-sw="${x.id}"><button class="xdel" data-delask="${x.id}">Delete</button><button class="xrow ${x.cat === 'settle' ? 'settle-row' : ''}" data-ex="${x.id}" style="--c:${CATS[x.cat][1]}"><span class="ic">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}</b><small>${P[x.payer].name} paid · ${x.cat === 'settle' ? 'to ' + P[x.split[0]].name : 'for ' + esc(splitLabel(x.split))}</small></span><span class="r"><b>${fmtY(x.yen)}</b><small>${fmtC(x.yen, ex.cur)}</small></span></button></div>`).join('')}`).join('') || '<p class="empty">No expenses yet. Tap Add expense.</p>'}</div>`;
 }
 /* add / edit sheet */
 const sheet = document.getElementById('sheet'), scrim = document.getElementById('scrim');
@@ -266,7 +284,7 @@ let ed = null;
 const todayId = () => { const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); return (DAYS.find((d) => d.date === t) || DAYS[0]).id; };
 function openEx(id) {
   const x = id ? ex.list.find((y) => y.id === id) : null;
-  ed = x ? { ...x, split: [...x.split], amt: String(x.yen), ccy: 'JPY', splitMode: x.split.length === 4 ? 'all' : x.split.join() === SPLITS.nasa.join() ? 'nasa' : x.split.join() === SPLITS.mm.join() ? 'mm' : 'pick' }
+  ed = x ? { ...x, split: [...x.split], amt: String(x.yen), ccy: 'JPY', splitMode: x.split.length === 4 ? 'all' : x.split.join() === SPLITS.nasa.join() || x.split.join() === SPLITS.mm.join() ? 'couple' : 'pick' }
     : { id: null, title: '', amt: '', ccy: 'JPY', payer: ME && P[ME] ? ME : ls.get('proto.me', 'naf'), split: [...SPLITS.all], splitMode: 'all', cat: 'food', day: todayId() };
   renderSheet(); scrim.classList.add('on'); sheet.classList.add('on'); setTimeout(() => { const a = document.getElementById('x-amt'); if (a && !id) a.focus(); }, 380);
 }
@@ -278,7 +296,8 @@ function renderSheet() {
     <div class="fld"><span>Amount</span><div class="amt-in"><input id="x-amt" inputmode="decimal" placeholder="0" value="${esc(ed.amt)}"><div class="seg" id="ccyseg" style="align-self:center">${['JPY', 'CAD', 'QAR', 'USD'].map((c) => `<button data-ccy="${c}" class="${ed.ccy === c ? 'on' : ''}">${c === 'JPY' ? '¥' : c}</button>`).join('')}<i></i></div></div></div>
     <label class="fld"><span>What for</span><input id="x-title" placeholder="e.g. Kuromon lunch" value="${esc(ed.title)}" autocomplete="off"></label>
     <div class="fld"><span>Paid by</span><div class="ppl">${PEOPLE.map((p) => `<button data-payer="${p.id}" class="${ed.payer === p.id ? 'on' : ''}"><span class="av" style="--c:${p.c}">${p.ini}</span>${p.name}</button>`).join('')}</div></div>
-    <div class="fld"><span>Split between</span><div class="chips">${[['all', 'All four'], ['nasa', 'NASA'], ['mm', 'M&amp;M'], ['pick', 'Pick people']].map(([k, l]) => `<button data-split="${k}" class="${ed.splitMode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="fld"><span>Split between</span><div class="chips">${[['all', 'All four'], ['couple', 'Couples'], ['pick', 'Pick people']].map(([k, l]) => `<button data-split="${k}" class="${ed.splitMode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      ${ed.splitMode === 'couple' ? `<div class="chips subchips">${[['nasa', 'NASA · Naf + Sara'], ['mm', 'M&amp;M · Mariam + Mo']].map(([k, l]) => `<button data-couple="${k}" class="${ed.split.join() === SPLITS[k].join() ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}
       ${ed.splitMode === 'pick' ? `<div class="ppl multi" style="margin-top:8px">${PEOPLE.map((p) => `<button data-pick="${p.id}" class="${ed.split.includes(p.id) ? 'on' : ''}"><span class="av" style="--c:${p.c}">${p.ini}</span>${p.name}</button>`).join('')}</div>` : ''}</div>
     <div class="fld"><span>Type</span><div class="chips">${Object.entries(CATS).filter(([k]) => k !== 'settle').map(([k, [l, , ic]]) => `<button data-cat="${k}" class="${ed.cat === k ? 'on' : ''}">${ic} ${l}</button>`).join('')}</div></div>
     <p class="preview" id="x-prev">${y ? `${fmtY(y)}${ed.ccy !== 'JPY' ? ` (from ${SYM[ed.ccy]}${esc(ed.amt)})` : ''} · ${fmtY(share)} each for ${esc(splitLabel(ed.split))}` : 'Enter an amount to see the split.'}</p>
@@ -292,13 +311,54 @@ sheet.addEventListener('click', (e) => {
   if (t('[data-x]')) return closeSheet();
   const c = t('[data-ccy]'); if (c) { ed.ccy = c.dataset.ccy; return renderSheet(); }
   const p = t('[data-payer]'); if (p) { ed.payer = p.dataset.payer; ls.set('proto.me', ed.payer); return renderSheet(); }
-  const s = t('[data-split]'); if (s) { ed.splitMode = s.dataset.split; if (SPLITS[ed.splitMode]) ed.split = [...SPLITS[ed.splitMode]]; return renderSheet(); }
+  const s = t('[data-split]'); if (s) { ed.splitMode = s.dataset.split; if (ed.splitMode === 'all') ed.split = [...SPLITS.all]; else if (ed.splitMode === 'couple') ed.split = [...SPLITS[P[ed.payer] ? P[ed.payer].couple : 'nasa']]; return renderSheet(); }
+  const cp = t('[data-couple]'); if (cp) { ed.split = [...SPLITS[cp.dataset.couple]]; return renderSheet(); }
   const k = t('[data-pick]'); if (k) { const id = k.dataset.pick; ed.split = ed.split.includes(id) ? ed.split.filter((x) => x !== id) : PEOPLE.map((x) => x.id).filter((x) => x === id || ed.split.includes(x)); return renderSheet(); }
   const g = t('[data-cat]'); if (g) { ed.cat = g.dataset.cat; return renderSheet(); }
-  if (t('[data-save]')) { const rec = { id: ed.id || 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: ed.title.trim() || CATS[ed.cat][0], yen: edYen(), payer: ed.payer, split: ed.split, cat: ed.cat, day: ed.day }; saveExpense(rec.id, rec); closeSheet(); return render(); }
-  if (t('[data-delx]')) { saveExpense(ed.id, null); closeSheet(); return render(); }
+  if (t('[data-save]')) { const isNew = !ed.id; const rec = { id: ed.id || 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: ed.title.trim() || CATS[ed.cat][0], yen: edYen(), payer: ed.payer, split: ed.split, cat: ed.cat, day: ed.day }; const prev = isNew ? null : exById(rec.id); saveExpense(rec.id, rec); closeSheet(); render(); return undoable(isNew ? `Added ${rec.title}` : `Saved ${rec.title}`, () => saveExpense(rec.id, prev)); }
+  if (t('[data-delx]')) { const id = ed.id; return askDelete(id, () => closeSheet()); }
 });
 scrim.addEventListener('click', closeSheet);
+
+/* undo: the last change can be taken back for a few seconds */
+const exById = (id) => { const x = store.getExpenses()[id]; return x ? { ...x } : null; };
+const toastEl = document.createElement('div'); toastEl.className = 'toast'; toastEl.setAttribute('role', 'status'); document.body.appendChild(toastEl);
+let undoFn = null, toastT = 0;
+function undoable(msg, fn) {
+  undoFn = fn; toastEl.innerHTML = `<span>${esc(msg)}</span><button data-undo>Undo</button>`; toastEl.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => { toastEl.classList.remove('on'); undoFn = null; }, 7000);
+}
+toastEl.addEventListener('click', (e) => { if (!e.target.closest('[data-undo]') || !undoFn) return; const f = undoFn; undoFn = null; f(); toastEl.classList.remove('on'); render(); });
+
+/* "are you sure" before a transaction is deleted */
+const cfmBg = document.createElement('div'); cfmBg.className = 'cfm-bg'; cfmBg.innerHTML = '<div class="cfm" role="alertdialog" aria-modal="true" aria-labelledby="cfm-h"></div>'; document.body.appendChild(cfmBg);
+let cfmYes = null;
+function askDelete(id, after) {
+  const x = exById(id); if (!x) return;
+  cfmBg.querySelector('.cfm').innerHTML = `<h3 id="cfm-h">Delete this transaction?</h3><p>${esc(x.title)}, ${fmtY(x.yen)} paid by ${P[x.payer] ? P[x.payer].name : '?'}. It disappears from all four phones.</p><div class="row"><button data-cno>Cancel</button><button class="d" data-cyes>Delete</button></div>`;
+  cfmYes = () => { saveExpense(id, null); after && after(); render(); undoable(`Deleted ${x.title}`, () => saveExpense(id, x)); };
+  cfmBg.classList.add('on'); setTimeout(() => cfmBg.querySelector('[data-cno]').focus(), 50);
+}
+const cfmClose = () => { cfmBg.classList.remove('on'); cfmYes = null; closeSwipe(); };
+cfmBg.addEventListener('click', (e) => { if (e.target.closest('[data-cyes]')) { const f = cfmYes; cfmClose(); f && f(); return; } if (e.target.closest('[data-cno]') || e.target === cfmBg) cfmClose(); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && cfmBg.classList.contains('on')) cfmClose(); });
+
+/* swipe a transaction left to reveal Delete; a long swipe asks straight away */
+let sw = null, swOpen = null;
+const rowOf = (id) => document.getElementById('page').querySelector(`.xsw[data-sw="${id}"] .xrow`);
+const setX = (el, x, snap) => { el.classList.toggle('snap', !!snap); el.style.transform = x ? `translate3d(${x}px,0,0)` : ''; };
+function closeSwipe() { if (swOpen) { const el = rowOf(swOpen); if (el) setX(el, 0, true); swOpen = null; } }
+document.getElementById('page').addEventListener('pointerdown', (e) => { const r = e.target.closest('.xsw .xrow'); if (!r) { if (!e.target.closest('.xdel')) closeSwipe(); return; } const id = r.closest('.xsw').dataset.sw; if (swOpen && swOpen !== id) closeSwipe(); sw = { id, el: r, x0: e.clientX, y0: e.clientY, base: swOpen === id ? -96 : 0, on: false }; });
+addEventListener('pointermove', (e) => { if (!sw) return; const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
+  if (!sw.on) { if (Math.abs(dx) < 8) { if (Math.abs(dy) > 8) sw = null; return; } if (Math.abs(dy) > Math.abs(dx)) { sw = null; return; } sw.on = true; }
+  let x = Math.min(0, sw.base + dx); if (x < -96) x = -96 - (-96 - x) * 0.5; setX(sw.el, x); sw.x = x; });
+const swEnd = () => { if (!sw) return; const s0 = sw; sw = null; if (!s0.on) return;
+  swallowClick = true; setTimeout(() => (swallowClick = false), 60);
+  if (s0.x < -170) { setX(s0.el, -96, true); swOpen = s0.id; askDelete(s0.id); return; }
+  if (s0.x < -44) { setX(s0.el, -96, true); swOpen = s0.id; } else { setX(s0.el, 0, true); if (swOpen === s0.id) swOpen = null; } };
+addEventListener('pointerup', swEnd); addEventListener('pointercancel', () => { if (sw) { setX(sw.el, 0, true); sw = null; } });
+let swallowClick = false;
+document.getElementById('page').addEventListener('click', (e) => { if (swallowClick) { e.stopImmediatePropagation(); e.preventDefault(); return; } const d = e.target.closest('[data-delask]'); if (d) { e.stopImmediatePropagation(); askDelete(d.dataset.delask); return; } if (swOpen && e.target.closest('.xsw .xrow')) { e.stopImmediatePropagation(); closeSwipe(); } }, true);
 
 /* ═══════════ 2 · TAXI CARDS ═══════════ */
 /* Japanese names and districts confirmed against OpenStreetMap; full addresses for Kyoto and Hakone still need the booking confirmation. */
@@ -406,7 +466,7 @@ page.addEventListener('click', (e) => {
   const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
   const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('proto.exmode2', ex.mode); return render(); }
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couples' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couples' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
-    saveExpense('s' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); return render(); }
+    const sid = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); saveExpense(sid, { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); render(); return undoable(`Marked ${tr.from.name} → ${tr.to.name} paid`, () => saveExpense(sid, null)); }
   const xr = t('[data-ex]'); if (xr) return openEx(xr.dataset.ex);
   const h = t('[data-hotel]'); if (h) return openDriver(h.dataset.hotel);
   if (t('[data-here]')) { if (!navigator.geolocation) { fd.err = 'Location is not available on this device.'; return render(); }
