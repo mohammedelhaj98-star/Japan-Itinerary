@@ -105,11 +105,14 @@ body.mapmax .mapmax-hint { display:block; }
 #arc .tk { stroke:#cfc9bc; stroke-width:1.5; stroke-linecap:round; }
 #arc text { font:500 10px var(--sans); fill:var(--ink3); text-anchor:middle; dominant-baseline:central; }
 #arc .sunmark text { font-size:9px; fill:#c48a12; }
+#arc .ht { font-size:11px; font-weight:700; fill:var(--ink3); }
+#arc .bt { font-size:11px; font-weight:700; }
+#arc .bk { stroke-width:2.5; stroke-linecap:round; }
 #leftarc { fill:none; stroke:var(--red); stroke-width:4; stroke-linecap:round; opacity:.9; }
 .dc-s { font-size:12px; font-weight:700; color:var(--ink3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:26ch; margin-left:auto; margin-right:auto; min-height:1.3em; }
 .dc-s b { color:var(--red); font-weight:700; }
 /* day dial lives in a drawer that swipes in from the left, over the page, with a file tab that stays on the edge */
-.dd { transform:translate3d(calc(36px - 100%),0,0); filter:drop-shadow(0 14px 26px rgba(0,0,0,.26)) drop-shadow(0 1px 1px rgba(0,0,0,.06)); position:fixed; left:0; top:calc(78px + env(safe-area-inset-top)); z-index:870; width:min(86vw, 330px); display:flex; align-items:stretch; will-change:transform; touch-action:pan-y; }
+.dd { transform:translate3d(calc(36px - 100%),0,0); filter:drop-shadow(0 14px 26px rgba(0,0,0,.26)) drop-shadow(0 1px 1px rgba(0,0,0,.06)); position:fixed; left:0; top:calc(78px + env(safe-area-inset-top)); z-index:870; width:min(96vw, 410px); display:flex; align-items:stretch; will-change:transform; touch-action:pan-y; }
 .dd-in { flex:1; min-width:0; padding:12px 8px 10px; border-radius:0 26px 26px 0; background:#faf8f4; }
 .dd-tab { position:relative; flex:none; width:36px; min-height:96px; max-height:300px; margin:34px 0 30px -1px; border-radius:0 16px 16px 0; background:#faf8f4; touch-action:none; }
 .dd-tab::after { content:''; position:absolute; right:3px; top:50%; width:3px; height:22px; margin-top:-11px; border-radius:2px; background:rgba(20,20,10,.18); }
@@ -120,7 +123,7 @@ body.mapmax .mapmax-hint { display:block; }
 .dd-rail .sg.done { opacity:.3; }
 .dd-rail .rk { position:absolute; left:-1px; width:10px; height:10px; margin-top:-5px; border-radius:50%; background:#ffc53d; box-shadow:0 0 0 2px #fff, 0 2px 6px rgba(0,0,0,.35); }
 .dd-rail .rn { position:absolute; left:-2px; width:12px; height:2.5px; margin-top:-1px; border-radius:2px; background:var(--red); }
-.dd .dial { margin:6px auto 0; max-width:300px; }
+.dd .dial { margin:8px auto 0; max-width:340px; }
 .dd-list { margin:10px 6px 2px; padding:0; list-style:none; }
 .dd-list li { display:flex; gap:10px; align-items:baseline; padding:7px 8px; border-top:1px solid var(--line); font-size:14px; }
 .dd-list li:first-child { border-top:0; }
@@ -134,7 +137,13 @@ body.mapmax .mapmax-hint { display:block; }
 .dd .hd-r { justify-content:flex-start; }
 .dd .hd h1 { font-size:27px; }
 .dd .hd .tg { font-size:13.5px; }
-.dd .facts { padding:10px 12px 2px 14px; }
+.dd .facts { padding:12px 12px 2px 14px; flex-wrap:wrap; overflow:visible; }
+.dd .fact { flex:1 1 auto; justify-content:center; padding:8px 10px; gap:6px; }
+.dd .fact svg.um { width:13px; height:13px; color:var(--ink3); margin-right:-3px; }
+.dd .fact .dot { width:3px; height:3px; border-radius:50%; background:var(--ink3); opacity:.6; margin:0 2px; }
+.dd .fact.dn { flex-basis:100%; justify-content:flex-start; align-items:baseline; white-space:normal; line-height:1.3; }
+.dd .fact.dn span { font-weight:700; }
+.cdx { font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red); margin:6px 0 -2px; }
 .dd-in { max-height:calc(100svh - 120px - env(safe-area-inset-top)); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
 .dd-in::-webkit-scrollbar { display:none; }
 #nowmk line { stroke:var(--red); stroke-width:2.5; stroke-linecap:round; }
@@ -675,11 +684,11 @@ function renderSheet() {
     <p class="sec">Tonight</p><a class="stay press" href="${gmPlace(h0)}" target="_blank" rel="noopener" style="${hpi.img ? `background-image:url('${imgUrl(hpi)}')` : ''}"><div><small>${esc(h0.city || '')} · ${esc(h0.dates || '')}</small><b>${esc(h0.name || '')}</b></div></a>
     <p class="foot">Photos from Wikimedia Commons, credited on each pass. Weather from Open-Meteo. Rates from ExchangeRate-API.</p></div>`;
   document.getElementById('ddin').innerHTML = `<header class="hd"><div class="hd-r"><p class="eb">Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p><div class="rr"><div class="seg" id="who">${whoBtns}<i></i></div><button class="gear press" id="gear" aria-label="Edit trip">${I.pen}</button></div></div>
-<h1>${esc(day.title)}</h1>${day.tagline ? `<p class="tg">${esc(day.tagline)}</p>` : ''}</header>
-<div class="facts">${daysTo > 0 ? `<span class="fact cd">${daysTo} <small>days to go</small></span>` : ''}<span class="fact" id="wx"><small>Weather…</small></span><span class="fact">${I.sunrise}${fmt(sun.rise).join(' ')}</span><span class="fact">${I.sunset}${fmt(sun.set).join(' ')}</span><span class="fact"><small>Dinner</small> ${esc(day.dinner)}</span></div>
+${daysTo > 0 ? `<p class="cdx">${daysTo} day${daysTo > 1 ? 's' : ''} to go</p>` : tripDay ? `<p class="cdx">Day ${day.n} of ${DAYS.length}</p>` : ''}<h1>${esc(day.title)}</h1>${day.tagline ? `<p class="tg">${esc(day.tagline)}</p>` : ''}</header>
+<div class="facts"><span class="fact" id="wx"><small>Weather…</small></span><span class="fact sun">${I.sunrise}${fmt(sun.rise)[0]}<i class="dot"></i>${I.sunset}${fmt(sun.set)[0]}</span><span class="fact dn"><small>Dinner</small><span>${esc(day.dinner)}</span></span></div>
     <div class="dial" id="dial"><svg id="arc" viewBox="0 0 360 196"></svg><div class="dc"><p class="dc-k" id="dck"></p><p class="dc-t" id="dct"></p><p class="dc-n" id="dcn"></p><p class="dc-s" id="dcs"></p></div>${tripDay ? `<button class="nowb press" id="nowb">${isToday() ? 'Now' : 'Today'}</button>` : ''}</div>`;
   moveSeg(document.getElementById('who'));
-  weatherFor(day, ref.lat || 35.68, ref.lng || 139.76).then((w) => { const el = document.getElementById('wx'); if (!el) return; const [lbl, ic] = w.live ? WMO(w.code) : ['', '']; el.innerHTML = w.live ? `${ic} ${w.hi}° <small>/ ${w.lo}° · ${w.rain ?? 0}% rain</small>` : `${w.hi}° <small>/ ${w.lo}° · typical</small>`; el.title = w.live ? lbl : w.note; });
+  weatherFor(day, ref.lat || 35.68, ref.lng || 139.76).then((w) => { const el = document.getElementById('wx'); if (!el) return; const [lbl, ic] = w.live ? WMO(w.code) : ['', '']; el.innerHTML = w.live ? `${ic} ${w.hi}° <small>/ ${w.lo}°</small><i class="dot"></i><svg class="um" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 0118 0z"/><path d="M12 12v6a2 2 0 004 0"/></svg><small>${w.rain ?? 0}%</small>` : `${w.hi}° <small>/ ${w.lo}°</small><i class="dot"></i><small>typical</small>`; el.title = w.live ? lbl : w.note; });
   dialApi = buildDial(sun);
   stackApi = buildStack();
 }
@@ -708,7 +717,15 @@ function buildDial(sun) {
   if (aSet < A1) g += `<path class="trk" stroke="#d6d5e2" d="${arc(aSet, A1, R)}"/>`;
   sp.forEach(({ e, s }) => { const a0 = ang(s[0]) + 0.7, a1 = Math.max(a0 + 1.4, ang(s[1]) - 0.7); g += `<path class="ev ${done(e.id) ? 'done' : ''} ${e.optional ? 'opt' : ''}" data-arc="${e.id}" stroke="${isTicket(e) ? legHex(e) : catOf(e).c}" d="${arc(a0, Math.min(a1, A1), R)}"/>`; });
   const hs = Math.ceil(t0 / 60), he = Math.floor(t1 / 60), step = he - hs > 12 ? 3 : 2;
-  for (let h = hs; h <= he; h++) { const a = ang(h * 60); const [x0, y0] = pt(a, R + 15), [x1, y1] = pt(a, R + 20); g += `<line class="tk" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>`; if ((h - hs) % step === 0) { const [tx, ty] = pt(a, R + 31); g += `<text x="${tx}" y="${ty}">${h % 12 || 12}${h < 12 ? 'a' : 'p'}</text>`; } }
+  for (let h = hs; h <= he; h++) { const a = ang(h * 60); const [x0, y0] = pt(a, R + 15), [x1, y1] = pt(a, R + 20); g += `<line class="tk" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>`; }
+  // Labels round the outside: the start time of anything booked; on a day with nothing booked, plain 9 · 12 · 3 · 6.
+  const booked = sp.filter((x) => x.e.confirmed || (x.e.tags || []).includes('booking'));
+  const marks = booked.length ? booked.map((x) => ({ m: x.s[0], t: fmt(x.s[0])[0].replace(/:00$/, ''), c: isTicket(x.e) ? legHex(x.e) : catOf(x.e).c, b: true }))
+    : (() => { const o = []; for (let h = Math.ceil(t0 / 180) * 3; h * 60 <= t1; h += 3) o.push({ m: h * 60, t: String(h % 12 || 12) }); return o; })();
+  let lastA = -999;
+  for (const k of marks.sort((a, b) => a.m - b.m)) { const a = ang(k.m); if (a - lastA < 12) continue; lastA = a; const [tx, ty] = pt(a, R + 31);
+    if (k.b) { const [x0, y0] = pt(a, R + 13), [x1, y1] = pt(a, R + 21); g += `<line class="bk" stroke="${k.c}" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/><text class="bt" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="${k.c}">${k.t}</text>`; }
+    else g += `<text class="ht" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}">${k.t}</text>`; }
   if (sun.set > t0 && sun.set < t1) { const [x, y] = pt(aSet, R + 46); g += `<g class="sunmark"><text x="${x}" y="${y}">sunset</text></g>`; }
   if (isToday()) { const m = nowMin(); if (m > t0 && m < t1) { const a = ang(m); const [x0, y0] = pt(a, R - 15), [x1, y1] = pt(a, R + 13), [tx, ty] = pt(a, R - 27); g += `<g id="nowmk"><line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/></g>`; } }
   if (isToday()) g += '<path id="leftarc" d=""/>';
@@ -733,7 +750,7 @@ function buildDial(sun) {
   // Rail: the same day, as a thin vertical line on the left once you've scrolled past the dial.
   const rail = document.getElementById('ddrail');
   const fr = (m) => ((Math.max(t0, Math.min(t1, m)) - t0) / (t1 - t0)) * 100;
-  rail.innerHTML = `${(() => { let o = ''; for (let h = Math.ceil(t0 / 60); h <= Math.floor(t1 / 60); h += 3) o += `<em style="top:${fr(h * 60).toFixed(2)}%">${h % 12 || 12}${h < 12 ? 'a' : 'p'}</em>`; return o; })()}<span class="tr">${sp.map(({ e, s: q }) => `<i class="sg ${done(e.id) ? 'done' : ''}" data-rs="${e.id}" style="top:${fr(q[0]).toFixed(2)}%;height:${Math.max(0.8, fr(q[1]) - fr(q[0]) - 0.4).toFixed(2)}%;background:${isTicket(e) ? legHex(e) : catOf(e).c}"></i>`).join('')}</span>${isToday() ? `<span class="rn" style="top:${fr(nowMin()).toFixed(2)}%"></span>` : ''}<span class="rk"></span>`;
+  rail.innerHTML = `${(() => { let o = ''; for (let h = Math.ceil(t0 / 180) * 3; h * 60 <= t1; h += 3) o += `<em style="top:${fr(h * 60).toFixed(2)}%">${h % 12 || 12}</em>`; return o; })()}<span class="tr">${sp.map(({ e, s: q }) => `<i class="sg ${done(e.id) ? 'done' : ''}" data-rs="${e.id}" style="top:${fr(q[0]).toFixed(2)}%;height:${Math.max(0.8, fr(q[1]) - fr(q[0]) - 0.4).toFixed(2)}%;background:${isTicket(e) ? legHex(e) : catOf(e).c}"></i>`).join('')}</span>${isToday() ? `<span class="rn" style="top:${fr(nowMin()).toFixed(2)}%"></span>` : ''}<span class="rk"></span>`;
   const rk = rail.querySelector('.rk');
   let curId = null, flyT = 0;
   const at = (m) => { let best = null; for (const x of sp) if (x.s[0] <= m + 0.5) best = x; return best || sp[0]; };
@@ -788,7 +805,7 @@ function buildStack() {
   return {
     select(id, { fromDial, scroll } = {}) {
       if (ui.sel === id) return; ui.sel = id; layout(false); syncPins();
-      if (scroll) { const top = stack.getBoundingClientRect().top; if (top < 70 || top > innerHeight * 0.6) window.scrollTo({ top: scrollY + top - 90, behavior: RM ? 'auto' : 'smooth' }); }
+      if (scroll && !document.body.classList.contains('mapmax')) { const top = stack.getBoundingClientRect().top; if (top < 70 || top > innerHeight * 0.6) window.scrollTo({ top: scrollY + top - 90, behavior: RM ? 'auto' : 'smooth' }); }
     },
     layout,
     refresh() { st.forEach((c) => { const d = done(c.id); c.el.classList.toggle('done', d); const b = c.el.querySelector('[data-stamp]'); if (b) b.textContent = d ? 'Stamped 済' : 'Stamp 済'; }); },
@@ -1112,12 +1129,12 @@ const mapMax = (() => {
   let on = false;
   const Y = new Spring(0, (y) => { wrapEl.style.transform = y > 0.5 ? `translate3d(0,${y.toFixed(1)}px,0)` : ''; }, 0.3);
   const set = (v, { velocity } = {}) => {
-    on = v; document.body.classList.toggle('mapmax', v);
+    on = v; document.body.classList.toggle('mapmax', v); if (scrollY) window.scrollTo(0, 0);
     Y.to(v ? travel() : 0, { response: 0.46, damping: 0.86, velocity });
     if (v) { drawer.close(); setTimeout(() => fitDay(true), 60); } else setTimeout(() => ui.sel && focusMap(ui.sel), 120);
   };
   const sheetEl = document.getElementById('sheet'); const T = tracker(); let t = null;
-  sheetEl.addEventListener('touchstart', (e) => { if (e.touches.length !== 1) return; if (!on && scrollY > 2) return; const p = e.touches[0]; t = { x0: p.clientX, y0: p.clientY, on: false, base: Y.x }; T.reset(); }, { passive: true });
+  sheetEl.addEventListener('touchstart', (e) => { if (e.touches.length !== 1) return; if (on && scrollY) window.scrollTo(0, 0); if (!on && scrollY > 2) return; const p = e.touches[0]; t = { x0: p.clientX, y0: p.clientY, on: false, base: Y.x }; T.reset(); }, { passive: true });
   sheetEl.addEventListener('touchmove', (e) => {
     if (!t) return; const p = e.touches[0]; const dx = p.clientX - t.x0, dy = p.clientY - t.y0;
     if (!t.on) { if (Math.abs(dy) < 8 || Math.abs(dx) > Math.abs(dy)) { if (Math.abs(dx) > 10) t = null; return; } if (!on && dy < 0) { t = null; return; } t.on = true; Y.stop(); }
