@@ -92,7 +92,7 @@ body.scrolled .topfade { opacity:1; }
 .fact.cd small { color:rgba(255,255,255,.6); }
 
 /* ── sun-arc dial ── */
-.dial { position:relative; margin:4px auto 0; width:100%; max-width:340px; padding:0 8px; touch-action:none; -webkit-user-select:none; user-select:none; }
+.dial { position:relative; margin:-2px auto 14px; width:100%; max-width:300px; padding:0 8px; touch-action:none; -webkit-user-select:none; user-select:none; }
 #arc { width:100%; display:block; overflow:visible; }
 #arc .trk { fill:none; stroke-width:20; stroke-linecap:round; }
 #arc .ev { fill:none; stroke-width:20; transition:opacity 300ms; }
@@ -115,13 +115,13 @@ body.pastdial .rail { opacity:1; pointer-events:auto; transform:none; }
 @media (prefers-reduced-motion: reduce) { .rail { transition:opacity 150ms ease; transform:none; } }
 #nowmk line { stroke:var(--red); stroke-width:2.5; stroke-linecap:round; }
 #nowmk text { font-size:9.5px; font-weight:700; fill:var(--red); }
-.nowb { position:absolute; top:2px; right:12px; z-index:2; display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border-radius:999px; background:#fff; color:var(--ink); font-size:12.5px; font-weight:700; box-shadow:0 0 0 1px var(--line), 0 4px 12px -6px rgba(0,0,0,.3); }
+.nowb { position:absolute; top:2px; left:4px; z-index:2; display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 12px; border-radius:999px; background:#fff; color:var(--ink); font-size:12.5px; font-weight:700; box-shadow:0 0 0 1px var(--line), 0 4px 12px -6px rgba(0,0,0,.3); }
 .nowb::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--red); }
 #knob .k1 { filter:drop-shadow(0 4px 8px rgba(0,0,0,.28)); transition:fill 300ms; }
 #knob .k2 { transition:opacity 300ms; }
 .dc { position:absolute; left:0; right:0; bottom:2px; text-align:center; pointer-events:none; }
 .dc-k { font-size:12px; font-weight:700; color:var(--kc,var(--ink3)); letter-spacing:.02em; transition:color 200ms; }
-.dc-t { font-family:var(--serif); font-size:46px; line-height:.9; letter-spacing:-.02em; }
+.dc-t { font-family:var(--serif); font-size:42px; line-height:.9; letter-spacing:-.02em; }
 .dc-t small { font-family:var(--sans); font-size:13px; letter-spacing:0; margin-left:3px; color:var(--ink3); }
 .dc-n { font-size:14.5px; font-weight:700; margin:4px auto 0; max-width:17ch; line-height:1.25; min-height:1.25em; transition:opacity 140ms, filter 140ms; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dc-n
@@ -644,10 +644,10 @@ function renderSheet() {
   const know = (KNOW[day.city] || []).map(([t, x]) => `<div class="card"><small>${esc(day.city)}</small><h3>${esc(t)}</h3><p>${withFx(x)}</p></div>`).join('');
   const hpi = PLACES[h0.name] || {};
   sh.innerHTML = `<div class="fadein"><div class="grab"></div>
+    <div class="dial" id="dial"><svg id="arc" viewBox="0 0 360 196"></svg><div class="dc"><p class="dc-k" id="dck"></p><p class="dc-t" id="dct"></p><p class="dc-n" id="dcn"></p><p class="dc-s" id="dcs"></p></div>${tripDay ? `<button class="nowb press" id="nowb">${isToday() ? 'Now' : 'Today'}</button>` : ''}</div>
     <header class="hd"><div class="hd-r"><p class="eb">Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p><div class="rr"><div class="seg" id="who">${whoBtns}<i></i></div><button class="gear press" id="gear" aria-label="Edit trip">${I.pen}</button></div></div>
       <h1>${esc(day.title)}</h1>${day.tagline ? `<p class="tg">${esc(day.tagline)}</p>` : ''}</header>
     <div class="facts">${daysTo > 0 ? `<span class="fact cd">${daysTo} <small>days to go</small></span>` : ''}<span class="fact" id="wx"><small>Weather…</small></span><span class="fact">${I.sunrise}${fmt(sun.rise).join(' ')}</span><span class="fact">${I.sunset}${fmt(sun.set).join(' ')}</span><span class="fact"><small>Dinner</small> ${esc(day.dinner)}</span></div>
-    <div class="dial" id="dial"><svg id="arc" viewBox="0 0 360 196"></svg><div class="dc"><p class="dc-k" id="dck"></p><p class="dc-t" id="dct"></p><p class="dc-n" id="dcn"></p><p class="dc-s" id="dcs"></p></div>${tripDay ? `<button class="nowb press" id="nowb">${isToday() ? 'Now' : 'Today'}</button>` : ''}</div>
     <div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button></div>
     <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
