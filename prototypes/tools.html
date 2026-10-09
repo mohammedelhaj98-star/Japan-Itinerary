@@ -15,7 +15,7 @@
 @font-face { font-family:'Zen Kaku'; font-weight:500; font-display:swap; src:url(../vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku'; font-weight:700; font-display:swap; src:url(../vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2) format('woff2'); }
 :root { --ink:#141412; --ink2:#4b4a45; --ink3:#86847c; --paper:#f6f4ef; --line:rgba(20,20,10,.08); --blue:#1e6bff; --red:#e23b2e; --ok:#2f9e57; --ease:cubic-bezier(.23,1,.32,1);
-  --serif:'Instrument Serif','Times New Roman',serif; --mincho:'Zen Old Mincho','Hiragino Mincho ProN','Yu Mincho',serif; --sans:'Zen Kaku','Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',system-ui,sans-serif; --top:calc(14px + env(safe-area-inset-top)); }
+  --serif:'Instrument Serif','Times New Roman',serif; --mincho:'Zen Old Mincho','Hiragino Mincho ProN','Yu Mincho',serif; --sans:'Zen Kaku','Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',system-ui,sans-serif; --top:calc(58px + env(safe-area-inset-top)); }
 * { box-sizing:border-box; }
 html,body { margin:0; }
 body { font-family:var(--sans); color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased; font-size:16px; line-height:1.5; -webkit-tap-highlight-color:transparent; font-variant-numeric:tabular-nums; }
@@ -164,16 +164,18 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .porkcard b { display:block; font-family:var(--mincho); font-size:17px; line-height:1.35; }
 .porkcard small { display:block; font-size:12.5px; color:var(--ink3); margin-top:2px; }
 
+.tback { position:fixed; top:calc(10px + env(safe-area-inset-top)); left:max(12px, calc(50% - 218px)); z-index:820; display:flex; align-items:center; gap:4px; height:36px; padding:0 14px 0 9px; border-radius:999px; background:rgba(252,250,246,.9); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:#141412; font-size:14px; font-weight:700; text-decoration:none; box-shadow:0 6px 18px -8px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,10,.08); }
 /* picker */
 .proto-picker { position:fixed; bottom:calc(20px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); z-index:800; display:flex; align-items:center; gap:2px; padding:4px; border-radius:999px; background:rgba(10,10,10,.82); -webkit-backdrop-filter:blur(12px) saturate(1.4); backdrop-filter:blur(12px) saturate(1.4); box-shadow:0 0 0 1px rgba(255,255,255,.08) inset,0 8px 24px rgba(0,0,0,.24); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; font-size:13px; line-height:1; }
 .proto-picker-highlight { position:absolute; top:4px; left:0; height:28px; border-radius:999px; background:rgba(255,255,255,.14); }
 .proto-picker[data-ready] .proto-picker-highlight { transition:transform 250ms var(--ease), width 250ms var(--ease); }
-.proto-picker-item { position:relative; height:28px; padding:0 13px; border-radius:999px; color:rgba(255,255,255,.55); }
+.proto-picker-item { position:relative; white-space:nowrap; height:28px; padding:0 13px; border-radius:999px; color:rgba(255,255,255,.55); }
 .proto-picker-item[data-active] { color:#fff; }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { transition-duration:1ms !important; animation-duration:1ms !important; } }
 </style>
 </head>
 <body>
+<a class="tback press" href="../" onclick="if (document.referrer.startsWith(location.origin) &amp;&amp; history.length &gt; 1) { event.preventDefault(); history.back(); }" aria-label="Back to the trip"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Trip</a>
 <main class="page" id="page"></main>
 <button class="fab press" id="fab" hidden><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Add expense</button>
 <div class="scrim" id="scrim"></div>
