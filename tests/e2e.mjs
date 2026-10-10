@@ -225,6 +225,17 @@ const tb = await C.page.$eval('#ddtab', (e) => { const r = e.getBoundingClientRe
 await C.page.mouse.move(tb[0], tb[1]); await C.page.mouse.down(); for (let i = 1; i <= 8; i++) { await C.page.mouse.move(tb[0] + i * 30, tb[1]); await C.page.waitForTimeout(16); } await C.page.mouse.up(); await C.page.waitForTimeout(900);
 ok('dragging the tab opens it', Math.abs(await ddx()) < 2, await ddx());
 await C.page.evaluate(() => scrollTo(0, 0)); await C.page.waitForTimeout(300);
+// the tab stays over the map, and swiping in from the left edge only opens it over the map
+if (Math.abs(await ddx()) < 2) { await C.page.tap('#ddtab'); await C.page.waitForTimeout(900); }
+const tabFit = await C.page.evaluate(() => [document.getElementById('ddtab').getBoundingClientRect().bottom, document.querySelector('.spacer').getBoundingClientRect().bottom]);
+ok('the tab ends above the stops', tabFit[0] < tabFit[1] - 10, tabFit.join(' < '));
+const eg = await C.ctx.newCDPSession(C.page);
+const edge = async (y) => { await eg.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 8, y }] }); for (let i = 1; i <= 10; i++) { await eg.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 8 + i * 22, y }] }); await C.page.waitForTimeout(16); } await eg.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await C.page.waitForTimeout(900); };
+const mapY = Math.round(tabFit[0] + (tabFit[1] - tabFit[0]) / 2);
+await C.page.evaluate(() => { window.__ev = []; for (const t of ['pointerdown','pointermove','pointerup','pointercancel']) addEventListener(t, (e) => { if (window.__ev.length < 40) window.__ev.push(t[7] + ':' + e.target.className.toString().slice(0, 20) + ':' + Math.round(e.clientX)); }, true); }); await edge(mapY); console.log('EV', (await C.page.evaluate(() => window.__ev.join(' '))).slice(0, 600)); ok('edge swipe over the map opens it', Math.abs(await ddx()) < 2, await ddx());
+if (Math.abs(await ddx()) < 2) { await C.page.tap('#ddtab'); await C.page.waitForTimeout(900); }
+await edge(700); ok('edge swipe over the stops does not', (await ddx()) < -100, await ddx());
+await C.page.evaluate(() => scrollTo(0, 0)); await C.page.waitForTimeout(300);
 
 await C.page.evaluate(() => { document.querySelector('.pass.open [data-step="-1"]').click(); document.querySelector('.pass.open [data-step="-1"]'); }); await C.page.waitForTimeout(700);
 await C.page.evaluate(() => document.querySelector('.pass.open [data-step="-1"]').click()); await C.page.waitForTimeout(700);
