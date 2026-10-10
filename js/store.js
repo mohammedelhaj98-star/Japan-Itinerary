@@ -60,7 +60,8 @@ export const store = {
   async api(path, body) {
     const res = await fetch('/api/' + path, {
       method: body ? 'POST' : 'GET',
-      headers: body ? { 'content-type': 'application/json', 'x-trip-pin': pinOf() } : undefined,
+      // the PIN goes with reads too: without it the server leaves out the expenses
+      headers: body ? { 'content-type': 'application/json', 'x-trip-pin': pinOf() } : pinOf() ? { 'x-trip-pin': pinOf() } : undefined,
       body: body ? JSON.stringify(body) : undefined,
       cache: 'no-store',
     });

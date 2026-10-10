@@ -91,6 +91,8 @@ ok('Mo sees Naf\'s expense', /Fuunji ramen test|4,400/.test(aTxt));
 ok('balance shows M&M owes', /owes/.test(aTxt));
 await A.page.screenshot({ path: SH + 'ex-mo.png' });
 ok('server stored one expense', exN() === 1);
+const stOpen = await (await fetch(B + '/api/state')).json(), stPin = await (await fetch(B + '/api/state', { headers: { 'x-trip-pin': PIN } })).json();
+ok('expenses need the PIN to read', !Object.keys(stOpen.expenses).length && Object.keys(stPin.expenses).length === 1 && !!stOpen.checks);
 // split options + undo + swipe to delete
 const chips = await N.page.evaluate(async () => { document.getElementById('fab').click(); await new Promise((r) => setTimeout(r, 400)); return [...document.querySelectorAll('[data-split]')].map((b) => b.textContent); });
 ok('split options read All four · Couples · Pick people', chips.join('|') === 'All four|Couples|Pick people', chips.join('|'));

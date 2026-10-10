@@ -4,7 +4,8 @@
 // Routes:
 //   GET  /api/health                  → { ok, kv }
 //   GET  /api/version                 → { updatedAt }  (one read: phones poll this, and fetch /api/state only when it changes)
-//   GET  /api/state                   → { checks, choices, suggestions, custom, updatedAt }
+//   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, profiles, covers, updatedAt }
+//                                       (expenses only with the PIN in x-trip-pin)
 //   POST /api/checks                  { id, value:boolean }
 //   POST /api/choices                 { id, value:string }
 //   POST /api/custom                  { id, value:object|null }  (edit, hide or add a stop; null resets/removes)
@@ -18,7 +19,8 @@
 //   /api/photos/…                                          trip photos in Google Drive (see lib/photos.js)
 
 // Changes need the group's PIN (the TRIP_PIN secret on the Pages project), sent by the app as an x-trip-pin header.
-// Reading is open, so a guest can look around without being able to change anything. With no TRIP_PIN set, changes are open.
+// Reading is open, so a guest can look around without being able to change anything, except the expenses, which need
+// the PIN to read too. With no TRIP_PIN set, everything is open.
 //
 import { handlePhotos } from '../../lib/photos.js';
 
@@ -127,22 +129,26 @@ export async function onRequest({ request, env }) {
   if (!kv) return json({ error: 'KV namespace TRIP_KV is not bound. See README.' }, 503);
   if (path === 'photos' || path.startsWith('photos/')) return handlePhotos({ request, env, url, path, kv });
 
+  const pin = env.TRIP_PIN ? String(env.TRIP_PIN) : '';
+  const member = !pin || request.headers.get('x-trip-pin') === pin;
   try {
     if (request.method === 'GET' && path === 'version') {
       return json({ updatedAt: (await kv.get('updatedAt')) || null });
     }
 
+    // The money stays between the four of us: without the PIN the state comes back with no expenses.
     if (request.method === 'GET' && path === 'state') {
-      return json(await readState(kv));
+      const st = await readState(kv);
+      if (!member) st.expenses = {};
+      return json(st);
     }
 
     if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405);
     let body = {};
     try { body = await request.json(); } catch { return json({ error: 'invalid JSON' }, 400); }
 
-    const pin = env.TRIP_PIN ? String(env.TRIP_PIN) : '';
     if (path === 'unlock') return pin && String(body.pin ?? '') !== pin ? json({ error: 'wrong pin' }, 403) : json({ ok: true });
-    if (pin && request.headers.get('x-trip-pin') !== pin) return json({ error: 'pin required', pin: true }, 403);
+    if (!member) return json({ error: 'pin required', pin: true }, 403);
 
     if (path === 'checks' || path === 'choices') {
       if (!isId(body.id)) return json({ error: 'bad id' }, 400);
