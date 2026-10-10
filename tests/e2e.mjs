@@ -95,7 +95,7 @@ const stOpen = await (await fetch(B + '/api/state')).json(), stPin = await (awai
 ok('expenses need the PIN to read', !Object.keys(stOpen.expenses).length && Object.keys(stPin.expenses).length === 1 && !!stOpen.checks);
 // split options + undo + swipe to delete
 const chips = await N.page.evaluate(async () => { document.getElementById('fab').click(); await new Promise((r) => setTimeout(r, 400)); return [...document.querySelectorAll('[data-split]')].map((b) => b.textContent); });
-ok('split options read All four · Couples · Pick people', chips.join('|') === 'All four|Couples|Pick people', chips.join('|'));
+ok('split options read Just me · All four · Couples · Pick people', chips.join('|') === 'Just me|All four|Couples|Pick people', chips.join('|'));
 await N.page.tap('[data-split="couple"]'); await N.page.waitForTimeout(200);
 ok('Couples shows NASA / M&M', (await N.page.$$('[data-couple]')).length === 2);
 await N.page.tap('[data-couple="mm"]'); await N.page.fill('#x-amt', '2000'); await N.page.fill('#x-title', 'Gift for M&M');
@@ -120,6 +120,34 @@ await N.page.evaluate(() => document.querySelector('.xdel').click()); await N.pa
 ok('confirm deletes it', !/Fuunji ramen test/.test(await N.page.textContent('#page')) && exN() === 0);
 await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
 ok('undo brings it back', /Fuunji ramen test/.test(await N.page.textContent('#page')) && exN() === 1);
+
+// 3a · ¥+ on the trip opens a new expense straight away; Just me goes on my Mine page only
+await N.page.goto(B + '/japan/?d=d05'); await N.page.waitForTimeout(2000);
+const dayShown = await N.page.textContent('#dayp');
+await N.page.tap('#quickex'); await N.page.waitForURL(/tools/); await N.page.waitForTimeout(800);
+ok('¥+ opens the expense form straight away', await N.page.$eval('#sheet', (e) => e.classList.contains('on')));
+await N.page.screenshot({ path: SH + 'quick-add.png' });
+await N.page.tap('[data-split="me"]'); await N.page.fill('#x-amt', '1200'); await N.page.fill('#x-title', 'Matcha');
+ok('Just me hides Paid by', !(await N.page.$('[data-payer]')));
+await N.page.tap('[data-save]'); await N.page.waitForURL(/\/japan\/(\?|$)/); await N.page.waitForTimeout(1500);
+const mat = Object.values(exMap()).find((x) => x.title === 'Matcha');
+ok('saved as Just me, back on the same day of the trip', mat && mat.own === true && mat.payer === 'naf' && mat.split.join() === 'naf' && /^d\d\d$/.test(mat.day) && (await N.page.textContent('#dayp')) === dayShown, JSON.stringify(mat));
+await N.page.goto(B + '/japan/prototypes/tools?v=1'); await N.page.waitForTimeout(1500);
+const grp = await N.page.textContent('#page');
+ok('Just me stays out of the group list and totals', !/Matcha/.test(grp) && /¥4,400/.test(grp));
+await N.page.tap('[data-exview="mine"]'); await N.page.waitForTimeout(500);
+let mine = await N.page.textContent('#page');
+ok('Mine: my share of the ramen + my matcha', /Matcha/.test(mine) && /¥2,300/.test(mine), (mine.match(/You've spent\s*¥[\d,]+/) || [])[0]);
+ok('Mine: what I paid for the others shown apart', /¥3,300/.test(mine) && /You get back/.test(mine));
+await N.page.$eval('#bud-in', (e) => { e.value = '100'; e.dispatchEvent(new Event('change', { bubbles: true })); }); await N.page.waitForTimeout(400);
+mine = await N.page.textContent('#page');
+ok('Mine: a budget shows what is left', /left · .* a day for \d+ day/.test(mine), (mine.match(/[^.]*left[^.]*/) || [])[0]);
+await N.page.screenshot({ path: SH + 'mine.png', fullPage: true });
+await N.page.tap('[data-exview="group"]'); await N.page.waitForTimeout(300);
+await A.page.goto(B + '/japan/prototypes/tools?v=1'); await A.page.waitForTimeout(1500);
+const moGroup = await A.page.textContent('#page'); await A.page.tap('[data-exview="mine"]'); await A.page.waitForTimeout(500);
+const moMine = await A.page.textContent('#page'); await A.page.tap('[data-exview="group"]');
+ok("Mo never sees Naf's Just me", !/Matcha/.test(moGroup) && !/Matcha/.test(moMine) && /¥1,100/.test(moMine));
 
 
 // 3b · settings: profile colour + photo, shared to the other phone, colour key

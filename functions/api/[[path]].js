@@ -103,6 +103,8 @@ function cleanExpense(v) {
   if (yen == null || !PEOPLE.includes(v.payer) || !split.length || !EX_CATS.includes(v.cat)) return null;
   const out = { title: clean(v.title, 90) || 'Expense', yen: Math.round(yen), payer: v.payer, split, cat: v.cat, day: isId(v.day || '') ? v.day : null };
   if (PEOPLE.includes(v.by)) out.by = v.by;
+  // "Just me": the payer's own spending, on their money page only and never in who-owes-whom
+  if (v.own === true && split.length === 1 && split[0] === v.payer) out.own = true;
   return out;
 }
 

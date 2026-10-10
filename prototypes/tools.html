@@ -161,6 +161,19 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .xlist { margin:0 12px; overflow:hidden; }
 .xday { padding:10px 16px 4px; font-size:12px; font-weight:700; color:var(--ink3); background:#fbfaf7; border-top:1px solid var(--line); }
 .xday:first-child { border-top:0; }
+.xday span { float:right; }
+/* Group / Mine switch, and the Mine page's budget cards */
+.vseg { display:flex; width:max-content; margin-bottom:14px; }
+.vseg button { padding:7px 18px; font-size:14px; }
+.budget { margin:0 12px; padding:14px 16px; display:flex; flex-direction:column; gap:6px; }
+.budget > b { font-family:var(--serif); font-size:30px; font-weight:400; line-height:1; }
+.budget small { font-size:13.5px; color:var(--ink2); font-weight:500; }
+.budget small.pos { color:var(--ok); } .budget small.neg { color:#c62d22; }
+.budget label { display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:14.5px; font-weight:600; }
+.budget input { width:120px; text-align:right; font:600 16px var(--sans); border:1px solid rgba(0,0,0,.1); border-radius:10px; padding:8px 10px; }
+.bud-bar { height:8px; border-radius:4px; background:rgba(0,0,0,.06); overflow:hidden; }
+.bud-bar i { display:block; height:100%; background:var(--ok); border-radius:4px; }
+.bud-bar i.over { background:#c62d22; }
 .xrow { display:flex; align-items:center; gap:12px; width:100%; padding:11px 16px; text-align:left; border-top:1px solid var(--line); }
 .xday + .xsw .xrow { border-top:0; }
 .xsw { position:relative; overflow:hidden; }
@@ -348,8 +361,10 @@ const ME = (() => { try { return JSON.parse(localStorage.getItem('trips.me')); }
 // Guests can look at bookings, ideas, taxi cards and settings, but change nothing and don't see the expenses.
 // In the practice tour they can try everything (on an empty expense list; nothing is saved anyway).
 const VIEW = GUEST && !SANDBOX;
-const ex = { get list() { return Object.entries(store.getExpenses()).map(([id, x]) => ({ id, ...x })).filter((x) => P[x.payer] && x.split && x.split.every((id) => P[id]) && CATS[x.cat]); }, cur: ls.get('proto.excur', 'USD'), mode: ls.get('proto.exmode2', 'couples') };
-const saveExpense = (id, rec) => store.setExpense(id, rec ? { title: rec.title, yen: rec.yen, payer: rec.payer, split: rec.split, cat: rec.cat, day: rec.day || null, ...(ME && P[ME] ? { by: ME } : {}) } : null);
+// "Just me" expenses (own) are someone's personal spending: only on their own Mine page, never in who-owes-whom.
+const allEx = () => Object.entries(store.getExpenses()).map(([id, x]) => ({ id, ...x })).filter((x) => P[x.payer] && x.split && x.split.every((id) => P[id]) && CATS[x.cat]);
+const ex = { get list() { return allEx().filter((x) => !x.own); }, get own() { return allEx().filter((x) => x.own && x.payer === ME); }, cur: ls.get('proto.excur', 'USD'), mode: ls.get('proto.exmode2', 'couples'), view: P[ME] ? ls.get('proto.exview', 'group') : 'group' };
+const saveExpense = (id, rec) => store.setExpense(id, rec ? { title: rec.title, yen: rec.yen, payer: rec.payer, split: rec.split, cat: rec.cat, day: rec.day || null, ...(ME && P[ME] ? { by: ME } : {}), ...(rec.own ? { own: true } : {}) } : null);
 const syncLine = () => store.mode === 'locked' ? '<span class="sync off">Locked: <a href="/?next=japan">enter the PIN</a> to save changes</span>' : store.mode === 'sandbox' ? '<span class="sync off">Practice mode: nothing here is saved</span>' : store.pending() ? `<span class="sync off">${store.mode === 'online' ? 'Syncing' : 'Offline'}: ${store.pending()} change${store.pending() === 1 ? '' : 's'} saved on this phone, will sync when back online</span>` : store.mode === 'online' ? '<span class="sync on">Shared with all four phones</span>' : store.mode === 'local' ? '<span class="sync off">Offline: showing what this phone last saw</span>' : '<span class="sync">Connecting…</span>';
 
 /* who-owes-whom: balances, then greedily match the biggest debtor with the biggest creditor (n−1 transfers at most) */
@@ -367,7 +382,9 @@ function transfers(b) {
 }
 const splitLabel = (s) => (s.length === 4 ? 'all four' : s.join() === SPLITS.nasa.join() ? 'NASA' : s.join() === SPLITS.mm.join() ? 'M&M' : s.map((id) => P[id].name).join(', '));
 const dayOf = (id) => DAYS.find((d) => d.id === id);
+const viewSeg = () => P[ME] ? `<div class="seg vseg" id="viewseg">${[['group', 'Group'], ['mine', 'Mine']].map(([k, l]) => `<button data-exview="${k}" class="${ex.view === k ? 'on' : ''}">${l}</button>`).join('')}<i></i></div>` : '';
 function renderExpenses() {
+  if (ex.view === 'mine' && P[ME]) return renderMine();
   const b = balances(), t = transfers(b), total = ex.list.filter((x) => x.cat !== 'settle').reduce((s, x) => s + x.yen, 0);
   const byCat = {}; ex.list.filter((x) => x.cat !== 'settle').forEach((x) => (byCat[x.cat] = (byCat[x.cat] || 0) + x.yen));
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
@@ -376,7 +393,7 @@ function renderExpenses() {
   const balCards = ex.mode === 'couples'
     ? Object.entries(COUPLES).map(([k, c]) => { const v = c.ids.reduce((s, id) => s + b[id], 0); return `<div class="card"><span class="av" style="--c:${c.c};font-size:11px">${esc(c.ini)}</span><span><b>${esc(c.name)}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('')
     : PEOPLE.map((p) => { const v = b[p.id]; return `<div class="card"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span><span><b>${p.name}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('');
-  return `<header class="ph"><small>Shared expenses</small><h1>Who owes whom</h1><p>Log anything someone paid for the group. It splits it and works out the fewest payments to settle up.</p>${syncLine()}</header>
+  return `<header class="ph">${viewSeg()}<small>Shared expenses</small><h1>Who owes whom</h1><p>Log anything someone paid for the group. It splits it and works out the fewest payments to settle up.</p>${syncLine()}</header>
     <div class="card tot"><div class="tot-r"><div><small>Trip spend so far</small><b class="big">${fmtY(total)}</b><p class="sub">${fmtC(total, ex.cur)} total · ${fmtC(total / 4, ex.cur)} each on average</p></div><div class="seg" id="curseg">${curSeg}<i></i></div></div>
       <div class="bars">${Object.entries(byCat).map(([k, v]) => `<i style="--c:${CATS[k][1]};width:${(v / total) * 100}%"></i>`).join('')}</div>
       <div class="legend">${Object.entries(byCat).map(([k, v]) => `<span style="--c:${CATS[k][1]}">${CATS[k][0]} ${fmtY(v)}</span>`).join('')}</div></div>
@@ -385,44 +402,84 @@ function renderExpenses() {
     <p class="sec">Balances</p><div class="bal">${balCards}</div>
     <p class="sec">All expenses</p><div class="card xlist">${Object.entries(groups).map(([d, xs]) => `<p class="xday">${dayOf(d) ? `Day ${dayOf(d).n} · ${esc(dayOf(d).title)}` : 'Other'}</p>${xs.map((x) => `<div class="xsw" data-sw="${x.id}"><button class="xdel" data-delask="${x.id}">Delete</button><button class="xrow ${x.cat === 'settle' ? 'settle-row' : ''}" data-ex="${x.id}" style="--c:${CATS[x.cat][1]}"><span class="ic">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}</b><small>${P[x.payer].name} paid · ${x.cat === 'settle' ? 'to ' + P[x.split[0]].name : 'for ' + esc(splitLabel(x.split))}</small></span><span class="r"><b>${fmtY(x.yen)}</b><small>${fmtC(x.yen, ex.cur)}</small></span></button></div>`).join('')}`).join('') || '<p class="empty">No expenses yet. Tap Add expense.</p>'}</div>`;
 }
+/* Mine: what this trip is costing me = my share of everything the group paid + my own "Just me" spending.
+   What I paid on the others' behalf isn't my spend: it shows apart, with what I get back. */
+const budgetKey = () => 'money.budget.' + ME;
+function myLines() {
+  const out = [];
+  for (const x of ex.list) if (x.cat !== 'settle' && x.split.includes(ME)) out.push({ ...x, mine: x.yen / x.split.length });
+  for (const x of ex.own) out.push({ ...x, mine: x.yen });
+  return out;
+}
+function renderMine() {
+  const lines = myLines(), spent = lines.reduce((s, x) => s + x.mine, 0), ownT = ex.own.reduce((s, x) => s + x.yen, 0);
+  const paidOut = ex.list.filter((x) => x.cat !== 'settle' && x.payer === ME).reduce((s, x) => s + x.yen - (x.split.includes(ME) ? x.yen / x.split.length : 0), 0);
+  const bal = balances()[ME] || 0;
+  const byCat = {}; lines.forEach((x) => (byCat[x.cat] = (byCat[x.cat] || 0) + x.mine));
+  const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
+  // budget, kept on this phone; the pace counts today as a day still to spend
+  const budget = ls.get(budgetKey(), 0), n = DAYS.length;
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), started = DAYS.filter((d) => d.date <= today).length;
+  const daysLeft = Math.max(1, n - Math.max(0, started - 1)), left = budget - spent, should = budget * started / n;
+  const pace = !budget ? '' : left < 0 ? `<small class="neg">Over budget by ${fmtC(-left, ex.cur)}</small>`
+    : `<small class="${started && spent > should ? 'neg' : 'pos'}">${fmtC(left, ex.cur)} left · ${fmtC(left / daysLeft, ex.cur)} a day for ${daysLeft} day${daysLeft === 1 ? '' : 's'}${started ? (spent > should ? ` · ahead of pace by ${fmtC(spent - should, ex.cur)}` : ' · on pace') : ''}</small>`;
+  const groups = {}; [...lines].sort((a, z) => (z.day || '').localeCompare(a.day || '') || String(z.id).localeCompare(String(a.id))).forEach((x) => (groups[x.day] = groups[x.day] || []).push(x));
+  const dayTot = (xs) => xs.reduce((s, x) => s + x.mine, 0);
+  return `<header class="ph">${viewSeg()}<small>Just you, ${esc(P[ME].name)}</small><h1>My money</h1><p>Your share of what the group paid, plus anything you logged as Just me. Your own spending is only on your phone's page.</p>${syncLine()}</header>
+    <div class="card tot"><div class="tot-r"><div><small>You've spent</small><b class="big">${fmtY(spent)}</b><p class="sub">${fmtC(spent, ex.cur)} · ${fmtY(spent - ownT)} your share of the group · ${fmtY(ownT)} just you</p></div><div class="seg" id="curseg">${curSeg}<i></i></div></div>
+      ${spent ? `<div class="bars">${Object.entries(byCat).map(([k, v]) => `<i style="--c:${CATS[k][1]};width:${(v / spent) * 100}%"></i>`).join('')}</div>
+      <div class="legend">${Object.entries(byCat).map(([k, v]) => `<span style="--c:${CATS[k][1]}">${CATS[k][0]} ${fmtY(v)}</span>`).join('')}</div>` : ''}</div>
+    <p class="sec">Budget</p>
+    <div class="card budget"><label><span>Trip budget in ${ex.cur}</span><input id="bud-in" inputmode="decimal" placeholder="Not set" value="${budget ? Math.round(budget / RATE[ex.cur]) : ''}"></label>${budget ? `<div class="bud-bar"><i style="width:${Math.min(100, (spent / budget) * 100)}%" class="${left < 0 ? 'over' : ''}"></i></div>${pace}` : '<small>Set one to see what\'s left and how much a day keeps you on it.</small>'}</div>
+    <p class="sec">Paid for the others</p>
+    <div class="card budget"><b>${fmtY(paidOut)}</b> <small>${fmtC(paidOut, ex.cur)} you paid on the others' behalf. Not your spend.</small><small class="${bal > 0.5 ? 'pos' : bal < -0.5 ? 'neg' : 'zero'}">${bal > 0.5 ? `You get back ${fmtC(bal, ex.cur)}` : bal < -0.5 ? `You owe ${fmtC(-bal, ex.cur)}` : 'You are all square'} · settle up on Group</small></div>
+    <p class="sec">By day</p><div class="card xlist">${Object.entries(groups).map(([d, xs]) => `<p class="xday">${dayOf(d) ? `Day ${dayOf(d).n} · ${esc(dayOf(d).title)}` : 'Other'}<span>${fmtY(dayTot(xs))}</span></p>${xs.map((x) => `<div class="xsw" data-sw="${x.id}"><button class="xdel" data-delask="${x.id}">Delete</button><button class="xrow" data-ex="${x.id}" style="--c:${CATS[x.cat][1]}"><span class="ic">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}</b><small>${x.own ? 'Just you' : `Your share · ${fmtY(x.yen)} for ${esc(splitLabel(x.split))}, ${P[x.payer].name} paid`}</small></span><span class="r"><b>${fmtY(x.mine)}</b><small>${fmtC(x.mine, ex.cur)}</small></span></button></div>`).join('')}`).join('') || '<p class="empty">Nothing yet. Tap Add expense and pick Just me for your own spending.</p>'}</div>`;
+}
+
 /* add / edit sheet */
 const sheet = document.getElementById('sheet'), scrim = document.getElementById('scrim');
 let ed = null;
 const todayId = () => { const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); return (DAYS.find((d) => d.date === t) || DAYS[0]).id; };
-function openEx(id) {
-  const x = id ? ex.list.find((y) => y.id === id) : null;
-  ed = x ? { ...x, split: [...x.split], amt: String(x.yen), ccy: 'JPY', splitMode: x.split.length === 4 ? 'all' : x.split.join() === SPLITS.nasa.join() || x.split.join() === SPLITS.mm.join() ? 'couple' : 'pick' }
-    : { id: null, title: '', amt: '', ccy: 'JPY', payer: ME && P[ME] ? ME : ls.get('proto.me', 'naf'), split: [...SPLITS.all], splitMode: 'all', cat: 'food', day: todayId() };
+function openEx(id, opts = {}) {
+  const x = id ? allEx().find((y) => y.id === id) : null;
+  // a new expense starts like the last one: shared with all four, or Just me
+  const meFirst = P[ME] && ls.get('proto.lastsplit', 'all') === 'me';
+  ed = x ? { ...x, split: [...x.split], amt: String(x.yen), ccy: 'JPY', splitMode: x.own ? 'me' : x.split.length === 4 ? 'all' : x.split.join() === SPLITS.nasa.join() || x.split.join() === SPLITS.mm.join() ? 'couple' : 'pick' }
+    : { id: null, title: '', amt: '', ccy: 'JPY', payer: ME && P[ME] ? ME : ls.get('proto.me', 'naf'), split: meFirst ? [ME] : [...SPLITS.all], splitMode: meFirst ? 'me' : 'all', cat: 'food', day: dayOf(opts.day) ? opts.day : todayId() };
+  ed.quick = !!opts.quick;
   renderSheet(); scrim.classList.add('on'); sheet.classList.add('on'); setTimeout(() => { const a = document.getElementById('x-amt'); if (a && !id) a.focus(); }, 380);
 }
-function closeSheet() { sheet.classList.remove('on'); scrim.classList.remove('on'); ed = null; }
+// Opened from the ¥ button on the trip: done or cancelled, go straight back to the trip.
+function closeSheet() { const quick = ed && ed.quick; sheet.classList.remove('on'); scrim.classList.remove('on'); ed = null; if (quick) backToTrip(); }
 const edYen = () => Math.round((parseFloat(ed.amt) || 0) * RATE[ed.ccy]);
+const prevText = (y, share) => !y ? 'Enter an amount to see the split.'
+  : `${fmtY(y)}${ed.ccy !== 'JPY' ? ` (from ${SYM[ed.ccy]}${esc(ed.amt)})` : ''} · ${ed.splitMode === 'me' ? 'just yours, only on your Mine page' : `${fmtY(share)} each for ${esc(splitLabel(ed.split))}`}`;
 function renderSheet() {
   const y = edYen(), share = ed.split.length ? y / ed.split.length : 0;
   sheet.innerHTML = `<div class="grab"></div><div class="sh-h"><b>${ed.id ? 'Edit expense' : 'Add expense'}</b><button data-x>Cancel</button></div>
     <div class="fld"><span>Amount</span><div class="amt-in"><input id="x-amt" inputmode="decimal" placeholder="0" value="${esc(ed.amt)}"><div class="seg" id="ccyseg" style="align-self:center">${['JPY', 'CAD', 'QAR', 'USD'].map((c) => `<button data-ccy="${c}" class="${ed.ccy === c ? 'on' : ''}">${c === 'JPY' ? '¥' : c}</button>`).join('')}<i></i></div></div></div>
     <label class="fld"><span>What for</span><input id="x-title" placeholder="e.g. Kuromon lunch" value="${esc(ed.title)}" autocomplete="off"></label>
-    <div class="fld"><span>Paid by</span><div class="ppl">${PEOPLE.map((p) => `<button data-payer="${p.id}" class="${ed.payer === p.id ? 'on' : ''}"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span>${p.name}</button>`).join('')}</div></div>
-    <div class="fld"><span>Split between</span><div class="chips">${[['all', 'All four'], ['couple', 'Couples'], ['pick', 'Pick people']].map(([k, l]) => `<button data-split="${k}" class="${ed.splitMode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ${ed.splitMode === 'me' ? '' : `<div class="fld"><span>Paid by</span><div class="ppl">${PEOPLE.map((p) => `<button data-payer="${p.id}" class="${ed.payer === p.id ? 'on' : ''}"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span>${p.name}</button>`).join('')}</div></div>`}
+    <div class="fld"><span>Split between</span><div class="chips">${[...(P[ME] ? [['me', 'Just me']] : []), ['all', 'All four'], ['couple', 'Couples'], ['pick', 'Pick people']].map(([k, l]) => `<button data-split="${k}" class="${ed.splitMode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       ${ed.splitMode === 'couple' ? `<div class="chips subchips">${[['nasa', 'NASA · Naf + Sara'], ['mm', 'M&amp;M · Mariam + Mo']].map(([k, l]) => `<button data-couple="${k}" class="${ed.split.join() === SPLITS[k].join() ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}
       ${ed.splitMode === 'pick' ? `<div class="ppl multi" style="margin-top:8px">${PEOPLE.map((p) => `<button data-pick="${p.id}" class="${ed.split.includes(p.id) ? 'on' : ''}"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span>${p.name}</button>`).join('')}</div>` : ''}</div>
     <div class="fld"><span>Type</span><div class="chips">${Object.entries(CATS).filter(([k]) => k !== 'settle').map(([k, [l, , ic]]) => `<button data-cat="${k}" class="${ed.cat === k ? 'on' : ''}">${ic} ${l}</button>`).join('')}</div></div>
-    <p class="preview" id="x-prev">${y ? `${fmtY(y)}${ed.ccy !== 'JPY' ? ` (from ${SYM[ed.ccy]}${esc(ed.amt)})` : ''} · ${fmtY(share)} each for ${esc(splitLabel(ed.split))}` : 'Enter an amount to see the split.'}</p>
+    <p class="preview" id="x-prev">${prevText(y, share)}</p>
     <button class="save" data-save ${y && ed.split.length ? '' : 'disabled'}>${ed.id ? 'Save' : 'Add expense'}</button>
     ${ed.id ? '<button class="del" data-delx>Delete expense</button>' : ''}`;
   moveSeg(sheet.querySelector('#ccyseg'));
 }
-sheet.addEventListener('input', (e) => { if (!ed) return; if (e.target.id === 'x-amt') { ed.amt = e.target.value.replace(/[^\d.]/g, ''); const y = edYen(); document.getElementById('x-prev').textContent = y ? `${fmtY(y)} · ${fmtY(y / ed.split.length)} each for ${splitLabel(ed.split)}` : 'Enter an amount to see the split.'; sheet.querySelector('[data-save]').disabled = !(y && ed.split.length); } if (e.target.id === 'x-title') ed.title = e.target.value; });
+sheet.addEventListener('input', (e) => { if (!ed) return; if (e.target.id === 'x-amt') { ed.amt = e.target.value.replace(/[^\d.]/g, ''); const y = edYen(); document.getElementById('x-prev').innerHTML = prevText(y, ed.split.length ? y / ed.split.length : 0); sheet.querySelector('[data-save]').disabled = !(y && ed.split.length); } if (e.target.id === 'x-title') ed.title = e.target.value; });
 sheet.addEventListener('click', (e) => {
   if (!ed) return; const t = (s) => e.target.closest(s);
   if (t('[data-x]')) return closeSheet();
   const c = t('[data-ccy]'); if (c) { ed.ccy = c.dataset.ccy; return renderSheet(); }
   const p = t('[data-payer]'); if (p) { ed.payer = p.dataset.payer; ls.set('proto.me', ed.payer); return renderSheet(); }
-  const s = t('[data-split]'); if (s) { ed.splitMode = s.dataset.split; if (ed.splitMode === 'all') ed.split = [...SPLITS.all]; else if (ed.splitMode === 'couple') ed.split = [...SPLITS[P[ed.payer] ? P[ed.payer].couple : 'nasa']]; return renderSheet(); }
+  const s = t('[data-split]'); if (s) { ed.splitMode = s.dataset.split; if (ed.splitMode === 'me') { ed.payer = ME; ed.split = [ME]; } else if (ed.splitMode === 'all') ed.split = [...SPLITS.all]; else if (ed.splitMode === 'couple') ed.split = [...SPLITS[P[ed.payer] ? P[ed.payer].couple : 'nasa']]; return renderSheet(); }
   const cp = t('[data-couple]'); if (cp) { ed.split = [...SPLITS[cp.dataset.couple]]; return renderSheet(); }
   const k = t('[data-pick]'); if (k) { const id = k.dataset.pick; ed.split = ed.split.includes(id) ? ed.split.filter((x) => x !== id) : PEOPLE.map((x) => x.id).filter((x) => x === id || ed.split.includes(x)); return renderSheet(); }
   const g = t('[data-cat]'); if (g) { ed.cat = g.dataset.cat; return renderSheet(); }
-  if (t('[data-save]')) { const isNew = !ed.id; const rec = { id: ed.id || 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: ed.title.trim() || CATS[ed.cat][0], yen: edYen(), payer: ed.payer, split: ed.split, cat: ed.cat, day: ed.day }; const prev = isNew ? null : exById(rec.id); saveExpense(rec.id, rec); closeSheet(); render(); return undoable(isNew ? `Added ${rec.title}` : `Saved ${rec.title}`, () => saveExpense(rec.id, prev)); }
+  if (t('[data-save]')) { const isNew = !ed.id, own = ed.splitMode === 'me'; const rec = { id: ed.id || 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: ed.title.trim() || CATS[ed.cat][0], yen: edYen(), payer: own ? ME : ed.payer, split: own ? [ME] : ed.split, cat: ed.cat, day: ed.day, own }; const prev = isNew ? null : exById(rec.id); if (isNew && P[ME]) ls.set('proto.lastsplit', own ? 'me' : 'all'); saveExpense(rec.id, rec); const quick = ed.quick; if (quick) { ed.quick = false; closeSheet(); return backToTrip(); } closeSheet(); render(); return undoable(isNew ? `Added ${rec.title}` : `Saved ${rec.title}`, () => saveExpense(rec.id, prev)); }
   if (t('[data-delx]')) { const id = ed.id; return askDelete(id, () => closeSheet()); }
 });
 scrim.addEventListener('click', closeSheet);
@@ -442,7 +499,7 @@ const cfmBg = document.createElement('div'); cfmBg.className = 'cfm-bg'; cfmBg.i
 let cfmYes = null;
 function askDelete(id, after) {
   const x = exById(id); if (!x) return;
-  cfmBg.querySelector('.cfm').innerHTML = `<h3 id="cfm-h">Delete this transaction?</h3><p>${esc(x.title)}, ${fmtY(x.yen)} paid by ${P[x.payer] ? P[x.payer].name : '?'}. It disappears from all four phones.</p><div class="row"><button data-cno>Cancel</button><button class="d" data-cyes>Delete</button></div>`;
+  cfmBg.querySelector('.cfm').innerHTML = `<h3 id="cfm-h">Delete this transaction?</h3><p>${esc(x.title)}, ${fmtY(x.yen)} ${x.own ? 'just yours' : `paid by ${P[x.payer] ? P[x.payer].name : '?'}`}. ${x.own ? 'It goes from your Mine page.' : 'It disappears from all four phones.'}</p><div class="row"><button data-cno>Cancel</button><button class="d" data-cyes>Delete</button></div>`;
   cfmYes = () => { saveExpense(id, null); after && after(); render(); undoable(`Deleted ${x.title}`, () => saveExpense(id, x)); };
   cfmBg.classList.add('on'); setTimeout(() => cfmBg.querySelector('[data-cno]').focus(), 50);
 }
@@ -709,10 +766,11 @@ function setTab(i) { if (VIEW && i === 0) i = 1; if (i !== 4 && sub) { sub = '';
 items.forEach((el, i) => el.addEventListener('click', () => setTab(i)));
 // Back to the trip: when we came from it, go back in history so the browser shows the page it kept (no reload, the map
 // stays where it was). Opened some other way, just load it.
+const fromTrip = () => { try { const r = new URL(document.referrer); return r.origin === location.origin && /\/japan\/(index\.html)?$/.test(r.pathname); } catch { return false; } };
 document.querySelectorAll('[data-home]').forEach((a) => a.addEventListener('click', (e) => {
-  let fromTrip = false; try { const r = new URL(document.referrer); fromTrip = r.origin === location.origin && /\/japan\/(index\.html)?$/.test(r.pathname); } catch {}
-  if (fromTrip && history.length > 1) { e.preventDefault(); history.go(history.state && history.state.sub ? -2 : -1); } // the Stamped stops page adds one history entry
+  if (fromTrip() && history.length > 1) { e.preventDefault(); history.go(history.state && history.state.sub ? -2 : -1); } // the Stamped stops page adds one history entry
 }));
+function backToTrip() { if (fromTrip() && history.length > 1) history.back(); else location.href = '../'; }
 fab.addEventListener('click', () => openEx(null));
 page.addEventListener('input', (e) => { if (e.target.id === 'sg-text') ideas.draft = e.target.value; });
 page.addEventListener('click', (e) => {
@@ -733,6 +791,7 @@ page.addEventListener('click', (e) => {
   if (t('[data-rmphoto]') && P[ME]) { store.setProfile(ME, { photo: null }); return render(); }
   const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
   const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('proto.exmode2', ex.mode); return render(); }
+  const ev = t('[data-exview]'); if (ev) { ex.view = ev.dataset.exview; ls.set('proto.exview', ex.view); return render(); }
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couples' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couples' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
     const sid = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); saveExpense(sid, { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); render(); return undoable(`Marked ${tr.from.name} → ${tr.to.name} paid`, () => saveExpense(sid, null)); }
   const xr = t('[data-ex]'); if (xr) return openEx(xr.dataset.ex);
@@ -746,12 +805,16 @@ page.addEventListener('click', (e) => {
   const fr = t('[data-food]'); if (fr && !t('a')) { document.querySelectorAll('.fpin.sel').forEach((p) => p.classList.remove('sel')); const pin = document.querySelector(`[data-fp="${fr.dataset.food}"]`); if (pin) { pin.classList.add('sel'); const x = fd.res.find((r) => r.id === fr.dataset.food); fmap.panTo([x.lat, x.lng]); } }
 });
 page.addEventListener('change', async (e) => {
+  if (e.target.id === 'bud-in' && P[ME]) { const v = parseFloat(String(e.target.value).replace(/[^\d.]/g, '')) || 0; ls.set(budgetKey(), Math.round(v * RATE[ex.cur])); return render(); }
   if (e.target.id === 'idea-day') { ideas.day = e.target.value; ls.set('proto.ideaday', ideas.day); return render(); }
   if (e.target.id === 'pf-photo' && P[ME] && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) msg.textContent = 'Uploading…'; try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) msg.textContent = err.message; } return; }
  if (e.target.id === 'f-where') { if (e.target.value === 'My location') return; fd.here = null; fd.where = e.target.value; ls.set('proto.fwhere', fd.where); searchFood(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); driver.classList.remove('on'); } });
 if (VIEW) { items[0].hidden = true; document.body.classList.add('guest'); }
 setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
+// The ¥ button on the trip lands here with ?add=1&d=<day>: straight into a new expense for that day.
+{ const q = new URLSearchParams(location.search);
+  if (q.get('add') && tab === 0 && !VIEW) { const u = new URL(location); u.searchParams.delete('add'); u.searchParams.delete('d'); history.replaceState(null, '', u); openEx(null, { day: q.get('d'), quick: true }); } }
 // Re-draw the expense list when another phone adds or changes something (not while the edit sheet is open).
 let exSig = '';
 store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode + store.pending() + JSON.stringify(store.getExpenses()) + JSON.stringify(Object.fromEntries(Object.entries(pf).map(([k, v]) => [k, [v.color, v.photo]]))); if (sig === exSig) return; exSig = sig; if ((tab === 0 || tab === 4) && !document.getElementById('sheet').classList.contains('on')) render(); });

@@ -449,6 +449,12 @@ body.mapmax .mapmax-hint { display:block; }
 .tt-btn:active { transform:scale(.92); }
 .tt-btn svg { transition:transform 260ms var(--ease); }
 .tt.open .tt-btn svg { transform:rotate(135deg); }
+/* ¥+ : one tap from the plan to a new expense (hidden while the tools are open, and for guests) */
+.tt-quick { pointer-events:auto; width:46px; height:46px; margin-right:4px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink); font-size:18px; font-weight:700; text-decoration:none; background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); box-shadow:0 10px 26px -10px rgba(0,0,0,.4), 0 0 0 1px var(--line); transition:transform 220ms var(--ease), opacity 160ms ease; -webkit-tap-highlight-color:transparent; }
+.tt-quick b { font-size:12px; margin:-8px 0 0 1px; }
+.tt-quick:active { transform:scale(.92); }
+.tt.open .tt-quick { display:none; }
+body.guest .tt-quick { display:none; }
 .tt-opt { pointer-events:none; display:flex; align-items:center; gap:10px; height:46px; padding:0 18px 0 8px; border-radius:999px; background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); color:var(--ink); font-size:15px; font-weight:700; text-decoration:none; box-shadow:0 10px 30px -10px rgba(0,0,0,.35), 0 0 0 1px var(--line); opacity:0; transform:translate3d(0,14px,0) scale(.9); transform-origin:right center; transition:opacity 160ms ease, transform 260ms var(--ease); -webkit-tap-highlight-color:transparent; }
 .tt-opt i { width:32px; height:32px; border-radius:50%; display:grid; place-items:center; background:var(--ink); color:#fff; font-style:normal; }
 .tt.open .tt-opt { pointer-events:auto; opacity:1; transform:none; }
@@ -1292,6 +1298,8 @@ buildMap(); renderDay(); store.start(); refreshFx(); drawer.init();
 { const key = document.createElement('div'); key.className = 'tt-key'; key.setAttribute('aria-label', 'Card colours');
   key.innerHTML = `<b>Card colours</b><span class="g">${keyItems(true)}</span>`;
   document.getElementById('tt').prepend(key); }
+// ¥+ opens a new expense already set to the day on screen
+document.getElementById('quickex').addEventListener('click', (e) => { e.currentTarget.href = `prototypes/tools?v=1&add=1&d=${day.id}`; });
 // The PIN was refused (it changed, or this phone lost it): enter it again on the trips page, then come straight back.
 store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) location.replace('/?next=japan'); });
 { const el = document.getElementById('unsynced');
@@ -1330,6 +1338,7 @@ setTimeout(saveAhead, 4000);
   <a class="tt-opt" href="prototypes/tools?v=4"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0012 3z"/></svg></i><span>Ideas</span></a>
   <a class="tt-opt" href="photos"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 016.5 6h1.7l1.5-2h4.6l1.5 2h1.7A2.5 2.5 0 0120 8.5v8a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg></i><span>Photos</span></a>
   <a class="tt-opt" href="prototypes/tools?v=1"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 4l5 7 5-7M12 11v9M7 12h10M7 16h10"/></svg></i><span>Expenses</span></a>
+  <a class="tt-quick" id="quickex" href="prototypes/tools?v=1&amp;add=1" aria-label="Add an expense">¥<b>+</b></a>
   <button class="tt-btn" id="ttBtn" aria-expanded="false" aria-label="Trip tools"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 </nav>
 <script>
