@@ -782,18 +782,18 @@ function buildDial(sun) {
   sp.forEach(({ e, s }) => { const a0 = ang(s[0]) + 0.7, a1 = Math.max(a0 + 1.4, ang(s[1]) - 0.7); g += `<path class="ev ${done(e.id) ? 'done' : ''} ${e.optional ? 'opt' : ''}" data-arc="${e.id}" stroke="${isTicket(e) ? legHex(e) : catOf(e).c}" d="${arc(a0, Math.min(a1, A1), R)}"/>`; });
   const hs = Math.ceil(t0 / 60), he = Math.floor(t1 / 60), step = he - hs > 12 ? 3 : 2;
   for (let h = hs; h <= he; h++) { const a = ang(h * 60); const [x0, y0] = pt(a, R + 15), [x1, y1] = pt(a, R + 20); g += `<line class="tk" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>`; }
-  // Labels round the outside: the start time of anything booked; on a day with nothing booked, plain 9 · 12 · 3 · 6.
-  const booked = sp.filter((x) => x.e.confirmed || (x.e.tags || []).includes('booking'));
-  const marks = booked.length ? booked.map((x) => ({ m: x.s[0], t: fmt(x.s[0])[0].replace(/:00$/, ''), c: isTicket(x.e) ? legHex(x.e) : catOf(x.e).c, b: true }))
-    : (() => { const o = []; for (let h = Math.ceil(t0 / 180) * 3; h * 60 <= t1; h += 3) o.push({ m: h * 60, t: String(h % 12 || 12) }); return o; })();
-  let lastA = -999;
-  for (const k of marks.sort((a, b) => a.m - b.m)) { const a = ang(k.m); if (a - lastA < 12) continue; lastA = a; const [tx, ty] = pt(a, R + 31);
-    if (k.b) { const [x0, y0] = pt(a, R + 13), [x1, y1] = pt(a, R + 21); g += `<line class="bk" stroke="${k.c}" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/><text class="bt" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="${k.c}">${k.t}</text>`; }
-    else g += `<text class="ht" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}">${k.t}</text>`; }
-  if (sun.set > t0 && sun.set < t1) { const [x, y] = pt(aSet, R + 46); g += `<g class="sunmark"><text x="${x}" y="${y}">sunset</text></g>`; }
+  // Labels round the outside: when each stop starts, in its colour (a tick for every stop; a label wherever there's room).
+  const marks = sp.map((x) => ({ m: x.s[0], t: fmt(x.s[0])[0].replace(/:00$/, ''), c: isTicket(x.e) ? legHex(x.e) : catOf(x.e).c })).sort((a, b) => a.m - b.m);
+  const placed = [];
+  for (const k of marks) { const a = ang(k.m); const [x0, y0] = pt(a, R + 13), [x1, y1] = pt(a, R + 21), [tx, ty] = pt(a, R + 31);
+    g += `<line class="bk" stroke="${k.c}" x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/>`;
+    const w = k.t.length * 6.4 + 6; // about how wide the label is
+    if (placed.some((q) => Math.abs(q.x - tx) < (q.w + w) / 2 && Math.abs(q.y - ty) < 14)) continue;
+    placed.push({ x: tx, y: ty, w }); g += `<text class="bt" x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" fill="${k.c}">${k.t}</text>`; }
+  if (sun.set > t0 && sun.set < t1) { const [x, y] = pt(aSet, R + 46); if (!placed.some((q) => Math.abs(q.x - x) < (q.w + 40) / 2 && Math.abs(q.y - y) < 14)) g += `<g class="sunmark"><text x="${x}" y="${y}">sunset</text></g>`; }
   if (isToday()) { const m = nowMin(); if (m > t0 && m < t1) { const a = ang(m); const [x0, y0] = pt(a, R - 15), [x1, y1] = pt(a, R + 13), [tx, ty] = pt(a, R - 27); g += `<g id="nowmk"><line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}"/></g>`; } }
   if (isToday()) g += '<path id="leftarc" d=""/>';
-  g += `<g id="knob"><circle class="k1" r="16" fill="#ffc53d"/><circle class="k2" r="11" cx="5" cy="-4" fill="#d6d5e2" opacity="0"/></g>`;
+  g += `<g id="knob"><circle class="k1" r="11" fill="#ffc53d"/><circle class="k2" r="7.5" cx="3.5" cy="-2.8" fill="#d6d5e2" opacity="0"/></g>`;
   svg.innerHTML = g;
   const knob = svg.querySelector('#knob'), k1 = knob.querySelector('.k1'), k2 = knob.querySelector('.k2');
   const dur = (n) => { n = Math.max(0, Math.round(n)); const h = Math.floor(n / 60), mm = n % 60; return h ? `${h} h${mm ? ' ' + mm + ' min' : ''}` : `${mm} min`; };
