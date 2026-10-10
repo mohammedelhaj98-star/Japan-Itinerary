@@ -160,6 +160,9 @@ body.mapmax .mapmax-hint { display:block; }
 .dd-rail .rk { position:absolute; left:-1px; width:10px; height:10px; margin-top:-5px; border-radius:50%; background:#ffc53d; box-shadow:0 0 0 2px #fff, 0 2px 6px rgba(0,0,0,.35); }
 .dd-rail .rn { position:absolute; left:-2px; width:12px; height:2.5px; margin-top:-1px; border-radius:2px; background:var(--red); }
 .dd .dial { margin:8px auto 0; max-width:340px; }
+.dd-key { display:flex; flex-wrap:wrap; justify-content:center; gap:5px 12px; margin:8px 10px 2px; padding-top:10px; border-top:1px solid var(--line); font-size:11.5px; font-weight:700; line-height:1.2; color:var(--ink2); }
+.dd-key span { display:flex; align-items:center; gap:5px; }
+.dd-key i { width:9px; height:9px; flex:none; border-radius:3px; background:var(--c); }
 .dd-list { margin:10px 6px 2px; padding:0; list-style:none; }
 .dd-list li { display:flex; gap:10px; align-items:baseline; padding:7px 8px; border-top:1px solid var(--line); font-size:14px; }
 .dd-list li:first-child { border-top:0; }
@@ -744,12 +747,15 @@ function renderSheet() {
   document.getElementById('ddin').innerHTML = `<header class="hd"><div class="hd-r"><p class="eb">Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p><div class="rr"><div class="seg" id="who">${whoBtns}<i></i></div><button class="gear press" id="gear" aria-label="Edit trip">${I.pen}</button></div></div>
 ${daysTo > 0 ? `<p class="cdx">${daysTo} day${daysTo > 1 ? 's' : ''} to go</p>` : tripDay ? `<p class="cdx">Day ${day.n} of ${DAYS.length}</p>` : ''}<h1>${esc(day.title)}</h1>${day.tagline ? `<p class="tg">${esc(day.tagline)}</p>` : ''}</header>
 <div class="facts"><span class="fact" id="wx"><small>Weather…</small></span><span class="fact sun">${I.sunrise}${fmt(sun.rise)[0]}<i class="dot"></i>${I.sunset}${fmt(sun.set)[0]}</span><span class="fact dn"><small>Dinner</small><span>${esc(day.dinner)}</span></span></div>
-    <div class="dial" id="dial"><svg id="arc" viewBox="0 0 360 196"></svg><div class="dc"><p class="dc-k" id="dck"></p><p class="dc-t" id="dct"></p><p class="dc-n" id="dcn"></p><p class="dc-s" id="dcs"></p></div>${tripDay ? `<button class="nowb press" id="nowb">${isToday() ? 'Now' : 'Today'}</button>` : ''}</div>`;
+    <div class="dial" id="dial"><svg id="arc" viewBox="0 0 360 196"></svg><div class="dc"><p class="dc-k" id="dck"></p><p class="dc-t" id="dct"></p><p class="dc-n" id="dcn"></p><p class="dc-s" id="dcs"></p></div>${tripDay ? `<button class="nowb press" id="nowb">${isToday() ? 'Now' : 'Today'}</button>` : ''}</div>
+    <div class="dd-key" aria-label="Card colours">${keyItems(false)}</div>`;
   moveSeg(document.getElementById('who'));
   weatherFor(day, ref.lat || 35.68, ref.lng || 139.76).then((w) => { const el = document.getElementById('wx'); if (!el) return; const [lbl, ic] = w.live ? WMO(w.code) : ['', '']; el.innerHTML = w.live ? `${ic} ${w.hi}° <small>/ ${w.lo}°</small><i class="dot"></i><svg class="um" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 0118 0z"/><path d="M12 12v6a2 2 0 004 0"/></svg><small>${w.rain ?? 0}%</small>` : `${w.hi}° <small>/ ${w.lo}°</small><i class="dot"></i><small>typical</small>`; el.title = w.live ? lbl : w.note; });
   dialApi = buildDial(sun);
   stackApi = buildStack();
 }
+// the card colour key, on the tools bubble (long) and under the day dial (short)
+function keyItems(long) { return `${['sight', 'food', 'shop', 'hotel', 'booking', 'plan'].map((k) => `<span><i style="--c:${CAT[k][0]}"></i>${CAT[k][1]}</span>`).join('')}<span class="tk"><i style="--c:${MODE.train[0]}"></i>${long ? 'Ticket: a journey' : 'Ticket'}</span><span class="tk"><i style="--c:#c9c4b8"></i>${long ? 'Faded: stamped as done' : 'Done'}</span>`; }
 function moveSeg(seg) { if (!seg) return; const on = seg.querySelector('button.on'); const i = seg.querySelector('i'); if (!on) return; i.style.width = on.offsetWidth + 'px'; i.style.transform = `translateX(${on.offsetLeft}px)`; }
 
 /* ═══ sun-arc dial: scrub the day, flick and it snaps to a stop ═══ */
@@ -1272,7 +1278,7 @@ const mapMax = (() => {
 buildMap(); renderDay(); store.start(); refreshFx(); drawer.init();
 // The card colour key sits on top of the tools bubble, so nobody has to go to Settings to remember it.
 { const key = document.createElement('div'); key.className = 'tt-key'; key.setAttribute('aria-label', 'Card colours');
-  key.innerHTML = `<b>Card colours</b><span class="g">${['sight', 'food', 'shop', 'hotel', 'booking', 'plan'].map((k) => `<span><i style="--c:${CAT[k][0]}"></i>${CAT[k][1]}</span>`).join('')}<span class="tk"><i style="--c:${MODE.train[0]}"></i>Ticket: a journey</span><span class="tk"><i style="--c:#c9c4b8"></i>Faded: stamped as done</span></span>`;
+  key.innerHTML = `<b>Card colours</b><span class="g">${keyItems(true)}</span>`;
   document.getElementById('tt').prepend(key); }
 // The PIN was refused (it changed, or this phone lost it): enter it again on the trips page, then come straight back.
 store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) location.replace('/?next=japan'); });

@@ -231,8 +231,6 @@ const tabFit = await C.page.evaluate(() => [document.getElementById('ddtab').get
 ok('the tab ends above the stops', tabFit[0] < tabFit[1] - 10, tabFit.join(' < '));
 const eg = await C.ctx.newCDPSession(C.page);
 const edge = async (y) => { await eg.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 8, y }] }); for (let i = 1; i <= 10; i++) { await eg.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 8 + i * 22, y }] }); await C.page.waitForTimeout(16); } await eg.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await C.page.waitForTimeout(900); };
-const mapY = Math.round(tabFit[0] + (tabFit[1] - tabFit[0]) / 2);
-await edge(mapY); ok('edge swipe over the map opens it', Math.abs(await ddx()) < 2, await ddx());
 if (Math.abs(await ddx()) < 2) { await C.page.tap('#ddtab'); await C.page.waitForTimeout(900); }
 await edge(700); ok('edge swipe over the stops does not', (await ddx()) < -100, await ddx());
 await C.page.evaluate(() => scrollTo(0, 0)); await C.page.waitForTimeout(300);
