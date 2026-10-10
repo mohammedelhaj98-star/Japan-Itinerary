@@ -335,6 +335,43 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await O.ctx.close();
 }
 
+// no signal: changes made offline are kept, marked as not synced, and sent when the phone is back online,
+// without wiping out what another phone changed in the meantime
+{
+  const P = await phone(); const p = P.page;
+  await p.addInitScript(() => { localStorage.setItem('trips.me', '"naf"'); localStorage.setItem('trips.pin', '6666'); });
+  await p.goto(B + '/japan/?d=d05'); await p.waitForTimeout(2500);
+  const stampId = await p.evaluate(() => document.querySelector('.pass.open [data-stamp]').dataset.stamp);
+  const wasStamped = !!JSON.parse(store.get('checks') || '{}')[stampId];
+  await P.ctx.setOffline(true);
+  await p.evaluate(() => document.querySelector('.pass.open [data-stamp]').click());
+  await p.evaluate(async () => {
+    const url = document.querySelector('script[type="module"]').textContent.match(/\.\/js\/store\.js\?v=\d+/)[0];
+    const { store } = await import(new URL(url, location.href).href);
+    store.setExpense('offline-ex', { title: 'Offline taxi', yen: 1500, payer: 'naf', split: ['naf', 'sara'], cat: 'transport', day: 'd05' });
+    store.setChoice('offline-choice', 'nikko');
+  });
+  await p.waitForTimeout(800);
+  // meanwhile another phone, online, ticks something else
+  await fetch(B + '/api/checks', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ id: 'other-phone-tick', value: true }) });
+  const marker = await p.evaluate(() => { const e = document.getElementById('unsynced'); return !!e && e.classList.contains('on') && e.textContent; });
+  ok('offline: changes are marked as not synced', /3 changes not synced yet/.test(marker || ''), marker);
+  ok('offline: changes are kept on the phone', (await p.evaluate(() => JSON.parse(localStorage.getItem('japan2026.outbox.v1') || '[]').length)) === 3);
+  ok('offline: nothing reached the server yet', !exMap()['offline-ex'] && !JSON.parse(store.get('choices') || '{}')['offline-choice']);
+  await P.ctx.setOffline(false);
+  for (let i = 0; i < 50 && !exMap()['offline-ex']; i++) await p.waitForTimeout(500);
+  await p.waitForTimeout(1500);
+  const checks = JSON.parse(store.get('checks') || '{}');
+  ok('back online: the offline stamp reached the server', !!checks[stampId] === !wasStamped);
+  ok('back online: the offline expense reached the server', exMap()['offline-ex']?.title === 'Offline taxi');
+  ok('back online: the offline choice reached the server', JSON.parse(store.get('choices') || '{}')['offline-choice'] === 'nikko');
+  ok("back online: the other phone's tick is kept", !!checks['other-phone-tick']);
+  ok('back online: the phone shows both', await p.evaluate(() => JSON.parse(localStorage.getItem('japan2026.state.v1')).checks['other-phone-tick'] === true));
+  ok('back online: not-synced marker goes away', await p.evaluate(() => { const e = document.getElementById('unsynced'); return !!e && !e.classList.contains('on'); }));
+  ok('no page errors P', !P.errs.length, P.errs.join(' | '));
+  await P.ctx.close();
+}
+
 // offline: today + next 2 days saved ahead (real service worker), then the network goes away
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });

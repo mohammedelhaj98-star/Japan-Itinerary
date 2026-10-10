@@ -5,6 +5,7 @@
 const LS_KEY = 'japan2026.state.v1';
 const LS_DEVICE = 'japan2026.device';
 const LS_NAME = 'japan2026.name';
+const LS_OUTBOX = 'japan2026.outbox.v1';
 const POLL_MS = 20000;
 
 // Practice mode (the guided tour): changes live only in this tab's sessionStorage, nothing is sent to the
@@ -64,8 +65,46 @@ export const store = {
       cache: 'no-store',
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) { const err = new Error(data.error || ('HTTP ' + res.status)); err.pin = !!data.pin; throw err; }
+    if (!res.ok) { const err = new Error(data.error || ('HTTP ' + res.status)); err.pin = !!data.pin; err.status = res.status; throw err; }
     return data;
+  },
+
+  // Changes not yet saved on the server, oldest first, kept in localStorage so they survive no signal, a 429 or the app
+  // being closed. Each is sent once the server is reachable again, before this phone takes the shared copy, and until
+  // then it is laid back over every copy this phone downloads, so nothing made offline is lost or flickers back.
+  _outbox: SANDBOX ? [] : lsGet(LS_OUTBOX, []),
+  _saveOutbox() { lsSet(LS_OUTBOX, this._outbox); },
+  pending() { return this._outbox.length; },
+  _replay(s) { for (const op of this._outbox) applyOp(s, op); },
+  _flushing: null,
+  flush() {
+    if (!this._flushing) this._flushing = this._flush().finally(() => { this._flushing = null; });
+    return this._flushing;
+  },
+  async _flush() {
+    while (this._outbox.length) {
+      const op = this._outbox[0];
+      let data;
+      try { data = await this.api(op.path, op.body); } catch (err) {
+        if (err.pin) { await this._locked(); return false; }
+        // The server refused this change for good (it was malformed, or a vote on an idea someone deleted): drop it
+        // rather than hold up everything queued behind it. Anything else (offline, 429, 5xx) is tried again later.
+        if (err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) { this._outbox.shift(); this._saveOutbox(); continue; }
+        this.setMode('local', err.message); return false;
+      }
+      this._outbox.shift(); this._saveOutbox();
+      if (op.path === 'expenses') this._exRecent.set(op.body.id, { v: op.body.value, t: Date.now() });
+      this.setMode('online');
+      // Take the server's copy of what this change touched, then lay the rest of the queue for it back on top
+      // (only for that part: the others already carry their queued changes, and a vote applied twice undoes itself).
+      const k = keyOf(op);
+      if (data[k]) {
+        this.state[k] = k === 'expenses' ? this._overlayExpenses(data[k]) : data[k];
+        for (const o of this._outbox) if (keyOf(o) === k) applyOp(this.state, o);
+      }
+      this.persist(); this.emit();
+    }
+    return true;
   },
 
   async start() {
@@ -89,6 +128,7 @@ export const store = {
 
   async check() {
     if (SANDBOX) return;
+    if (this._outbox.length) return this.refresh();
     try {
       const v = await this.api('version');
       if (v.updatedAt && v.updatedAt === this.state.updatedAt && (this.mode === 'online' || this.mode === 'locked')) return;
@@ -100,9 +140,12 @@ export const store = {
 
   async refresh() {
     if (SANDBOX) return;
+    // Send what this phone changed offline first; while that still fails, keep showing the local copy.
+    if (this._outbox.length && !(await this.flush())) return;
     try {
       const remote = await this.api('state');
       this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), profiles: { ...(remote.profiles || {}), ...this._pfRecent() }, covers: remote.covers || {}, updatedAt: remote.updatedAt || null };
+      this._replay(this.state); // anything changed while the copy was downloading
       this.persist();
       this.setMode(this.mode === 'locked' && !pinOf() ? 'locked' : 'online');
       this.emit();
@@ -111,8 +154,19 @@ export const store = {
     }
   },
 
-  // Optimistic update then sync. On API failure, keep the local change (local mode).
-  async _mutate(localFn, path, body, applyRemote) {
+  // Show the change at once, queue it, and send the queue. It stays queued (local mode) until the server has it.
+  _mutate(path, body, meta) {
+    const op = meta ? { path, body, meta } : { path, body };
+    if (SANDBOX) { applyOp(this.state, op); this.persist(); this.emit(); return Promise.resolve(); }
+    if (GUEST) return Promise.resolve(); // view only (the pages hide every way to change things; this is the backstop)
+    applyOp(this.state, op);
+    this._outbox.push(op); this._saveOutbox();
+    this.persist();
+    this.emit();
+    return this.flush();
+  },
+  // Profiles (a colour, a photo) are sent straight away and not queued: a photo is too big to keep in localStorage.
+  async _send(localFn, path, body, applyRemote) {
     if (SANDBOX) { localFn(this.state); this.persist(); this.emit(); return; }
     if (GUEST) return; // view only (the pages hide every way to change things; this is the backstop)
     localFn(this.state);
@@ -133,39 +187,22 @@ export const store = {
   // and show "locked" until the PIN is entered again on the trips page.
   async _locked() {
     try { localStorage.removeItem('trips.pin'); } catch { /* ignore */ }
-    this._exRecent.clear(); this._pf.clear();
+    this._exRecent.clear(); this._pf.clear(); this._outbox = []; this._saveOutbox();
     await this.refresh();
     this.setMode('locked', 'Enter the PIN to save changes');
   },
 
   isChecked(id) { return !!this.state.checks[id]; },
   toggleCheck(id) {
-    const value = !this.state.checks[id];
-    return this._mutate(
-      (s) => { if (value) s.checks[id] = true; else delete s.checks[id]; },
-      'checks', { id, value },
-      (d, s) => { if (d.checks) s.checks = d.checks; },
-    );
+    return this._mutate('checks', { id, value: !this.state.checks[id] });
   },
 
   getChoice(id, fallback) { return this.state.choices[id] || fallback; },
-  setChoice(id, value) {
-    return this._mutate(
-      (s) => { s.choices[id] = value; },
-      'choices', { id, value },
-      (d, s) => { if (d.choices) s.choices = d.choices; },
-    );
-  },
+  setChoice(id, value) { return this._mutate('choices', { id, value }); },
 
   // Edits, hidden stops and added stops, keyed by stop id. value null removes the record (reset / delete).
   getCustom(id) { return (this.state.custom || {})[id] || null; },
-  setCustom(id, value) {
-    return this._mutate(
-      (s) => { s.custom = s.custom || {}; if (value) s.custom[id] = { ...value, ts: new Date().toISOString() }; else delete s.custom[id]; },
-      'custom', { id, value: value || null },
-      (d, s) => { if (d.custom) s.custom = d.custom; },
-    );
-  },
+  setCustom(id, value) { return this._mutate('custom', { id, value: value || null }, { ts: new Date().toISOString() }); },
 
   // Shared expenses, keyed by id. value null deletes.
   // The server lists expenses with up to ~60s lag after a write, so this phone's recent changes are laid over what it returns.
@@ -180,14 +217,7 @@ export const store = {
     return out;
   },
   getExpenses() { return this.state.expenses || {}; },
-  setExpense(id, value) {
-    this._exRecent.set(id, { v: value || null, t: Date.now() });
-    return this._mutate(
-      (s) => { s.expenses = this._overlayExpenses(s.expenses); },
-      'expenses', { id, value: value || null },
-      (d, s) => { if (d.expenses) s.expenses = this._overlayExpenses(d.expenses); },
-    );
-  },
+  setExpense(id, value) { return this._mutate('expenses', { id, value: value || null }); },
 
   // Profiles: colour and photo per person. The photo itself is served by /api/photo/<id>?v=<photo stamp>.
   _pf: new Map(),
@@ -199,7 +229,7 @@ export const store = {
     if (patch.color !== undefined) cur.color = patch.color;
     if (patch.photo === null) { delete cur.photo; delete cur.local; } else if (patch.photo) { cur.photo = Date.now(); cur.local = localPhoto || patch.photo; }
     this._pf.set(id, { v: cur, t: Date.now() });
-    return this._mutate(
+    return this._send(
       (s) => { s.profiles = { ...(s.profiles || {}), [id]: cur }; },
       'profile', { id, ...patch },
       (d, s) => { if (d.profiles) { const keep = d.profiles[id] && cur.local && d.profiles[id].photo ? { ...d.profiles[id], local: cur.local } : d.profiles[id]; s.profiles = { ...d.profiles, [id]: keep }; this._pf.set(id, { v: keep, t: Date.now() }); } },
@@ -209,26 +239,25 @@ export const store = {
   addSuggestion({ text, name, day, kind = 'food' }) {
     const author = deviceId();
     const temp = { id: 'tmp-' + Date.now(), text, name: name || 'Anonymous', day: day || null, kind, author, votes: [], ts: new Date().toISOString(), pending: !SANDBOX };
-    return this._mutate(
-      (s) => { s.suggestions.unshift(temp); },
-      'suggestions', { text, name, day, kind, author },
-      (d, s) => { if (d.suggestions) s.suggestions = d.suggestions; },
-    );
+    return this._mutate('suggestions', { text, name, day, kind, author }, { temp });
   },
-  toggleVote(id, who) {
-    const voter = who || deviceId();
-    return this._mutate(
-      (s) => { const it = s.suggestions.find((x) => x.id === id); if (!it) return; const v = new Set(it.votes || []); if (v.has(voter)) v.delete(voter); else v.add(voter); it.votes = [...v]; },
-      'suggestions/' + id + '/vote', { voter },
-      (d, s) => { if (d.suggestions) s.suggestions = d.suggestions; },
-    );
-  },
-  deleteSuggestion(id) {
-    const author = deviceId();
-    return this._mutate(
-      (s) => { s.suggestions = s.suggestions.filter((x) => x.id !== id); },
-      'suggestions/' + id + '/delete', { author },
-      (d, s) => { if (d.suggestions) s.suggestions = d.suggestions; },
-    );
-  },
+  toggleVote(id, who) { return this._mutate('suggestions/' + id + '/vote', { voter: who || deviceId() }); },
+  deleteSuggestion(id) { return this._mutate('suggestions/' + id + '/delete', { author: deviceId() }); },
 };
+
+const keyOf = (op) => op.path.split('/')[0];
+
+// What a queued change does to this phone's copy: the same thing the server will do with it.
+function applyOp(s, { path, body, meta }) {
+  const { id, value } = body;
+  if (path === 'checks') { if (value) s.checks[id] = true; else delete s.checks[id]; return; }
+  if (path === 'choices') { if (value) s.choices[id] = value; else delete s.choices[id]; return; }
+  if (path === 'custom') { s.custom = s.custom || {}; if (value) s.custom[id] = { ...value, ts: meta.ts }; else delete s.custom[id]; return; }
+  if (path === 'expenses') { s.expenses = { ...(s.expenses || {}) }; if (value) s.expenses[id] = { ...(s.expenses[id] || {}), ...value }; else delete s.expenses[id]; return; }
+  if (path === 'suggestions') { if (!s.suggestions.some((x) => x.id === meta.temp.id)) s.suggestions.unshift({ ...meta.temp }); return; }
+  const m = path.match(/^suggestions\/(.+)\/(vote|delete)$/);
+  if (!m) return;
+  if (m[2] === 'delete') { s.suggestions = s.suggestions.filter((x) => x.id !== m[1]); return; }
+  const it = s.suggestions.find((x) => x.id === m[1]); if (!it) return;
+  const v = new Set(it.votes || []); if (v.has(body.voter)) v.delete(body.voter); else v.add(body.voter); it.votes = [...v];
+}

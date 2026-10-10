@@ -68,6 +68,9 @@ body.scrolled .topfade { opacity:1; }
 body.guest [data-stamp], body.guest [data-edit], body.guest [data-addend], body.guest #gear { display:none !important; }
 body.guest [data-choice] { pointer-events:none; }
 .top { position:fixed; top:var(--top); left:10px; right:10px; z-index:600; display:flex; gap:8px; justify-content:center; max-width:460px; margin:0 auto; }
+/* changes made with no signal, still waiting to reach the other phones */
+.unsynced { position:fixed; top:calc(var(--top) + 56px); left:50%; transform:translateX(-50%); z-index:600; display:none; font-size:12px; font-weight:600; color:#7a5a00; background:#fff6dd; border-radius:12px; padding:4px 10px; box-shadow:0 1px 4px rgba(0,0,0,.12); pointer-events:none; white-space:nowrap; }
+.unsynced.on { display:block; }
 .tb { height:48px; min-width:48px; border-radius:24px; display:grid; place-items:center; }
 .tb:disabled { opacity:.35; }
 .dayp { flex:1 1 0; width:0; min-width:0; overflow:hidden; max-width:250px; padding:6px 16px; text-align:center; line-height:1.15; display:block; }
@@ -475,6 +478,7 @@ body.mapmax .mapmax-hint { display:block; }
   <button class="tb glass press" id="next" aria-label="Next day"></button>
   <button class="tb glass press yen" id="kitbtn" aria-label="Currency and travel kit">¥</button>
 </div>
+<div class="unsynced" id="unsynced" role="status" aria-live="polite"></div>
 <div class="wrap"><div class="spacer"></div><main class="sheet" id="sheet"></main></div>
 <div class="dd-scrim" id="ddscrim"></div><aside class="dd" id="dd" aria-label="Day dial"><div class="dd-in" id="ddin"></div><button class="dd-tab" id="ddtab" aria-label="Show the day dial" aria-expanded="false"><span class="dd-rail" id="ddrail"></span></button></aside>
 <div class="scrim" id="scrim"></div>
@@ -1290,6 +1294,8 @@ buildMap(); renderDay(); store.start(); refreshFx(); drawer.init();
   document.getElementById('tt').prepend(key); }
 // The PIN was refused (it changed, or this phone lost it): enter it again on the trips page, then come straight back.
 store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) location.replace('/?next=japan'); });
+{ const el = document.getElementById('unsynced');
+  store.subscribe(() => { const n = store.pending(); el.textContent = n ? `${n} change${n === 1 ? '' : 's'} not synced yet` : ''; el.classList.toggle('on', !!n); }); }
 // Guests look but don't touch: no stamping, editing, adding stops or making choices (the practice tour still lets them try).
 if (GUEST && !SANDBOX) {
   document.body.classList.add('guest');
