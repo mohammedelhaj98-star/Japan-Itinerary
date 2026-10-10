@@ -216,7 +216,7 @@ await C.page.evaluate(() => scrollTo(0, 500)); await C.page.waitForTimeout(900);
 ok('scrolling into the day tucks it away', (await ddx()) < -200, await ddx());
 await C.page.screenshot({ path: SH + 'rail.png' });
 const tabOp = () => C.page.$eval('#ddtab', (e) => +getComputedStyle(e).opacity);
-ok('the tab fades out once the stops cover it', (await tabOp()) === 0 && (await C.page.$eval('#ddtab', (e) => getComputedStyle(e).pointerEvents)) === 'none');
+ok('the tab fades once the stops cover it', Math.abs((await tabOp()) - 0.35) < 0.01, await tabOp());
 await C.page.evaluate(() => scrollTo(0, 0)); await C.page.waitForTimeout(600);
 ok('and comes back over the map', (await tabOp()) === 1);
 await C.page.tap('#ddtab'); await C.page.waitForTimeout(900);

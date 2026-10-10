@@ -151,7 +151,7 @@ body.mapmax .mapmax-hint { display:block; }
 .dd-in { flex:1; min-width:0; padding:12px 8px 10px; border-radius:0 26px 26px 0; background:#faf8f4; }
 .dd { pointer-events:none; } .dd-in, .dd-tab { pointer-events:auto; } /* only the drawer and its tab catch touches, not the empty box under the tab */
 .dd-tab { position:relative; flex:none; align-self:flex-start; width:36px; height:clamp(96px, calc(42svh - 150px - env(safe-area-inset-top)), 200px); margin:34px 0 0 -1px; border-radius:0 16px 16px 0; background:#faf8f4; touch-action:none; transition:opacity 220ms ease; }
-.dd.tuck .dd-tab { opacity:0; pointer-events:none; }
+.dd.tuck .dd-tab { opacity:.35; }
 .dd-tab::after { content:''; position:absolute; right:3px; top:50%; width:3px; height:22px; margin-top:-11px; border-radius:2px; background:rgba(20,20,10,.18); }
 .dd-rail { position:absolute; left:5px; top:12px; bottom:12px; width:24px; }
 .dd-rail em { position:absolute; left:11px; margin-top:-6px; font-style:normal; font-size:9px; font-weight:700; line-height:12px; color:var(--ink3); }
