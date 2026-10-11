@@ -24,7 +24,7 @@ for (const model of models) {
   let tot = 0, lin = 0, ms = 0; console.log(`\n${model}`);
   for (const [k, r] of res) {
     const t = truth[k], a = r.total === t.total, b = linesOk(r.lines, t.lines || []); tot += a; lin += b; ms += r.ms || 0;
-    console.log(`${k.padEnd(10)} total ${a ? '✓' : '✗'} ${r.total} (want ${t.total})  lines ${b ? '✓' : '✗'} ${(r.lines || []).map((l) => l.price).join(' ')}  ${r.model}  ${((r.ms || 0) / 1000).toFixed(1)}s ${r.error || ''}`);
+    console.log(`${k.padEnd(10)} total ${a ? '✓' : '✗'} ${r.total} (want ${t.total})  lines ${b ? '✓' : '✗'} ${(r.lines || []).map((l) => `${l.name} ${l.price}`).join(' · ')}  ${r.model}  ${((r.ms || 0) / 1000).toFixed(1)}s ${r.error || ''}`);
   }
   console.log(`totals ${tot}/${res.length} · lines ${lin}/${res.length} · average ${(ms / res.length / 1000).toFixed(1)}s`);
 }
