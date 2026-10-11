@@ -972,12 +972,15 @@ const unfold = (els) => { if (!RM.matches) [...els].slice(0, 8).forEach((el, i) 
 // nobody owing anybody, the "square" line comes in with its tick
 // the chevron on a toggle is redrawn with the card, so it turns here rather than snapping
 const turnChev = (el, open) => { if (el && !RM.matches) el.animate([{ transform: `rotate(${open ? 0 : 90}deg)` }, { transform: `rotate(${open ? 90 : 0}deg)` }], { duration: 200, easing: 'cubic-bezier(.23,1,.32,1)' }); };
-let sqAt = 0;
+let sqAt = 0, settling = false;
 // the save that follows redraws the card again, so the square line carries on from where its animation got to
 function squareIn() { const t = performance.now() - sqAt, ev = sqAt && t < 600 && document.querySelector('.settle .even'); if (ev) { ev.style.setProperty('--sqt', `${-t}ms`); ev.classList.add('sq-in'); } }
+// the payment is saved first (commit), so leaving the page mid-animation loses nothing; redraws from the save wait
 function settleAway(row) {
+  commit(); settling = true;
+  let ended = false;
   const done = () => {
-    const was = !!document.querySelector('.settle .even'), y = scrollY;
+    if (ended) return; ended = true; settling = false; const was = !!document.querySelector('.settle .even'), y = scrollY;
     if (!was && !RM.matches) sqAt = performance.now();
     render(); scrollTo(0, y); if (!document.querySelector('.settle .even')) sqAt = 0;
   };
@@ -986,7 +989,7 @@ function settleAway(row) {
   row.style.overflow = 'hidden'; row.style.pointerEvents = 'none';
   row.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(28px)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
   const a = row.animate([{ height: h + 'px' }, { height: '0px', paddingTop: '0px', paddingBottom: '0px' }], { duration: 200, delay: 140, easing: ease, fill: 'forwards' });
-  a.finished.then(done, done);
+  a.finished.then(done, done); setTimeout(done, 900); // never hold the page's redraws for long
 }
 const shownFig = {}, figRaf = {};
 function countUp() {
@@ -1812,7 +1815,7 @@ store.subscribe(() => {
   if (committing) return;
   const pf = store.getProfiles(), s2 = store.mode + store.pending() + JSON.stringify(store.getExpenses()) + JSON.stringify(store.getMoney()) + JSON.stringify(Object.values(pf).map((v) => [v.color, v.photo]));
   if (s2 === sig) return; sig = s2;
-  if (F || sheet.classList.contains('on')) { stale = true; return; }
+  if (F || sheet.classList.contains('on') || settling) { stale = true; return; }
   load(); const y = scrollY; render(); scrollTo(0, y);
 });
 // the form and sheets pick up what changed meanwhile once they close
