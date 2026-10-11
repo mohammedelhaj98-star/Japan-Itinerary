@@ -385,7 +385,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .gpass + .drop { margin-top:-12px; padding-top:18px; position:relative; z-index:-1; border-radius:0 0 18px 18px; box-shadow:var(--shadow-card); }
 
 /* the day chart: swipe sideways, about eight days on screen, opens on today */
-.dscroll { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; overscroll-behavior-x:contain; -webkit-mask:linear-gradient(90deg, #000 92%, transparent); mask:linear-gradient(90deg, #000 92%, transparent); margin:0 -4px; }
+.dscroll { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; overscroll-behavior-x:contain; -webkit-mask:linear-gradient(90deg, #000 97%, transparent); mask:linear-gradient(90deg, #000 97%, transparent); margin:0 -4px; }
 .dscroll::-webkit-scrollbar { display:none; }
 .dbar { flex:0 0 12.5%; scroll-snap-align:start; display:grid; grid-template-rows:80px auto; padding:0 4px; text-align:center; min-height:44px; }
 .dv { font-size:10.5px; font-weight:700; color:var(--ink3); white-space:nowrap; line-height:1; padding-bottom:3px; }
@@ -847,7 +847,8 @@ function render() {
   people(); app.innerHTML = renderExpenses() + `<p class="syncl">${syncLine()}</p>`; addfab.hidden = !!F;
   document.querySelectorAll('.dscroll').forEach((el) => {
     const k = el.dataset.chart, t = el.querySelector('.today');
-    el.scrollLeft = S.cscroll[k] != null ? S.cscroll[k] : t ? t.offsetLeft - el.clientWidth / 2 + t.offsetWidth / 2 : 0;
+    // opening a page: today is always in view, as the right-most bar once the trip is past its first week
+    el.scrollLeft = S.cscroll[k] != null ? S.cscroll[k] : t ? Math.max(0, t.offsetLeft + t.offsetWidth - el.clientWidth) : 0;
     el.addEventListener('scroll', () => { S.cscroll[k] = el.scrollLeft; }, { passive:true });
   });
 }
