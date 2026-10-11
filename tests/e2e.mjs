@@ -116,6 +116,18 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   const sum1 = await p.$$eval('.isum .ip b', (els) => els.map((e) => e.textContent).join(','));
   ok('split: tapping whose it is moves the parts, tax in proportion, payer takes the leftover yen', sum1 === '¥1,135,¥1,133,¥56,¥56', sum1);
   await p.screenshot({ path: SH + 'split-items.png' });
+  // several of one dish: each tap is one more portion for that person; past what's left, back to none
+  await p.tap('[data-iwho="2:mariam"]'); await p.tap('[data-iwho="2:mariam"]'); await p.waitForTimeout(150);
+  const two = await p.$$eval('.irow', (r) => [r[2].querySelector('.iwho').textContent, r[2].querySelector('[data-iwho="2:mariam"] .icnt')?.textContent]);
+  const sum2 = await p.$$eval('.isum .ip b', (els) => els.map((e) => e.textContent).join(','));
+  ok('split: tapping twice gives two portions', two[0] === 'Mariam ×2' && two[1] === '2' && sum2 === '¥1,079,¥1,077,¥224,¥0', `${two} ${sum2}`);
+  const who2 = () => p.$$eval('.irow', (r) => r[2].querySelector('.iwho').textContent);
+  await p.tap('[data-iwho="2:naf"]'); await p.waitForTimeout(150);
+  ok('split: when all are taken, someone new gets one from whoever has most', (await who2()) === 'Naf ×1 · Mariam ×1', await who2());
+  await p.tap('[data-iwho="2:mariam"]'); await p.waitForTimeout(150);
+  ok('split: a tap past that takes the person back to none', (await who2()) === 'Naf ×1 · 1 shared', await who2());
+  await p.tap('[data-iwho="2:naf"]'); await p.tap('[data-iwho="2:naf"]'); await p.waitForTimeout(150);
+  ok('split: back to shared', /^Shared/.test(await who2()), await who2());
   await p.tap('[data-iedit="2"]'); await p.fill('#iyin', '2040'); await p.press('#iyin', 'Enter'); await p.waitForTimeout(200);
   ok("split: lines that don't add up say so, and can't be used", /add up to ¥4,000, but ¥2,380 was paid/.test(await p.textContent('.ioff').catch(() => '')) && await p.$eval('#fsave', (b) => b.disabled));
   await p.screenshot({ path: SH + 'split-off.png' });

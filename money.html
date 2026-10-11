@@ -646,6 +646,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .ipick button { width:42px; height:44px; display:grid; place-items:center; border-radius:50%; }
 .ipick .av { width:32px; height:32px; font-size:12px; transition:transform 160ms var(--ease), background-color 160ms var(--ease), box-shadow 160ms var(--ease); }
 .ipick button:active .av { transform:scale(.9); }
+.ipick button { position:relative; }
+.ipick .icnt { position:absolute; top:0; right:1px; min-width:19px; height:19px; padding:0 5px; border-radius:10px; background:var(--ink); color:#fff; font-size:11.5px; font-weight:700; line-height:19px; text-align:center; box-shadow:0 0 0 2px var(--card); }
 .ipick button[aria-pressed="false"] .av { background:transparent; background-image:none; color:var(--ink3); box-shadow:inset 0 0 0 1.5px rgba(20,20,10,.22); }
 .irow.shared .ipick button .av { box-shadow:inset 0 0 0 1.5px rgba(20,20,10,.14); color:var(--ink3); }
 .iadj { display:grid; grid-template-columns:1fr auto; gap:2px 10px; padding:12px 16px; border-top:1px dashed rgba(20,20,10,.16); background:var(--tint); }
@@ -1320,24 +1322,33 @@ const tableOf = () => (F.set.length > 1 ? IDS.filter((i) => F.set.includes(i)) :
 function itemShares() {
   const tbl = F.split.table, items = F.split.items, total = F.scan.total;
   const raw = Object.fromEntries(tbl.map((i) => [i, 0]));
-  for (const it of items) { const who = it.who.length ? it.who : tbl; for (const i of who) raw[i] += it.price / who.length; }
+  for (const it of items) {
+    if (it.qty > 1) { // portions: each person's count, and whatever nobody claimed is shared
+      const per = it.price / it.qty, left = it.qty - portions(it);
+      for (const i of tbl) raw[i] += ((it.n[i] || 0) + left / tbl.length) * per; continue;
+    }
+    const who = it.who.length ? it.who : tbl; for (const i of who) raw[i] += it.price / who.length;
+  }
   const sum = items.reduce((s, it) => s + it.price, 0), adj = total - sum, out = {}; let used = 0;
   for (const i of tbl) { out[i] = Math.floor(raw[i] + (sum ? adj * raw[i] / sum : adj / tbl.length)); used += out[i]; }
   const tgt = tbl.includes(F.payer) && out[F.payer] > 0 ? F.payer : tbl.reduce((a, b) => (out[b] > out[a] ? b : a));
   out[tgt] += total - used;
   return { shares:out, sum, adj };
 }
+const portions = (it) => F.split.table.reduce((s, i) => s + (it.n[i] || 0), 0);
 // lines that don't add up to what was paid: more than a quarter on top (tax and service are ~10–20%), or a big discount
 const offBy = (sum, adj) => adj > sum * 0.25 || adj < -F.scan.total * 0.15;
 function renderItems() {
   const { shares, sum, adj } = itemShares(), tbl = F.split.table, sc = F.scan, off = offBy(sum, adj);
   const rows = F.split.items.map((it, k) => {
-    const who = it.who, each = Math.round(it.price / (who.length || tbl.length));
-    const label = !who.length ? `Shared${tbl.length > 1 ? ` · ${fmtY(each)} each` : ''}` : who.length === 1 ? P[who[0]].name : `${who.map((i) => P[i].name).join(' + ')} · ${fmtY(each)} each`;
+    const multi = it.qty > 1, got = multi ? portions(it) : 0, who = multi ? tbl.filter((i) => it.n[i]) : it.who, each = Math.round(it.price / (who.length || tbl.length));
+    const label = !who.length ? `Shared${tbl.length > 1 ? ` · ${fmtY(each)} each` : ''}`
+      : multi ? `${who.map((i) => `${P[i].name} ×${it.n[i]}`).join(' · ')}${got < it.qty ? ` · ${it.qty - got} shared` : ''}`
+      : who.length === 1 ? P[who[0]].name : `${who.map((i) => P[i].name).join(' + ')} · ${fmtY(each)} each`;
     const price = F.split.edit === k ? `<input class="iyin" id="iyin" inputmode="numeric" enterkeyhint="done" value="${it.price}" aria-label="Price of ${esc(it.name)}">`
       : `<button class="iyen" data-iedit="${k}" aria-label="${fmtY(it.price)}, tap to fix the price">${fmtY(it.price)}</button>`;
     return `<div class="irow ${who.length ? '' : 'shared'}"><span class="iname">${esc(it.name)}${it.qty > 1 ? `<i>×${it.qty}</i>` : ''}</span>${price}
-      <span class="iwho ${who.length ? 'mine' : ''}">${label}</span><span class="ipick">${tbl.map((i) => `<button data-iwho="${k}:${i}" aria-pressed="${who.includes(i)}" aria-label="${P[i].name} had ${esc(it.name)}">${av(i)}</button>`).join('')}</span></div>`;
+      <span class="iwho ${who.length ? 'mine' : ''}">${label}</span><span class="ipick">${tbl.map((i) => `<button data-iwho="${k}:${i}" aria-pressed="${who.includes(i)}" aria-label="${multi ? `${P[i].name}: ${it.n[i] || 0} of ${it.qty} ${esc(it.name)}` : `${P[i].name} had ${esc(it.name)}`}">${av(i)}${multi && it.n[i] ? `<b class="icnt">${it.n[i]}</b>` : ''}</button>`).join('')}</span></div>`;
   }).join('');
   const adjRow = adj && !off ? `<div class="iadj"><b>${adj > 0 ? 'Tax and service' : 'Discount'}</b><span class="iyen">${adj > 0 ? '+' : '−'}${fmtY(Math.abs(adj))}</span><small>Spread by what each person had</small></div>` : '';
   fpage.innerHTML = `<div class="fwrap" style="padding-bottom:200px"><div class="ftop"><button data-iback>Back</button><b>Split by item</b><button style="visibility:hidden" tabindex="-1" aria-hidden="true">·</button></div>
@@ -1349,7 +1360,7 @@ function renderItems() {
   const inp = document.getElementById('iyin'); if (inp) { inp.focus(); inp.select(); }
 }
 function openItems() {
-  if (!F.split) F.split = { table:tableOf(), items:F.scan.lines.map((it) => ({ ...it, who:[] })), edit:null };
+  if (!F.split) F.split = { table:tableOf(), items:F.scan.lines.map((it) => ({ ...it, who:[], n:{} })), edit:null };
   F.view = 'items'; renderItems(); scrollTo(0, 0);
 }
 // the shares go into the form as typed amounts; the form remembers they came from the receipt until something changes
@@ -1432,6 +1443,13 @@ fpage.addEventListener('click', (e) => {
   const iwh = F && F.split && e.target.closest('[data-iwho]');
   if (iwh) { // the first tap says whose it is; more taps add people; nobody left means shared again
     const [k, p] = iwh.dataset.iwho.split(':'), it = F.split.items[+k];
+    if (it.qty > 1) { // one more portion each tap; when all are taken, someone new gets one from whoever has most, and a tap past that is back to none
+      const have = it.n[p] || 0;
+      if (portions(it) < it.qty) it.n[p] = have + 1;
+      else if (!have) { const top = F.split.table.reduce((a, b) => ((it.n[b] || 0) > (it.n[a] || 0) ? b : a)); it.n[top]--; it.n[p] = 1; }
+      else it.n[p] = 0;
+      return renderItems();
+    }
     it.who = it.who.includes(p) ? it.who.filter((x) => x !== p) : IDS.filter((x) => x === p || it.who.includes(x)); return renderItems();
   }
   if (!F) return; const t = (s) => e.target.closest(s);
