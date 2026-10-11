@@ -8,13 +8,11 @@
 <meta name="color-scheme" content="light">
 <meta name="theme-color" content="#f6f4ef">
 <title>Money · Japan 2026</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif&display=swap">
 <style>
 @font-face { font-family:'Zen Kaku Gothic New'; font-weight:400; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku Gothic New'; font-weight:500; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku Gothic New'; font-weight:700; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2) format('woff2'); }
+@font-face { font-family:'Instrument Serif'; font-weight:400; font-display:swap; src:url(vendor/fonts/instrument-serif-latin-400-normal.woff2) format('woff2'); }
 /* The Pass Wallet (DESIGN.md): warm paper, white cards, ink, Instrument Serif for money, Zen Kaku Gothic for UI.
    One 460px phone column. Light only, like the real app; every colour is set explicitly. */
 :root {
@@ -1122,7 +1120,7 @@ function openForm(id, opts = {}) {
   else F = blankForm(opts.day || TODAY, opts.quick);
   if (opts.kind && !x) F.kind = opts.kind;
   fpage.classList.add('on'); fpage.setAttribute('aria-hidden', 'false'); fbar.hidden = false; addfab.hidden = true; renderForm(); fpage.scrollTop = 0;
-  if (x && typeof x.receipt === 'number') store.receiptUrl(x.id).then((u) => { if (u && F && F.id === x.id && !F.rmReceipt) { F.receipt = u; renderForm(); } });
+  if (x && typeof x.receipt === 'number') store.receiptUrl(x.id, x.receipt).then((u) => { if (u && F && F.id === x.id && !F.rmReceipt) { F.receipt = u; renderForm(); } });
   if (!x && !opts.restore) setTimeout(() => { const a = document.getElementById(F && F.kind && F.kind !== 'ex' ? 'fmove' : 'famt'); if (a) a.focus({ preventScroll:true }); }, 330);
 }
 function closeForm(back) { fpage.classList.remove('on'); fpage.setAttribute('aria-hidden', 'true'); fbar.hidden = true; const q = F && F.quick; F = null; if (back && q) return backToTrip(); render(); }

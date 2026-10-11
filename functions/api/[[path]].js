@@ -1,9 +1,11 @@
-// Cloudflare Pages Function — shared trip state in Workers KV.
-// Bind a KV namespace named TRIP_KV in the Pages project (Settings → Bindings).
+// Cloudflare Pages Function — the trip's API. Shared state in Workers KV, or in the Durable Object (workers/state) when
+// TRIP_DO is bound (lib/state-store.js hides which). Bind a KV namespace named TRIP_KV in the Pages project either way.
 //
 // Routes:
-//   GET  /api/health                  → { ok, kv }
-//   GET  /api/version                 → { updatedAt }  (one read: phones poll this, and fetch /api/state only when it changes)
+//   GET  /api/health                  → { ok, kv, store }  (store: kv, or durable-object when TRIP_DO is bound)
+//   GET  /api/version                 → { updatedAt, live }  (one read: phones poll this, and fetch /api/state only when it changes)
+//   GET  /api/live                    a WebSocket: the phone is told { updatedAt } the moment the shared state changes
+//                                     (only with the Durable Object; live:false in /api/version means keep polling)
 //   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, money, profiles, covers, updatedAt }
 //                                       (expenses and money only with the PIN in x-trip-pin)
 //   POST /api/checks                  { id, value:boolean }
@@ -20,7 +22,7 @@
 //   POST /api/suggestions             { text, name, day, author, kind? }  (kind: food | shop | place)
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
-//   POST /api/log                     { errors:[…] }  problem reports from the phones (no PIN; a few a day at most)
+//   POST /api/log                     { errors:[…] }  problem reports from the phones (no PIN; a few a day at most; each carries v, the deploy it came from)
 //   GET  /api/log                     → the problem reports (with the PIN)
 //   GET  /api/backup                  → when the money was last backed up to Google Drive (with the PIN)
 //   POST /api/backup                  back the money up now (see lib/backup.js; it also runs after the first money change of each day)
@@ -33,6 +35,7 @@
 import { handlePhotos } from '../../lib/photos.js';
 import { readReceiptClaude, CLAUDE_MODEL } from '../../lib/scan-claude.js';
 import { autoBackup, backupMoney, backupStatus } from '../../lib/backup.js';
+import { stateStore } from '../../lib/state-store.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
@@ -51,37 +54,16 @@ const MAX_MONEY = 3000;
 const MAX_RECEIPT = 700000; // a data URL; the app sends ~1200px JPEGs
 const CCYS = ['CAD', 'QAR', 'USD'];
 
-async function readKey(kv, key, fallback) {
-  const v = await kv.get(key, 'json');
-  return v == null ? fallback : v;
+const STATE = { checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {} };
+async function readState(store) {
+  const got = await store.readMany([...Object.keys(STATE), 'updatedAt']);
+  const out = {}; for (const k of Object.keys(STATE)) out[k] = got[k] ?? STATE[k];
+  return { ...out, updatedAt: got.updatedAt || null };
 }
-
-async function readState(kv) {
-  const [checks, choices, suggestions, custom, expenses, money, profiles, covers] = await Promise.all([
-    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv), readKey(kv, 'money', {}), readProfiles(kv), readKey(kv, 'covers', {}),
-  ]);
-  const updatedAt = await kv.get('updatedAt');
-  return { checks, choices, suggestions, custom, expenses, money, profiles, covers, updatedAt: updatedAt || null };
-}
-
-// Expenses and profiles are single records (like checks and custom), so a normal read never needs a KV list
-// (list operations are capped on the free plan). The first read after the switch migrates any per-item keys.
-async function readMap(kv, key, prefix) {
-  const v = await kv.get(key, 'json');
-  if (v) return v;
-  const out = {};
-  const page = await kv.list({ prefix });
-  for (const k of page.keys) out[k.name.slice(prefix.length)] = k.metadata || (await kv.get(k.name, 'json'));
-  await kv.put(key, JSON.stringify(out));
-  return out;
-}
-const readExpenses = (kv) => readMap(kv, 'expenses', 'ex:');
-const readProfiles = (kv) => readMap(kv, 'profiles', 'pf:');
-
-async function writeKey(kv, key, value) {
-  await kv.put(key, JSON.stringify(value));
-  await kv.put('updatedAt', new Date().toISOString());
-}
+// A change to one of the maps: fn gets the map as it is and returns { value } to store (or { error, status } to refuse).
+// The store makes sure the write can't lose someone else's change made in between (lib/state-store.js).
+const change = async (store, key, fn) => store.update(key, STATE[key], (cur) => fn(cur));
+const refuse = (error, status) => ({ error, status });
 
 const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim().slice(0, max);
 const isId = (s) => typeof s === 'string' && /^[a-z0-9_-]{1,80}$/i.test(s);
@@ -244,6 +226,7 @@ export async function onRequest(ctx) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
   const kv = env.TRIP_KV;
+  const store = kv ? stateStore(env, ctx) : null;
 
   const rc = path.match(/^receipt\/([a-z0-9_-]{1,80})$/i);
   if (request.method === 'GET' && rc && kv) {
@@ -272,30 +255,35 @@ export async function onRequest(ctx) {
 
   // the daily site check reads this: no trip data, just whether anything went wrong
   if (path === 'health') {
-    if (!kv) return json({ ok: true, kv: false });
+    if (!kv) return json({ ok: true, kv: false, store: null });
     const [log, bk] = await Promise.all([kv.get('log', 'json'), kv.get('backup', 'json')]);
     const day = Date.now() - 864e5;
-    return json({ ok: true, kv: true, errors24h: (log || []).filter((e) => e.got > day).length,
+    return json({ ok: true, kv: true, store: store.kind, errors24h: (log || []).filter((e) => e.got > day).length,
       backup: bk ? { at: bk.at || null, failing: !!(bk.error && bk.errAt > (bk.at || 0)) } : null });
   }
   if (!kv) return json({ error: 'KV namespace TRIP_KV is not bound. See README.' }, 503);
-  if (path === 'photos' || path.startsWith('photos/')) return handlePhotos({ request, env, url, path, kv });
+  if (path === 'photos' || path.startsWith('photos/')) return handlePhotos({ request, env, url, path, kv, store });
 
   const pin = env.TRIP_PIN ? String(env.TRIP_PIN) : '';
   const member = !pin || request.headers.get('x-trip-pin') === pin;
   try {
+    const live = store.kind === 'durable-object';
     if (request.method === 'GET' && path === 'version') {
-      return json({ updatedAt: (await kv.get('updatedAt')) || null });
+      return json({ updatedAt: await store.version(), live });
+    }
+    if (request.method === 'GET' && path === 'live') {
+      if (request.headers.get('upgrade') !== 'websocket') return json({ live });
+      return store.live(request);
     }
 
     // The money stays between the four of us: without the PIN the state comes back with no expenses.
     if (request.method === 'GET' && path === 'state') {
-      const st = await readState(kv);
+      const st = await readState(store);
       if (!member) { st.expenses = {}; st.money = {}; }
-      return json(st);
+      return json({ ...st, live });
     }
 
-    const loadMoney = async () => ({ expenses: await readExpenses(kv), money: await readKey(kv, 'money', {}) });
+    const loadMoney = async () => { const st = await store.readMany(['expenses', 'money']); return { expenses: st.expenses || {}, money: st.money || {} }; };
     if (path === 'log' && request.method === 'GET') {
       if (!member) return json({ error: 'pin required', pin: true }, 403);
       return json({ log: (await kv.get('log', 'json')) || [] });
@@ -325,7 +313,7 @@ export async function onRequest(ctx) {
       const list = (await kv.get('log', 'json')) || [], now = Date.now();
       if (list.filter((e) => e.got > now - 864e5).length >= 50) return json({ ok: true, dropped: true });
       const errs = (Array.isArray(body.errors) ? body.errors : []).slice(0, 10).map((e) => e && typeof e === 'object' && {
-        msg: clean(e.msg, 300), stack: clean(e.stack, 600), page: clean(e.page, 80), who: isP(e.who) || e.who === 'guest' ? e.who : '', ua: clean(e.ua, 160), at: stamp(e.at) || now, got: now }).filter((e) => e && e.msg);
+        msg: clean(e.msg, 300), stack: clean(e.stack, 600), page: clean(e.page, 80), who: isP(e.who) || e.who === 'guest' ? e.who : '', ua: clean(e.ua, 160), v: clean(e.v, 20), at: stamp(e.at) || now, got: now }).filter((e) => e && e.msg);
       if (!errs.length) return json({ ok: true });
       await kv.put('log', JSON.stringify([...list, ...errs].slice(-200)));
       return json({ ok: true });
@@ -336,57 +324,64 @@ export async function onRequest(ctx) {
 
     if (path === 'checks' || path === 'choices') {
       if (!isId(body.id)) return json({ error: 'bad id' }, 400);
-      const map = await readKey(kv, path, {});
-      if (path === 'checks') {
-        if (body.value) map[body.id] = true; else delete map[body.id];
-      } else {
-        const v = clean(body.value, 60);
-        if (v) map[body.id] = v; else delete map[body.id];
-      }
-      await writeKey(kv, path, map);
-      return json({ ok: true, [path]: map });
+      const r = await change(store, path, (map) => {
+        if (path === 'checks') {
+          if (body.value) map[body.id] = true; else delete map[body.id];
+        } else {
+          const v = clean(body.value, 60);
+          if (v) map[body.id] = v; else delete map[body.id];
+        }
+        return { value: map };
+      });
+      return json({ ok: true, [path]: r.value });
     }
 
     if (path === 'custom') {
       if (!isId(body.id)) return json({ error: 'bad id' }, 400);
-      const map = await readKey(kv, 'custom', {});
       const value = body.value === null ? null : cleanCustom(body.value);
-      if (value) {
-        if (!map[body.id] && Object.keys(map).length >= MAX_CUSTOM) return json({ error: 'too many changes' }, 429);
-        map[body.id] = { ...value, ts: new Date().toISOString() };
-      } else delete map[body.id];
-      await writeKey(kv, 'custom', map);
-      return json({ ok: true, custom: map });
+      const r = await change(store, 'custom', (map) => {
+        if (value) {
+          if (!map[body.id] && Object.keys(map).length >= MAX_CUSTOM) return refuse('too many changes', 429);
+          map[body.id] = { ...value, ts: new Date().toISOString() };
+        } else delete map[body.id];
+        return { value: map };
+      });
+      if (r.error) return json({ error: r.error }, r.status);
+      return json({ ok: true, custom: r.value });
     }
 
     if (path === 'expenses') {
       if (!isId(body.id)) return json({ error: 'bad id' }, 400);
-      const map = await readExpenses(kv);
-      if (body.value === null) delete map[body.id];
-      else {
-        const value = cleanExpense(body.value);
-        if (!value) return json({ error: 'bad expense' }, 400);
-        if (!map[body.id] && Object.keys(map).length >= MAX_EXPENSES) return json({ error: 'too many expenses' }, 429);
-        map[body.id] = { ...value, ts: (map[body.id] && map[body.id].ts) || new Date().toISOString() };
-      }
-      await writeKey(kv, 'expenses', map);
+      const value = body.value === null ? null : cleanExpense(body.value);
+      if (body.value !== null && !value) return json({ error: 'bad expense' }, 400);
+      const r = await change(store, 'expenses', (map) => {
+        if (value === null) delete map[body.id];
+        else {
+          if (!map[body.id] && Object.keys(map).length >= MAX_EXPENSES) return refuse('too many expenses', 429);
+          map[body.id] = { ...value, ts: (map[body.id] && map[body.id].ts) || new Date().toISOString() };
+        }
+        return { value: map };
+      });
+      if (r.error) return json({ error: r.error }, r.status);
       afterMoney();
-      return json({ ok: true, expenses: map });
+      return json({ ok: true, expenses: r.value });
     }
 
     if (path === 'money') {
       if (!isKey(body.id)) return json({ error: 'bad id' }, 400);
       const value = cleanSetting(body.value);
       if (value === undefined) return json({ error: 'bad value' }, 400);
-      const map = await readKey(kv, 'money', {});
-      if (value === null || value === '') delete map[body.id];
-      else {
-        if (!(body.id in map) && Object.keys(map).length >= MAX_MONEY) return json({ error: 'too many settings' }, 429);
-        map[body.id] = value;
-      }
-      await writeKey(kv, 'money', map);
+      const r = await change(store, 'money', (map) => {
+        if (value === null || value === '') delete map[body.id];
+        else {
+          if (!(body.id in map) && Object.keys(map).length >= MAX_MONEY) return refuse('too many settings', 429);
+          map[body.id] = value;
+        }
+        return { value: map };
+      });
+      if (r.error) return json({ error: r.error }, r.status);
       afterMoney();
-      return json({ ok: true, money: map });
+      return json({ ok: true, money: r.value });
     }
 
     if (path === 'receipt') {
@@ -399,26 +394,29 @@ export async function onRequest(ctx) {
 
     if (path === 'profile') {
       if (!PEOPLE.includes(body.id)) return json({ error: 'bad person' }, 400);
-      const map = await readProfiles(kv);
-      const rec = { ...(map[body.id] || {}) };
-      if (body.color !== undefined) { if (!/^#[0-9a-f]{6}$/i.test(body.color || '')) return json({ error: 'bad colour' }, 400); rec.color = body.color.toLowerCase(); }
-      if (body.photo === null) { await kv.delete('ph:' + body.id); delete rec.photo; }
+      const color = body.color !== undefined ? String(body.color || '').toLowerCase() : undefined;
+      if (color !== undefined && !/^#[0-9a-f]{6}$/.test(color)) return json({ error: 'bad colour' }, 400);
+      let photo; // the photo itself stays in KV (one key per person); the profile carries when it changed
+      if (body.photo === null) { await kv.delete('ph:' + body.id); photo = null; }
       else if (body.photo !== undefined) {
         if (typeof body.photo !== 'string' || body.photo.length > MAX_PHOTO || !/^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(body.photo)) return json({ error: 'bad photo' }, 400);
         await kv.put('ph:' + body.id, body.photo);
-        rec.photo = Date.now();
+        photo = Date.now();
       }
-      rec.ts = new Date().toISOString();
-      map[body.id] = rec;
-      await writeKey(kv, 'profiles', map);
-      return json({ ok: true, profiles: map });
+      const r = await change(store, 'profiles', (map) => {
+        const rec = { ...(map[body.id] || {}) };
+        if (color !== undefined) rec.color = color;
+        if (photo === null) delete rec.photo; else if (photo !== undefined) rec.photo = photo;
+        rec.ts = new Date().toISOString();
+        map[body.id] = rec;
+        return { value: map };
+      });
+      return json({ ok: true, profiles: r.value });
     }
 
     if (path === 'suggestions') {
       const text = clean(body.text, MAX_TEXT);
       if (!text) return json({ error: 'text required' }, 400);
-      const list = await readKey(kv, 'suggestions', []);
-      if (list.length >= MAX_SUGGESTIONS) return json({ error: 'too many suggestions' }, 429);
       const item = {
         id: 'sg-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
         text, name: clean(body.name, MAX_NAME) || 'Anonymous',
@@ -427,28 +425,33 @@ export async function onRequest(ctx) {
         author: isId(body.author || '') ? body.author : null,
         votes: [], ts: new Date().toISOString(),
       };
-      list.unshift(item);
-      await writeKey(kv, 'suggestions', list);
-      return json({ ok: true, suggestions: list });
+      const r = await change(store, 'suggestions', (list) => {
+        if (list.length >= MAX_SUGGESTIONS) return refuse('too many suggestions', 429);
+        list.unshift(item); return { value: list };
+      });
+      if (r.error) return json({ error: r.error }, r.status);
+      return json({ ok: true, suggestions: r.value });
     }
 
     const m = path.match(/^suggestions\/([a-z0-9_-]+)\/(vote|delete)$/i);
     if (m) {
       const [, id, action] = m;
-      const list = await readKey(kv, 'suggestions', []);
-      const idx = list.findIndex((s) => s.id === id);
-      if (idx < 0) return json({ error: 'not found' }, 404);
-      if (action === 'vote') {
-        if (!isId(body.voter)) return json({ error: 'bad voter' }, 400);
-        const votes = new Set(list[idx].votes || []);
-        if (votes.has(body.voter)) votes.delete(body.voter); else votes.add(body.voter);
-        list[idx].votes = [...votes];
-      } else {
-        if (!body.author || list[idx].author !== body.author) return json({ error: 'only the author can delete' }, 403);
-        list.splice(idx, 1);
-      }
-      await writeKey(kv, 'suggestions', list);
-      return json({ ok: true, suggestions: list });
+      if (action === 'vote' && !isId(body.voter)) return json({ error: 'bad voter' }, 400);
+      const r = await change(store, 'suggestions', (list) => {
+        const idx = list.findIndex((s) => s.id === id);
+        if (idx < 0) return refuse('not found', 404);
+        if (action === 'vote') {
+          const votes = new Set(list[idx].votes || []);
+          if (votes.has(body.voter)) votes.delete(body.voter); else votes.add(body.voter);
+          list[idx].votes = [...votes];
+        } else {
+          if (!body.author || list[idx].author !== body.author) return refuse('only the author can delete', 403);
+          list.splice(idx, 1);
+        }
+        return { value: list };
+      });
+      if (r.error) return json({ error: r.error }, r.status);
+      return json({ ok: true, suggestions: r.value });
     }
 
     return json({ error: 'not found' }, 404);

@@ -28,6 +28,22 @@ push to any branch, and on `main` puts the site live only if all of them pass (o
 merge it into `main` when it's ready. (`scripts/deploy.sh` with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set
 still deploys by hand; it uploads only the public site files.)
 
+### Browser caching: one dashboard setting to check
+
+`scripts/deploy.sh` writes a `_headers` file telling browsers never to keep code and data (`Cache-Control: no-cache`),
+yet the live site answers for `js/*.js`, `sw.js` and `data/*.js` with `max-age=14400`: the **ourtrips.date zone** is
+overriding it with a four-hour browser cache (the image rule from the same file *is* applied, so it is a zone setting,
+not the file). The `?v=` stamps on imports work around it, but files loaded without a stamp (`js/report.js`, the
+vendored libraries, the worker itself) can lag a deploy by up to four hours on a phone. To fix it, in the Cloudflare
+dashboard pick the **ourtrips.date** domain (not the Pages project), then:
+
+1. *Caching* → *Configuration* → **Browser Cache TTL** → set it to **Respect Existing Headers**. That is the usual culprit:
+   any other value replaces every `Cache-Control` the site sends.
+2. *Rules* → *Cache Rules*: if a rule there sets a *Browser TTL* for scripts (or for everything), edit it to
+   *Respect origin TTL* or delete it. (*Page Rules*, if any are left, can set the same thing.)
+3. Check: `curl -sI -A "Mozilla/5.0" https://ourtrips.date/japan/js/store.js | grep -i cache-control` should say
+   `no-cache`. Phones pick the change up on their next visit; nothing needs redeploying.
+
 ### If the site breaks
 
 Rolling back only swaps the code; expenses, ticks and photos are not touched. Any of these works:
@@ -45,7 +61,7 @@ The next push to `main` deploys over a rollback, so fix or revert the problem on
 
 Any error on a phone is sent to the server once (`js/report.js` → `POST /api/log`, at most 50 a day). A session reads
 them with `curl -A "Mozilla/5.0" -H "x-trip-pin: <PIN>" https://ourtrips.date/api/log`: the message, the page, whose
-phone and when. Every morning at 07:17 Japan time, GitHub runs `tests/live-check.mjs` (`.github/workflows/site-check.yml`)
+phone, when, and which deploy it came from (`v`: the stamp `scripts/deploy.sh` puts on each page). Every morning at 07:17 Japan time, GitHub runs `tests/live-check.mjs` (`.github/workflows/site-check.yml`)
 against the live site: the pages load and show their content without errors, the storage answers, no problem reports in
 the last day, the money backup didn't fail. If anything is wrong the run fails and GitHub emails the owner.
 (Scheduled runs only happen from the repo's default branch, which must be `main`.)
@@ -99,6 +115,11 @@ The visual system is Japanese rail station signage: each day is a line, stops ar
 
 Design skills used to build and review it live in `.claude/skills/` (Impeccable, Emil Kowalski's design-engineering skills, Anthropic's frontend-design) so future sessions on this repo load them automatically. Run `/impeccable critique` or `/impeccable polish` before shipping visual changes.
 
+All three typefaces are served from `vendor/fonts/` rather than Google Fonts, so nothing blocks the first paint and
+they work offline. Zen Old Mincho (the Japanese display face) is a 100 KB subset holding only the characters the site
+uses; after adding Japanese text to the trip run `bash scripts/font-subset.sh` and commit what it writes (`npm test`
+says which characters are missing otherwise; until then the phone's own Mincho shows for them).
+
 ## Project layout
 
 ```
@@ -106,8 +127,12 @@ index.html            app shell
 js/store.js           shared state client (API + localStorage fallback)
 data/itinerary.js     the trip
 data/guide.js         bookings, food, tips, suggestions
-functions/api/        Cloudflare Pages Function (KV-backed API)
+functions/api/        Cloudflare Pages Function (the API; state in KV or the Durable Object)
+lib/state-store.js    where the shared state lives: KV, or the Durable Object when bound
+workers/state/        the Durable Object Worker (scripts/deploy-state.sh puts it live)
 vendor/leaflet/       Leaflet 1.9.4 (BSD-2)
+vendor/maplibre/      MapLibre GL + the Leaflet bridge, loaded after the plan is on screen
+vendor/fonts/         the three typefaces, self-hosted (SIL OFL); scripts/font-subset.sh rebuilds the Japanese subset
 sw.js, manifest.webmanifest, icons/   PWA
 ```
 
@@ -120,8 +145,31 @@ specific browser binary. Screenshots land in `tests/shots/`.
 
 ## Syncing and Cloudflare limits
 
-Phones check `GET /api/version` (one KV read) every 20 s while the app is on screen, and fetch `/api/state` only when
+Phones check `GET /api/version` (one read) every 20 s while the app is on screen, and fetch `/api/state` only when
 it changed. Normal use does no KV list operations (capped at 1,000/day on the free plan); each change costs 2 writes.
+With the Durable Object on (below), each phone also holds a WebSocket to `/api/live` and is told the moment anything
+changes, so a tick or an expense shows on the other phones at once; the poll drops to every 2 minutes as a safety net
+and takes over whenever the connection is down (phone asleep, no signal, or the object not bound).
+
+## Shared state in one place (Durable Object)
+
+Every change (a tick, an expense, a choice) is read-modify-write of a whole map in KV, and KV is eventually consistent:
+two phones writing within the same minute from different Cloudflare locations can silently lose one of the changes.
+`workers/state` is a tiny Worker holding a Durable Object that keeps the same maps once, with a revision per key, so a
+write that would overwrite someone else's change is refused and redone (`lib/state-store.js`). The API works either
+way: with the `TRIP_DO` binding it uses the object (and keeps a copy of every write in KV, so a rollback that drops the
+binding still has the data); without it, KV alone as before. The first request after the binding appears copies KV's
+data into the object. Photos, problem reports and backup records stay in KV.
+
+To switch it on (once, about five minutes):
+
+1. A Cloudflare API token with **Account · Workers Scripts · Edit** (the deploy token only has Pages). With it and the
+   account id set, run `bash scripts/deploy-state.sh` (it runs `wrangler deploy` on `workers/state/wrangler.toml`).
+2. In `wrangler.toml`, uncomment the three `TRIP_DO` lines, commit, push to `main`. The deploy binds the object.
+3. Check: `curl -s -A "Mozilla/5.0" https://ourtrips.date/api/health` says `"store":"durable-object"`.
+
+Durable Objects with SQLite storage are on the free plan (100k requests a day; the phones' polling uses about a tenth
+of that, less once the live connection carries the changes; a hibernating WebSocket costs nothing while quiet). `npm test` runs the whole app against the object's code, and a few checks against KV alone.
 
 ## Trip photos (Google Drive)
 

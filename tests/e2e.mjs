@@ -4,7 +4,7 @@
 //   npm install && npm test        (CHROMIUM=/path/to/chrome to use a specific browser; screenshots go to tests/shots/)
 import { chromium } from 'playwright';
 import os from 'os'; import { fileURLToPath } from 'url';
-import http from 'http'; import fs from 'fs'; import path from 'path'; import { execSync } from 'child_process';
+import http from 'http'; import fs from 'fs'; import path from 'path'; import crypto from 'crypto'; import { execSync } from 'child_process';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), DIST = REPO + '/dist';
 execSync('BUILD_ONLY=1 bash scripts/deploy.sh', { cwd: REPO });
 const { onRequest } = await import(REPO + '/functions/api/[[path]].js?' + Date.now());
@@ -15,21 +15,57 @@ const KV = {
   async delete(k) { store.delete(k); meta.delete(k); },
   async list({ prefix = '' } = {}) { return { keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name, metadata: meta.get(name) })), list_complete: true }; },
 };
+// The shared state lives in the Durable Object (workers/state), run here as the real class on an in-memory SQLite;
+// KV starts with one tick, which the object must copy in on first contact. (tests/tour.mjs and tests/photos.mjs run the
+// API on KV alone, the way it works before the binding exists.)
+import { DatabaseSync } from 'node:sqlite';
+const { TripState } = await import(REPO + '/workers/state/src/index.js');
+const fakeSql = () => { const db = new DatabaseSync(':memory:'); return { exec(q, ...b) { const st = db.prepare(q); if (/^\s*select/i.test(q)) { const rows = st.all(...b); return { toArray: () => rows }; } st.run(...b); return { toArray: () => [] }; } }; };
+const objects = new Map(); let doCalls = 0; const liveSockets = new Map(); let wsN = 0;
+// a phone's live connection: the fake namespace turns the upgrade request into a stand-in socket the object sends to
+// (the real object makes a WebSocketPair); the test server below finishes the handshake and writes its frames
+const fakeCtx = () => ({ storage: { sql: fakeSql() }, sockets: new Set(), acceptWebSocket(ws) { this.sockets.add(ws); }, getWebSockets() { return [...this.sockets]; } });
+const DO = { idFromName: (n) => n, get: (id) => {
+  if (!objects.has(id)) { const ctx = fakeCtx(); objects.set(id, { o: new TripState(ctx), ctx }); }
+  const { o, ctx } = objects.get(id);
+  return { fetch: (url, init) => {
+    const req = url instanceof Request ? url : new Request(url, init);
+    if (req.headers.get('upgrade') === 'websocket') {
+      const sid = 'ws' + (++wsN);
+      const fake = { socket: null, send(d) { if (!this.socket) return; const b = Buffer.from(String(d)); this.socket.write(Buffer.concat([b.length < 126 ? Buffer.from([0x81, b.length]) : Buffer.from([0x81, 126, b.length >> 8, b.length & 255]), b])); }, close() { try { this.socket && this.socket.end(); } catch { /* gone */ } ctx.sockets.delete(this); } };
+      ctx.acceptWebSocket(fake); liveSockets.set(sid, fake);
+      return new Response(null, { status: 200, headers: { 'x-ws': sid } }); // stands for the 101 the real object answers
+    }
+    doCalls++; return o.fetch(req);
+  } };
+} };
+store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store.set('updatedAt', '2026-10-01T00:00:00.000Z');
 // Workers AI stand-in for /api/scan: it "reads" a ramen receipt where the total was mistaken for the cash handed over
 const FAKE_AI = { run: async () => ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
+const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost:8790');
   if (u.pathname.startsWith('/api/')) {
     const chunks = []; for await (const c of req) chunks.push(c);
-    const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI } });
+    const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: ENV });
     res.writeHead(r.status, { 'content-type': 'application/json' }); return res.end(await r.text());
   }
   let p = decodeURIComponent(u.pathname); if (p === '/japan') { res.writeHead(301, { location: '/japan/' }); return res.end(); }
   let f = path.join(DIST, p); if (p.endsWith('/')) f = path.join(f, 'index.html'); else if (!fs.existsSync(f) && fs.existsSync(f + '.html')) f += '.html';
   if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'content-type': types[path.extname(f)] || 'text/plain' }); fs.createReadStream(f).pipe(res);
+});
+// the live connection: the route decides (426 with KV alone), the handshake is done here
+server.on('upgrade', async (req, socket) => {
+  const r = await onRequest({ request: new Request(new URL(req.url, 'http://localhost:8790'), { headers: req.headers }), env: ENV });
+  const sid = r.headers.get('x-ws');
+  if (!sid) { socket.write(`HTTP/1.1 ${r.status} No\r\nconnection: close\r\n\r\n`); socket.destroy(); return; }
+  const accept = crypto.createHash('sha1').update(req.headers['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
+  socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + accept + '\r\n\r\n');
+  const fake = liveSockets.get(sid); fake.socket = socket;
+  socket.on('data', () => { /* pings; nothing to read */ }); socket.on('error', () => {}); socket.on('close', () => fake.close());
 });
 await new Promise((r) => server.listen(8790, r));
 const B = 'http://localhost:8790';
@@ -42,6 +78,73 @@ const phone = async (time) => { const ctx = await browser.newContext({ viewport:
 const enterPin = async (pg, pin = PIN) => { await pg.waitForSelector('#s-pin.on', { timeout: 5000 }); for (const d of pin) { await pg.tap(`[data-k="${d}"]`); await pg.waitForTimeout(60); } };
 const openPass = (page) => page.evaluate(() => { const o = document.querySelector('.pass.open'); return o ? o.dataset.id : null; });
 const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.pass:not(.open)')].map((el) => [el.dataset.id, new DOMMatrix(getComputedStyle(el).transform).m42]).sort((a, b) => a[1] - b[1]).map((x) => x[0]));
+
+// 0 · the files themselves: fonts from the site (not Google), the map library after the plan, the receipt reader's request
+{
+  const read = (f) => fs.readFileSync(REPO + '/' + f, 'utf8');
+  const pages = ['index.html', 'hub/index.html', 'prototypes/tools.html', 'money.html', 'photos.html'];
+  ok('fonts come from the site, not Google (nothing to wait for before the first paint, and they work offline)', !pages.some((f) => /fonts\.g(oogleapis|static)\.com/.test(read(f))));
+  const have = new Set(read('vendor/fonts/zen-old-mincho-700-subset.glyphs.txt'));
+  const cjk = (c) => { const o = c.codePointAt(0); return (o >= 0x2E80 && o <= 0x9FFF) || (o >= 0xF900 && o <= 0xFAFF) || (o >= 0xFF00 && o <= 0xFFEF) || (o >= 0x3000 && o <= 0x303F); };
+  const missing = new Set(); for (const f of [...fs.readdirSync(REPO + '/data').map((x) => 'data/' + x), ...pages, 'js/tour.js']) for (const c of read(f)) if (cjk(c) && !have.has(c)) missing.add(c);
+  ok('every Japanese character the site shows is in the display font subset (run scripts/font-subset.sh otherwise)', missing.size === 0, [...missing].join(''));
+  const trip = read('index.html');
+  ok('the map library is not loaded before the plan (no maplibre script or stylesheet tag in the page)', !/<(script|link)[^>]*maplibre/.test(trip) && /drawnMap\(\)/.test(trip));
+  const { receiptRequest, readReceiptClaude, CLAUDE_MODEL } = await import(REPO + '/lib/scan-claude.js');
+  const photo = 'data:image/webp;base64,' + fs.readFileSync(REPO + '/img/places/nakano-broadway.webp').toString('base64');
+  const rq = receiptRequest('sk-test', photo); const body = JSON.parse(rq.body);
+  ok('receipt reader: the request the SDK used to send, without the SDK', rq.url === 'https://api.anthropic.com/v1/messages?beta=true' && rq.headers['x-api-key'] === 'sk-test' && rq.headers['anthropic-version'] === '2023-06-01' && body.model === CLAUDE_MODEL && body.output_config.format.type === 'json_schema' && body.output_config.format.schema.required.includes('lines') && body.messages[0].content[0].source.media_type === 'image/webp' && body.messages[0].content[0].source.data.length > 1000 && /receipt from Japan/.test(body.messages[0].content[1].text), JSON.stringify([rq.url, Object.keys(rq.headers), body.model]));
+  ok('receipt reader: only a photo as a data URL goes out', receiptRequest('k', 'https://x/y.jpg') === null && receiptRequest('k', 'data:text/plain;base64,aGk=') === null);
+  const answer = (status, json, calls = []) => async (url, init) => { calls.push({ url, init }); return new Response(typeof json === 'string' ? json : JSON.stringify(json), { status, headers: { 'content-type': 'application/json' } }); };
+  const said = { total: 1960, cash_given: null, change: null, tax: 178, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', taxfree: false, lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }], items: ['Ramen'] };
+  const good = { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(said) }] };
+  const calls = []; const got = await readReceiptClaude('k', photo, { fetchFn: answer(200, good, calls) });
+  ok('receipt reader: the answer is read back, with a timeout on the call', got && got.total === 1960 && got.lines.length === 2 && calls.length === 1 && calls[0].init.signal instanceof AbortSignal && calls[0].init.headers['x-api-key'] === 'k');
+  ok('receipt reader: a refusal is null, so Workers AI takes over', (await readReceiptClaude('k', photo, { fetchFn: answer(200, { stop_reason: 'refusal', content: [] }) })) === null);
+  let tries = 0; const got2 = await readReceiptClaude('k', photo, { fetchFn: async () => (++tries === 1 ? new Response('overloaded', { status: 529 }) : new Response(JSON.stringify(good), { status: 200 })) });
+  ok('receipt reader: one more try after an overloaded answer, then the result', tries === 2 && got2 && got2.total === 1960);
+  const bad = await readReceiptClaude('k', photo, { fetchFn: answer(401, { error: 'bad key' }) }).catch((e) => e);
+  ok('receipt reader: a refused key is an error (the route then falls back)', bad instanceof Error && /401/.test(bad.message));
+  // through the real route: with the key set, Claude's reading comes back checked and trimmed, lines included
+  const realFetch = globalThis.fetch; globalThis.fetch = answer(200, good);
+  try {
+    const r = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
+    ok('/api/scan asks Claude when the key is set and keeps its lines', r.total === 1960 && r.model === CLAUDE_MODEL && Array.isArray(r.lines) && r.lines.length === 2 && r.shop_en === 'Ichiran Dotonbori', JSON.stringify(r).slice(0, 200));
+    globalThis.fetch = answer(500, 'down');
+    const r2 = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
+    ok('/api/scan falls back to Workers AI when Claude is down', r2.total === 2380 && r2.model !== CLAUDE_MODEL, JSON.stringify(r2).slice(0, 120));
+  } finally { globalThis.fetch = realFetch; }
+}
+
+// 0b · the shared state in the Durable Object: KV's data copied in once, no change lost to a race, KV kept as a mirror
+{
+  const api = (path, body, env = ENV) => onRequest({ request: new Request(B + '/api/' + path, body ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify(body) } : { headers: { 'x-trip-pin': PIN } }), env }).then((r) => r.json());
+  const h = await api('health'); ok('health says where the state lives', h.store === 'durable-object', JSON.stringify(h));
+  const v = await api('version'); ok('first contact copies KV in: the version is KV\'s stamp', v.updatedAt === '2026-10-01T00:00:00.000Z', JSON.stringify(v));
+  const st = await api('state'); ok('and the tick KV had is there', st.checks['seeded-before-the-switch'] === true && Object.keys(st.checks).length === 1);
+  const before = doCalls; await api('state'); ok('the whole state is one trip to the object', doCalls - before === 1, String(doCalls - before));
+  // ten phones tick ten different stops at the same moment: every tick must land (KV alone would lose some of these)
+  const ids = Array.from({ length: 10 }, (_, i) => `race-${i}`);
+  const rs = await Promise.all(ids.map((id) => api('checks', { id, value: true })));
+  const after = (await api('state')).checks;
+  ok('ten changes at once, none lost (a stale write is refused and redone)', rs.every((r) => r.ok) && ids.every((id) => after[id] === true), JSON.stringify(Object.keys(after)));
+  ok('KV keeps a copy of every write', ids.every((id) => JSON.parse(store.get('checks'))[id] === true) && store.get('updatedAt') > '2026-10-01');
+  await Promise.all(ids.map((id) => api('checks', { id, value: false }))); await api('checks', { id: 'seeded-before-the-switch', value: false });
+  ok('…and of the clean-up', Object.keys((await api('state')).checks).length === 0 && store.get('checks') === '{}');
+  // the object itself: a write with a stale revision is refused with the current value
+  const o = DO.get('trip'); const call = (b) => o.fetch('https://state/', { method: 'POST', body: JSON.stringify(b) }).then(async (r) => ({ status: r.status, ...(await r.json()) }));
+  const g = await call({ op: 'get', key: 'choices' });
+  const w1 = await call({ op: 'put', key: 'choices', value: { a: 'x' }, rev: g.rev }), w2 = await call({ op: 'put', key: 'choices', value: { a: 'y' }, rev: g.rev });
+  ok('the object refuses a write based on an old revision', w1.ok && w2.status === 409 && w2.value.a === 'x' && w2.rev === w1.rev, JSON.stringify([w1, w2]));
+  await call({ op: 'put', key: 'choices', value: {} });
+  // KV alone, as before the binding: the same routes, same answers
+  const kv2 = new Map(); const KV2 = { async get(k, t) { const v = kv2.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, async put(k, v) { kv2.set(k, v); }, async delete(k) { kv2.delete(k); }, async list() { return { keys: [], list_complete: true }; } };
+  const env2 = { TRIP_KV: KV2, TRIP_PIN: PIN, AI: FAKE_AI };
+  const h2 = await api('health', null, env2); const c2 = await api('checks', { id: 'kv-only', value: true }, env2); const s2 = await api('state', null, env2); const v2 = await api('version', null, env2);
+  ok('without the binding the state stays in KV, as before', h2.store === 'kv' && c2.ok && s2.checks['kv-only'] === true && v2.updatedAt && v2.updatedAt === s2.updatedAt && kv2.get('updatedAt') === v2.updatedAt, JSON.stringify([h2, v2]));
+  const e2 = await api('expenses', { id: 'x1', value: { title: 'Ramen', yen: 980, paidBy: 'm', day: 'd7' } }, env2);
+  ok('…including a refusal that stays a refusal', (await api('expenses', { id: 'x2', value: { nothing: true } }, env2)).error === 'bad expense' && (e2.ok || e2.error), JSON.stringify(e2).slice(0, 100));
+}
 
 // 1 · first visit → welcome → pick Mo → Japan on M&M view, skipping to Oct 21
 const A = await phone();
@@ -149,7 +252,10 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.tap('#fsave'); await p.waitForTimeout(300); await p.tap('#fsave'); await p.waitForTimeout(1200);
   const saved = Object.entries(exMap()).find(([, x]) => x.title === 'Split ramen test');
   ok('split: saved with the expense', saved && saved[1].byItem && saved[1].byItem.lines.length === 3 && saved[1].byItem.lines[0].who.join() === 'naf' && saved[1].byItem.lines[2].n.sara === 2, saved && JSON.stringify(saved[1].byItem));
+  const rc = []; p.on('request', (r) => { if (/\/api\/receipt\//.test(r.url())) rc.push(new URL(r.url()).pathname + new URL(r.url()).search); });
   await p.tap(`[data-ex="${saved && saved[0]}"]`); await p.waitForTimeout(600);
+  // the photo is cached for a year, so the request carries the receipt's stamp: a replaced receipt gets a new URL
+  ok('the receipt photo is asked for under its stamp', rc.length === 1 && saved && rc[0] === `/api/receipt/${saved[0]}?v=${saved[1].receipt}`, rc.join() || 'no receipt request');
   ok('split: shown again when the expense is opened', /Split by item from the receipt/.test(await p.textContent('.byitem').catch(() => '')) && !(await p.$('.scanl')));
   await p.tap('[data-iopen]'); await p.waitForTimeout(300);
   const back = await p.$$eval('.irow .iwho', (els) => els.map((e) => e.textContent).join(' | '));
@@ -487,6 +593,9 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await pg.goto(B + '/japan/'); await pg.waitForTimeout(2000);
   await pg.evaluate(() => navigator.serviceWorker.ready); await pg.reload(); await pg.waitForTimeout(1000);
   const msg = await done; ok('photos for the next days saved', !!msg, msg && msg.text());
+  // one saved copy per page, script and data file, under its bare URL: not one per deploy stamp (?v=…)
+  const keys = await pg.evaluate(async () => { const n = (await caches.keys()).find((k) => /^japan2026-v/.test(k)); const c = await caches.open(n); return (await c.keys()).map((r) => new URL(r.url).pathname + new URL(r.url).search); });
+  ok('offline copy: one copy per file, none under a deploy stamp', keys.length > 10 && keys.includes('/japan/js/store.js') && keys.includes('/japan/') && !keys.some((k) => /\?/.test(k)), keys.filter((k) => /\?/.test(k)).slice(0, 4).join() || `${keys.length} files`);
   // Settings: the offline line, and saving the whole trip before a flight
   const offLine = () => pg.textContent('#off-line').catch(() => '');
   await pg.goto(B + '/japan/prototypes/tools.html?v=5'); await pg.waitForFunction(() => /saved|ready|Not/.test(document.getElementById('off-line')?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
@@ -523,6 +632,27 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const h = await (await fetch(B + '/api/health')).json();
   ok('health check counts the day\'s problems', h.ok && h.errors24h >= 2, JSON.stringify(h));
   await ctx.close();
+}
+// live updates: a phone holding the connection sees another phone's change at once, well inside the 20 s poll
+{
+  const P = await phone(), Q = await phone();
+  for (const x of [P, Q]) { await x.page.goto(B + '/japan/'); await x.page.waitForURL(/\/\?next=japan/); await x.page.tap('[data-me="m"]'); await enterPin(x.page); await x.page.waitForURL(/\/japan\//); await x.page.waitForTimeout(1500); }
+  const st = (pg) => pg.evaluate(async () => { const { store } = await import(new URL(document.querySelector('script[type=module]').textContent.match(/from '(\.\/js\/store\.js[^']*)'/)[1], location.href).href); return { live: store._liveOn, has: !!store.state.checks['live-tick'], mode: store.mode }; });
+  await P.page.waitForTimeout(1500);
+  ok('a phone on the site holds the live connection', (await st(P.page)).live && (await st(Q.page)).live && [...objects.values()][0].ctx.sockets.size >= 2, JSON.stringify([await st(P.page), [...objects.values()][0].ctx.sockets.size]));
+  const t0 = Date.now(); let seen = 0;
+  P.page.on('request', (r) => { if (/\/api\/version/.test(r.url())) seen++; });
+  await Q.page.evaluate(() => fetch('/api/checks', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id: 'live-tick', value: true }) }));
+  let got = null; while (Date.now() - t0 < 8000 && !got) { await P.page.waitForTimeout(150); if ((await st(P.page)).has) got = Date.now() - t0; }
+  ok('the other phone has it within a second or two, without polling', got != null && got < 4000 && seen === 0, `${got} ms, ${seen} version polls`);
+  await Q.page.evaluate(() => fetch('/api/checks', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id: 'live-tick', value: false }) }));
+  await P.page.waitForTimeout(800);
+  // KV alone: the route says so, and the phone keeps polling
+  const kv3 = new Map(); const KV3 = { async get(k, t) { const v = kv3.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, async put(k, v) { kv3.set(k, v); }, async delete(k) { kv3.delete(k); }, async list() { return { keys: [], list_complete: true }; } };
+  const r426 = await onRequest({ request: new Request(B + '/api/live', { headers: { upgrade: 'websocket' } }), env: { TRIP_KV: KV3, TRIP_PIN: PIN } });
+  const v3 = await (await onRequest({ request: new Request(B + '/api/version'), env: { TRIP_KV: KV3, TRIP_PIN: PIN } })).json();
+  ok('with KV alone there is no live channel and the version answer says so', r426.status === 426 && v3.live === false, JSON.stringify([r426.status, v3]));
+  for (const x of [P, Q]) { ok('no page errors on the live phones', !x.errs.length, x.errs.join(' | ')); await x.ctx.close(); }
 }
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));
 console.log(`\n${pass} passed, ${fail} failed`);
