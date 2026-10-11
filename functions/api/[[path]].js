@@ -3,7 +3,9 @@
 //
 // Routes:
 //   GET  /api/health                  → { ok, kv, store }  (store: kv, or durable-object when TRIP_DO is bound)
-//   GET  /api/version                 → { updatedAt }  (one read: phones poll this, and fetch /api/state only when it changes)
+//   GET  /api/version                 → { updatedAt, live }  (one read: phones poll this, and fetch /api/state only when it changes)
+//   GET  /api/live                    a WebSocket: the phone is told { updatedAt } the moment the shared state changes
+//                                     (only with the Durable Object; live:false in /api/version means keep polling)
 //   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, money, profiles, covers, updatedAt }
 //                                       (expenses and money only with the PIN in x-trip-pin)
 //   POST /api/checks                  { id, value:boolean }
@@ -265,15 +267,20 @@ export async function onRequest(ctx) {
   const pin = env.TRIP_PIN ? String(env.TRIP_PIN) : '';
   const member = !pin || request.headers.get('x-trip-pin') === pin;
   try {
+    const live = store.kind === 'durable-object';
     if (request.method === 'GET' && path === 'version') {
-      return json({ updatedAt: await store.version() });
+      return json({ updatedAt: await store.version(), live });
+    }
+    if (request.method === 'GET' && path === 'live') {
+      if (request.headers.get('upgrade') !== 'websocket') return json({ live });
+      return store.live(request);
     }
 
     // The money stays between the four of us: without the PIN the state comes back with no expenses.
     if (request.method === 'GET' && path === 'state') {
       const st = await readState(store);
       if (!member) { st.expenses = {}; st.money = {}; }
-      return json(st);
+      return json({ ...st, live });
     }
 
     const loadMoney = async () => { const st = await store.readMany(['expenses', 'money']); return { expenses: st.expenses || {}, money: st.money || {} }; };

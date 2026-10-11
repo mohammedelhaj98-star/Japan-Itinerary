@@ -4,7 +4,7 @@
 //   npm install && npm test        (CHROMIUM=/path/to/chrome to use a specific browser; screenshots go to tests/shots/)
 import { chromium } from 'playwright';
 import os from 'os'; import { fileURLToPath } from 'url';
-import http from 'http'; import fs from 'fs'; import path from 'path'; import { execSync } from 'child_process';
+import http from 'http'; import fs from 'fs'; import path from 'path'; import crypto from 'crypto'; import { execSync } from 'child_process';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), DIST = REPO + '/dist';
 execSync('BUILD_ONLY=1 bash scripts/deploy.sh', { cwd: REPO });
 const { onRequest } = await import(REPO + '/functions/api/[[path]].js?' + Date.now());
@@ -21,8 +21,24 @@ const KV = {
 import { DatabaseSync } from 'node:sqlite';
 const { TripState } = await import(REPO + '/workers/state/src/index.js');
 const fakeSql = () => { const db = new DatabaseSync(':memory:'); return { exec(q, ...b) { const st = db.prepare(q); if (/^\s*select/i.test(q)) { const rows = st.all(...b); return { toArray: () => rows }; } st.run(...b); return { toArray: () => [] }; } }; };
-const objects = new Map(); let doCalls = 0;
-const DO = { idFromName: (n) => n, get: (id) => { if (!objects.has(id)) objects.set(id, new TripState({ storage: { sql: fakeSql() } })); const o = objects.get(id); return { fetch: (url, init) => { doCalls++; return o.fetch(new Request(url, init)); } }; } };
+const objects = new Map(); let doCalls = 0; const liveSockets = new Map(); let wsN = 0;
+// a phone's live connection: the fake namespace turns the upgrade request into a stand-in socket the object sends to
+// (the real object makes a WebSocketPair); the test server below finishes the handshake and writes its frames
+const fakeCtx = () => ({ storage: { sql: fakeSql() }, sockets: new Set(), acceptWebSocket(ws) { this.sockets.add(ws); }, getWebSockets() { return [...this.sockets]; } });
+const DO = { idFromName: (n) => n, get: (id) => {
+  if (!objects.has(id)) { const ctx = fakeCtx(); objects.set(id, { o: new TripState(ctx), ctx }); }
+  const { o, ctx } = objects.get(id);
+  return { fetch: (url, init) => {
+    const req = url instanceof Request ? url : new Request(url, init);
+    if (req.headers.get('upgrade') === 'websocket') {
+      const sid = 'ws' + (++wsN);
+      const fake = { socket: null, send(d) { if (!this.socket) return; const b = Buffer.from(String(d)); this.socket.write(Buffer.concat([b.length < 126 ? Buffer.from([0x81, b.length]) : Buffer.from([0x81, 126, b.length >> 8, b.length & 255]), b])); }, close() { try { this.socket && this.socket.end(); } catch { /* gone */ } ctx.sockets.delete(this); } };
+      ctx.acceptWebSocket(fake); liveSockets.set(sid, fake);
+      return new Response(null, { status: 200, headers: { 'x-ws': sid } }); // stands for the 101 the real object answers
+    }
+    doCalls++; return o.fetch(req);
+  } };
+} };
 store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store.set('updatedAt', '2026-10-01T00:00:00.000Z');
 // Workers AI stand-in for /api/scan: it "reads" a ramen receipt where the total was mistaken for the cash handed over
 const FAKE_AI = { run: async () => ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
@@ -40,6 +56,16 @@ const server = http.createServer(async (req, res) => {
   let f = path.join(DIST, p); if (p.endsWith('/')) f = path.join(f, 'index.html'); else if (!fs.existsSync(f) && fs.existsSync(f + '.html')) f += '.html';
   if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'content-type': types[path.extname(f)] || 'text/plain' }); fs.createReadStream(f).pipe(res);
+});
+// the live connection: the route decides (426 with KV alone), the handshake is done here
+server.on('upgrade', async (req, socket) => {
+  const r = await onRequest({ request: new Request(new URL(req.url, 'http://localhost:8790'), { headers: req.headers }), env: ENV });
+  const sid = r.headers.get('x-ws');
+  if (!sid) { socket.write(`HTTP/1.1 ${r.status} No\r\nconnection: close\r\n\r\n`); socket.destroy(); return; }
+  const accept = crypto.createHash('sha1').update(req.headers['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
+  socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + accept + '\r\n\r\n');
+  const fake = liveSockets.get(sid); fake.socket = socket;
+  socket.on('data', () => { /* pings; nothing to read */ }); socket.on('error', () => {}); socket.on('close', () => fake.close());
 });
 await new Promise((r) => server.listen(8790, r));
 const B = 'http://localhost:8790';
@@ -606,6 +632,27 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const h = await (await fetch(B + '/api/health')).json();
   ok('health check counts the day\'s problems', h.ok && h.errors24h >= 2, JSON.stringify(h));
   await ctx.close();
+}
+// live updates: a phone holding the connection sees another phone's change at once, well inside the 20 s poll
+{
+  const P = await phone(), Q = await phone();
+  for (const x of [P, Q]) { await x.page.goto(B + '/japan/'); await x.page.waitForURL(/\/\?next=japan/); await x.page.tap('[data-me="m"]'); await enterPin(x.page); await x.page.waitForURL(/\/japan\//); await x.page.waitForTimeout(1500); }
+  const st = (pg) => pg.evaluate(async () => { const { store } = await import(new URL(document.querySelector('script[type=module]').textContent.match(/from '(\.\/js\/store\.js[^']*)'/)[1], location.href).href); return { live: store._liveOn, has: !!store.state.checks['live-tick'], mode: store.mode }; });
+  await P.page.waitForTimeout(1500);
+  ok('a phone on the site holds the live connection', (await st(P.page)).live && (await st(Q.page)).live && [...objects.values()][0].ctx.sockets.size >= 2, JSON.stringify([await st(P.page), [...objects.values()][0].ctx.sockets.size]));
+  const t0 = Date.now(); let seen = 0;
+  P.page.on('request', (r) => { if (/\/api\/version/.test(r.url())) seen++; });
+  await Q.page.evaluate(() => fetch('/api/checks', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id: 'live-tick', value: true }) }));
+  let got = null; while (Date.now() - t0 < 8000 && !got) { await P.page.waitForTimeout(150); if ((await st(P.page)).has) got = Date.now() - t0; }
+  ok('the other phone has it within a second or two, without polling', got != null && got < 4000 && seen === 0, `${got} ms, ${seen} version polls`);
+  await Q.page.evaluate(() => fetch('/api/checks', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id: 'live-tick', value: false }) }));
+  await P.page.waitForTimeout(800);
+  // KV alone: the route says so, and the phone keeps polling
+  const kv3 = new Map(); const KV3 = { async get(k, t) { const v = kv3.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, async put(k, v) { kv3.set(k, v); }, async delete(k) { kv3.delete(k); }, async list() { return { keys: [], list_complete: true }; } };
+  const r426 = await onRequest({ request: new Request(B + '/api/live', { headers: { upgrade: 'websocket' } }), env: { TRIP_KV: KV3, TRIP_PIN: PIN } });
+  const v3 = await (await onRequest({ request: new Request(B + '/api/version'), env: { TRIP_KV: KV3, TRIP_PIN: PIN } })).json();
+  ok('with KV alone there is no live channel and the version answer says so', r426.status === 426 && v3.live === false, JSON.stringify([r426.status, v3]));
+  for (const x of [P, Q]) { ok('no page errors on the live phones', !x.errs.length, x.errs.join(' | ')); await x.ctx.close(); }
 }
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));
 console.log(`\n${pass} passed, ${fail} failed`);

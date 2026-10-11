@@ -7,6 +7,7 @@ const LS_DEVICE = 'japan2026.device';
 const LS_NAME = 'japan2026.name';
 const LS_OUTBOX = 'japan2026.outbox.v1';
 const POLL_MS = 20000;
+const LIVE_EVERY = 6; // with the live connection open, the poll is only a safety net: every 6th tick (2 min)
 
 // Practice mode (the guided tour): changes live only in this tab's sessionStorage, nothing is sent to the
 // server or written to localStorage, and syncing pauses. Ending the tour drops it all.
@@ -45,7 +46,7 @@ export const store = {
   mode: SANDBOX ? 'sandbox' : 'connecting', // connecting | online | local | sandbox | locked (the PIN was refused)
   lastError: null,
   listeners: new Set(),
-  _timer: null,
+  _timer: null, _tick: 0,
 
   subscribe(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
   emit() { for (const fn of this.listeners) { try { fn(this.state, this); } catch (e) { console.error(e); } } },
@@ -120,11 +121,12 @@ export const store = {
     }
     await this.refresh();
     if (this._timer) clearInterval(this._timer);
-    // Cheap check every 20s while the app is on screen: one KV read for the version stamp. The full state
-    // (which costs KV list operations, limited on the free plan) is fetched only when something changed.
-    this._timer = setInterval(() => { if (document.visibilityState !== 'hidden') this.check(); }, POLL_MS);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.check(); });
-    window.addEventListener('online', () => this.refresh());
+    // Cheap check every 20s while the app is on screen: one read for the version stamp. The full state is fetched
+    // only when something changed. With the live connection open (below) this is just a safety net, every 2 min.
+    this._timer = setInterval(() => { if (document.visibilityState === 'hidden') return; if (this._liveOn && ++this._tick % LIVE_EVERY) return; this.check(); }, POLL_MS);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { this.check(); this.live(); } });
+    window.addEventListener('online', () => { this.refresh(); this.live(); });
+    this.live();
   },
 
   async check() {
@@ -132,11 +134,32 @@ export const store = {
     if (this._outbox.length) return this.refresh();
     try {
       const v = await this.api('version');
+      if (v.live) { this._liveOk = true; this.live(); }
       if (v.updatedAt && v.updatedAt === this.state.updatedAt && (this.mode === 'online' || this.mode === 'locked')) return;
       await this.refresh();
     } catch (err) {
       this.setMode('local', err.message);
     }
+  },
+
+  // Live updates: when the site's state lives in the Durable Object (live:true in its answers), the phone holds a
+  // WebSocket to /api/live and is told { updatedAt } the moment anyone changes something, so a tick or an expense
+  // shows on the other phones at once instead of within 20 s. The connection drops whenever the phone sleeps or loses
+  // signal; it is reopened (backing off up to 5 min) and the poll above carries on underneath either way.
+  _live: null, _liveOn: false, _liveOk: false, _liveWait: 2000, _ping: null,
+  live() {
+    if (SANDBOX || !this._liveOk || this._live || typeof WebSocket === 'undefined' || document.visibilityState === 'hidden') return;
+    let ws;
+    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/live'); } catch { return; }
+    this._live = ws;
+    ws.onopen = () => { if (this._live !== ws) return; this._liveOn = true; this._liveWait = 2000; this._ping = setInterval(() => { try { ws.send('ping'); } catch { /* closing */ } }, 45000); this.check(); };
+    ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } if (m && m.updatedAt && m.updatedAt !== this.state.updatedAt) this.refresh(); };
+    const gone = () => {
+      if (this._live !== ws) return;
+      this._live = null; this._liveOn = false; clearInterval(this._ping);
+      setTimeout(() => this.live(), this._liveWait); this._liveWait = Math.min(this._liveWait * 2, 300000);
+    };
+    ws.onclose = gone; ws.onerror = gone;
   },
 
   async refresh() {
@@ -146,9 +169,13 @@ export const store = {
     if (this._outbox.length && !(await this.flush())) { if (this.mode === 'locked') await this._pull(); return; }
     await this._pull();
   },
-  async _pull() {
+  // one download at a time: several "it changed" messages in a row share it
+  _pullP: null,
+  _pull() { if (!this._pullP) this._pullP = this._pullNow().finally(() => { this._pullP = null; }); return this._pullP; },
+  async _pullNow() {
     try {
       const remote = await this.api('state');
+      if (remote.live) this._liveOk = true;
       this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), money: remote.money || {}, profiles: { ...(remote.profiles || {}), ...this._pfRecent() }, covers: remote.covers || {}, updatedAt: remote.updatedAt || null };
       this._replay(this.state); // anything changed while the copy was downloading
       this.persist();

@@ -52,8 +52,8 @@ jobs:
         run: |
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"
           else echo "::notice::Not deployed: no Cloudflare secrets. Deploy by hand with scripts/deploy.sh."; fi
-      # the group photo is kept out of git: take it from the live site
+      # the group photo (and its blurred placeholder) is kept out of git: take it from the live site
       - if: steps.keys.outputs.ok == 'true'
-        run: mkdir -p hub/img && curl -fsS -A "Mozilla/5.0" -o hub/img/group.webp https://ourtrips.date/img/group.webp
+        run: mkdir -p hub/img && for f in group group-tiny; do curl -fsS -A "Mozilla/5.0" -o hub/img/$f.webp https://ourtrips.date/img/$f.webp; done
       - if: steps.keys.outputs.ok == 'true'
         run: bash scripts/deploy.sh

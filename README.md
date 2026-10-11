@@ -145,8 +145,11 @@ specific browser binary. Screenshots land in `tests/shots/`.
 
 ## Syncing and Cloudflare limits
 
-Phones check `GET /api/version` (one KV read) every 20 s while the app is on screen, and fetch `/api/state` only when
+Phones check `GET /api/version` (one read) every 20 s while the app is on screen, and fetch `/api/state` only when
 it changed. Normal use does no KV list operations (capped at 1,000/day on the free plan); each change costs 2 writes.
+With the Durable Object on (below), each phone also holds a WebSocket to `/api/live` and is told the moment anything
+changes, so a tick or an expense shows on the other phones at once; the poll drops to every 2 minutes as a safety net
+and takes over whenever the connection is down (phone asleep, no signal, or the object not bound).
 
 ## Shared state in one place (Durable Object)
 
@@ -166,7 +169,7 @@ To switch it on (once, about five minutes):
 3. Check: `curl -s -A "Mozilla/5.0" https://ourtrips.date/api/health` says `"store":"durable-object"`.
 
 Durable Objects with SQLite storage are on the free plan (100k requests a day; the phones' polling uses about a tenth
-of that). `npm test` runs the whole app against the object's code, and a few checks against KV alone.
+of that, less once the live connection carries the changes; a hibernating WebSocket costs nothing while quiet). `npm test` runs the whole app against the object's code, and a few checks against KV alone.
 
 ## Trip photos (Google Drive)
 

@@ -714,7 +714,7 @@ function passHTML(e, i) {
   const c = catOf(e), n = numOf(e.id), tk = isTicket(e), d = done(e.id);
   const host = e.place || placeOfEvent(i); const pi0 = placeInfo(host); const pi = pi0 && !e.place ? { ...pi0, area: pi0.area || host.name, key: null } : pi0;
   // a photo one of us chose for this stop (Photos → Use as this stop's photo) replaces the stock picture
-  const cover = (store.state.covers || {})[e.id]; const photo = cover ? `/api/photos/thumb/${encodeURIComponent(cover)}?s=1200` : imgUrl(pi);
+  const cover = (store.state.covers || {})[e.id]; const photo = cover ? `/api/photos/thumb/${encodeURIComponent(cover)}?s=780` : imgUrl(pi);
   const color = tk ? legHex(e) : c.c;
   const kind = tk ? (e.travel ? (MODE[e.travel.mode] || [0, 0, 'Transit'])[2] : 'Transit') : c.label;
   const chips = [`<span class="chip">${esc(e.time || 'Any time')}</span>`];
