@@ -1,178 +1,600 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T00:00:00Z",
+  "generatedAt": "2026-10-11T03:42:19.962324Z",
   "title": "Design System: Japan 2026",
   "extensions": {
     "colorMeta": {
-      "signage-red": { "role": "primary", "displayName": "Signage Red", "canonical": "#e60012", "dark": "#ff3b4a", "tonalRamp": ["oklch(15% 0.08 28)", "oklch(27% 0.14 28)", "oklch(40% 0.20 28)", "oklch(58% 0.24 28)", "oklch(68% 0.20 28)", "oklch(78% 0.13 28)", "oklch(88% 0.07 28)", "oklch(95% 0.03 28)"] },
-      "signage-red-ink": { "role": "primary", "displayName": "Red Ink", "canonical": "#ffffff", "dark": "#1a0004", "tonalRamp": ["#000000", "#121212", "#262626", "#4f4f4f", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#ffffff"] },
-      "ground": { "role": "neutral", "displayName": "Ground", "canonical": "#ffffff", "dark": "#000000", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff", "#ffffff"] },
-      "paper": { "role": "neutral", "displayName": "Paper", "canonical": "#f3f3f3", "dark": "#121212", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#f3f3f3", "#ffffff"] },
-      "rule": { "role": "neutral", "displayName": "Rule", "canonical": "#e3e3e3", "dark": "#262626", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#e3e3e3", "#f3f3f3", "#ffffff"] },
-      "ring-grey": { "role": "neutral", "displayName": "Ring Grey", "canonical": "#bdbdbd", "dark": "#4f4f4f", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
-      "ink-3": { "role": "neutral", "displayName": "Ink 3", "canonical": "#6f6f6f", "dark": "#a6a6a6", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
-      "ink-2": { "role": "neutral", "displayName": "Ink 2", "canonical": "#3d3d3d", "dark": "#d4d4d4", "tonalRamp": ["#000000", "#3d3d3d", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
-      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#000000", "dark": "#ffffff", "tonalRamp": ["#000000", "#000000", "#3d3d3d", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
-      "line-walk": { "role": "tertiary", "displayName": "Walk Green", "canonical": "#008a3e", "dark": "#3dc86f", "tonalRamp": ["oklch(15% 0.05 152)", "oklch(27% 0.09 152)", "oklch(40% 0.13 152)", "oklch(54% 0.16 152)", "oklch(66% 0.17 152)", "oklch(78% 0.14 152)", "oklch(88% 0.09 152)", "oklch(95% 0.04 152)"] },
-      "line-rail": { "role": "tertiary", "displayName": "Rail Blue", "canonical": "#1d3fb5", "dark": "#5a8bff", "tonalRamp": ["oklch(15% 0.07 265)", "oklch(27% 0.13 265)", "oklch(42% 0.19 265)", "oklch(52% 0.21 265)", "oklch(63% 0.19 265)", "oklch(75% 0.13 265)", "oklch(87% 0.07 265)", "oklch(95% 0.03 265)"] },
-      "line-taxi": { "role": "tertiary", "displayName": "Taxi Orange", "canonical": "#d35f00", "dark": "#ff9a3d", "tonalRamp": ["oklch(15% 0.05 48)", "oklch(27% 0.09 48)", "oklch(42% 0.14 48)", "oklch(60% 0.18 48)", "oklch(72% 0.17 48)", "oklch(82% 0.12 48)", "oklch(90% 0.07 48)", "oklch(96% 0.03 48)"] },
-      "line-water": { "role": "tertiary", "displayName": "Water Teal", "canonical": "#0092b2", "dark": "#3ed8f0", "tonalRamp": ["oklch(15% 0.04 218)", "oklch(27% 0.07 218)", "oklch(42% 0.10 218)", "oklch(60% 0.12 218)", "oklch(72% 0.12 218)", "oklch(82% 0.10 218)", "oklch(90% 0.06 218)", "oklch(96% 0.03 218)"] },
-      "line-flight": { "role": "tertiary", "displayName": "Flight Grey", "canonical": "#6f6f6f", "dark": "#a6a6a6", "tonalRamp": ["#000000", "#3d3d3d", "#6f6f6f", "#6f6f6f", "#bdbdbd", "#e3e3e3", "#f3f3f3", "#ffffff"] },
-      "line-kyoto": { "role": "tertiary", "displayName": "Kyoto Purple", "canonical": "#6b3fa0", "dark": "#b48cff", "tonalRamp": ["oklch(15% 0.06 300)", "oklch(27% 0.11 300)", "oklch(44% 0.16 300)", "oklch(55% 0.17 300)", "oklch(66% 0.15 300)", "oklch(77% 0.11 300)", "oklch(88% 0.06 300)", "oklch(95% 0.03 300)"] },
-      "done-green": { "role": "secondary", "displayName": "Done Green", "canonical": "#008a3e", "dark": "#3dc86f", "tonalRamp": ["oklch(15% 0.05 152)", "oklch(27% 0.09 152)", "oklch(40% 0.13 152)", "oklch(54% 0.16 152)", "oklch(66% 0.17 152)", "oklch(78% 0.14 152)", "oklch(88% 0.09 152)", "oklch(95% 0.04 152)"] },
-      "nasa-blue": { "role": "secondary", "displayName": "NASA Blue", "canonical": "#0063b5", "dark": "#5aa6ff", "tonalRamp": ["oklch(15% 0.06 255)", "oklch(27% 0.11 255)", "oklch(38% 0.15 255)", "oklch(48% 0.17 255)", "oklch(62% 0.17 255)", "oklch(75% 0.12 255)", "oklch(87% 0.06 255)", "oklch(95% 0.03 255)"] },
-      "mm-magenta": { "role": "secondary", "displayName": "M&M Magenta", "canonical": "#a2006d", "dark": "#ff6fc1", "tonalRamp": ["oklch(15% 0.07 345)", "oklch(27% 0.13 345)", "oklch(38% 0.18 345)", "oklch(48% 0.21 345)", "oklch(62% 0.20 345)", "oklch(75% 0.14 345)", "oklch(87% 0.07 345)", "oklch(95% 0.03 345)"] },
-      "amber": { "role": "tertiary", "displayName": "Amber", "canonical": "#f5c400", "dark": "#ffd33d", "tonalRamp": ["oklch(15% 0.04 95)", "oklch(27% 0.07 95)", "oklch(42% 0.10 95)", "oklch(58% 0.14 95)", "oklch(72% 0.17 95)", "oklch(83% 0.18 95)", "oklch(91% 0.12 95)", "oklch(96% 0.06 95)"] },
-      "amber-ink": { "role": "tertiary", "displayName": "Amber Ink", "canonical": "#2b2300", "dark": "#2b2300", "tonalRamp": ["oklch(15% 0.04 95)", "oklch(22% 0.05 95)", "oklch(35% 0.08 95)", "oklch(50% 0.11 95)", "oklch(65% 0.14 95)", "oklch(78% 0.15 95)", "oklch(89% 0.10 95)", "oklch(96% 0.05 95)"] }
+      "ink": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "#141412",
+        "tonalRamp": [
+          "#282824",
+          "#43433c",
+          "#5e5e55",
+          "#79796d",
+          "#9a9a8e",
+          "#bbbbb4",
+          "#dbdbd7",
+          "#f3f3f2"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink 2",
+        "canonical": "#4b4a45",
+        "tonalRamp": [
+          "#282725",
+          "#42423d",
+          "#5d5c56",
+          "#78766e",
+          "#98978f",
+          "#bbbab5",
+          "#dadad7",
+          "#f3f3f2"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Ink 3",
+        "canonical": "#6b6962",
+        "tonalRamp": [
+          "#282725",
+          "#43413d",
+          "#5d5b55",
+          "#78766e",
+          "#99978f",
+          "#bbb9b4",
+          "#dadad7",
+          "#f3f3f2"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#f6f4ef",
+        "tonalRamp": [
+          "#312b1c",
+          "#52472e",
+          "#726440",
+          "#938153",
+          "#b2a176",
+          "#ccc0a4",
+          "#e3ddce",
+          "#f6f4ef"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#262626",
+          "#404040",
+          "#595959",
+          "#737373",
+          "#949494",
+          "#b8b8b8",
+          "#d9d9d9",
+          "#f2f2f2"
+        ]
+      },
+      "link-blue": {
+        "role": "secondary",
+        "displayName": "Link Blue",
+        "canonical": "#1e6bff",
+        "tonalRamp": [
+          "#001a4c",
+          "#002c80",
+          "#003db2",
+          "#004fe6",
+          "#2972ff",
+          "#70a1ff",
+          "#b2cdff",
+          "#e5eeff"
+        ]
+      },
+      "link-blue-ink": {
+        "role": "secondary",
+        "displayName": "Link Blue Ink",
+        "canonical": "#1858d6",
+        "tonalRamp": [
+          "#081c45",
+          "#0d2f73",
+          "#1242a0",
+          "#1755ce",
+          "#3e78e9",
+          "#7fa5f1",
+          "#bacff7",
+          "#e8effc"
+        ]
+      },
+      "alert-red": {
+        "role": "secondary",
+        "displayName": "Alert Red",
+        "canonical": "#e23b2e",
+        "tonalRamp": [
+          "#430e09",
+          "#701710",
+          "#9d2016",
+          "#ca291c",
+          "#e54f43",
+          "#ee8982",
+          "#f6c0bc",
+          "#fceae9"
+        ]
+      },
+      "alert-red-ink": {
+        "role": "secondary",
+        "displayName": "Alert Red Ink",
+        "canonical": "#c62d22",
+        "tonalRamp": [
+          "#410f0b",
+          "#6d1913",
+          "#98231a",
+          "#c42d22",
+          "#e05248",
+          "#ea8c85",
+          "#f4c1be",
+          "#fbeae9"
+        ]
+      },
+      "done-green": {
+        "role": "secondary",
+        "displayName": "Done Green",
+        "canonical": "#2f9e57",
+        "tonalRamp": [
+          "#123b20",
+          "#1d6236",
+          "#298a4c",
+          "#35b161",
+          "#5ace84",
+          "#91dead",
+          "#c4edd3",
+          "#ebf9f0"
+        ]
+      },
+      "done-green-ink": {
+        "role": "secondary",
+        "displayName": "Done Green Ink",
+        "canonical": "#1f7a45",
+        "tonalRamp": [
+          "#0f3d22",
+          "#1a6639",
+          "#248e50",
+          "#2eb767",
+          "#54d489",
+          "#8de2b1",
+          "#c2f0d5",
+          "#ebfaf1"
+        ]
+      },
+      "pass-sight": {
+        "role": "tertiary",
+        "displayName": "Sight Pass",
+        "canonical": "#2c4f86",
+        "tonalRamp": [
+          "#13223a",
+          "#203960",
+          "#2c4f86",
+          "#3966ad",
+          "#5e88ca",
+          "#93b0dc",
+          "#c5d4ec",
+          "#ecf1f9"
+        ]
+      },
+      "pass-food": {
+        "role": "tertiary",
+        "displayName": "Food Pass",
+        "canonical": "#cc5a26",
+        "tonalRamp": [
+          "#401c0c",
+          "#6b2f14",
+          "#96421c",
+          "#c15524",
+          "#dd784a",
+          "#e9a587",
+          "#f3cfbf",
+          "#fbefea"
+        ]
+      },
+      "pass-food-ink": {
+        "role": "tertiary",
+        "displayName": "Food Pass Ink",
+        "canonical": "#b84d1c",
+        "tonalRamp": [
+          "#421c0a",
+          "#6f2e11",
+          "#9b4118",
+          "#c7531e",
+          "#e37745",
+          "#eca483",
+          "#f5cebd",
+          "#fcefe9"
+        ]
+      },
+      "pass-shop": {
+        "role": "tertiary",
+        "displayName": "Shop Pass",
+        "canonical": "#b94b74",
+        "tonalRamp": [
+          "#371522",
+          "#5c2439",
+          "#81324f",
+          "#a54066",
+          "#c36588",
+          "#d798b0",
+          "#eac8d4",
+          "#f8edf1"
+        ]
+      },
+      "pass-hotel": {
+        "role": "tertiary",
+        "displayName": "Hotel Pass",
+        "canonical": "#55702f",
+        "tonalRamp": [
+          "#293617",
+          "#445a26",
+          "#5f7e35",
+          "#7ba244",
+          "#9bc068",
+          "#bdd59a",
+          "#dbe8c9",
+          "#f3f7ed"
+        ]
+      },
+      "pass-booking": {
+        "role": "tertiary",
+        "displayName": "Booking Pass",
+        "canonical": "#6f4f98",
+        "tonalRamp": [
+          "#251a32",
+          "#3d2c54",
+          "#563d75",
+          "#6e4e97",
+          "#9072b6",
+          "#b5a1ce",
+          "#d7cde5",
+          "#f2eef6"
+        ]
+      },
+      "pass-transit": {
+        "role": "tertiary",
+        "displayName": "Transit Pass",
+        "canonical": "#4f5d66",
+        "tonalRamp": [
+          "#21272b",
+          "#384248",
+          "#4e5c65",
+          "#647681",
+          "#8697a2",
+          "#afbac1",
+          "#d4dade",
+          "#f1f3f4"
+        ]
+      },
+      "pass-plan": {
+        "role": "tertiary",
+        "displayName": "Plan Pass",
+        "canonical": "#3f3b35",
+        "tonalRamp": [
+          "#2a2723",
+          "#45413a",
+          "#615b52",
+          "#7d7569",
+          "#9d968b",
+          "#beb9b1",
+          "#dcd9d5",
+          "#f3f2f1"
+        ]
+      },
+      "route-walk": {
+        "role": "tertiary",
+        "displayName": "Walk Route",
+        "canonical": "#2a8a4a",
+        "tonalRamp": [
+          "#123b1f",
+          "#1e6234",
+          "#2a8949",
+          "#36b05e",
+          "#5bcd81",
+          "#92deab",
+          "#c4edd2",
+          "#ebf9f0"
+        ]
+      },
+      "route-taxi": {
+        "role": "tertiary",
+        "displayName": "Taxi Route",
+        "canonical": "#d7731a",
+        "tonalRamp": [
+          "#442508",
+          "#723d0e",
+          "#9f5513",
+          "#cd6e19",
+          "#e88f40",
+          "#f0b480",
+          "#f7d7bb",
+          "#fcf2e8"
+        ]
+      },
+      "route-train": {
+        "role": "tertiary",
+        "displayName": "Train Route",
+        "canonical": "#2f5fd0",
+        "tonalRamp": [
+          "#0e1c3e",
+          "#182f68",
+          "#214292",
+          "#2a55bb",
+          "#5079d8",
+          "#8ba5e5",
+          "#c1cff1",
+          "#eaeffa"
+        ]
+      },
+      "route-water": {
+        "role": "tertiary",
+        "displayName": "Boat Route",
+        "canonical": "#1f98b8",
+        "tonalRamp": [
+          "#0b3641",
+          "#125a6d",
+          "#1a7e99",
+          "#21a2c4",
+          "#48c0e0",
+          "#85d5ea",
+          "#bee9f4",
+          "#e9f8fb"
+        ]
+      },
+      "route-flight": {
+        "role": "tertiary",
+        "displayName": "Flight Route",
+        "canonical": "#6d6d69",
+        "tonalRamp": [
+          "#272726",
+          "#41413f",
+          "#5b5b58",
+          "#757571",
+          "#969692",
+          "#b9b9b6",
+          "#d9d9d8",
+          "#f2f2f2"
+        ]
+      },
+      "warn-cream": {
+        "role": "neutral",
+        "displayName": "Warn Cream",
+        "canonical": "#fff6dd",
+        "tonalRamp": [
+          "#4c3800",
+          "#805e00",
+          "#b28300",
+          "#e6a900",
+          "#ffc629",
+          "#ffd970",
+          "#ffebb2",
+          "#fff8e5"
+        ]
+      },
+      "warn-ink": {
+        "role": "neutral",
+        "displayName": "Warn Ink",
+        "canonical": "#7a5a00",
+        "tonalRamp": [
+          "#4c3800",
+          "#805e00",
+          "#b28400",
+          "#e6a900",
+          "#ffc729",
+          "#ffda70",
+          "#ffebb2",
+          "#fff8e5"
+        ]
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "The next stop's departure time; one per screen." },
-      "headline": { "displayName": "Headline", "purpose": "The day's name board." },
-      "section": { "displayName": "Section", "purpose": "Bookings, Guide and Ideas section heads; the next-stop number badge." },
-      "title": { "displayName": "Title", "purpose": "Stop titles, accordion summaries, idea titles." },
-      "body": { "displayName": "Body", "purpose": "Descriptions, notes and sub-copy, capped at 64ch. Base element size is 16px." },
-      "label": { "displayName": "Label", "purpose": "Times, metadata, small buttons, segmented and filter buttons, travel legs." },
-      "caption": { "displayName": "Caption", "purpose": "Tab labels, route-diagram stop names, day-strip numbers and dates, chips." }
+      "display": {
+        "displayName": "Fare",
+        "purpose": "The one big money figure on a screen; serif amounts in rows."
+      },
+      "headline": {
+        "displayName": "Page title",
+        "purpose": "Tool page titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Row names and button labels."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Descriptions and notes."
+      },
+      "label": {
+        "displayName": "Section label",
+        "purpose": "Uppercase section labels only."
+      },
+      "japanese": {
+        "displayName": "Mincho",
+        "purpose": "Japanese phrases and taxi cards."
+      }
     },
     "shadows": [
-      { "name": "focus-ring-search", "value": "0 0 0 3px var(--rail)", "purpose": "The only box-shadow in the system: the focused search field. Nothing casts a depth shadow." }
+      {
+        "name": "card",
+        "value": "0 1px 2px rgba(0,0,0,.04), 0 10px 26px -18px rgba(0,0,0,.3)",
+        "purpose": "Cards on paper."
+      },
+      {
+        "name": "control",
+        "value": "0 1px 3px rgba(0,0,0,.08)",
+        "purpose": "White round buttons and pills."
+      },
+      {
+        "name": "outline",
+        "value": "0 0 0 1px rgba(20,20,10,.08)",
+        "purpose": "Unselected chips and inputs."
+      },
+      {
+        "name": "glass",
+        "value": "0 1px 0 rgba(255,255,255,.9) inset, 0 0 0 .5px rgba(0,0,0,.06), 0 10px 30px -12px rgba(0,0,0,.28)",
+        "purpose": "Frosted controls over the map (with backdrop-filter: blur(22px) saturate(1.8))."
+      },
+      {
+        "name": "floating",
+        "value": "0 10px 30px -10px rgba(0,0,0,.35), 0 0 0 1px rgba(20,20,10,.08)",
+        "purpose": "Tools bubble options and ¥+."
+      },
+      {
+        "name": "sheet",
+        "value": "0 -14px 40px -18px rgba(0,0,0,.35)",
+        "purpose": "Bottom sheets."
+      }
     ],
     "motion": [
-      { "name": "ease-out", "value": "cubic-bezier(0.23, 1, 0.32, 1)", "purpose": "Press feedback (scale 0.97 over 160ms) and the search dialog's 200ms fade-and-scale. Removed under prefers-reduced-motion." },
-      { "name": "state-fade", "value": "150ms to 200ms ease", "purpose": "Background and border-colour changes on checks, rows and the sync dot." }
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(.23,1,.32,1)",
+        "purpose": "Every transition: sheets, segments, toasts."
+      },
+      {
+        "name": "press",
+        "value": "transform scale(.96) 160ms",
+        "purpose": "Button press feedback."
+      },
+      {
+        "name": "sheet",
+        "value": "transform 300-320ms",
+        "purpose": "Sheets and pages sliding in."
+      }
     ],
     "breakpoints": [
-      { "name": "narrow-phone", "value": "430px", "purpose": "Max-width: header compresses, date line hides." },
-      { "name": "desktop", "value": "960px", "purpose": "Min-width: tab bar moves under the header, Days becomes a two-pane split with a sticky side map." }
-    ],
-    "layout": {
-      "topHeight": "56px",
-      "tabsHeight": "58px",
-      "tabsHeightDesktop": "48px",
-      "contentMaxWidth": "760px",
-      "timelineMaxWidth": "720px",
-      "gutter": "16px",
-      "railColumn": "40px",
-      "signboardIndent": "52px",
-      "legStroke": "4px",
-      "ringStroke": "3px",
-      "hairline": "1px"
-    }
+      {
+        "name": "column",
+        "value": "460px"
+      }
+    ]
   },
   "components": [
     {
-      "name": "Outline Button",
+      "name": "Primary Button",
       "kind": "button",
-      "refersTo": "button-outline",
-      "description": "The default button: Ground fill, 2px Ink ring, full pill, 40px tall. Primary variant swaps to Signage Red.",
-      "html": "<button class=\"ds-btn\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>Map</button> <button class=\"ds-btn ds-btn-primary\">Post suggestion</button>",
-      "css": ".ds-btn { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); border: 2px solid var(--ink, #000); background: var(--ground, #fff); color: var(--ink, #000); border-radius: 999px; padding: 0 14px; min-height: 40px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-btn:active { transform: scale(0.97); } .ds-btn:focus-visible { outline: 3px solid var(--rail, #1d3fb5); outline-offset: 2px; } .ds-btn-primary { background: var(--red, #e60012); border-color: var(--red, #e60012); color: var(--red-ink, #fff); } .ds-btn svg { display: inline-block; vertical-align: middle; fill: none; }"
+      "refersTo": "button-primary",
+      "description": "Full-width action at the bottom of a form.",
+      "html": "<button class=\"ds-btn-primary\">Add expense</button>",
+      "css": ".ds-btn-primary{width:100%;height:52px;border:0;border-radius:14px;background:#141412;color:#fff;font:700 16px 'Zen Kaku','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;transition:transform 160ms cubic-bezier(.23,1,.32,1)}.ds-btn-primary:active{transform:scale(.96)}.ds-btn-primary:focus-visible{outline:2px solid #1e6bff;outline-offset:2px}.ds-btn-primary:disabled{background:#b9b6ae}"
     },
     {
-      "name": "Small Button",
-      "kind": "button",
-      "refersTo": "button-small",
-      "description": "36px pill with a 1.5px Ring Grey border for map links, day jumps and calls; border turns Ink on hover.",
-      "html": "<a class=\"ds-btn-small\" href=\"#\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 22s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"12\" cy=\"10\" r=\"2.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg>Senso-ji</a>",
-      "css": ".ds-btn-small { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); border: 1.5px solid var(--n3, #bdbdbd); background: var(--ground, #fff); color: var(--ink, #000); border-radius: 999px; padding: 0 12px; min-height: 36px; font-size: 13.5px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-btn-small:hover { border-color: var(--ink, #000); } .ds-btn-small:active { transform: scale(0.97); } .ds-btn-small:focus-visible { outline: 3px solid var(--rail, #1d3fb5); outline-offset: 2px; } .ds-btn-small svg { fill: none; }"
-    },
-    {
-      "name": "Chips",
+      "name": "Pill",
       "kind": "chip",
-      "refersTo": "chip",
-      "description": "State and ownership tags: default Paper, Confirmed green, Still to decide outlined, NASA blue, M&M magenta, cost hairline.",
-      "html": "<span class=\"ds-chip ds-chip-confirmed\"><svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>Confirmed</span> <span class=\"ds-chip ds-chip-tbd\">Still to decide</span> <span class=\"ds-chip ds-chip-nasa\">NASA</span> <span class=\"ds-chip ds-chip-mm\">M&amp;M</span> <span class=\"ds-chip ds-chip-cost\">¥3,000</span>",
-      "css": ".ds-chip { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 3px; background: var(--rule-2, #f3f3f3); color: var(--ink-2, #3d3d3d); display: inline-flex; align-items: center; gap: 4px; } .ds-chip svg { fill: none; } .ds-chip-confirmed { background: var(--ok, #008a3e); color: #fff; } .ds-chip-tbd { background: transparent; border: 2px solid var(--ink, #000); color: var(--ink, #000); padding: 1px 7px; } .ds-chip-nasa { background: var(--nasa, #0063b5); color: #fff; } .ds-chip-mm { background: var(--mm, #a2006d); color: #fff; } .ds-chip-cost { background: transparent; border: 1px solid var(--rule, #e3e3e3); }"
+      "refersTo": "button-pill",
+      "description": "Secondary action, filter or preset; inverts when selected.",
+      "html": "<button class=\"ds-pill\">Only Naf</button> <button class=\"ds-pill ds-on\">All four</button>",
+      "css": ".ds-pill{height:40px;padding:0 14px;border:0;border-radius:999px;background:#fff;color:#141412;box-shadow:0 0 0 1px rgba(20,20,10,.08);font:700 14px 'Zen Kaku','Hiragino Sans','Noto Sans JP',system-ui,sans-serif}.ds-pill.ds-on{background:#141412;color:#fff;box-shadow:none}.ds-pill:focus-visible{outline:2px solid #1e6bff;outline-offset:2px}"
     },
     {
-      "name": "Search Field",
-      "kind": "input",
-      "refersTo": "input-search",
-      "description": "44px pill with a 2px Ink border; focus shows the system's only box-shadow, a 3px Rail Blue ring.",
-      "html": "<input class=\"ds-input-search\" type=\"search\" placeholder=\"Search stops, food, bookings, tips\">",
-      "css": ".ds-input-search { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); font-size: 16px; border: 2px solid var(--ink, #000); border-radius: 999px; padding: 10px 16px; min-height: 44px; width: 100%; max-width: 360px; background: var(--ground, #fff); color: var(--ink, #000); } .ds-input-search:focus { outline: none; box-shadow: 0 0 0 3px var(--rail, #1d3fb5); }"
-    },
-    {
-      "name": "Form Field",
-      "kind": "input",
-      "refersTo": "input-form",
-      "description": "Square 44px field with a 2px Rule border that turns Ink on focus; 16px text so phones do not zoom.",
-      "html": "<label class=\"ds-field\">Your name<input class=\"ds-input\" type=\"text\" placeholder=\"Sara\"></label>",
-      "css": ".ds-field { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); font-size: 13.5px; font-weight: 700; color: var(--ink-2, #3d3d3d); display: grid; gap: 4px; max-width: 360px; } .ds-input { font: inherit; font-size: 16px; font-weight: 400; border: 2px solid var(--rule, #e3e3e3); border-radius: 0; padding: 10px 12px; background: var(--ground, #fff); color: var(--ink, #000); width: 100%; min-height: 44px; } .ds-input:focus { border-color: var(--ink, #000); outline: none; }"
-    },
-    {
-      "name": "Tab Bar",
+      "name": "Segmented control",
       "kind": "nav",
-      "refersTo": "tab",
-      "description": "Five bottom tabs, 58px: 22px pictogram over an 11.5px bold label; selected tab goes Ink with a 3px Signage Red top edge.",
-      "html": "<nav class=\"ds-tabs\"><button class=\"ds-tab\" aria-selected=\"true\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"3\" y=\"5\" width=\"18\" height=\"16\" rx=\"2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/><path d=\"M3 10h18M8 3v4M16 3v4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>Days</button><button class=\"ds-tab\" aria-selected=\"false\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>Map</button><button class=\"ds-tab\" aria-selected=\"false\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3 8a2 2 0 002-2V5h14v1a2 2 0 002 2v3a2 2 0 000 4v3a2 2 0 00-2 2v1H5v-1a2 2 0 00-2-2v-3a2 2 0 000-4zM9 5v14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linejoin=\"round\"/></svg>Bookings</button></nav>",
-      "css": ".ds-tabs { display: flex; height: 58px; max-width: 360px; background: var(--ground, #fff); border-top: 1px solid var(--rule, #e3e3e3); font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); } .ds-tab { flex: 1; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11.5px; font-weight: 700; color: var(--ink-3, #6f6f6f); cursor: pointer; padding: 4px 0 6px; border-top: 3px solid transparent; margin-top: -1px; } .ds-tab[aria-selected=\"true\"] { color: var(--ink, #000); border-top-color: var(--red, #e60012); } .ds-tab:focus-visible { outline: 3px solid var(--rail, #1d3fb5); outline-offset: -3px; } .ds-tab svg { fill: none; }"
+      "refersTo": "segment",
+      "description": "Two or three views of the same thing.",
+      "html": "<div class=\"ds-seg\"><button class=\"ds-on\">Group</button><button>Naf</button><button>NASA</button></div>",
+      "css": ".ds-seg{display:inline-flex;gap:2px;padding:3px;border-radius:999px;background:rgba(0,0,0,.05)}.ds-seg button{height:36px;padding:0 16px;border:0;border-radius:999px;background:none;color:#6b6962;font:700 14px 'Zen Kaku','Hiragino Sans','Noto Sans JP',system-ui,sans-serif}.ds-seg button.ds-on{background:#fff;color:#141412;box-shadow:0 1px 3px rgba(0,0,0,.12)}"
     },
     {
-      "name": "Station Ring",
-      "kind": "custom",
-      "refersTo": "station-number",
-      "description": "The signature mark: a 30px circle, 3px Ink ring on Ground with a bold numeral. Red when next, green when done, dashed Ink 3 when optional, couple-coloured ring for a split stop.",
-      "html": "<span class=\"ds-ring\">3</span> <span class=\"ds-ring ds-ring-next\">4</span> <span class=\"ds-ring ds-ring-done\">2</span> <span class=\"ds-ring ds-ring-optional\">5</span> <span class=\"ds-ring ds-ring-nasa\">6</span> <span class=\"ds-ring ds-ring-mm\">7</span>",
-      "css": ".ds-ring { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); width: 30px; height: 30px; border-radius: 50%; background: var(--ground, #fff); border: 3px solid var(--ink, #000); color: var(--ink, #000); font-weight: 700; font-size: 13px; display: inline-grid; place-items: center; line-height: 1; box-sizing: border-box; vertical-align: middle; transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); } .ds-ring:active { transform: scale(0.94); } .ds-ring-next { width: 40px; height: 40px; font-size: 16px; background: var(--red, #e60012); border-color: var(--red, #e60012); color: var(--red-ink, #fff); } .ds-ring-done { background: var(--ok, #008a3e); border-color: var(--ok, #008a3e); color: #fff; } .ds-ring-optional { border-style: dashed; border-color: var(--ink-3, #6f6f6f); color: var(--ink-3, #6f6f6f); } .ds-ring-nasa { border-color: var(--nasa, #0063b5); } .ds-ring-mm { border-color: var(--mm, #a2006d); }"
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White container on paper for lists and tools.",
+      "html": "<div class=\"ds-card\"><small>Group spend so far</small><b>¥109,700</b></div>",
+      "css": ".ds-card{background:#fff;border-radius:22px;padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 26px -18px rgba(0,0,0,.3)}.ds-card small{display:block;font:700 12px 'Zen Kaku',system-ui,sans-serif;color:#6b6962}.ds-card b{display:block;font:400 46px/1 'Instrument Serif',serif;letter-spacing:-.02em;color:#141412}"
     },
     {
-      "name": "Next-Stop Headline",
+      "name": "Pass",
       "kind": "custom",
-      "refersTo": "station-number-next",
-      "description": "The monumental figure: 52px red badge, 44px tabular time with the 13px 次 Next signage label on its baseline, title clamped to two lines, leg beneath, closed by a 2px Ink rule.",
-      "html": "<div class=\"ds-next\"><div class=\"ds-next-n\">4</div><div class=\"ds-next-time\"><span class=\"ds-next-jn\">次 Next</span>14:30</div><div></div><div><div class=\"ds-next-t\">Fushimi Inari Taisha</div><div class=\"ds-next-w\">Train 12 min from Kyoto Station</div></div></div>",
-      "css": ".ds-next { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); font-feature-settings: \"tnum\" 1; display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center; padding: 10px 0 14px; border-bottom: 2px solid var(--ink, #000); max-width: 360px; color: var(--ink, #000); } .ds-next-n { width: 52px; height: 52px; border-radius: 50%; background: var(--red, #e60012); color: var(--red-ink, #fff); display: grid; place-items: center; font-size: 22px; font-weight: 700; } .ds-next-time { font-size: 44px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; white-space: nowrap; display: flex; align-items: baseline; gap: 10px; } .ds-next-jn { font-size: 13px; font-weight: 700; color: var(--ink-3, #6f6f6f); letter-spacing: 0; } .ds-next-t { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; } .ds-next-w { font-size: 13.5px; color: var(--ink-2, #3d3d3d); margin-top: 2px; }"
+      "refersTo": "pass",
+      "description": "A stop on the day: colour says what it is.",
+      "html": "<div class=\"ds-pass\" style=\"--c:#cc5a26\"><small>12:30 · Food</small><b>Kakinoha-zushi lunch</b></div>",
+      "css": ".ds-pass{border-radius:22px;padding:18px;color:#fff;background:linear-gradient(165deg,color-mix(in srgb,var(--c) 82%,#fff) 0,var(--c) 36%,color-mix(in srgb,var(--c) 82%,#000) 100%);box-shadow:0 10px 26px -12px rgba(0,0,0,.4)}.ds-pass small{display:block;font:700 12px 'Zen Kaku','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;opacity:.85}.ds-pass b{display:block;font:700 20px 'Zen Kaku','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;margin-top:4px}"
     },
     {
-      "name": "Travel Leg",
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Text field on paper.",
+      "html": "<input class=\"ds-input\" placeholder=\"e.g. Ramen at Fuunji\">",
+      "css": ".ds-input{width:100%;height:46px;padding:0 14px;border:0;border-radius:14px;background:#fff;box-shadow:0 0 0 1px rgba(20,20,10,.08);font:400 16px 'Zen Kaku','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;color:#141412}.ds-input::placeholder{color:#6b6962}.ds-input:focus{outline:0;box-shadow:0 0 0 2px #141412}"
+    },
+    {
+      "name": "Glass round button",
+      "kind": "button",
+      "refersTo": "button-round",
+      "description": "Floating control over the map.",
+      "html": "<button class=\"ds-glass\" aria-label=\"Next day\">›</button>",
+      "css": ".ds-glass{width:48px;height:48px;border:0;border-radius:50%;font:700 22px system-ui;color:#141412;background:rgba(255,255,255,.72);backdrop-filter:blur(22px) saturate(1.8);-webkit-backdrop-filter:blur(22px) saturate(1.8);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 0 0 .5px rgba(0,0,0,.06),0 10px 30px -12px rgba(0,0,0,.28)}"
+    },
+    {
+      "name": "Toast",
       "kind": "custom",
-      "refersTo": "station-number",
-      "description": "The leg between two stations: a 26px disc in the mode colour with its pictogram, the label, and a bold Directions link at the right edge.",
-      "html": "<div class=\"ds-leg\" style=\"--leg: var(--walk, #008a3e)\"><span class=\"ds-leg-mode\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"13.5\" cy=\"4\" r=\"2\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M10 21l2.2-6.2M12.8 9.5L9 12v4M12.8 9.5l3.2 2.3 3 1.2M12.8 9.5l-1.6 5.3 3.8 2.7L16 21\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></span><span>Walk 8 min</span><a href=\"#\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 20V9a3 3 0 013-3h10M14 3l4 3-4 3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>Directions</a></div>",
-      "css": ".ds-leg { font-family: var(--font, 'BIZ UDPGothic', 'Hiragino Sans', sans-serif); display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--ink-2, #3d3d3d); padding: 6px 0; min-height: 40px; max-width: 360px; } .ds-leg-mode { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--leg, #1d3fb5); color: #fff; flex: none; } .ds-leg a { margin-left: auto; font-size: 13.5px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; color: var(--rail, #1d3fb5); text-decoration-thickness: 1px; text-underline-offset: 3px; } .ds-leg a:focus-visible { outline: 3px solid var(--rail, #1d3fb5); outline-offset: 2px; } .ds-leg svg { fill: none; }"
+      "refersTo": "toast",
+      "description": "Confirmation with one action.",
+      "html": "<div class=\"ds-toast\"><span>✓ Added Matcha ¥1,200</span><button>Undo</button></div>",
+      "css": ".ds-toast{display:inline-flex;align-items:center;gap:14px;padding:10px 10px 10px 16px;border-radius:16px;background:rgba(20,20,18,.92);color:#fff;font:400 14px 'Zen Kaku','Hiragino Sans','Noto Sans JP',system-ui,sans-serif}.ds-toast button{height:34px;padding:0 14px;border:0;border-radius:10px;background:rgba(255,255,255,.16);color:#fff;font:700 14px 'Zen Kaku','Hiragino Sans','Noto Sans JP',system-ui,sans-serif}"
     }
   ],
   "narrative": {
-    "northStar": "The Station Signboard",
-    "overview": "The whole app is drawn the way Japanese rail signage is drawn: white ground, black ink, one red for \"now\", and colour reserved for the lines themselves. A day is a line; its stops are stations with numbered rings; the legs between them are 4px rules in the colour of how you travel. Nothing is a card. Depth comes from the ink, never from a shadow. The next station is lifted (a 40px red ring, a 44px time) while everything already done dims to the mid-grey of the ramp and is struck through.\n\nDensity is high and honest: 16px gutters, hairlines at one device pixel, no decorative whitespace. The system is built for a phone held one-handed in daylight, so every tap target is 44px, every text colour clears 4.5:1 on its ground, and the dark scheme is a true inversion to pure black rather than a tinted theme. The world was chosen against the generic travel-app default (same-size cards in a scrolling column, map behind a button) and the build keeps that refusal.",
+    "northStar": "The Pass Wallet",
+    "overview": "The trip lives in a travel wallet. Each stop of the day is a pass: a rounded, colour-filled ticket that says what it is by its colour alone, stacked so the next one is on top. The wallet sits over a live map behind frosted glass. Everything around the passes is quiet paper: warm off-white ground, white cards, near-black ink. Money is set in Instrument Serif, the UI in Zen Kaku Gothic, Japanese in Zen Old Mincho. Colour carries meaning, never mood.",
     "keyCharacteristics": [
-      "Pure white ground (pure black at night), true black ink, neutrals snapped to a seven-step ramp.",
-      "Line colours are data: green walk, blue rail, orange taxi, teal water or ropeway, grey flight, purple Kyoto. They never decorate.",
-      "One accent, signage red, used for \"now\" (the next stop, the current tab, today's dot) and primary actions.",
-      "BIZ UDPGothic, one family, two weights (400, 700), tabular figures everywhere.",
-      "Station rings: a circle with a 3px ink ring on a ground fill; filled red when next, green when done, dashed grey when optional.",
-      "Flat. No box-shadow anywhere except the 3px focus ring on the search field; hairline rules do the structuring.",
-      "Pictograms are inline SVG symbols drawn at one stroke weight (2px, round caps), never glyph fonts."
+      "Warm paper ground (#f6f4ef), white cards, near-black ink; one column up to 460px.",
+      "Colour-filled passes with a soft gradient as the day's signature element.",
+      "Frosted glass for anything that floats.",
+      "Instrument Serif for amounts, Zen Kaku Gothic for UI, Zen Old Mincho for Japanese.",
+      "Pills and round buttons for controls; 22px corners for cards and passes; 30px for sheets.",
+      "Fast, springy motion on one ease; presses scale to .96."
     ],
     "rules": [
-      { "name": "The Seven-Step Rule", "body": "Every grey comes from the seven fixed steps (#ffffff, #f3f3f3, #e3e3e3, #bdbdbd, #6f6f6f, #3d3d3d, #000000). No opacity tints, no new greys. Night mode is the same ramp reversed, step for step.", "section": "colors" },
-      { "name": "The Data-Only Line Rule", "body": "Walk, rail, taxi, water, flight and city colours appear only where they encode a leg or a city. They never colour a heading, a background or a decoration.", "section": "colors" },
-      { "name": "The One Red Rule", "body": "Signage red means \"now\" or \"do this\". The next stop and the primary action may be red; nothing else on the same screen may.", "section": "colors" },
-      { "name": "The Two-Weights Rule", "body": "Only 400 and 700 exist. Anything that must stand out goes bold or goes up the ramp; there is no 500 or 600 and no italic.", "section": "typography" },
-      { "name": "The Tabular Time Rule", "body": "Every number that can change (times, counts, votes, day numbers) is set tabular so columns and rings do not shift as the day progresses.", "section": "typography" },
-      { "name": "The Device Gothic Rule", "body": "Japanese text (the 日 brand mark, \"次\") is rendered by the device's own gothic by design; do not ship a CJK subset.", "section": "typography" },
-      { "name": "The No-Shadow Rule", "body": "Nothing casts a shadow. If a surface needs to read as separate, give it a rule or move it one ramp step; never add elevation.", "section": "elevation" },
-      { "name": "The Hairline Rule", "body": "Dividers are 1px (rule or paper). Emphasis rules are 2px Ink. Lines that carry data (legs, rings) are 3 or 4px. There is no other stroke weight.", "section": "elevation" }
+      {
+        "name": "The Meaning-Only Rule",
+        "body": "Pass, route and people colours are data. They never decorate a heading, a background or an empty state.",
+        "section": "colors"
+      },
+      {
+        "name": "The Sunlight Rule",
+        "body": "Every text colour clears 4.5:1 on its ground. Small accent-coloured text uses the matching -ink shade.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fare Rule",
+        "body": "Money is set in Instrument Serif; nothing else is. Tabular figures everywhere digits line up.",
+        "section": "typography"
+      },
+      {
+        "name": "The Twelve Floor Rule",
+        "body": "No text below 12px, and nothing tappable labelled below 13px.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Glass Rule",
+        "body": "Glass is only for things that float: controls over the map, the bottom sheet, and the floating tab picker. Content on a page is paper and cards, never glass.",
+        "section": "elevation"
+      }
     ],
     "dos": [
-      "Do paint every leg, ring and city segment from the line-colour tokens by data (--leg, --city); the colour is the mode.",
-      "Do use the Seven-Step Rule for every grey and reverse the ramp for night mode; never tint with opacity.",
-      "Do keep Signage Red for \"now\" and the primary action only.",
-      "Do draw pictograms as inline SVG <symbol>s at 2px stroke with round caps and joins, 16 to 22px, referenced with <use>.",
-      "Do keep all text at 4.5:1 on its ground and every control at 44px; group smaller buttons inside a larger hit area.",
-      "Do set times and counts tabular, in 700, with the next stop's time at 44px and nothing larger.",
-      "Do structure with 1px hairlines and 2px Ink rules; let the ramp step do the rest.",
-      "Do honour reduced motion: remove the press scale and the search transform."
+      "Do keep money in Instrument Serif and everything else in Zen Kaku Gothic.",
+      "Do use pass colours only to say what a stop is, and route colours only for how you travel.",
+      "Do use Ink 3 (#6b6962) as the lightest text colour; use the -ink shades for small coloured text.",
+      "Do make every tap target at least 44×44px, enlarging the hit area rather than the visual when needed.",
+      "Do use glass only for floating things (map controls, sheets, the tab picker), and cards only on paper.",
+      "Do name people and couples in copy (\"Naf\", \"NASA\"), never \"you\", \"me\" or \"us\"."
     ],
     "donts": [
-      "Don't add cards, shadows, gradients, blur or rounded 8 to 16px containers; the world is flat signboard.",
-      "Don't introduce a second typeface, a 500 or 600 weight, or an italic.",
-      "Don't colour a heading, background or icon with a line colour for decoration.",
-      "Don't use a glyph icon font or emoji for pictograms.",
-      "Don't invent eyebrow or kicker labels above headings; \"次 Next\" is the signage label beside the time, not a kicker pattern.",
-      "Don't ship CJK font subsets; Japanese glyphs come from the device gothic.",
-      "Don't use dashed strokes for anything but optional stops and transit, water or flight legs."
+      "Don't put a small uppercase label above a page title.",
+      "Don't use text below 12px, or light grey (#86847c) for anything people need to read outdoors.",
+      "Don't nest cards inside cards; list rows inside a card are divided by hairlines.",
+      "Don't add explanatory paragraphs where the heading already says what the section is.",
+      "Don't use emoji as decoration; category emoji are allowed only as the category marker."
     ]
   }
 }
