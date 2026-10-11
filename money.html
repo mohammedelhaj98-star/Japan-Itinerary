@@ -954,7 +954,7 @@ function renderMine(ids, kind) {
     <div class="hero-top"><span>${us ? `${COUPLE[cpl].ids.map((i) => P[i].name).join(' + ')} have spent` : `${who} has spent`}</span></div>
     <div class="hero-big">${fmtY(spent)}${budget ? `<em>of ${fmtY(budget)}</em>` : ''}</div>
     ${budget ? `<div class="hero-track" role="img" aria-label="${Math.round(pct)}% of the budget"><i style="width:${pct}%"></i><b style="left:${mark}%" title="Where on-pace spending would be"></b></div>` : ''}
-    <div class="hero-foot"><span>${budget ? (left < 0 ? `Over by ${fmtY(-left)}` : `${fmtY(left)} left · ${fmtY(left / daysLeft)}/day · ${spent > should ? 'over pace' : 'on pace'}`) : fmtC(spent)}</span><button class="hero-btn" data-budget>${budget ? 'Budget' : 'Set a budget'}</button></div>
+    <div class="hero-foot"><span>${budget ? (left < 0 ? `Over by ${fmtY(-left)}` : (started ? `${fmtY(left)} left · ${fmtY(left / daysLeft)}/day · ${spent > should ? 'over pace' : 'on pace'}` : `${fmtY(left)} left · ${fmtY(left / n)}/day`)) : fmtC(spent)}</span><button class="hero-btn" data-budget>${budget ? 'Budget' : 'Set a budget'}</button></div>
     ${split ? `<div class="hsplit">${split.map(([i, v]) => `<i style="--c:${P[i].c};flex:${Math.max(v, 1)}"></i>`).join('')}</div><div class="hsplit-l">${split.map(([i, v]) => `<span><i style="--c:${P[i].c}"></i>${P[i].name} ${fmtY(v)}</span>`).join('')}</div>` : ''}
     ${pre ? `<p class="hero-note">Includes ${fmtY(pre)} paid before the trip</p>` : ''}</div>`;
 
