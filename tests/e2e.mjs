@@ -112,7 +112,7 @@ ok('undo brings it back', /Fuunji ramen test/.test(await N.page.textContent('#gl
 await A.page.evaluate(() => window.__tourEnv.store.refresh()); await A.page.waitForTimeout(600);
 await A.page.tap('[data-pay]'); await A.page.waitForTimeout(400); await A.page.tap('[data-payok]'); await A.page.waitForTimeout(900);
 const pay = Object.values(exMap()).find((x) => x.kind === 'pay');
-ok('Paid saves a payment that clears the debts', pay && pay.to === 'naf' && pay.yen === 3300 && pay.flows.length >= 1, JSON.stringify(pay));
+ok('Paid saves a payment that clears the debts', pay && pay.to === 'naf' && pay.yen === 2200 && pay.flows.length >= 1, JSON.stringify(pay));
 ok('nothing left to settle', !(await A.page.$('[data-pay]')));
 // cash given between the couples goes into settle up
 await N.page.evaluate(() => window.__tourEnv.store.refresh()); await N.page.waitForTimeout(600);

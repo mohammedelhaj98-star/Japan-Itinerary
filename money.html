@@ -1086,6 +1086,7 @@ function renderForm() {
   const nightsMax = Math.max(1, DAYS.length - DAYS.findIndex((d) => d.id === F.day));
   const d = DAY[F.day], dayLabel = d.id === 'pre' ? 'Before the trip' : `Day ${d.n} · ${d.dd}${d.id === TODAY ? ' · today' : ''}`;
   fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${F.id ? 'Edit expense' : 'New expense'}</b><button class="del" data-fdel style="${F.id ? '' : 'visibility:hidden'}">Delete</button></div>
+    ${SANDBOX ? '<div class="draft"><span>Practice: type an amount (like 3000), check who paid, then tap Add expense. Nothing is saved.</span></div>' : ''}
     ${F.draft ? '<div class="draft"><span>Filled in from the expense that was undone.</span><button data-fblank>Start blank</button></div>' : ''}
     <div class="fsec"><div class="amtin"><select id="fccy" aria-label="Currency">${['JPY','CAD','QAR','USD'].map((c) => `<option value="${c}" ${F.ccy === c ? 'selected' : ''}>${c === 'JPY' ? '¥' : c}</option>`).join('')}</select><input id="famt" inputmode="decimal" enterkeyhint="done" placeholder="0" value="${esc(F.amt)}" aria-label="Amount"></div>
       <div class="subline"><span class="conv" id="fconv">${convText(total)}</span><button class="oweme" data-refund aria-pressed="${F.refund}"><span class="sw ${F.refund ? 'on' : ''}"></span>Refund</button></div>

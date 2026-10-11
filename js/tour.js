@@ -34,7 +34,7 @@ const STEPS = [
   // ── tools page ──
   { page: 'money', el: '.gpass', t: 'Shared expenses', x: 'What the group has spent, day by day. Below it: who pays whom to settle up, by couple or person to person. Your own page and your couple\'s are in the switch at the top.' },
   { page: 'money', el: '#addfab', t: 'Add an expense', x: '<b>Tap Add expense.</b>', done: (e) => e.formOpen() },
-  { page: 'money', el: '#fpage', t: 'Log it', x: '<b>Type an amount</b> (like 3000), check who paid and who\'s in, <b>then tap Add expense.</b>', allow: '#sheet.on', snap: (e) => e.exCount(), done: (e, s0) => e.exCount() > s0 && !e.formOpen(), skip: (e) => e.closeForm() },
+  { page: 'money', el: '#fpage', t: 'Log it', x: '<b>Type an amount</b> (like 3000), check who paid and who\'s in, <b>then tap Add expense.</b>', allow: ['#fpage.on', '#sheet.on'] /* the form fills the screen, so it carries the hint itself */, snap: (e) => e.exCount(), done: (e, s0) => e.exCount() > s0 && !e.formOpen(), skip: (e) => e.closeForm() },
   { page: 'money', el: null, t: 'Fix or delete', x: 'Tap any expense to change it, or delete it from the top of its form. There\'s an Undo too. Next: bookings.', nav: toolsUrl(2) },
   { page: 'tools', el: pick(2), t: 'Bookings', x: '<b>Tap Bookings.</b>', done: (e) => e.getTab() === 1 },
   { page: 'tools', el: '.bk.todo [data-bkmark]', t: 'Booked something?', x: 'Everything booked and still to book. <b>Tap Mark as booked</b> and it moves to Booked for everyone.', pre: (e) => e.setTab(1), snap: (e) => booked(e.store.state), done: (e, s0) => booked(e.store.state) > s0 },
