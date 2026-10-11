@@ -600,6 +600,13 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .tfree { display:inline-flex; align-items:center; height:22px; padding:0 8px; margin-right:6px; border-radius:999px; background:color-mix(in srgb, var(--ok) 14%, var(--card)); color:var(--ok-ink); font-size:12px; font-weight:700; }
 @media (prefers-reduced-motion:reduce) { .cam-torch.nudge { animation:none; } }
 
+/* ready: a green frame and a green shutter, the person takes the photo */
+.cam-shutter { transition:border-color 160ms; }
+.cam-shutter span { transition:transform 120ms, background 160ms; }
+.cam-shutter.ready { border-color:#4cd27d; }
+.cam-shutter.ready span { background:#4cd27d; }
+.cam-frame.ok { box-shadow:0 0 0 200vmax rgba(0,0,0,.55), inset 0 0 0 2px rgba(76,210,125,.6); }
+
 /* the real page: back to the trip, add an expense, sync status, and a note for guests */
 .app { padding-top:calc(52px + env(safe-area-inset-top,0px)); }
 .tback { position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); left:max(12px, calc(50% - 218px)); z-index:60; display:flex; align-items:center; gap:4px; height:36px; padding:0 14px 0 9px; border-radius:999px; background:rgba(252,250,246,.9); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:var(--ink); font-size:14px; font-weight:700; text-decoration:none; box-shadow:0 6px 18px -8px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,10,.08); }
@@ -1158,17 +1165,17 @@ function saveMove() {
   vibrate(); closeForm(); if (quick) { setTimeout(backToTrip, 350); return; }
   toast(msg, () => { S[list] = S[list].filter((q) => q !== e); if (lg) S.log = S.log.filter((q) => q !== lg); render(); });
 }
-/* ───────── the receipt camera: a frame to fit the receipt in, live checks, and it takes the photo itself ─────────
+/* ───────── the receipt camera: a frame to fit the receipt in, and live checks that turn it green when the photo will be good ─────────
    Each 150 ms the part of the picture inside the frame is shrunk and measured: how bright it is, whether there's
    something with contrast in it (the receipt), how sharp its edges are and how much it moved since last time.
-   Bright, sharp, steady and there for about a second: it takes the photo, cropped to the frame. */
+   Bright, sharp and steady for a moment: the frame and the shutter turn green. The person takes the photo. */
 const cam = { el:null, stream:null, track:null, timer:0, good:0, prev:null, long:false, torch:false, shot:null, peak:0 };
 function camOpen() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return camFallback();
   if (!cam.el) { cam.el = document.createElement('div'); cam.el.className = 'cam'; cam.el.setAttribute('role', 'dialog'); cam.el.setAttribute('aria-label', 'Scan a receipt'); document.body.appendChild(cam.el); cam.el.addEventListener('click', camClick); }
   cam.shot = null; cam.good = 0; cam.prev = null; cam.peak = 0; cam.torch = false;
   cam.el.innerHTML = `<video playsinline muted autoplay></video>
-    <div class="cam-frame ${cam.long ? 'long' : ''}"><i></i><i></i><i></i><i></i><svg class="cam-ring" viewBox="0 0 40 40"><circle cx="20" cy="20" r="17"/></svg></div>
+    <div class="cam-frame ${cam.long ? 'long' : ''}"><i></i><i></i><i></i><i></i></div>
     <div class="cam-top"><button class="cam-x" data-camx aria-label="Close">✕</button><button class="cam-chip ${cam.long ? 'on' : ''}" data-camlong aria-pressed="${cam.long}">Long receipt</button><button class="cam-chip cam-torch" data-camtorch hidden aria-pressed="false">Flash</button></div>
     <p class="cam-hint" aria-live="polite">Starting the camera…</p>
     <div class="cam-bot"><button class="cam-chip" data-camphotos>Photos</button><button class="cam-shutter" data-camshoot aria-label="Take the photo"><span></span></button><span class="cam-gap"></span></div>`;
@@ -1211,12 +1218,13 @@ function camCheck() {
   else if (sd < 22) msg = 'Fit the receipt inside the frame';
   else if (moved > 7) msg = 'Hold still…';
   else if (sharp < 5 || sharp < cam.peak * 0.7) msg = 'Hold still: it\'s a bit blurry';
-  else { msg = 'Hold it there…'; ok = true; }
+  else { msg = 'Looks good: take the photo'; ok = true; }
   if (tb) tb.classList.toggle('nudge', mean < 70 && !cam.torch);
-  hint.textContent = msg; cam.good = ok ? cam.good + 1 : 0;
-  const ring = cam.el.querySelector('.cam-ring'); ring.style.setProperty('--p', Math.min(1, cam.good / 6)); ring.classList.toggle('on', ok);
-  cam.el.querySelector('.cam-frame').classList.toggle('ok', ok);
-  if (cam.good >= 6) camShoot(); // about a second of bright, sharp and steady
+  cam.good = ok ? cam.good + 1 : 0;
+  const ready = cam.good >= 2; // good on two checks in a row, so it doesn't flicker
+  hint.textContent = ok && !ready ? 'Hold still…' : msg;
+  cam.el.querySelector('.cam-frame').classList.toggle('ok', ready);
+  cam.el.querySelector('.cam-shutter').classList.toggle('ready', ready);
 }
 function camShoot() {
   const v = cam.el.querySelector('video'); if (!v || !v.videoWidth) return;
