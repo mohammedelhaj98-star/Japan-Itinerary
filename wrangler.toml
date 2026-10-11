@@ -12,8 +12,8 @@ id = "60f44ad8c3904423a35f7213856cebd8"
 binding = "AI"
 
 # The shared trip state in one Durable Object (workers/state), so two phones can never lose each other's change.
-# Deploy the Worker first (scripts/deploy-state.sh), then uncomment these three lines; until then the state stays in KV.
-# [[durable_objects.bindings]]
-# name = "TRIP_DO"
-# class_name = "TripState"
-# script_name = "japan2026-state"
+# The Worker is deployed with scripts/deploy-state.sh (done 11 Oct 2026); comment these lines out to fall back to KV alone.
+[[durable_objects.bindings]]
+name = "TRIP_DO"
+class_name = "TripState"
+script_name = "japan2026-state"
