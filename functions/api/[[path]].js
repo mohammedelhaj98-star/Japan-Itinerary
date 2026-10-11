@@ -13,6 +13,7 @@
 //   POST /api/money                   { id, value:string|number|boolean|null }  (money settings: who sends/receives, budgets, last seen)
 //   POST /api/receipt                 { id, photo:dataURL|null }  (an expense's receipt photo)
 //   GET  /api/receipt/:id             → the receipt photo (with the PIN)
+//   POST /api/scan                    { photo:dataURL, model? }  → what a receipt says: total, shop, date, type (Workers AI)
 //   POST /api/profile                 { id, color?, photo?:dataURL|null }  (a person's colour and photo)
 //   GET  /api/photo/:id               → the person's photo (image bytes)
 //   POST /api/unlock                  { pin }  → { ok } when the PIN is right (the hub asks for it once per phone)
@@ -135,6 +136,35 @@ function cleanExpense(v) {
   if (split.length === 1 && split[0] === v.payer) out.own = true;
   return out;
 }
+// Reading a receipt photo with Workers AI. The model is asked for JSON; whatever comes back is checked and trimmed.
+const SCAN_MODELS = ['@cf/meta/llama-4-scout-17b-16e-instruct', '@cf/mistralai/mistral-small-3.1-24b-instruct', '@cf/google/gemma-3-12b-it', '@cf/meta/llama-3.2-11b-vision-instruct'];
+const SCAN_PROMPT = `This is a photo of a receipt from Japan. Read it and answer with JSON only, no other text:
+{"total": number, "shop": string, "shop_en": string, "date": "YYYY-MM-DD" or null, "type": one of "food","transport","tickets","shopping","hotel","other", "items": [string]}
+- total: the final amount paid in yen as a plain number. It is the line marked 合計, 合計金額, お会計, ご請求額, 現金計 or 金…円也. Never お預り/お預かり (cash handed over), お釣り/釣銭 (change), 小計 (subtotal) or a tax line.
+- shop: the shop or restaurant name as printed; shop_en: the same name in English or romaji.
+- date: the date printed on the receipt.
+- items: up to 5 item names in English, short.`;
+async function scanReceipt(env, photo, model) {
+  if (!env.AI) return { error: 'AI is not set up on this site' };
+  const m = SCAN_MODELS.includes(model) ? model : SCAN_MODELS[0];
+  let out;
+  if (m.includes('llama-3.2-11b-vision')) {
+    const bin = atob(photo.split(',')[1]); const bytes = new Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    try { await env.AI.run(m, { prompt: 'agree' }); } catch { /* the licence only needs agreeing once */ }
+    out = await env.AI.run(m, { image: bytes, prompt: SCAN_PROMPT, max_tokens: 500 });
+  } else {
+    out = await env.AI.run(m, { messages: [{ role: 'user', content: [{ type: 'text', text: SCAN_PROMPT }, { type: 'image_url', image_url: { url: photo } }] }], max_tokens: 500 });
+  }
+  const text = typeof out === 'string' ? out : out && (out.response ?? out.result ?? (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content));
+  let data = text && typeof text === 'object' ? text : null;
+  if (!data) { const j = String(text || '').match(/\{[\s\S]*\}/); try { data = j ? JSON.parse(j[0]) : null; } catch { data = null; } }
+  if (!data) return { model: m, error: 'unreadable', raw: String(text || '').slice(0, 400) };
+  const total = Math.round(Number(String(data.total ?? '').replace(/[^\d.]/g, '')));
+  const types = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'];
+  return { model: m, total: total > 0 && total < 10000000 ? total : null, shop: clean(data.shop, 60), shop_en: clean(data.shop_en, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(data.date || '') ? data.date : null,
+    type: types.includes(data.type) ? data.type : null, items: Array.isArray(data.items) ? data.items.slice(0, 5).map((x) => clean(x, 40)) : [] };
+}
+
 // Money moving between people: a settle-up payment (pay), cash handed over or taken out (cash), an IC card top-up (ic).
 function cleanMove(v) {
   const yen = int(v.yen, 0, 100000000), day = isId(v.day || '') ? v.day : null;
@@ -219,6 +249,15 @@ export async function onRequest({ request, env }) {
     if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405);
     let body = {};
     try { body = await request.json(); } catch { return json({ error: 'invalid JSON' }, 400); }
+
+    // reading a receipt: the four of us, or the temporary test key while we try the models out
+    if (path === 'scan') {
+      const tester = env.SCAN_TEST_KEY && request.headers.get('x-scan-test') === String(env.SCAN_TEST_KEY);
+      if (!member && !tester) return json({ error: 'pin required', pin: true }, 403);
+      if (typeof body.photo !== 'string' || body.photo.length > MAX_RECEIPT * 2 || !/^data:image\/(jpeg|png|webp);base64,/.test(body.photo)) return json({ error: 'bad photo' }, 400);
+      const t0 = Date.now();
+      try { return json({ ...(await scanReceipt(env, body.photo, tester ? body.model : null)), ms: Date.now() - t0 }); } catch (err) { return json({ error: String(err && err.message || err), ms: Date.now() - t0 }, 502); }
+    }
 
     if (path === 'unlock') return pin && String(body.pin ?? '') !== pin ? json({ error: 'wrong pin' }, 403) : json({ ok: true });
     if (!member) return json({ error: 'pin required', pin: true }, 403);
