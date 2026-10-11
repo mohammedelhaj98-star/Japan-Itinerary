@@ -548,13 +548,18 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .result .owe { font-family:var(--serif); font-size:19px; font-weight:400; }
 .lg-y { font-style:normal; font-family:var(--serif); font-size:15px; color:var(--gt); }
 
+/* the form's tabs: an expense, cash, or an IC top-up */
+.kindtabs { display:flex; margin:10px 12px 0; } .kindtabs button { flex:1; min-height:40px; }
+
 /* the real page: back to the trip, add an expense, sync status, and a note for guests */
 .app { padding-top:calc(52px + env(safe-area-inset-top,0px)); }
 .tback { position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); left:max(12px, calc(50% - 218px)); z-index:60; display:flex; align-items:center; gap:4px; height:36px; padding:0 14px 0 9px; border-radius:999px; background:rgba(252,250,246,.9); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:var(--ink); font-size:14px; font-weight:700; text-decoration:none; box-shadow:0 6px 18px -8px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,10,.08); }
 .tback::after { content:''; position:absolute; inset:-4px; }
 .addfab[hidden] { display:none; }
-.addfab { position:fixed; right:max(16px, calc(50% - 214px)); bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:40; height:56px; padding:0 22px 0 18px; border-radius:28px; background:var(--ink); color:#fff; font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow:0 14px 30px -10px rgba(0,0,0,.5); }
-.addfab:active { transform:scale(.97); }
+/* ¥+, the same button as on the trip page */
+.addfab { position:fixed; right:max(16px, calc(50% - 214px)); bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:40; width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink); font-size:21px; font-weight:700; background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); box-shadow:0 10px 26px -10px rgba(0,0,0,.4), 0 0 0 1px var(--line); transition:transform 160ms var(--ease); }
+.addfab b { font-size:13px; margin:-9px 0 0 1px; }
+.addfab:active { transform:scale(.92); }
 .syncl { text-align:center; font-size:12.5px; font-weight:700; color:var(--ink3); padding:18px 16px 0; }
 .syncl a { color:var(--blue-ink); }
 .syncl .dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:6px; vertical-align:1px; }
@@ -569,7 +574,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 <body>
 <a class="tback" href="./" data-home aria-label="Back to the trip"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Trip</a>
 <div class="app" id="app"></div>
-<button class="addfab" id="addfab" hidden aria-label="Add an expense"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Add expense</button>
+<button class="addfab" id="addfab" hidden aria-label="Add an expense, cash or an IC top-up">¥<b>+</b></button>
 <div class="fpage" id="fpage" aria-hidden="true"></div>
 <div class="fbar" id="fbar" hidden><button id="fsave">Add expense</button></div>
 <div class="scrim" id="scrim"></div>
@@ -1071,7 +1076,40 @@ function suggestions() {
 const suggHtml = () => suggestions().map((x) => `<button class="pill" data-sugg="${x.id}">${CATS[x.cat][2]} ${esc(x.title)}</button>`).join('');
 // the Type pill: the guessed or chosen type; tap to choose another
 const catsHtml = () => `<button class="pill ${F.exp === 'cat' ? 'on' : ''}" data-fexp="cat" aria-expanded="${F.exp === 'cat'}">${CATS[F.cat][2]} ${CATS[F.cat][0]}${F.catGuess && !F.catTouched ? ' <small>guessed</small>' : ''} ▾</button>`;
+// a new entry can be an expense, cash in or out, or an IC card top-up: one form, three tabs
+const kindTabs = () => `<div class="kindtabs seg">${[['ex','Expense'],['cash','Cash'],['ic','IC top-up']].map(([k, l]) => `<button data-fkind="${k}" class="${(F.kind || 'ex') === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+function renderMove() {
+  const me = S.me, cash = F.kind === 'cash', others = IDS.filter((i) => i !== me), dir = F.cdir || 'got';
+  if (dir === 'gave' && (!F.cwho || F.cwho === 'atm')) F.cwho = others[0];
+  const who = F.cwho || 'atm', d = DAY[F.day], dayLabel = d.id === 'pre' ? 'Before the trip' : `Day ${d.n} · ${d.dd}${d.id === TODAY ? ' · today' : ''}`;
+  const chips = (dir === 'got' ? ['atm', ...others] : others).map((o) => `<button class="pill ${who === o ? 'on' : ''}" data-fcxwho="${o}" aria-pressed="${who === o}">${o === 'atm' ? 'ATM' : `${av(o, 'sm')}${P[o].name}`}</button>`).join('');
+  fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${cash ? `${P[me].name}'s cash` : `${P[me].name}'s IC card`}</b><button class="del" style="visibility:hidden">Delete</button></div>${kindTabs()}
+    <div class="fsec">${cash ? `<div class="seg cxseg">${[['got','Got cash'],['gave','Gave cash']].map(([k, l]) => `<button data-fcxdir="${k}" class="${dir === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="pickrow"><small>${dir === 'got' ? 'From' : 'To'}</small><div class="lineopts">${chips}</div></div>` : ''}
+      <div class="amtin"><select disabled aria-hidden="true"><option>¥</option></select><input id="fmove" inputmode="numeric" enterkeyhint="done" placeholder="0" value="${F.mamt ? (+F.mamt).toLocaleString('en-GB') : ''}" aria-label="Amount"></div>
+      ${cash ? '' : '<p class="conv" style="padding:0 4px">Paid from cash</p>'}</div>
+    <div class="fsec"><div class="details"><button class="pill ${F.exp === 'day' ? 'on' : ''}" data-fexp="day" aria-expanded="${F.exp === 'day'}">${dayLabel} ▾</button></div>
+      ${F.exp === 'day' ? `<div class="fstrip" id="fstrip">${DAYS.map((dd) => `<button data-fday="${dd.id}" class="${F.day === dd.id ? 'on' : ''}"><small>${dd.short}${dd.id === TODAY ? ' · today' : ''}</small><b>${dd.dd}</b></button>`).join('')}</div>` : ''}</div></div>`;
+  fsave.textContent = cash ? (dir === 'got' ? 'Add cash' : 'Give cash') : 'Add top-up';
+  fsave.disabled = !(+F.mamt > 0);
+  const fs = document.getElementById('fstrip'), on = fs && fs.querySelector('.on'); if (fs && on) fs.scrollLeft = on.offsetLeft - 12;
+}
+function saveMove() {
+  const v = +F.mamt || 0, me = S.me; if (!(v > 0)) return;
+  let e, msg, lg = null;
+  if (F.kind === 'ic') { e = { id:uid(), who:me, yen:v, day:F.day }; S.ic.push(e); msg = `Topped up IC card ${fmtY(v)}`; }
+  else {
+    const dir = F.cdir || 'got', o = F.cwho || 'atm';
+    e = o === 'atm' ? { id:uid(), who:me, yen:v, day:F.day } : dir === 'got' ? { id:uid(), who:me, from:o, yen:v, day:F.day, by:me, at:Date.now() } : { id:uid(), who:o, from:me, yen:v, day:F.day, by:me, at:Date.now() };
+    S.cash.push(e); msg = e.from ? `${P[e.from].name} gave ${P[e.who].name} ${fmtY(v)} cash` : `Got cash ${fmtY(v)}`;
+    if (e.from) { lg = { who:me, verb:'logged', title:`${P[e.from].name} gave ${P[e.who].name} cash`, yen:v, at:Date.now() }; S.log.push(lg); }
+  }
+  const list = F.kind === 'ic' ? 'ic' : 'cash', quick = F.quick;
+  vibrate(); closeForm(); if (quick) { setTimeout(backToTrip, 350); return; }
+  toast(msg, () => { S[list] = S[list].filter((q) => q !== e); if (lg) S.log = S.log.filter((q) => q !== lg); render(); });
+}
 function renderForm() {
+  if (F.kind === 'cash' || F.kind === 'ic') return renderMove();
   const { x, left, total } = formExpense(), pre = presetOf();
   const dec = F.ccy === 'JPY' ? 'numeric' : 'decimal', payer = P[F.payer];
   const rows = IDS.map((i) => {
@@ -1086,7 +1124,7 @@ function renderForm() {
   const early = DAY[F.day] && DAY[F.day].n >= 1 && DAY[F.day].n <= 5 && F.set.some((i) => P[i].couple === 'mm');
   const nightsMax = Math.max(1, DAYS.length - DAYS.findIndex((d) => d.id === F.day));
   const d = DAY[F.day], dayLabel = d.id === 'pre' ? 'Before the trip' : `Day ${d.n} · ${d.dd}${d.id === TODAY ? ' · today' : ''}`;
-  fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${F.id ? 'Edit expense' : 'New expense'}</b><button class="del" data-fdel style="${F.id ? '' : 'visibility:hidden'}">Delete</button></div>
+  fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${F.id ? 'Edit expense' : 'New expense'}</b><button class="del" data-fdel style="${F.id ? '' : 'visibility:hidden'}">Delete</button></div>${F.id ? '' : kindTabs()}
     ${SANDBOX ? '<div class="draft"><span>Practice: type an amount (like 3000), check who paid, then tap Add expense. Nothing is saved.</span></div>' : ''}
     ${F.draft ? '<div class="draft"><span>Filled in from the expense that was undone.</span><button data-fblank>Start blank</button></div>' : ''}
     <div class="fsec"><div class="amtin"><select id="fccy" aria-label="Currency">${['JPY','CAD','QAR','USD'].map((c) => `<option value="${c}" ${F.ccy === c ? 'selected' : ''}>${c === 'JPY' ? '¥' : c}</option>`).join('')}</select><input id="famt" inputmode="decimal" enterkeyhint="done" placeholder="0" value="${esc(F.amt)}" aria-label="Amount"></div>
@@ -1112,6 +1150,7 @@ function renderForm() {
 }
 fpage.addEventListener('input', (e) => {
   if (!F) return;
+  if (e.target.id === 'fmove') { const dg = e.target.value.replace(/[^\d]/g, ''); e.target.value = dg ? (+dg).toLocaleString('en-GB') : ''; F.mamt = dg; fsave.disabled = !(+dg > 0); return; }
   if (e.target.id === 'famt') { F.amt = e.target.value.replace(/[^\d.]/g, ''); return liveForm(); }
   if (e.target.id === 'ftitle') { // guess the type and offer earlier entries, in place so the keyboard stays up
     F.title = e.target.value;
@@ -1130,6 +1169,9 @@ fpage.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.dat
 fpage.addEventListener('click', (e) => {
   if (!F) return; const t = (s) => e.target.closest(s);
   if (t('[data-fcancel]')) return closeForm();
+  const fk = t('[data-fkind]'); if (fk) { F.kind = fk.dataset.fkind; F.exp = null; renderForm(); const a = document.getElementById(F.kind === 'ex' ? 'famt' : 'fmove'); if (a) a.focus({ preventScroll:true }); return; }
+  const cd = t('[data-fcxdir]'); if (cd) { F.cdir = cd.dataset.fcxdir; if (F.cdir === 'got') F.cwho = 'atm'; return renderForm(); }
+  const cw = t('[data-fcxwho]'); if (cw) { F.cwho = cw.dataset.fcxwho; return renderForm(); }
   if (t('[data-fblank]')) { S.draft = null; F = blankForm(F.day, F.quick); return renderForm(); }
   if (t('[data-fdel]')) return askDelete(F.id);
     if (t('[data-refund]')) { F.refund = !F.refund; return renderForm(); }
@@ -1153,6 +1195,7 @@ fsave.addEventListener('pointerdown', () => { const a = document.activeElement; 
 function findDup(x) { return S.ex.find((e) => e.id !== x.id && e.day === x.day && Math.abs(e.yen) === Math.abs(x.yen) && e.by !== S.me); }
 fsave.addEventListener('click', () => {
   if (!F || fsave.disabled) return;
+  if (F.kind === 'cash' || F.kind === 'ic') return saveMove();
   const { x } = formExpense(), i = S.ex.findIndex((e) => e.id === x.id);
   const dup = i < 0 && !F.dupOk && findDup(x);
   if (dup) return openSheet(`<h3>Already logged?</h3><p>${P[dup.by || dup.payer].name} logged ${esc(dup.title)}, ${fmtY(dup.yen)}, on ${DAY[dup.day].short === 'Before' ? 'before the trip' : DAY[dup.day].short}. Is this the same thing?</p><div class="row"><button data-x>Go back</button><button class="pri" data-dupok>Add anyway</button></div>`);
