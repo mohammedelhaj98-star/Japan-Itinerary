@@ -20,6 +20,8 @@
 //   POST /api/suggestions             { text, name, day, author, kind? }  (kind: food | shop | place)
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
+//   GET  /api/backup                  → when the money was last backed up to Google Drive (with the PIN)
+//   POST /api/backup                  back the money up now (see lib/backup.js; it also runs after the first money change of each day)
 //   /api/photos/…                                          trip photos in Google Drive (see lib/photos.js)
 
 // Changes need the group's PIN (the TRIP_PIN secret on the Pages project), sent by the app as an x-trip-pin header.
@@ -27,6 +29,7 @@
 // the PIN to read too. With no TRIP_PIN set, everything is open.
 //
 import { handlePhotos } from '../../lib/photos.js';
+import { autoBackup, backupMoney, backupStatus } from '../../lib/backup.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
@@ -211,7 +214,8 @@ function cleanSetting(v) {
   return undefined;
 }
 
-export async function onRequest({ request, env }) {
+export async function onRequest(ctx) {
+  const { request, env } = ctx;
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
   const kv = env.TRIP_KV;
@@ -258,6 +262,15 @@ export async function onRequest({ request, env }) {
       if (!member) { st.expenses = {}; st.money = {}; }
       return json(st);
     }
+
+    const loadMoney = async () => ({ expenses: await readExpenses(kv), money: await readKey(kv, 'money', {}) });
+    if (path === 'backup') {
+      if (!member) return json({ error: 'pin required', pin: true }, 403);
+      if (request.method === 'POST') await backupMoney(env, kv, loadMoney);
+      return json(await backupStatus(kv));
+    }
+    // after a money change, the day's backup (if it hasn't run yet) carries on once the answer has gone back
+    const afterMoney = () => { const p = autoBackup(env, kv, loadMoney).catch(() => {}); if (ctx.waitUntil) ctx.waitUntil(p); };
 
     if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405);
     let body = {};
@@ -310,6 +323,7 @@ export async function onRequest({ request, env }) {
         map[body.id] = { ...value, ts: (map[body.id] && map[body.id].ts) || new Date().toISOString() };
       }
       await writeKey(kv, 'expenses', map);
+      afterMoney();
       return json({ ok: true, expenses: map });
     }
 
@@ -324,6 +338,7 @@ export async function onRequest({ request, env }) {
         map[body.id] = value;
       }
       await writeKey(kv, 'money', map);
+      afterMoney();
       return json({ ok: true, money: map });
     }
 

@@ -102,4 +102,11 @@ One-time setup:
 3. Open the photos page as one of the four and tap **Connect Google Drive**, signing in with the Drive's account.
 
 Secrets already set: `TRIP_PIN` (members), `PHOTO_PIN` (guests' viewing PIN), `PHOTO_SECRET` (signs viewing tokens).
-Tests: `npm run test:photos` runs the page and API against a stand-in Google.
+### Money backups
+
+The money is backed up into the same Drive, in `Our Trips / Japan 2026 / Backups` (`lib/backup.js`): each Japan day
+gets `Money <date>.json` (every money record and setting), `Expenses <date>.csv` and the same as a Google Sheet, and
+each receipt photo is copied once into `Backups / Receipts`. It runs on the server after the first money change of
+each day (Pages has no schedule), and from Settings → Expenses → **Back up now**, which also shows the last backup.
+
+Tests: `npm run test:photos` runs the photos page, the backups and the API against a stand-in Google.

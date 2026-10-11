@@ -15,9 +15,10 @@ let fails = 0; const ok = (n, c, info = '') => { if (!c) fails++; console.log(c 
 
 /* ── stand-in Google ── */
 const G = 'http://localhost:8798';
-const files = new Map(), sessions = new Map(); let nid = 1, failPuts = 0, putDelay = 0, sessionsMade = 0;
+const files = new Map(), sessions = new Map(); let nid = 1, failPuts = 0, putDelay = 0, sessionsMade = 0, failDrive = false;
 const newId = () => 'fileid' + String(nid++).padStart(8, '0');
 const body = (req) => new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
+const multipart = (raw, b) => { const sep = Buffer.from('--' + b), out = []; let i = raw.indexOf(sep); while (i >= 0) { const j = raw.indexOf(sep, i + sep.length); if (j < 0) break; const part = raw.slice(i + sep.length + 2, j - 2), h = part.indexOf('\r\n\r\n'); out.push({ head: part.slice(0, h).toString(), data: part.slice(h + 4) }); i = j; } return out; };
 const pick = (q, re) => { const m = re.exec(q); return m ? m[1].replace(/\\'/g, "'") : null; };
 function query(q) {
   const name = pick(q, /name='((?:[^'\\]|\\.)*)'/), mime = pick(q, /mimeType='([^']+)'/), parent = pick(q, /'([^']+)' in parents/);
@@ -49,6 +50,13 @@ const google = http.createServer(async (req, res) => {
     res.writeHead(308, s.got ? { range: `bytes=0-${s.got - 1}` } : {}); return res.end();
   }
   if (req.headers.authorization !== 'Bearer AT') return send(401, { error: 'unauthorized' });
+  if (failDrive && u.pathname.startsWith('/upload/')) return send(500, { error: 'backend error' });
+  if (u.pathname === '/upload/drive/v3/files' && req.method === 'POST' && u.searchParams.get('uploadType') === 'multipart') {
+    const parts = multipart(await body(req), /boundary=([^;]+)/.exec(req.headers['content-type'])[1]); const meta = JSON.parse(parts[0].data.toString()); const id = newId();
+    files.set(id, { ...meta, id, appProperties: meta.appProperties || {}, data: parts[1].data, type: /content-type: (.+)/i.exec(parts[1].head)[1].trim(), uploads: 1 }); return send(200, { id });
+  }
+  const um = /^\/upload\/drive\/v3\/files\/([\w-]+)$/.exec(u.pathname);
+  if (um && req.method === 'PATCH') { const f = files.get(um[1]); if (!f) return send(404, {}); f.data = await body(req); f.uploads++; return send(200, { id: f.id }); }
   if (u.pathname === '/upload/drive/v3/files' && req.method === 'POST') {
     const meta = JSON.parse((await body(req)).toString()); const sid = crypto.randomBytes(6).toString('hex'); sessionsMade++;
     sessions.set(sid, { meta: { ...meta, mimeType: meta.mimeType || req.headers['x-upload-content-type'] }, size: +req.headers['x-upload-content-length'], got: 0, parts: [], origin: req.headers.origin });
@@ -264,6 +272,61 @@ await gp.screenshot({ path: OUT + 'guest-viewer.png' });
 const S = await phone('sara', 375, 667); await S.pg.goto(B + '/japan/photos'); await S.pg.waitForTimeout(1600);
 ok('small phone: gallery renders', (await S.pg.$$('.grid .th')).length === 4);
 await S.pg.screenshot({ path: OUT + 'small.png' });
+
+// 12 · money backups to the same Drive: Our Trips / Japan 2026 / Backups
+{
+  const { resetBackupMemory, japanDay } = await import(REPO + '/lib/backup.js');
+  const pend = [];
+  const post = async (p, b) => { const r = await onRequest({ request: new Request(B + '/api/' + p, { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify(b) }), env, waitUntil: (x) => pend.push(x) }); await Promise.all(pend.splice(0)); return r; };
+  const named = (re) => [...files.values()].filter((f) => re.test(f.name || ''));
+  const folderId = (name) => ([...files.values()].find((f) => f.name === name && f.mimeType === 'application/vnd.google-apps.folder') || {}).id;
+  const today = japanDay(), esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const one = (name) => named(new RegExp(`^${esc(name)}$`));
+  const photo = 'data:image/jpeg;base64,' + fs.readFileSync(FIX + '/before.jpg').toString('base64');
+  ok('receipt saved', (await post('receipt', { id: 'bk1', photo })).ok);
+  await post('expenses', { id: 'bk1', value: { title: '=Ramen, "Ichiran"', yen: 4000, payer: 'naf', cat: 'food', day: 'd03', shares: { naf: 1000, sara: 1000, mariam: 1000, m: 1000 }, with: 'card', by: 'naf', at: Date.now(), receipt: 1700000000000 } });
+  const bkDir = folderId('Backups'), js = one(`Money ${today}.json`), cs = one(`Expenses ${today}.csv`), sh = one(`Expenses ${today}`), rc = named(/ bk1\.jpg$/);
+  ok('first money change of the day backs up by itself', bkDir && js.length === 1 && cs.length === 1 && sh.length === 1 && [js[0], cs[0], sh[0]].every((f) => f.parents[0] === bkDir), `${js.length}/${cs.length}/${sh.length}`);
+  ok('…inside Our Trips / Japan 2026', files.get(bkDir) && files.get(bkDir).parents[0] === folderId('Japan 2026'));
+  const J = JSON.parse(js[0].data.toString());
+  ok('JSON has every money record', J.expenses.bk1 && J.expenses.bk1.yen === 4000 && J.money && typeof J.money === 'object');
+  const csv = cs[0].data.toString();
+  ok('CSV: a row per expense, shares by name, formula-safe', /^\ufeffDate,Day,What,Type,Yen,Paid by,Paid with,Naf,Sara,Mariam,Mo,/.test(csv) && csv.includes('2026-10-18,Day 3," =Ramen, ""Ichiran""",Food,4000,Naf,Card,1000,1000,1000,1000'), csv.split('\r\n')[1]);
+  ok('Google Sheet made from the CSV', sh[0].mimeType === 'application/vnd.google-apps.spreadsheet' && sh[0].type === 'text/csv' && !sh[0].data.toString().startsWith('\ufeff'));
+  ok('receipt photo copied into Backups / Receipts', rc.length === 1 && rc[0].parents[0] === folderId('Receipts') && rc[0].data.equals(fs.readFileSync(FIX + '/before.jpg')) && rc[0].name === '2026-10-18 =Ramen, Ichiran bk1.jpg', rc[0] && rc[0].name);
+
+  await post('expenses', { id: 'bk2', value: { kind: 'pay', from: 'sara', to: 'naf', yen: 1000, day: 'd03', cash: true, by: 'sara', at: Date.now() } });
+  ok('later changes the same day: no second backup', js[0].uploads === 1 && named(/^Money /).length === 1);
+
+  // Settings: the status and Back up now
+  await n.goto(B + '/japan/prototypes/tools.html?v=5'); await n.waitForFunction(() => /Last backup: today/.test(document.getElementById('bk-line')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
+  ok('Settings shows the last backup', /Last backup: today \d\d:\d\d/.test(await n.textContent('#bk-line')), await n.textContent('#bk-line'));
+  await (await n.$('#bk-line')).scrollIntoViewIfNeeded(); await n.screenshot({ path: OUT + 'backup-settings.png' });
+  await n.tap('[data-backup]'); await n.waitForFunction(() => !/Backing up/.test(document.getElementById('bk-line').textContent), null, { timeout: 8000 });
+  ok('Back up now updates the same day\'s files', js[0].uploads === 2 && sh[0].uploads === 2 && named(/^Money /).length === 1 && JSON.parse(js[0].data.toString()).expenses.bk2, `uploads ${js[0].uploads}`);
+  ok('payments listed under the expenses', cs[0].data.toString().includes('Sara paid Naf in cash,Payment,1000,Sara'));
+  ok('receipt not copied twice', named(/ bk1\.jpg$/).length === 1 && rc[0].uploads === 1);
+
+  failDrive = true; await n.tap('[data-backup]'); await n.waitForFunction(() => !/Backing up/.test(document.getElementById('bk-line').textContent), null, { timeout: 8000 }); failDrive = false;
+  ok('a failed backup says so', /Last try didn't work: Google Drive didn't answerLast backup: today/.test(await n.textContent('#bk-line')), await n.textContent('#bk-line'));
+  await (await n.$('#bk-line')).scrollIntoViewIfNeeded(); await n.screenshot({ path: OUT + 'backup-failed.png' });
+
+  // the next day: yesterday's backup is there, the first change makes today's
+  js[0].name = 'Money 2026-10-17.json';
+  const st = JSON.parse(kv.get('backup')); kv.set('backup', JSON.stringify({ ...st, day: '2026-10-17', tried: Date.now() - 864e5, error: null, files: { '2026-10-17': st.files[today] } })); resetBackupMemory();
+  await post('money', { id: 'b:naf', value: 50000 });
+  const js2 = one(`Money ${today}.json`);
+  ok('next day: a new day\'s files, yesterday\'s kept', js2.length === 1 && one('Money 2026-10-17.json').length === 1 && JSON.parse(js2[0].data.toString()).money['b:naf'] === 50000);
+
+  // Drive not connected: nothing runs, Settings says what to do
+  const g = kv.get('gdrive'); kv.delete('gdrive'); resetBackupMemory(); kv.set('backup', JSON.stringify({ ...JSON.parse(kv.get('backup')), day: '2026-10-17', tried: null })); const before = files.size;
+  await post('money', { id: 'b:sara', value: 40000 });
+  ok('not connected: no backup tried', files.size === before && JSON.parse(kv.get('backup')).day === '2026-10-17');
+  await n.reload(); await n.waitForFunction(() => /Photos page/.test(document.getElementById('bk-line')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
+  ok('not connected: Settings points to the Photos page', /Connect Google Drive on the Photos page/.test(await n.textContent('#bk-line')) && await n.$eval('[data-backup]', (b) => b.disabled));
+  kv.set('gdrive', g);
+  ok('backup needs the PIN', (await onRequest({ request: new Request(B + '/api/backup'), env })).status === 403);
+}
 
 for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S]]) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
 console.log(fails ? `\n${fails} failed` : '\nall photo checks passed');

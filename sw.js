@@ -3,7 +3,7 @@
 // - Day assets (today + next 2 days): the page sends the list of photos; they're saved ahead of time in 'days'.
 // - Map tiles (MapTiler, OpenStreetMap fallback): saved as you view them; no bulk pre-downloading.
 // - /api: always network; the app keeps its own offline copy of shared state.
-const VERSION = 'japan2026-v14';
+const VERSION = 'japan2026-v15';
 const KEEP = [VERSION, 'tiles', 'days'];
 const SHELL = [
   './', './index.html', './money.html', './prototypes/tools.html', './js/store.js', './js/colors.js', './js/export-docx.js', './js/tour.js',
