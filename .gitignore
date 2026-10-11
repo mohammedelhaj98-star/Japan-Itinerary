@@ -3,6 +3,7 @@ node_modules/
 .DS_Store
 .impeccable/review/
 .impeccable/live/
+.impeccable/critique/
 dist/
 hub/img/group.webp
 hub/img/group-tiny.webp
