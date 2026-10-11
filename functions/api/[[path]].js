@@ -137,6 +137,15 @@ function cleanExpense(v) {
   if (isP(v.editedBy)) out.editedBy = v.editedBy;
   if (stamp(v.at) != null) out.at = v.at;
   if (stamp(v.receipt) != null) out.receipt = v.receipt;
+  // split by item: the receipt's lines and who had each (kept so the split can be changed later)
+  if (v.byItem && typeof v.byItem === 'object' && Array.isArray(v.byItem.lines)) {
+    const table = PEOPLE.filter((p) => Array.isArray(v.byItem.table) && v.byItem.table.includes(p));
+    const lines = v.byItem.lines.slice(0, 40).map((l) => l && typeof l === 'object' && { name: clean(l.name, 50), price: int(l.price, -10000000, 10000000), qty: int(l.qty, 1, 99) || 1,
+      who: PEOPLE.filter((p) => Array.isArray(l.who) && l.who.includes(p)), n: Object.fromEntries(PEOPLE.filter((p) => l.n && int(l.n[p], 1, 99)).map((p) => [p, int(l.n[p], 1, 99)])) })
+      .filter((l) => l && l.name && l.price);
+    const total = int(v.byItem.total, 0, 100000000);
+    if (table.length && lines.length && total) out.byItem = { table, total, lines };
+  }
   // "Just me": the payer's own spending, on their money page only and never in who-owes-whom
   if (split.length === 1 && split[0] === v.payer) out.own = true;
   return out;

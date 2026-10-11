@@ -139,6 +139,24 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   ok('split: changing a share by hand drops the receipt mark', !(await p.$('.byitem')) && !!(await p.$('[data-iopen]')));
   await p.tap('[data-fcancel]'); await p.waitForTimeout(400);
 }
+// a saved split is remembered: opening the expense later shows it, and Change brings back who had what
+{
+  const p = N.page;
+  await p.tap('#addfab'); await p.waitForTimeout(400); await p.tap('[data-preset="all"]');
+  await p.setInputFiles('#fscan', REPO + '/img/places/nakano-broadway.webp'); await p.waitForTimeout(1500);
+  await p.fill('#ftitle', 'Split ramen test');
+  await p.tap('[data-iopen]'); await p.waitForTimeout(300); await p.tap('[data-iwho="0:naf"]'); await p.tap('[data-iwho="2:sara"]'); await p.tap('[data-iwho="2:sara"]');
+  await p.tap('#fsave'); await p.waitForTimeout(300); await p.tap('#fsave'); await p.waitForTimeout(1200);
+  const saved = Object.entries(exMap()).find(([, x]) => x.title === 'Split ramen test');
+  ok('split: saved with the expense', saved && saved[1].byItem && saved[1].byItem.lines.length === 3 && saved[1].byItem.lines[0].who.join() === 'naf' && saved[1].byItem.lines[2].n.sara === 2, saved && JSON.stringify(saved[1].byItem));
+  await p.tap(`[data-ex="${saved && saved[0]}"]`); await p.waitForTimeout(600);
+  ok('split: shown again when the expense is opened', /Split by item from the receipt/.test(await p.textContent('.byitem').catch(() => '')) && !(await p.$('.scanl')));
+  await p.tap('[data-iopen]'); await p.waitForTimeout(300);
+  const back = await p.$$eval('.irow .iwho', (els) => els.map((e) => e.textContent).join(' | '));
+  ok('split: Change brings back who had what', /^Naf \| Shared .* \| Sara ×2$/.test(back), back);
+  await p.tap('[data-iback]'); await p.waitForTimeout(200); await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
+  ok('split: test expense removed', !Object.values(exMap()).some((x) => x.title === 'Split ramen test'));
+}
 ok('scanning needs the PIN', (await fetch(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ photo: 'data:image/jpeg;base64,AAAA' }) })).status === 403);
 // add for Naf + Sara, undo it; then delete the ramen and undo that
 await N.page.tap('#addfab'); await N.page.waitForTimeout(400);
