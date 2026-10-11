@@ -43,6 +43,43 @@ const enterPin = async (pg, pin = PIN) => { await pg.waitForSelector('#s-pin.on'
 const openPass = (page) => page.evaluate(() => { const o = document.querySelector('.pass.open'); return o ? o.dataset.id : null; });
 const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.pass:not(.open)')].map((el) => [el.dataset.id, new DOMMatrix(getComputedStyle(el).transform).m42]).sort((a, b) => a[1] - b[1]).map((x) => x[0]));
 
+// 0 · the files themselves: fonts from the site (not Google), the map library after the plan, the receipt reader's request
+{
+  const read = (f) => fs.readFileSync(REPO + '/' + f, 'utf8');
+  const pages = ['index.html', 'hub/index.html', 'prototypes/tools.html', 'money.html', 'photos.html'];
+  ok('fonts come from the site, not Google (nothing to wait for before the first paint, and they work offline)', !pages.some((f) => /fonts\.g(oogleapis|static)\.com/.test(read(f))));
+  const have = new Set(read('vendor/fonts/zen-old-mincho-700-subset.glyphs.txt'));
+  const cjk = (c) => { const o = c.codePointAt(0); return (o >= 0x2E80 && o <= 0x9FFF) || (o >= 0xF900 && o <= 0xFAFF) || (o >= 0xFF00 && o <= 0xFFEF) || (o >= 0x3000 && o <= 0x303F); };
+  const missing = new Set(); for (const f of [...fs.readdirSync(REPO + '/data').map((x) => 'data/' + x), ...pages, 'js/tour.js']) for (const c of read(f)) if (cjk(c) && !have.has(c)) missing.add(c);
+  ok('every Japanese character the site shows is in the display font subset (run scripts/font-subset.sh otherwise)', missing.size === 0, [...missing].join(''));
+  const trip = read('index.html');
+  ok('the map library is not loaded before the plan (no maplibre script or stylesheet tag in the page)', !/<(script|link)[^>]*maplibre/.test(trip) && /drawnMap\(\)/.test(trip));
+  const { receiptRequest, readReceiptClaude, CLAUDE_MODEL } = await import(REPO + '/lib/scan-claude.js');
+  const photo = 'data:image/webp;base64,' + fs.readFileSync(REPO + '/img/places/nakano-broadway.webp').toString('base64');
+  const rq = receiptRequest('sk-test', photo); const body = JSON.parse(rq.body);
+  ok('receipt reader: the request the SDK used to send, without the SDK', rq.url === 'https://api.anthropic.com/v1/messages?beta=true' && rq.headers['x-api-key'] === 'sk-test' && rq.headers['anthropic-version'] === '2023-06-01' && body.model === CLAUDE_MODEL && body.output_config.format.type === 'json_schema' && body.output_config.format.schema.required.includes('lines') && body.messages[0].content[0].source.media_type === 'image/webp' && body.messages[0].content[0].source.data.length > 1000 && /receipt from Japan/.test(body.messages[0].content[1].text), JSON.stringify([rq.url, Object.keys(rq.headers), body.model]));
+  ok('receipt reader: only a photo as a data URL goes out', receiptRequest('k', 'https://x/y.jpg') === null && receiptRequest('k', 'data:text/plain;base64,aGk=') === null);
+  const answer = (status, json, calls = []) => async (url, init) => { calls.push({ url, init }); return new Response(typeof json === 'string' ? json : JSON.stringify(json), { status, headers: { 'content-type': 'application/json' } }); };
+  const said = { total: 1960, cash_given: null, change: null, tax: 178, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', taxfree: false, lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }], items: ['Ramen'] };
+  const good = { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(said) }] };
+  const calls = []; const got = await readReceiptClaude('k', photo, { fetchFn: answer(200, good, calls) });
+  ok('receipt reader: the answer is read back, with a timeout on the call', got && got.total === 1960 && got.lines.length === 2 && calls.length === 1 && calls[0].init.signal instanceof AbortSignal && calls[0].init.headers['x-api-key'] === 'k');
+  ok('receipt reader: a refusal is null, so Workers AI takes over', (await readReceiptClaude('k', photo, { fetchFn: answer(200, { stop_reason: 'refusal', content: [] }) })) === null);
+  let tries = 0; const got2 = await readReceiptClaude('k', photo, { fetchFn: async () => (++tries === 1 ? new Response('overloaded', { status: 529 }) : new Response(JSON.stringify(good), { status: 200 })) });
+  ok('receipt reader: one more try after an overloaded answer, then the result', tries === 2 && got2 && got2.total === 1960);
+  const bad = await readReceiptClaude('k', photo, { fetchFn: answer(401, { error: 'bad key' }) }).catch((e) => e);
+  ok('receipt reader: a refused key is an error (the route then falls back)', bad instanceof Error && /401/.test(bad.message));
+  // through the real route: with the key set, Claude's reading comes back checked and trimmed, lines included
+  const realFetch = globalThis.fetch; globalThis.fetch = answer(200, good);
+  try {
+    const r = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
+    ok('/api/scan asks Claude when the key is set and keeps its lines', r.total === 1960 && r.model === CLAUDE_MODEL && Array.isArray(r.lines) && r.lines.length === 2 && r.shop_en === 'Ichiran Dotonbori', JSON.stringify(r).slice(0, 200));
+    globalThis.fetch = answer(500, 'down');
+    const r2 = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
+    ok('/api/scan falls back to Workers AI when Claude is down', r2.total === 2380 && r2.model !== CLAUDE_MODEL, JSON.stringify(r2).slice(0, 120));
+  } finally { globalThis.fetch = realFetch; }
+}
+
 // 1 · first visit → welcome → pick Mo → Japan on M&M view, skipping to Oct 21
 const A = await phone();
 await A.page.goto(B + '/japan/'); await A.page.waitForURL(/\/\?next=japan/); ok('first visit goes to welcome', true, A.page.url());
