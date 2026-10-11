@@ -29,6 +29,7 @@
 // the PIN to read too. With no TRIP_PIN set, everything is open.
 //
 import { handlePhotos } from '../../lib/photos.js';
+import { readReceiptClaude, CLAUDE_MODEL } from '../../lib/scan-claude.js';
 import { autoBackup, backupMoney, backupStatus } from '../../lib/backup.js';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
@@ -157,6 +158,13 @@ const num_ = { type: ['number', 'null'] };
 const SCAN_SCHEMA = { type: 'object', properties: { total: { type: 'number' }, cash_given: num_, change: num_, tax: num_, pretax: num_, shop: { type: 'string' }, shop_en: { type: 'string' }, date: { type: ['string', 'null'] },
   type: { type: 'string', enum: ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'] }, taxfree: { type: 'boolean' }, items: { type: 'array', items: { type: 'string' } } }, required: ['total', 'cash_given', 'change', 'tax', 'pretax', 'shop', 'shop_en', 'date', 'type', 'taxfree', 'items'] };
 async function scanReceipt(env, photo, model) {
+  // Claude reads it when the ANTHROPIC_API_KEY secret is set (it reads each line's price too); Workers AI otherwise,
+  // or if Claude can't answer
+  if (env.ANTHROPIC_API_KEY) {
+    let data = null; const cm = env.SCAN_MODEL || CLAUDE_MODEL;
+    try { data = await readReceiptClaude(env.ANTHROPIC_API_KEY, photo, { model: cm }); } catch { data = null; }
+    if (data && data.total) return tidyScan(data, cm);
+  }
   if (!env.AI) return { error: 'AI is not set up on this site' };
   const m = SCAN_MODELS.includes(model) ? model : SCAN_MODELS[0];
   let out;
@@ -168,6 +176,10 @@ async function scanReceipt(env, photo, model) {
   let data = text && typeof text === 'object' ? text : null;
   if (!data) { const j = String(text || '').match(/\{[\s\S]*\}/); try { data = j ? JSON.parse(j[0]) : null; } catch { data = null; } }
   if (!data) return { model: m, error: 'unreadable', raw: String(text || '').slice(0, 400) };
+  return tidyScan(data, m);
+}
+// whatever model answered: check and trim it
+function tidyScan(data, m) {
   const yen = (v) => { const n = Math.round(Number(String(v ?? '').replace(/[^\d.]/g, ''))); return n > 0 && n < 10000000 ? n : null; };
   let total = yen(data.total); const tax = yen(data.tax), given = yen(data.cash_given), change = Number(String(data.change ?? '').replace(/[^\d.]/g, ''));
   // a cash receipt checks itself: what was paid is the cash handed over less the change. This catches the model
@@ -180,7 +192,7 @@ async function scanReceipt(env, photo, model) {
   return { model: m, total, pretax, shop: clean(data.shop, 60), shop_en: clean(data.shop_en, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(data.date || '') ? data.date : null,
     type: types.includes(data.type) ? data.type : null, taxfree: data.taxfree === true, items: Array.isArray(data.items) ? data.items.slice(0, 5).map((x) => clean(x, 40)) : [],
     // each line with its price, for splitting a receipt by item: { name, price, qty }
-    lines: Array.isArray(data.lines) ? data.lines.slice(0, 40).map((l) => l && typeof l === 'object' && { name: clean(l.name, 50), price: yen(l.price), qty: Math.max(1, Math.min(99, Math.round(+l.qty) || 1)) }).filter((l) => l && l.name && l.price) : [] };
+    lines: Array.isArray(data.lines) ? data.lines.slice(0, 40).map((l) => l && typeof l === 'object' && { name: clean(l.name, 50), price: Math.round(+l.price) || 0, qty: Math.max(1, Math.min(99, Math.round(+l.qty) || 1)) }).filter((l) => l && l.name && l.price && Math.abs(l.price) < 10000000) : [] };
 }
 
 // Money moving between people: a settle-up payment (pay), cash handed over or taken out (cash), an IC card top-up (ic).

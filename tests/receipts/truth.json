@@ -4,49 +4,97 @@
   "merchant": "7-Eleven",
   "date": "2026-10-22",
   "cat": "food",
-  "file": "photo_konbini.jpg"
+  "file": "photo_konbini.jpg",
+  "lines": [
+   178,
+   162,
+   160,
+   198,
+   130,
+   140
+  ]
  },
  "ramen": {
   "total": 2380,
   "merchant": "Ichiran",
   "date": "2026-10-22",
   "cat": "food",
-  "file": "photo_ramen.jpg"
+  "file": "photo_ramen.jpg",
+  "lines": [
+   1960,
+   210,
+   210
+  ]
  },
  "donki": {
   "total": 8756,
   "merchant": "Don Quijote",
   "date": "2026-10-23",
   "cat": "shopping",
-  "file": "photo_donki.jpg"
+  "file": "photo_donki.jpg",
+  "lines": [
+   598,
+   598,
+   1280,
+   2780,
+   594,
+   1580,
+   128
+  ]
  },
  "taxi": {
   "total": 3200,
   "merchant": "MK Taxi",
   "date": "2026-10-21",
   "cat": "transport",
-  "file": "photo_taxi.jpg"
+  "file": "photo_taxi.jpg",
+  "lines": [
+   3050,
+   150
+  ]
  },
  "ryoshusho": {
   "total": 28600,
   "merchant": "Sushi Yoshikawa",
   "date": "2026-10-18",
   "cat": "food",
-  "file": "photo_ryoshusho.jpg"
+  "file": "photo_ryoshusho.jpg",
+  "lines": []
  },
  "super": {
   "total": 4317,
   "merchant": "Life Supermarket",
   "date": "2026-10-27",
   "cat": "food",
-  "file": "photo_super.jpg"
+  "file": "photo_super.jpg",
+  "lines": [
+   598,
+   128,
+   238,
+   168,
+   198,
+   258,
+   98,
+   88,
+   158,
+   178,
+   1280,
+   128,
+   158,
+   198,
+   398
+  ]
  },
  "hama": {
   "total": 1617,
   "merchant": "Hama Sushi",
   "date": "2018-04-03",
   "cat": "food",
-  "file": "real_hama.png"
+  "file": "real_hama.png",
+  "lines": [
+   1455,
+   162
+  ]
  },
  "taxfree": {
   "total": 28780,
@@ -54,6 +102,10 @@
   "date": "2026-10-30",
   "cat": "shopping",
   "taxfree": true,
-  "file": "photo_taxfree.png"
+  "file": "photo_taxfree.png",
+  "lines": [
+   24800,
+   3980
+  ]
  }
 }
