@@ -1,0 +1,20 @@
+# Put an earlier version of the site back live, from the Actions tab: Run workflow → leave "previous" or paste an id.
+name: Roll back the site
+on:
+  workflow_dispatch:
+    inputs:
+      to:
+        description: '"previous", or the id of a version (run with "list" to see them)'
+        default: previous
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/rollback.sh
+      - if: inputs.to != 'list'
+        env: { TO: '${{ inputs.to }}' }
+        run: bash scripts/rollback.sh "$TO" && bash scripts/rollback.sh
