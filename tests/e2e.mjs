@@ -15,15 +15,25 @@ const KV = {
   async delete(k) { store.delete(k); meta.delete(k); },
   async list({ prefix = '' } = {}) { return { keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name, metadata: meta.get(name) })), list_complete: true }; },
 };
+// The shared state lives in the Durable Object (workers/state), run here as the real class on an in-memory SQLite;
+// KV starts with one tick, which the object must copy in on first contact. (tests/tour.mjs and tests/photos.mjs run the
+// API on KV alone, the way it works before the binding exists.)
+import { DatabaseSync } from 'node:sqlite';
+const { TripState } = await import(REPO + '/workers/state/src/index.js');
+const fakeSql = () => { const db = new DatabaseSync(':memory:'); return { exec(q, ...b) { const st = db.prepare(q); if (/^\s*select/i.test(q)) { const rows = st.all(...b); return { toArray: () => rows }; } st.run(...b); return { toArray: () => [] }; } }; };
+const objects = new Map(); let doCalls = 0;
+const DO = { idFromName: (n) => n, get: (id) => { if (!objects.has(id)) objects.set(id, new TripState({ storage: { sql: fakeSql() } })); const o = objects.get(id); return { fetch: (url, init) => { doCalls++; return o.fetch(new Request(url, init)); } }; } };
+store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store.set('updatedAt', '2026-10-01T00:00:00.000Z');
 // Workers AI stand-in for /api/scan: it "reads" a ramen receipt where the total was mistaken for the cash handed over
 const FAKE_AI = { run: async () => ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
+const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost:8790');
   if (u.pathname.startsWith('/api/')) {
     const chunks = []; for await (const c of req) chunks.push(c);
-    const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI } });
+    const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: ENV });
     res.writeHead(r.status, { 'content-type': 'application/json' }); return res.end(await r.text());
   }
   let p = decodeURIComponent(u.pathname); if (p === '/japan') { res.writeHead(301, { location: '/japan/' }); return res.end(); }
@@ -78,6 +88,36 @@ const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.
     const r2 = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
     ok('/api/scan falls back to Workers AI when Claude is down', r2.total === 2380 && r2.model !== CLAUDE_MODEL, JSON.stringify(r2).slice(0, 120));
   } finally { globalThis.fetch = realFetch; }
+}
+
+// 0b · the shared state in the Durable Object: KV's data copied in once, no change lost to a race, KV kept as a mirror
+{
+  const api = (path, body, env = ENV) => onRequest({ request: new Request(B + '/api/' + path, body ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify(body) } : { headers: { 'x-trip-pin': PIN } }), env }).then((r) => r.json());
+  const h = await api('health'); ok('health says where the state lives', h.store === 'durable-object', JSON.stringify(h));
+  const v = await api('version'); ok('first contact copies KV in: the version is KV\'s stamp', v.updatedAt === '2026-10-01T00:00:00.000Z', JSON.stringify(v));
+  const st = await api('state'); ok('and the tick KV had is there', st.checks['seeded-before-the-switch'] === true && Object.keys(st.checks).length === 1);
+  const before = doCalls; await api('state'); ok('the whole state is one trip to the object', doCalls - before === 1, String(doCalls - before));
+  // ten phones tick ten different stops at the same moment: every tick must land (KV alone would lose some of these)
+  const ids = Array.from({ length: 10 }, (_, i) => `race-${i}`);
+  const rs = await Promise.all(ids.map((id) => api('checks', { id, value: true })));
+  const after = (await api('state')).checks;
+  ok('ten changes at once, none lost (a stale write is refused and redone)', rs.every((r) => r.ok) && ids.every((id) => after[id] === true), JSON.stringify(Object.keys(after)));
+  ok('KV keeps a copy of every write', ids.every((id) => JSON.parse(store.get('checks'))[id] === true) && store.get('updatedAt') > '2026-10-01');
+  await Promise.all(ids.map((id) => api('checks', { id, value: false }))); await api('checks', { id: 'seeded-before-the-switch', value: false });
+  ok('…and of the clean-up', Object.keys((await api('state')).checks).length === 0 && store.get('checks') === '{}');
+  // the object itself: a write with a stale revision is refused with the current value
+  const o = DO.get('trip'); const call = (b) => o.fetch('https://state/', { method: 'POST', body: JSON.stringify(b) }).then(async (r) => ({ status: r.status, ...(await r.json()) }));
+  const g = await call({ op: 'get', key: 'choices' });
+  const w1 = await call({ op: 'put', key: 'choices', value: { a: 'x' }, rev: g.rev }), w2 = await call({ op: 'put', key: 'choices', value: { a: 'y' }, rev: g.rev });
+  ok('the object refuses a write based on an old revision', w1.ok && w2.status === 409 && w2.value.a === 'x' && w2.rev === w1.rev, JSON.stringify([w1, w2]));
+  await call({ op: 'put', key: 'choices', value: {} });
+  // KV alone, as before the binding: the same routes, same answers
+  const kv2 = new Map(); const KV2 = { async get(k, t) { const v = kv2.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, async put(k, v) { kv2.set(k, v); }, async delete(k) { kv2.delete(k); }, async list() { return { keys: [], list_complete: true }; } };
+  const env2 = { TRIP_KV: KV2, TRIP_PIN: PIN, AI: FAKE_AI };
+  const h2 = await api('health', null, env2); const c2 = await api('checks', { id: 'kv-only', value: true }, env2); const s2 = await api('state', null, env2); const v2 = await api('version', null, env2);
+  ok('without the binding the state stays in KV, as before', h2.store === 'kv' && c2.ok && s2.checks['kv-only'] === true && v2.updatedAt && v2.updatedAt === s2.updatedAt && kv2.get('updatedAt') === v2.updatedAt, JSON.stringify([h2, v2]));
+  const e2 = await api('expenses', { id: 'x1', value: { title: 'Ramen', yen: 980, paidBy: 'm', day: 'd7' } }, env2);
+  ok('…including a refusal that stays a refusal', (await api('expenses', { id: 'x2', value: { nothing: true } }, env2)).error === 'bad expense' && (e2.ok || e2.error), JSON.stringify(e2).slice(0, 100));
 }
 
 // 1 · first visit → welcome → pick Mo → Japan on M&M view, skipping to Oct 21
