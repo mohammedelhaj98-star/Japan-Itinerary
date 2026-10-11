@@ -67,7 +67,8 @@ for (const sc of scenarios) {
     await pg.waitForFunction((n) => (/^(\d+) of/.exec(document.querySelector('.tour-card .tour-h small')?.textContent || '') || [])[1] == n, n, { timeout: 8000 }).catch(() => {});
     await pg.waitForTimeout(450);
     const title = await pg.textContent('.tour-card h3').catch(() => '?');
-    if (sel) { const s = await spot(sel); if (s !== 'ok') bad(`step ${n} (${title}): ${s}`); }
+    // the ring glides to its target: give it up to 2 s to settle (slow machines) before calling it off target
+    if (sel) { let s = await spot(sel); for (let i = 0; i < 8 && s !== 'ok'; i++) { await pg.waitForTimeout(250); s = await spot(sel); } if (s !== 'ok') bad(`step ${n} (${title}): ${s}`); }
     await pg.screenshot({ path: `${OUT}${sc.name}-${String(n).padStart(2, '0')}.png` });
     if (act) { await act(); await advance(n, how); } else { await pg.tap('[data-tnext]'); await pg.waitForTimeout(500); }
     console.log(`  ${n} ${title}`);

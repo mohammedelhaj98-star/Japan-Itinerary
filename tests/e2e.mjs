@@ -433,11 +433,24 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await pg.goto(B + '/japan/'); await pg.waitForTimeout(2000);
   await pg.evaluate(() => navigator.serviceWorker.ready); await pg.reload(); await pg.waitForTimeout(1000);
   const msg = await done; ok('photos for the next days saved', !!msg, msg && msg.text());
+  // Settings: the offline line, and saving the whole trip before a flight
+  const offLine = () => pg.textContent('#off-line').catch(() => '');
+  await pg.goto(B + '/japan/prototypes/tools.html?v=5'); await pg.waitForFunction(() => /saved|ready|Not/.test(document.getElementById('off-line')?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
+  ok('Settings: today and the next 2 days saved for offline', /✓ Today and the next 2 days saved for offline/.test(await offLine()), await offLine());
+  await (await pg.$('#off-line')).scrollIntoViewIfNeeded(); await pg.screenshot({ path: SH + 'offline-ready.png' });
+  await pg.tap('[data-saveall]'); await pg.waitForTimeout(150);
+  const during = await offLine(); await pg.screenshot({ path: SH + 'offline-saving.png' });
+  await pg.waitForFunction(() => /whole trip is saved|try again/.test(document.getElementById('off-line')?.textContent || ''), null, { timeout: 60000 }).catch(() => {});
+  ok('Save whole trip: progress, then the whole trip saved', /Saving… \d+ of 242/.test(during) && /✓ The whole trip is saved for offline/.test(await offLine()) && !(await pg.$('[data-saveall]')), `${during} → ${await offLine()}`);
+  await pg.screenshot({ path: SH + 'offline-whole.png' });
   await ctx.setOffline(true);
   await pg.goto(B + '/japan/?d=d09').catch(() => {}); await pg.waitForTimeout(2500);
   ok('offline: trip page opens on Day 9', /Day 9/.test(await pg.textContent('#dayp').catch(() => '')));
   const img = await pg.evaluate(async () => { const u = [...document.querySelectorAll('.pass')].map((e) => (e.querySelector('.hero') || {}).style?.backgroundImage || '').find((x) => x.includes('img/places')); const m = u && /url\(["']?([^"')]+)/.exec(u); if (!m) return 'none'; try { const r = await fetch(m[1]); return r.ok ? 'ok' : 'bad'; } catch { return 'fail'; } });
   ok('offline: Day 9 photos load', img === 'ok', img);
+  await pg.goto(B + '/japan/?d=d15').catch(() => {}); await pg.waitForTimeout(2000);
+  const img15 = await pg.evaluate(async () => { const us = [...document.querySelectorAll('.pass .hero')].map((e) => /url\(["']?([^"')]+)/.exec(e.style.backgroundImage || '')).filter(Boolean).map((m) => m[1]); if (!us.length) return 'none'; const r = await Promise.all(us.map((u) => fetch(u).then((x) => x.ok, () => false))); return r.every(Boolean) ? 'ok' : `${r.filter(Boolean).length}/${r.length}`; });
+  ok('offline: Day 15 photos load (saved with the whole trip)', img15 === 'ok', img15);
   await pg.goto(B + '/japan/money').catch(() => {}); await pg.waitForTimeout(2000);
   ok('offline: money page opens with the expenses', /Fuunji ramen test/.test(await pg.textContent('.app').catch(() => '')) && /Offline/.test(await pg.textContent('.syncl').catch(() => '')));
   await ctx.close();

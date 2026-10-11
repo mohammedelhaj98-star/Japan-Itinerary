@@ -500,6 +500,7 @@ body.guest .tt-quick { display:none; }
 import { DAYS, HOTELS } from './data/itinerary.js?v=9';
 import { PLACES } from './data/places.js?v=9';
 import { store, SANDBOX, GUEST } from './js/store.js?v=9';
+import { offline } from './js/offline.js?v=9';
 import { runTour } from './js/tour.js?v=9';
 import { CAT, MODE } from './js/colors.js?v=9';
 
@@ -1320,13 +1321,8 @@ if (SANDBOX) setTimeout(runTour, 60);
 /* ═══ offline: save today and the next 2 days (photos; pages and data are kept by the service worker) ═══ */
 function saveAhead() {
   if (!('serviceWorker' in navigator) || !navigator.onLine) return;
-  const start = tripDay ? DAYS.indexOf(tripDay) : Date.parse(todayJST) < Date.parse(DAYS[0].date) ? 0 : -1; if (start < 0) return;
-  const urls = new Set();
-  for (const d of DAYS.slice(start, start + 3)) {
-    const h = HOTELS.find((x) => x.id === d.hotel); const hp = h && PLACES[h.name]; if (hp) { urls.add(imgUrl(hp)); urls.add(thumbUrl(hp)); }
-    for (const e of dayItems(d, { who: 'all' })) { const pi = e.place && PLACES[e.place.name]; if (pi && pi.img) { urls.add(imgUrl(pi)); urls.add(thumbUrl(pi)); } }
-  }
-  navigator.serviceWorker.ready.then((reg) => reg.active && reg.active.postMessage({ type: 'precache', urls: [...urls].filter(Boolean) })).catch(() => {});
+  const OFF = offline({ DAYS, HOTELS, PLACES }), urls = new Set(OFF.nextDays().flatMap((d) => [...OFF.dayPhotos(d, CUSTOM())]));
+  if (urls.size) navigator.serviceWorker.ready.then((reg) => reg.active && reg.active.postMessage({ type: 'precache', urls: [...urls] })).catch(() => {});
 }
 setTimeout(saveAhead, 4000);
 </script>

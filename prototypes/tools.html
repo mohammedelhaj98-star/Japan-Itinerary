@@ -129,6 +129,7 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .setrow:first-child { border-top:0; padding-top:2px; }
 .setrow a { font-weight:700; text-decoration:none; color:var(--blue); }
 .setrow > span small { display:block; font-size:12.5px; color:var(--ink3); margin-top:2px; }
+.setrow .okc { color:#1f7a45; font-weight:700; }
 .setrow small .warn { display:block; color:#7a5a00; font-weight:700; }
 .setb { flex:none; min-height:44px; margin:-10px 0; font-weight:700; color:var(--blue); }
 .setb:disabled { opacity:.4; }
@@ -333,6 +334,7 @@ import { HOTEL_JA } from '../data/hotels-ja.js?v=9';
 import { store, SANDBOX, GUEST } from '../js/store.js?v=9';
 import { runTour } from '../js/tour.js?v=9';
 import { CAT, MODE, PROFILE_COLORS } from '../js/colors.js?v=9';
+import { offline } from '../js/offline.js?v=9';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch { return f; } }, set(k, v) { if (SANDBOX) return; try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
@@ -680,9 +682,36 @@ function renderSettings() {
   const stamps = `<button class="card scard navrow" data-sub="stamps"><span><b>Stamped stops</b><small>${nSt ? `${nSt} stamped · see and unstamp them` : 'Nothing stamped yet'}</small></span><span class="cnt">${nSt || ''}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>`;
   const exp = `<div class="card scard"><p class="sub" style="margin-bottom:12px">A Word file laid out like the original itinerary, with everything as it is now: edited and added stops, choices made, bookings marked, stamps${VIEW ? '' : ' and expenses'}.</p><button class="bigb" data-export>Download Word file (.docx)</button><p class="sub" id="ex-msg" style="margin-top:10px"></p></div>`;
   return `<header class="ph"><small>Settings</small><h1>You &amp; the trip</h1><p>Your profile, what the colours mean, and how money is shown.</p></header>
-    ${mine}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}${VIEW ? '' : `<p class="sec">Expenses</p>${prefs}`}<p class="sec">Export the trip</p>${exp}`;
+    ${mine}<p class="sec">Offline</p>${offlineRow()}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}${VIEW ? '' : `<p class="sec">Expenses</p>${prefs}`}<p class="sec">Export the trip</p>${exp}`;
 }
 // Stamped stops by day, using each stop's current (edited) title. Stamps on stops that no longer exist are listed under Other so they can still be cleared.
+// Ready for offline: today and the next 2 days (saved by the trip page), or the whole trip (saved from here)
+const OFF = offline({ DAYS, HOTELS, PLACES });
+const off = { st: null, loading: false, busy: false, done: 0, total: 0, failed: 0 };
+function loadOffline() {
+  if (off.loading) return; off.loading = true;
+  OFF.status(store.state.custom || {}).then((st) => { off.st = st; }, () => { off.st = { ready: false, app: false }; }).finally(() => { off.loading = false; if (tab === 4 && !sub) render(); });
+}
+function offlineRow() {
+  if (!off.st && !off.loading) loadOffline();
+  const s = off.st, d = s && s.days, whole = s && s.app && s.whole.saved === s.whole.total;
+  const first = DAYS.findIndex((x) => x.date === new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)) < 0;
+  const span = first ? 'The first 3 days' : 'Today and the next 2 days';
+  let line;
+  if (off.busy) line = `Saving… ${off.done} of ${off.total}`;
+  else if (!s) line = 'Checking…';
+  else if (off.failed) line = `<span class="warn">Saved ${off.total - off.failed} of ${off.total}: try again with better signal</span>`;
+  else if (!s.app) line = `<span class="warn">Not ready yet: open the trip once with signal</span>`;
+  else if (whole) line = '<span class="okc">✓ The whole trip is saved for offline</span>';
+  else if (s.ready) line = `<span class="okc">✓ ${d.n ? span : 'The app is'} saved for offline</span>`;
+  else line = `<span class="warn">${span}: ${d.saved} of ${d.total} photos saved</span>`;
+  return `<div class="card scard"><div class="setrow"><span id="off-line">${line}</span>${whole && !off.busy ? '' : `<button class="setb" data-saveall ${off.busy || !navigator.onLine ? 'disabled' : ''}>Save whole trip</button>`}</div></div>`;
+}
+async function saveAll() {
+  off.busy = true; off.done = 0; off.total = OFF.allPhotos().size; off.failed = 0; render();
+  const r = await OFF.saveWholeTrip((done, total) => { off.done = done; off.total = total; const el = document.getElementById('off-line'); if (el) el.textContent = `Saving… ${done} of ${total}`; });
+  off.busy = false; off.failed = r.failed; off.st = null; loadOffline();
+}
 // Backing the money up to Google Drive: once a day by itself (on the server), or now
 const backup = { st: null, loading: false, busy: false, err: '' };
 const bkWhen = (t) => {
@@ -824,6 +853,7 @@ page.addEventListener('click', (e) => {
   if (t('[data-unstampall]')) { const ids = Object.keys(store.state.checks || {}); return askConfirm('Unstamp everything?', `${ids.length} stamped stop${ids.length === 1 ? '' : 's'} go back to not done, on all four phones.`, 'Unstamp all', () => { ids.forEach((id) => store.isChecked(id) && store.toggleCheck(id)); render(); undoable(`Unstamped ${ids.length}`, () => ids.forEach((id) => !store.isChecked(id) && store.toggleCheck(id))); }); }
   if (t('[data-export]')) { exportDocx(); return; }
   if (t('[data-backup]')) { backupNow(); return; }
+  if (t('[data-saveall]')) { saveAll(); return; }
   const pc = t('[data-pcolor]'); if (pc && P[ME]) { store.setProfile(ME, { color: pc.dataset.pcolor }); return render(); }
   if (t('[data-rmphoto]') && P[ME]) { store.setProfile(ME, { photo: null }); return render(); }
   const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
