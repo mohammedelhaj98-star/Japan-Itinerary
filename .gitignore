@@ -2,6 +2,7 @@ node_modules/
 .wrangler/
 .DS_Store
 .impeccable/review/
+.impeccable/live/
 dist/
 hub/img/group.webp
 hub/img/group-tiny.webp
