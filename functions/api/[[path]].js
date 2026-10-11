@@ -178,7 +178,9 @@ async function scanReceipt(env, photo, model) {
   if (!total || !pretax || pretax >= total || pretax < total * 0.85) pretax = null;
   const types = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'];
   return { model: m, total, pretax, shop: clean(data.shop, 60), shop_en: clean(data.shop_en, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(data.date || '') ? data.date : null,
-    type: types.includes(data.type) ? data.type : null, taxfree: data.taxfree === true, items: Array.isArray(data.items) ? data.items.slice(0, 5).map((x) => clean(x, 40)) : [] };
+    type: types.includes(data.type) ? data.type : null, taxfree: data.taxfree === true, items: Array.isArray(data.items) ? data.items.slice(0, 5).map((x) => clean(x, 40)) : [],
+    // each line with its price, for splitting a receipt by item: { name, price, qty }
+    lines: Array.isArray(data.lines) ? data.lines.slice(0, 40).map((l) => l && typeof l === 'object' && { name: clean(l.name, 50), price: yen(l.price), qty: Math.max(1, Math.min(99, Math.round(+l.qty) || 1)) }).filter((l) => l && l.name && l.price) : [] };
 }
 
 // Money moving between people: a settle-up payment (pay), cash handed over or taken out (cash), an IC card top-up (ic).

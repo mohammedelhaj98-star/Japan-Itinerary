@@ -624,6 +624,45 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .nomoney h1 { font-family:var(--serif); font-weight:400; font-size:40px; }
 .nomoney p { color:var(--ink2); }
 .toast { bottom:calc(90px + env(safe-area-inset-bottom,0px)); }
+/* ── split a receipt by item ── */
+.splitb { display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 14px; border-radius:999px; background:var(--ink); color:#fff; font-size:13.5px; font-weight:700; }
+.splitb svg { width:15px; height:15px; }
+.ihead { padding:16px 16px 4px; display:grid; gap:2px; }
+.ihead .ishop { font-size:20px; font-weight:700; letter-spacing:-.02em; line-height:1.2; }
+.ihead .ipaid { font-family:var(--serif); font-size:40px; line-height:1; letter-spacing:-.02em; margin-top:6px; }
+.ihead .ipaid em { font-family:var(--sans); font-style:normal; font-size:13.5px; color:var(--ink2); letter-spacing:0; margin-left:8px; }
+.ihint { font-size:13.5px; color:var(--ink2); padding:6px 16px 0; }
+.ioff { margin:8px 12px 0; padding:10px 14px; border-radius:14px; background:#fff6dd; color:#7a5a00; font-size:13.5px; font-weight:700; }
+.ilist { margin:12px 12px 0; background:var(--card); border-radius:22px; box-shadow:0 1px 2px rgba(20,20,10,.05), 0 6px 18px -10px rgba(20,20,10,.18); overflow:hidden; }
+.irow { display:grid; grid-template-columns:1fr auto; gap:4px 10px; padding:12px 12px 10px 16px; }
+.irow + .irow { border-top:1px solid var(--line); }
+.irow .iname { font-size:15px; font-weight:700; line-height:1.3; align-self:center; }
+.irow .iname i { font-style:normal; color:var(--ink3); font-weight:700; margin-left:4px; }
+.irow .iyen { font-family:var(--serif); font-size:21px; line-height:1; align-self:center; text-align:right; min-height:40px; padding:0 4px; margin-right:-4px; }
+.iyin { width:110px; height:40px; justify-self:end; text-align:right; border:1px solid var(--ink); border-radius:10px; padding:0 10px; background:var(--card); font-family:var(--serif); font-size:21px; }
+.irow .iwho { font-size:12.5px; font-weight:700; color:var(--ink3); align-self:center; }
+.irow .iwho.mine { color:var(--ink2); }
+.ipick { display:flex; gap:2px; justify-self:end; margin-right:-6px; }
+.ipick button { width:42px; height:44px; display:grid; place-items:center; border-radius:50%; }
+.ipick .av { width:32px; height:32px; font-size:12px; transition:transform 160ms var(--ease), background-color 160ms var(--ease), box-shadow 160ms var(--ease); }
+.ipick button:active .av { transform:scale(.9); }
+.ipick button[aria-pressed="false"] .av { background:transparent; background-image:none; color:var(--ink3); box-shadow:inset 0 0 0 1.5px rgba(20,20,10,.22); }
+.irow.shared .ipick button .av { box-shadow:inset 0 0 0 1.5px rgba(20,20,10,.14); color:var(--ink3); }
+.iadj { display:grid; grid-template-columns:1fr auto; gap:2px 10px; padding:12px 16px; border-top:1px dashed rgba(20,20,10,.16); background:var(--tint); }
+.iadj b { font-size:14.5px; }
+.iadj .iyen { font-family:var(--serif); font-size:19px; text-align:right; }
+.iadj small { grid-column:1 / -1; font-size:12.5px; color:var(--ink3); }
+.isum { position:fixed; left:0; right:0; bottom:calc(76px + env(safe-area-inset-bottom,0px)); z-index:84; display:flex; justify-content:center; padding:0 12px; pointer-events:none; }
+.isum > div { pointer-events:auto; width:100%; max-width:436px; display:grid; grid-template-columns:repeat(var(--n), 1fr); background:var(--ink); color:#fff; border-radius:18px; padding:10px 6px; box-shadow:0 10px 30px -12px rgba(20,20,10,.5); }
+.isum .ip { display:grid; justify-items:center; gap:3px; }
+.isum .ip .av { width:24px; height:24px; font-size:10.5px; box-shadow:0 0 0 2px var(--ink); }
+.isum .ip b { font-family:var(--serif); font-weight:400; font-size:19px; line-height:1; }
+.isum .ip small { font-size:12px; color:rgba(255,255,255,.72); font-weight:700; }
+.isum .ip.none b { color:rgba(255,255,255,.5); }
+.byitem { display:flex; align-items:center; gap:8px; width:100%; font-size:13.5px; color:var(--ink2); padding:2px 6px 0; }
+.byitem svg { width:15px; height:15px; color:var(--ink3); flex:none; }
+.byitem .linkb { margin-left:auto; min-height:40px; }
+@media (prefers-reduced-motion: reduce) { .ipick .av { transition:none; } }
 </style>
 
 </head>
@@ -1067,6 +1106,7 @@ function blankForm(day, quick) {
 // shares typed in the expense's own currency, kept as typed; yen is worked out from them
 const toCcy = (yen) => (F.ccy === 'JPY' ? Math.round(yen) : Math.round(yen / RATE[F.ccy] * 100) / 100);
 function openForm(id, opts = {}) {
+  delete fsave.dataset.items; // never left on the split-by-item screen's button
   const x = id && S.ex.find((e) => e.id === id);
   if (opts.restore) { F = { ...opts.restore }; }
   else if (x) {
@@ -1109,6 +1149,7 @@ const convText = (total) => F.ccy !== 'JPY' && total ? `= ${fmtY(total)} today �
 // Update the numbers in place, never rebuilding the form, so the keyboard stays up and nothing jumps.
 // The field being typed in is left alone.
 function liveForm() {
+  if (F.byItem && F.byItem !== itemSig() && document.querySelector('#fpage .byitem')) return renderForm(); // a share changed by hand: no longer the receipt's split
   const { x, left, total } = formExpense();
   for (const i of IDS) {
     const el = document.getElementById('w-' + i); if (!el) continue;
@@ -1253,7 +1294,7 @@ let shrinkPhoto = (file) => new Promise((ok) => { const r = new FileReader(); r.
 function scanLine() {
   const sc = F.scan; if (!sc || !sc.total) return F.scanErr ? `<p class="scanl err">${esc(F.scanErr)}</p>` : '';
   const amt = +F.amt, onPre = sc.pretax && amt === sc.pretax;
-  return `<p class="scanl">${F.taxfree ? '<span class="tfree">Tax-free</span>' : ''}Read ${fmtY(sc.total)} paid${sc.pretax ? ` · <button class="linkb" data-scanamt="${onPre ? sc.total : sc.pretax}">${onPre ? `Use paid ${fmtY(sc.total)}` : `Use before tax ${fmtY(sc.pretax)}`}</button>` : ''}</p>`;
+  return `<p class="scanl">${F.taxfree ? '<span class="tfree">Tax-free</span>' : ''}Read ${fmtY(sc.total)} paid${sc.pretax ? ` · <button class="linkb" data-scanamt="${onPre ? sc.total : sc.pretax}">${onPre ? `Use paid ${fmtY(sc.total)}` : `Use before tax ${fmtY(sc.pretax)}`}</button>` : ''}</p>${sc.lines && sc.lines.length > 1 && F.byItem !== itemSig() ? `<div><button class="splitb" data-iopen>${LISTI}Split by item</button></div>` : ''}`;
 }
 async function scanReceipt(src) {
   const id0 = F; F.scanning = true; F.scanErr = null; renderForm();
@@ -1262,7 +1303,7 @@ async function scanReceipt(src) {
   let r = null; try { r = await scanApi(photo); } catch { r = null; }
   if (F !== id0) return; F.scanning = false;
   if (!r || !r.total) { F.scanErr = navigator.onLine === false ? 'No signal: the receipt is attached, type the amount.' : "Couldn't read the total: the receipt is attached, type the amount."; return renderForm(); }
-  F.ccy = 'JPY'; F.fixed = {}; F.amt = String(r.total); F.scan = { total:r.total, pretax:r.pretax || null }; F.taxfree = !!r.taxfree;
+  F.ccy = 'JPY'; F.fixed = {}; F.amt = String(r.total); F.scan = { total:r.total, pretax:r.pretax || null, shop:r.shop_en || r.shop, lines:Array.isArray(r.lines) ? r.lines.filter((x) => x && x.price > 0) : [] }; F.split = null; F.byItem = null; F.taxfree = !!r.taxfree;
   if (!F.title.trim() && (r.shop_en || r.shop)) F.title = r.shop_en || r.shop;
   if (r.type && CATS[r.type] && !F.catTouched) { F.cat = r.type; F.catGuess = true; }
   const d = r.date && DAYS.find((x) => x.date === r.date); if (d) F.day = d.id;
@@ -1270,8 +1311,61 @@ async function scanReceipt(src) {
   const box = document.querySelector('#fpage .amtin'); if (box) { box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash'); }
 }
 
+/* ───────── splitting a receipt by item: tap whose each line is; untapped lines are shared by the table ───────── */
+const LISTI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>';
+// the table: who's in the expense (all four if it's just one person)
+const tableOf = () => (F.set.length > 1 ? IDS.filter((i) => F.set.includes(i)) : IDS.slice());
+// each person's part: their lines (shared ones split evenly), plus tax/service or a discount in proportion;
+// whole yen, and the payer takes what rounding leaves over (or whoever has the most, if the payer had nothing)
+function itemShares() {
+  const tbl = F.split.table, items = F.split.items, total = F.scan.total;
+  const raw = Object.fromEntries(tbl.map((i) => [i, 0]));
+  for (const it of items) { const who = it.who.length ? it.who : tbl; for (const i of who) raw[i] += it.price / who.length; }
+  const sum = items.reduce((s, it) => s + it.price, 0), adj = total - sum, out = {}; let used = 0;
+  for (const i of tbl) { out[i] = Math.floor(raw[i] + (sum ? adj * raw[i] / sum : adj / tbl.length)); used += out[i]; }
+  const tgt = tbl.includes(F.payer) && out[F.payer] > 0 ? F.payer : tbl.reduce((a, b) => (out[b] > out[a] ? b : a));
+  out[tgt] += total - used;
+  return { shares:out, sum, adj };
+}
+// lines that don't add up to what was paid: more than a quarter on top (tax and service are ~10–20%), or a big discount
+const offBy = (sum, adj) => adj > sum * 0.25 || adj < -F.scan.total * 0.15;
+function renderItems() {
+  const { shares, sum, adj } = itemShares(), tbl = F.split.table, sc = F.scan, off = offBy(sum, adj);
+  const rows = F.split.items.map((it, k) => {
+    const who = it.who, each = Math.round(it.price / (who.length || tbl.length));
+    const label = !who.length ? `Shared${tbl.length > 1 ? ` · ${fmtY(each)} each` : ''}` : who.length === 1 ? P[who[0]].name : `${who.map((i) => P[i].name).join(' + ')} · ${fmtY(each)} each`;
+    const price = F.split.edit === k ? `<input class="iyin" id="iyin" inputmode="numeric" enterkeyhint="done" value="${it.price}" aria-label="Price of ${esc(it.name)}">`
+      : `<button class="iyen" data-iedit="${k}" aria-label="${fmtY(it.price)}, tap to fix the price">${fmtY(it.price)}</button>`;
+    return `<div class="irow ${who.length ? '' : 'shared'}"><span class="iname">${esc(it.name)}${it.qty > 1 ? `<i>×${it.qty}</i>` : ''}</span>${price}
+      <span class="iwho ${who.length ? 'mine' : ''}">${label}</span><span class="ipick">${tbl.map((i) => `<button data-iwho="${k}:${i}" aria-pressed="${who.includes(i)}" aria-label="${P[i].name} had ${esc(it.name)}">${av(i)}</button>`).join('')}</span></div>`;
+  }).join('');
+  const adjRow = adj && !off ? `<div class="iadj"><b>${adj > 0 ? 'Tax and service' : 'Discount'}</b><span class="iyen">${adj > 0 ? '+' : '−'}${fmtY(Math.abs(adj))}</span><small>Spread by what each person had</small></div>` : '';
+  fpage.innerHTML = `<div class="fwrap" style="padding-bottom:200px"><div class="ftop"><button data-iback>Back</button><b>Split by item</b><button style="visibility:hidden" tabindex="-1" aria-hidden="true">·</button></div>
+    <div class="ihead"><span class="ishop">${esc(F.title || sc.shop || 'Receipt')}</span><span class="ipaid">${fmtY(sc.total)}<em>paid by ${P[F.payer].name}</em></span></div>
+    ${off ? `<p class="ioff">The lines add up to ${fmtY(sum)}, but ${fmtY(sc.total)} was paid. Tap a price to fix it.</p>` : '<p class="ihint">Tap who had each item. The rest is shared.</p>'}
+    <div class="ilist">${rows}${adjRow}</div></div>
+    <div class="isum"><div style="--n:${tbl.length}">${tbl.map((i) => `<span class="ip ${shares[i] ? '' : 'none'}">${av(i)}<b>${fmtY(shares[i])}</b><small>${P[i].name}</small></span>`).join('')}</div></div>`;
+  fsave.textContent = 'Use these shares'; fsave.disabled = off; fsave.dataset.items = '1';
+  const inp = document.getElementById('iyin'); if (inp) { inp.focus(); inp.select(); }
+}
+function openItems() {
+  if (!F.split) F.split = { table:tableOf(), items:F.scan.lines.map((it) => ({ ...it, who:[] })), edit:null };
+  F.view = 'items'; renderItems(); scrollTo(0, 0);
+}
+// the shares go into the form as typed amounts; the form remembers they came from the receipt until something changes
+const itemSig = () => JSON.stringify([F.amt, F.set, F.fixed, F.payer]);
+function useItems() {
+  const { shares } = itemShares();
+  F.set = F.split.table.filter((i) => shares[i] !== 0); if (!F.set.length) F.set = [F.payer];
+  F.amt = String(F.scan.total); F.ccy = 'JPY'; F.fixed = Object.fromEntries(F.set.map((i) => [i, shares[i]])); F.byItem = itemSig();
+  closeItems();
+}
+function closeItems() { F.view = null; if (F.split) F.split.edit = null; delete fsave.dataset.items; renderForm(); scrollTo(0, 0); }
+function fixPrice(el) { const it = F.split.items[F.split.edit], v = parseInt(el.value.replace(/[^\d]/g, ''), 10); if (it && v >= 0) it.price = v; F.split.edit = null; renderItems(); }
+
 function renderForm() {
   if (F.kind === 'cash' || F.kind === 'ic') return renderMove();
+  if (F.view === 'items') return renderItems();
   const { x, left, total } = formExpense(), pre = presetOf();
   const dec = F.ccy === 'JPY' ? 'numeric' : 'decimal', payer = P[F.payer];
   const rows = IDS.map((i) => {
@@ -1298,7 +1392,7 @@ function renderForm() {
       ${F.pickPayer ? `<div class="ppick">${IDS.map((i) => `<button data-payer="${i}" class="${F.payer === i ? 'on' : ''}">${av(i)}${P[i].name}</button>`).join('')}</div>` : ''}</div>
     <div class="fsec"><span class="flabel">Who's in</span><div class="presets">${[['one',`Only ${payer.name}`],['two',`${payer.name} + ${P[payer.partner].name}`],['all','All four']].map(([k, l]) => `<button data-preset="${k}" class="${pre === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       ${early ? '<p class="hintline">Mariam and Mo arrive 21 Oct (Day 6).</p>' : ''}
-      <div class="whoin">${rows}</div><div class="result" id="fresult">${resultHtml(x, left, total)}</div></div>
+      <div class="whoin">${rows}</div>${F.byItem && F.byItem === itemSig() ? `<p class="byitem">${LISTI}Split by item from the receipt<button class="linkb" data-iopen>Change</button></p>` : ''}<div class="result" id="fresult">${resultHtml(x, left, total)}</div></div>
     <div class="fsec"><div class="details"><span id="fcats">${catsHtml()}</span>
       <button class="pill ${F.exp === 'day' ? 'on' : ''}" data-fexp="day" aria-expanded="${F.exp === 'day'}">${dayLabel} ▾</button>
       ${F.receipt ? '' : `<label class="pill" for="freceipt">${CLIP} Receipt</label>`}<input id="freceipt" type="file" accept="image/*" hidden></div>
@@ -1325,12 +1419,21 @@ fpage.addEventListener('input', (e) => {
 // done with a share (Done, Enter, or tapping elsewhere): now the others re-spread
 fpage.addEventListener('change', (e) => {
   if (!F) return;
+  if (e.target.id === 'iyin') return fixPrice(e.target);
   if (e.target.dataset.wamt) { commitShare(e.target); liveForm(); }
   if (e.target.id === 'fscan' && e.target.files[0]) { scanReceipt(e.target.files[0]); e.target.value = ''; return; }
   if (e.target.id === 'freceipt' && e.target.files[0]) { compressPhoto(e.target.files[0]).then((d) => { if (F) { F.receipt = d; F.rmReceipt = false; renderForm(); } }, (err) => toast(err.message)); }
 });
-fpage.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.dataset && (e.target.dataset.wamt || e.target.id === 'ftitle')) e.target.blur(); });
+fpage.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.dataset && (e.target.dataset.wamt || e.target.id === 'ftitle' || e.target.id === 'iyin')) e.target.blur(); });
 fpage.addEventListener('click', (e) => {
+  if (F && e.target.closest('[data-iopen]')) return openItems();
+  if (F && e.target.closest('[data-iback]')) return closeItems();
+  const ied = F && F.split && e.target.closest('[data-iedit]'); if (ied) { F.split.edit = +ied.dataset.iedit; return renderItems(); }
+  const iwh = F && F.split && e.target.closest('[data-iwho]');
+  if (iwh) { // the first tap says whose it is; more taps add people; nobody left means shared again
+    const [k, p] = iwh.dataset.iwho.split(':'), it = F.split.items[+k];
+    it.who = it.who.includes(p) ? it.who.filter((x) => x !== p) : IDS.filter((x) => x === p || it.who.includes(x)); return renderItems();
+  }
   if (!F) return; const t = (s) => e.target.closest(s);
   if (t('[data-fcancel]')) return closeForm();
   const fk = t('[data-fkind]'); if (fk) { F.kind = fk.dataset.fkind; F.exp = null; renderForm(); const a = document.getElementById(F.kind === 'ex' ? 'famt' : 'fmove'); if (a) a.focus({ preventScroll:true }); return; }
@@ -1361,6 +1464,7 @@ fsave.addEventListener('pointerdown', () => { const a = document.activeElement; 
 // the same amount on the same day, logged by someone else, is probably the same thing
 function findDup(x) { return S.ex.find((e) => e.id !== x.id && e.day === x.day && Math.abs(e.yen) === Math.abs(x.yen) && e.by !== S.me); }
 fsave.addEventListener('click', () => {
+  if (fsave.dataset.items) return useItems();
   if (!F || fsave.disabled) return;
   if (F.kind === 'cash' || F.kind === 'ic') return saveMove();
   const { x } = formExpense(), i = S.ex.findIndex((e) => e.id === x.id);

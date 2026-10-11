@@ -16,7 +16,7 @@ const KV = {
   async list({ prefix = '' } = {}) { return { keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name, metadata: meta.get(name) })), list_complete: true }; },
 };
 // Workers AI stand-in for /api/scan: it "reads" a ramen receipt where the total was mistaken for the cash handed over
-const FAKE_AI = { run: async () => ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'] } }) };
+const FAKE_AI = { run: async () => ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer(async (req, res) => {
@@ -103,6 +103,30 @@ ok('scan attaches the photo as the receipt', !!(await N.page.$('.rcpt img')));
 await N.page.tap('[data-scanamt]'); await N.page.waitForTimeout(200);
 ok('one tap swaps to the amount before tax', (await N.page.inputValue('#famt')) === '2164');
 await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
+// split a receipt by item: tap whose each line is, the rest is shared, tax spread in proportion, whole yen, the payer takes the leftover
+{
+  const p = N.page, vals = () => p.$$eval('.wamt', (els) => els.map((e) => e.value).join(','));
+  await p.tap('#addfab'); await p.waitForTimeout(400); await p.tap('[data-preset="all"]');
+  await p.setInputFiles('#fscan', REPO + '/img/places/nakano-broadway.webp'); await p.waitForTimeout(1500);
+  ok('split: offered after a scan with lines', !!(await p.$('[data-iopen]')));
+  await p.tap('[data-iopen]'); await p.waitForTimeout(300);
+  const sum0 = await p.$$eval('.isum .ip b', (els) => els.map((e) => e.textContent).join(','));
+  ok('split: every line shared at first, four even parts', (await p.$$('.irow')).length === 3 && sum0 === '¥595,¥595,¥595,¥595' && /Tax and service/.test(await p.textContent('.iadj')), sum0);
+  await p.tap('[data-iwho="0:naf"]'); await p.tap('[data-iwho="1:sara"]'); await p.waitForTimeout(200);
+  const sum1 = await p.$$eval('.isum .ip b', (els) => els.map((e) => e.textContent).join(','));
+  ok('split: tapping whose it is moves the parts, tax in proportion, payer takes the leftover yen', sum1 === '¥1,135,¥1,133,¥56,¥56', sum1);
+  await p.screenshot({ path: SH + 'split-items.png' });
+  await p.tap('[data-iedit="2"]'); await p.fill('#iyin', '2040'); await p.press('#iyin', 'Enter'); await p.waitForTimeout(200);
+  ok("split: lines that don't add up say so, and can't be used", /add up to ¥4,000, but ¥2,380 was paid/.test(await p.textContent('.ioff').catch(() => '')) && await p.$eval('#fsave', (b) => b.disabled));
+  await p.screenshot({ path: SH + 'split-off.png' });
+  await p.tap('[data-iedit="2"]'); await p.fill('#iyin', '204'); await p.press('#iyin', 'Enter'); await p.waitForTimeout(200);
+  ok('split: fixing the price clears it', !(await p.$('.ioff')) && !(await p.$eval('#fsave', (b) => b.disabled)));
+  await p.tap('#fsave'); await p.waitForTimeout(300);
+  ok('split: the shares go into the form, marked as from the receipt', (await vals()) === '1135,1133,56,56' && /Split by item from the receipt/.test(await p.textContent('.byitem').catch(() => '')) && (await p.inputValue('#famt')) === '2380', await vals());
+  await p.fill('#w-m', '100'); await p.press('#w-m', 'Enter'); await p.waitForTimeout(200);
+  ok('split: changing a share by hand drops the receipt mark', !(await p.$('.byitem')) && !!(await p.$('[data-iopen]')));
+  await p.tap('[data-fcancel]'); await p.waitForTimeout(400);
+}
 ok('scanning needs the PIN', (await fetch(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ photo: 'data:image/jpeg;base64,AAAA' }) })).status === 403);
 // add for Naf + Sara, undo it; then delete the ramen and undo that
 await N.page.tap('#addfab'); await N.page.waitForTimeout(400);
