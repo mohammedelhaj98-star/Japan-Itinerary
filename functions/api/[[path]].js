@@ -4,12 +4,15 @@
 // Routes:
 //   GET  /api/health                  → { ok, kv }
 //   GET  /api/version                 → { updatedAt }  (one read: phones poll this, and fetch /api/state only when it changes)
-//   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, profiles, covers, updatedAt }
-//                                       (expenses only with the PIN in x-trip-pin)
+//   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, money, profiles, covers, updatedAt }
+//                                       (expenses and money only with the PIN in x-trip-pin)
 //   POST /api/checks                  { id, value:boolean }
 //   POST /api/choices                 { id, value:string }
 //   POST /api/custom                  { id, value:object|null }  (edit, hide or add a stop; null resets/removes)
-//   POST /api/expenses                { id, value:object|null }  (add or edit a shared expense; null deletes)
+//   POST /api/expenses                { id, value:object|null }  (a money record: an expense, or kind pay | cash | ic; null deletes)
+//   POST /api/money                   { id, value:string|number|boolean|null }  (money settings: who sends/receives, budgets, last seen)
+//   POST /api/receipt                 { id, photo:dataURL|null }  (an expense's receipt photo)
+//   GET  /api/receipt/:id             → the receipt photo (with the PIN)
 //   POST /api/profile                 { id, color?, photo?:dataURL|null }  (a person's colour and photo)
 //   GET  /api/photo/:id               → the person's photo (image bytes)
 //   POST /api/unlock                  { pin }  → { ok } when the PIN is right (the hub asks for it once per phone)
@@ -37,6 +40,9 @@ const PEOPLE = ['naf', 'sara', 'mariam', 'm'];
 const MAX_PHOTO = 400000; // a data URL; the app sends ~256px JPEGs, far smaller than this
 const IDEA_KINDS = ['food', 'shop', 'place'];
 const EX_CATS = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other', 'settle'];
+const MAX_MONEY = 3000;
+const MAX_RECEIPT = 700000; // a data URL; the app sends ~1200px JPEGs
+const CCYS = ['CAD', 'QAR', 'USD'];
 
 async function readKey(kv, key, fallback) {
   const v = await kv.get(key, 'json');
@@ -44,11 +50,11 @@ async function readKey(kv, key, fallback) {
 }
 
 async function readState(kv) {
-  const [checks, choices, suggestions, custom, expenses, profiles, covers] = await Promise.all([
-    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv), readProfiles(kv), readKey(kv, 'covers', {}),
+  const [checks, choices, suggestions, custom, expenses, money, profiles, covers] = await Promise.all([
+    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv), readKey(kv, 'money', {}), readProfiles(kv), readKey(kv, 'covers', {}),
   ]);
   const updatedAt = await kv.get('updatedAt');
-  return { checks, choices, suggestions, custom, expenses, profiles, covers, updatedAt: updatedAt || null };
+  return { checks, choices, suggestions, custom, expenses, money, profiles, covers, updatedAt: updatedAt || null };
 }
 
 // Expenses and profiles are single records (like checks and custom), so a normal read never needs a KV list
@@ -95,23 +101,87 @@ function cleanCustom(v) {
   return Object.keys(out).length ? out : null;
 }
 
-// A shared expense. Amounts are whole yen; split lists who it was for.
+// A money record. Amounts are whole yen. Without a kind it's an expense: shares says what each person's part is
+// (negative for a refund); the payer's own share is theirs. Older expenses with just a split list are shared evenly.
+const isP = (v) => PEOPLE.includes(v);
+const int = (v, lo, hi) => { const n = num(v, lo, hi); return n == null ? null : Math.round(n); };
+const stamp = (v) => num(v, 0, 1e13);
 function cleanExpense(v) {
   if (!v || typeof v !== 'object') return null;
-  const yen = num(v.yen, 0, 100000000);
-  const split = Array.isArray(v.split) ? PEOPLE.filter((p) => v.split.includes(p)) : [];
-  if (yen == null || !PEOPLE.includes(v.payer) || !split.length || !EX_CATS.includes(v.cat)) return null;
-  const out = { title: clean(v.title, 90) || 'Expense', yen: Math.round(yen), payer: v.payer, split, cat: v.cat, day: isId(v.day || '') ? v.day : null };
-  if (PEOPLE.includes(v.by)) out.by = v.by;
+  if (v.kind === 'pay' || v.kind === 'cash' || v.kind === 'ic') return cleanMove(v);
+  const yen = int(v.yen, -100000000, 100000000);
+  if (yen == null || !isP(v.payer) || !EX_CATS.includes(v.cat)) return null;
+  const shares = {};
+  if (v.shares && typeof v.shares === 'object') { for (const p of PEOPLE) { const s = int(v.shares[p], -100000000, 100000000); if (s != null) shares[p] = s; } }
+  else if (Array.isArray(v.split)) {
+    const ids = PEOPLE.filter((p) => v.split.includes(p)), each = Math.trunc(yen / (ids.length || 1));
+    ids.forEach((p) => { shares[p] = each; });
+    if (ids.length) shares[ids.includes(v.payer) ? v.payer : ids[0]] += yen - each * ids.length;
+  }
+  const split = Object.keys(shares);
+  if (!split.length) return null;
+  const out = { title: clean(v.title, 90) || 'Expense', yen, payer: v.payer, shares, split, cat: v.cat, day: isId(v.day || '') ? v.day : null };
+  const owes = {}; if (v.owes && typeof v.owes === 'object') for (const p of split) if (v.owes[p] === true) owes[p] = true;
+  out.owes = owes;
+  if (['cash', 'card', 'ic'].includes(v.with)) out.with = v.with;
+  if (v.refund === true) out.refund = true;
+  if (v.orig && CCYS.includes(v.orig.ccy) && num(v.orig.amt, -10000000, 10000000) != null) out.orig = { ccy: v.orig.ccy, amt: v.orig.amt };
+  const nights = int(v.nights, 1, 30); if (nights > 1) out.nights = nights;
+  if (isP(v.by)) out.by = v.by;
+  if (isP(v.editedBy)) out.editedBy = v.editedBy;
+  if (stamp(v.at) != null) out.at = v.at;
+  if (stamp(v.receipt) != null) out.receipt = v.receipt;
   // "Just me": the payer's own spending, on their money page only and never in who-owes-whom
-  if (v.own === true && split.length === 1 && split[0] === v.payer) out.own = true;
+  if (split.length === 1 && split[0] === v.payer) out.own = true;
   return out;
+}
+// Money moving between people: a settle-up payment (pay), cash handed over or taken out (cash), an IC card top-up (ic).
+function cleanMove(v) {
+  const yen = int(v.yen, 0, 100000000), day = isId(v.day || '') ? v.day : null;
+  if (yen == null) return null;
+  const out = { kind: v.kind, yen, day };
+  if (isP(v.by)) out.by = v.by;
+  if (stamp(v.at) != null) out.at = v.at;
+  if (v.kind === 'pay') {
+    if (!isP(v.from) || !isP(v.to) || v.from === v.to) return null;
+    Object.assign(out, { from: v.from, to: v.to, cash: v.cash === true });
+    // the debts this payment clears: [who owed, who was owed, yen]
+    if (Array.isArray(v.flows)) out.flows = v.flows.slice(0, 40).filter((f) => Array.isArray(f) && isP(f[0]) && isP(f[1]) && num(f[2], 0, 100000000) != null).map((f) => [f[0], f[1], f[2]]);
+    if (v.netted === true) out.netted = true;
+    if (isId(v.pair || '')) out.pair = v.pair;
+    if (typeof v.ccyAmt === 'string') out.ccyAmt = clean(v.ccyAmt, 24);
+    return out;
+  }
+  if (!isP(v.who)) return null;
+  out.who = v.who;
+  if (v.kind === 'cash' && isP(v.from) && v.from !== v.who) out.from = v.from;
+  return out;
+}
+// A money setting: who sends or receives a payment (s:<key> / r:<key>), who set it (by:s:<key>), payments shown
+// separately (u:<a~b>), budgets (b:<person> / bc:<couple>) and when each person last looked (seen:<person>).
+const isKey = (s) => typeof s === 'string' && /^[a-z0-9_:>|,~.-]{1,160}$/i.test(s);
+function cleanSetting(v) {
+  if (v === null || typeof v === 'boolean') return v;
+  if (typeof v === 'number') return Number.isFinite(v) && Math.abs(v) <= 1e13 ? v : undefined;
+  if (typeof v === 'string') return clean(v, 40);
+  return undefined;
 }
 
 export async function onRequest({ request, env }) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
   const kv = env.TRIP_KV;
+
+  const rc = path.match(/^receipt\/([a-z0-9_-]{1,80})$/i);
+  if (request.method === 'GET' && rc && kv) {
+    const pin = env.TRIP_PIN ? String(env.TRIP_PIN) : '';
+    if (pin && request.headers.get('x-trip-pin') !== pin) return new Response('pin required', { status: 403 });
+    const data = await kv.get('rc:' + rc[1]);
+    const m = data && /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(data);
+    if (!m) return new Response('not found', { status: 404 });
+    const bin = atob(m[2]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Response(bytes, { headers: { 'content-type': m[1], 'cache-control': 'private, max-age=31536000, immutable' } });
+  }
 
   const ph = path.match(/^photo\/([a-z]+)$/);
   if (request.method === 'GET' && ph && kv) {
@@ -141,7 +211,7 @@ export async function onRequest({ request, env }) {
     // The money stays between the four of us: without the PIN the state comes back with no expenses.
     if (request.method === 'GET' && path === 'state') {
       const st = await readState(kv);
-      if (!member) st.expenses = {};
+      if (!member) { st.expenses = {}; st.money = {}; }
       return json(st);
     }
 
@@ -189,6 +259,28 @@ export async function onRequest({ request, env }) {
       }
       await writeKey(kv, 'expenses', map);
       return json({ ok: true, expenses: map });
+    }
+
+    if (path === 'money') {
+      if (!isKey(body.id)) return json({ error: 'bad id' }, 400);
+      const value = cleanSetting(body.value);
+      if (value === undefined) return json({ error: 'bad value' }, 400);
+      const map = await readKey(kv, 'money', {});
+      if (value === null || value === '') delete map[body.id];
+      else {
+        if (!(body.id in map) && Object.keys(map).length >= MAX_MONEY) return json({ error: 'too many settings' }, 429);
+        map[body.id] = value;
+      }
+      await writeKey(kv, 'money', map);
+      return json({ ok: true, money: map });
+    }
+
+    if (path === 'receipt') {
+      if (!isId(body.id)) return json({ error: 'bad id' }, 400);
+      if (body.photo === null) { await kv.delete('rc:' + body.id); return json({ ok: true }); }
+      if (typeof body.photo !== 'string' || body.photo.length > MAX_RECEIPT || !/^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(body.photo)) return json({ error: 'bad photo' }, 400);
+      await kv.put('rc:' + body.id, body.photo);
+      return json({ ok: true });
     }
 
     if (path === 'profile') {

@@ -3,10 +3,10 @@
 // - Day assets (today + next 2 days): the page sends the list of photos; they're saved ahead of time in 'days'.
 // - Map tiles (MapTiler, OpenStreetMap fallback): saved as you view them; no bulk pre-downloading.
 // - /api: always network; the app keeps its own offline copy of shared state.
-const VERSION = 'japan2026-v13';
+const VERSION = 'japan2026-v14';
 const KEEP = [VERSION, 'tiles', 'days'];
 const SHELL = [
-  './', './index.html', './prototypes/tools.html', './js/store.js', './js/colors.js', './js/export-docx.js', './js/tour.js',
+  './', './index.html', './money.html', './prototypes/tools.html', './js/store.js', './js/colors.js', './js/export-docx.js', './js/tour.js',
   './data/itinerary.js', './data/places.js', './data/guide.js', './data/diet.js', './data/hotels-ja.js',
   './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css', './vendor/maplibre/maplibre-gl.js', './vendor/maplibre/maplibre-gl.css', './vendor/maplibre/leaflet-maplibre-gl.js', './vendor/leaflet/images/marker-icon.png', './vendor/leaflet/images/marker-icon-2x.png', './vendor/leaflet/images/marker-shadow.png',
   './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png',
@@ -39,6 +39,7 @@ const fromCache = async (req) => {
   const url = new URL(req.url);
   return (await caches.match(req)) || (await caches.match(req, { ignoreSearch: true }))
     || (url.pathname.endsWith('/prototypes/tools') ? await caches.match(new URL('./prototypes/tools.html', self.registration.scope).href) : null)
+    || (url.pathname.endsWith('/money') ? await caches.match(new URL('./money.html', self.registration.scope).href) : null)
     || (url.pathname.endsWith('/photos') ? await caches.match(new URL('./photos.html', self.registration.scope).href) : null)
     || (req.mode === 'navigate' ? await caches.match(new URL('./index.html', self.registration.scope).href) : null);
 };

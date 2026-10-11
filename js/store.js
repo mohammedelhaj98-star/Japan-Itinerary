@@ -41,7 +41,7 @@ export function getDisplayName() { return lsGet(LS_NAME, ''); }
 export function setDisplayName(name) { lsSet(LS_NAME, String(name || '').slice(0, 40)); }
 
 export const store = {
-  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, profiles: {}, covers: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {})),
+  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {})),
   mode: SANDBOX ? 'sandbox' : 'connecting', // connecting | online | local | sandbox | locked (the PIN was refused)
   lastError: null,
   listeners: new Set(),
@@ -113,7 +113,7 @@ export const store = {
       // Start the practice from a read-only copy of the real trip (once per tour), then stay offline.
       if (!sbGet()) {
         try { const remote = await this.api('state'); this.state = { ...this.state, ...remote }; } catch { /* practice from the local copy */ }
-        if (GUEST) this.state.expenses = {}; // a guest practises on an empty expense list: the real one stays private
+        if (GUEST) { this.state.expenses = {}; this.state.money = {}; } // a guest practises on an empty expense list: the real one stays private
         this.persist();
       }
       this.mode = 'sandbox'; this.emit(); return;
@@ -141,11 +141,15 @@ export const store = {
 
   async refresh() {
     if (SANDBOX) return;
-    // Send what this phone changed offline first; while that still fails, keep showing the local copy.
-    if (this._outbox.length && !(await this.flush())) return;
+    // Send what this phone changed offline first; while that still fails, keep showing the local copy
+    // (locked: the changes wait for the PIN, but the shared copy can still be read).
+    if (this._outbox.length && !(await this.flush())) { if (this.mode === 'locked') await this._pull(); return; }
+    await this._pull();
+  },
+  async _pull() {
     try {
       const remote = await this.api('state');
-      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), profiles: { ...(remote.profiles || {}), ...this._pfRecent() }, covers: remote.covers || {}, updatedAt: remote.updatedAt || null };
+      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), money: remote.money || {}, profiles: { ...(remote.profiles || {}), ...this._pfRecent() }, covers: remote.covers || {}, updatedAt: remote.updatedAt || null };
       this._replay(this.state); // anything changed while the copy was downloading
       this.persist();
       this.setMode(this.mode === 'locked' && !pinOf() ? 'locked' : 'online');
@@ -184,12 +188,13 @@ export const store = {
       this.setMode('local', err.message);
     }
   },
-  // The server refused the PIN (none saved on this phone, or it changed): forget it, drop the change that didn't save,
-  // and show "locked" until the PIN is entered again on the trips page.
+  // The server refused the PIN (none saved on this phone, or it changed): forget it and show "locked" until the PIN is
+  // entered again on the trips page. Changes not yet saved stay queued on this phone and go once the PIN is back.
   async _locked() {
     try { localStorage.removeItem('trips.pin'); } catch { /* ignore */ }
-    this._exRecent.clear(); this._pf.clear(); this._outbox = []; this._saveOutbox();
-    await this.refresh();
+    this._exRecent.clear(); this._pf.clear();
+    this.setMode('locked', 'Enter the PIN to save changes');
+    await this._pull();
     this.setMode('locked', 'Enter the PIN to save changes');
   },
 
@@ -213,12 +218,25 @@ export const store = {
     const now = Date.now();
     for (const [id, r] of this._exRecent) {
       if (now - r.t > 90000) { this._exRecent.delete(id); continue; }
-      if (r.v) out[id] = { ...(out[id] || {}), ...r.v }; else delete out[id];
+      if (r.v) out[id] = { ...r.v, ts: (out[id] || {}).ts }; else delete out[id];
     }
     return out;
   },
   getExpenses() { return this.state.expenses || {}; },
   setExpense(id, value) { return this._mutate('expenses', { id, value: value || null }); },
+
+  // Money settings shared by the four phones: who sends and receives each payment, budgets, when each person last looked.
+  getMoney() { return this.state.money || {}; },
+  setMoney(id, value) { return this._mutate('money', { id, value: value == null || value === '' ? null : value }); },
+
+  // A receipt photo is sent straight away (too big for the queue). Reading it needs the PIN, so it comes back as a blob URL.
+  async setReceipt(id, photo) {
+    if (SANDBOX || GUEST) return false;
+    try { await this.api('receipt', { id, photo }); return true; } catch (err) { if (err.pin) this._locked(); return false; }
+  },
+  async receiptUrl(id) {
+    try { const res = await fetch('/api/receipt/' + encodeURIComponent(id), { headers: pinOf() ? { 'x-trip-pin': pinOf() } : undefined }); if (!res.ok) return ''; return URL.createObjectURL(await res.blob()); } catch { return ''; }
+  },
 
   // Profiles: colour and photo per person. The photo itself is served by /api/photo/<id>?v=<photo stamp>.
   _pf: new Map(),
@@ -254,7 +272,8 @@ function applyOp(s, { path, body, meta }) {
   if (path === 'checks') { if (value) s.checks[id] = true; else delete s.checks[id]; return; }
   if (path === 'choices') { if (value) s.choices[id] = value; else delete s.choices[id]; return; }
   if (path === 'custom') { s.custom = s.custom || {}; if (value) s.custom[id] = { ...value, ts: meta.ts }; else delete s.custom[id]; return; }
-  if (path === 'expenses') { s.expenses = { ...(s.expenses || {}) }; if (value) s.expenses[id] = { ...(s.expenses[id] || {}), ...value }; else delete s.expenses[id]; return; }
+  if (path === 'expenses') { s.expenses = { ...(s.expenses || {}) }; if (value) s.expenses[id] = { ...value, ts: (s.expenses[id] || {}).ts }; else delete s.expenses[id]; return; } // whole records: an edit can drop a field
+  if (path === 'money') { s.money = { ...(s.money || {}) }; if (value == null || value === '') delete s.money[id]; else s.money[id] = value; return; }
   if (path === 'suggestions') { if (!s.suggestions.some((x) => x.id === meta.temp.id)) s.suggestions.unshift({ ...meta.temp }); return; }
   const m = path.match(/^suggestions\/(.+)\/(vote|delete)$/);
   if (!m) return;

@@ -4,7 +4,7 @@
 // Next is always there in case a gesture doesn't land. Progress lives in sessionStorage so the tour
 // carries on from the trip page to the tools page.
 //
-// Each page sets window.__tourEnv = { page: 'trip' | 'tools', ...hooks } and calls runTour().
+// Each page sets window.__tourEnv = { page: 'trip' | 'money' | 'tools', ...hooks } and calls runTour().
 
 const K_ON = 'tour.on', K_STEP = 'tour.step', K_STATE = 'tour.state';
 const ss = { get: (k) => { try { return sessionStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { sessionStorage.setItem(k, v); } catch {} }, del: (k) => { try { sessionStorage.removeItem(k); } catch {} } };
@@ -14,6 +14,7 @@ const booked = (st) => Object.entries(st.choices || {}).filter(([k, v]) => k.sta
 const pick = (n) => `.proto-picker-item:nth-of-type(${n})`; // Expenses 1, Bookings 2, Taxi 3, Food 4, Settings 5
 const toolsUrl = (v) => (location.pathname.includes('/prototypes/') ? `tools?v=${v}` : `prototypes/tools?v=${v}`);
 const tripUrl = () => (location.pathname.includes('/prototypes/') ? '../' : './');
+const moneyUrl = () => (location.pathname.includes('/prototypes/') ? '../money' : 'money');
 
 const STEPS = [
   // ── trip page, Day 7 ──
@@ -29,12 +30,12 @@ const STEPS = [
   { page: 'trip', el: '#grab', noscroll: true, t: 'Bigger map', x: '<b>Swipe the stops down from here, or tap the handle,</b> to give the map the whole screen.', pre: (e) => { e.drawer.close(); window.scrollTo(0, 0); }, done: (e) => e.mapMax.isOn() },
   { page: 'trip', el: '#grab', noscroll: true, t: 'Bring them back', x: '<b>Tap the handle again</b> (or swipe up).', done: (e) => !e.mapMax.isOn() },
   { page: 'trip', el: '#ttBtn', t: 'Trip tools', x: 'Expenses, bookings, ideas, taxi cards and Settings, with the card colours on top. <b>Tap +.</b>', pre: (e) => e.drawer.close(), done: () => !!document.querySelector('#tt.open') },
-  { page: 'trip', el: '.tt-opt[href$="v=1"]', t: 'Expenses', x: '<b>Tap Expenses.</b>', nav: toolsUrl(1), pre: () => { const tt = document.getElementById('tt'); if (tt && !tt.classList.contains('open')) document.getElementById('ttBtn').click(); } },
+  { page: 'trip', el: '.tt-opt[href$="money"]', t: 'Expenses', x: '<b>Tap Expenses.</b>', nav: moneyUrl(), pre: () => { const tt = document.getElementById('tt'); if (tt && !tt.classList.contains('open')) document.getElementById('ttBtn').click(); } },
   // ── tools page ──
-  { page: 'tools', el: '.card.tot', t: 'Shared expenses', x: 'What the group has spent, in yen and your currency. Below it: who owes whom, settled by couple or person.', pre: (e) => e.setTab(0) },
-  { page: 'tools', el: '#fab', t: 'Add an expense', x: '<b>Tap Add expense.</b>', pre: (e) => e.setTab(0), done: (e) => e.sheetOpen() },
-  { page: 'tools', el: '#sheet', t: 'Log it', x: '<b>Type an amount</b> (like 3000), check who paid, <b>then tap Add expense.</b>', snap: (e) => e.exCount(), done: (e, s0) => e.exCount() > s0 && !e.sheetOpen(), skip: (e) => e.closeSheet() },
-  { page: 'tools', el: '.xsw', t: 'Swipe to delete', x: 'Made a mistake? <b>Swipe an expense left, tap Delete and confirm.</b> There\'s an Undo too.', allow: '.cfm-bg.on', snap: (e) => e.exCount(), done: (e, s0) => e.exCount() < s0 },
+  { page: 'money', el: '.gpass', t: 'Shared expenses', x: 'What the group has spent, day by day. Below it: who pays whom to settle up, by couple or person to person. Your own page and your couple\'s are in the switch at the top.' },
+  { page: 'money', el: '#addfab', t: 'Add an expense', x: '<b>Tap Add expense.</b>', done: (e) => e.formOpen() },
+  { page: 'money', el: '#fpage', t: 'Log it', x: '<b>Type an amount</b> (like 3000), check who paid and who\'s in, <b>then tap Add expense.</b>', allow: '#sheet.on', snap: (e) => e.exCount(), done: (e, s0) => e.exCount() > s0 && !e.formOpen(), skip: (e) => e.closeForm() },
+  { page: 'money', el: null, t: 'Fix or delete', x: 'Tap any expense to change it, or delete it from the top of its form. There\'s an Undo too. Next: bookings.', nav: toolsUrl(2) },
   { page: 'tools', el: pick(2), t: 'Bookings', x: '<b>Tap Bookings.</b>', done: (e) => e.getTab() === 1 },
   { page: 'tools', el: '.bk.todo [data-bkmark]', t: 'Booked something?', x: 'Everything booked and still to book. <b>Tap Mark as booked</b> and it moves to Booked for everyone.', pre: (e) => e.setTab(1), snap: (e) => booked(e.store.state), done: (e, s0) => booked(e.store.state) > s0 },
   { page: 'tools', el: pick(4), t: 'Ideas', x: 'Notes for food, shops and places to see. <b>Tap Ideas.</b>', done: (e) => e.getTab() === 3, post: (e) => e.setFoodView('food') },
@@ -166,7 +167,7 @@ export function runTour() {
     if (st.page !== env.page) {
       // the practice continues on the other page
       card.className = 'tour-card'; last = '';
-      card.innerHTML = `<small>${i + 1} of ${STEPS.length}</small><h3>Carry on</h3><p>The practice continues on the ${st.page === 'tools' ? 'tools' : 'trip'} page.</p><div class="row"><button class="end" data-tend>End practice</button><span class="sp"></span><button class="go" data-tcont>Continue</button></div>`;
+      card.innerHTML = `<small>${i + 1} of ${STEPS.length}</small><h3>Carry on</h3><p>The practice continues on the ${st.page === 'tools' ? 'tools' : st.page === 'money' ? 'money' : 'trip'} page.</p><div class="row"><button class="end" data-tend>End practice</button><span class="sp"></span><button class="go" data-tcont>Continue</button></div>`;
       return;
     }
     st.pre && st.pre(env);
@@ -188,7 +189,7 @@ export function runTour() {
 
   const onClick = (e) => {
     if (e.target.closest('[data-tend]')) { e.preventDefault(); return endTour(true); }
-    if (e.target.closest('[data-tcont]')) { location.href = STEPS[i].page === 'tools' ? toolsUrl(1) : tripUrl(); return; }
+    if (e.target.closest('[data-tcont]')) { location.href = STEPS[i].page === 'tools' ? toolsUrl(2) : STEPS[i].page === 'money' ? moneyUrl() : tripUrl(); return; }
     if (e.target.closest('[data-tnext]')) return go(1);
     if (e.target.closest('[data-tback]')) return go(-1);
   };

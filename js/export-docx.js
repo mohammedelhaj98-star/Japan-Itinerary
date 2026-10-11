@@ -153,7 +153,9 @@ export function buildTripDocx({ TRIP, DAYS, HOTELS, BOOKINGS, FOOD, TIPS, state,
   if (!ex.length) b += p(r('No expenses logged yet.', { i: true, c: GREY }));
   else {
     const bal = Object.fromEntries(people.map((q) => [q.id, 0]));
-    for (const e of ex) { bal[e.payer] += e.yen; for (const id of e.split) if (id in bal) bal[id] -= e.yen / e.split.length; }
+    for (const e of ex) { bal[e.payer] += e.yen; if (e.shares) { for (const [id, v] of Object.entries(e.shares)) if (id in bal) bal[id] -= v; } else for (const id of e.split) if (id in bal) bal[id] -= e.yen / e.split.length; }
+    // payments and cash handed over (the money page's records): the giver is that much better off, the receiver worse
+    for (const m of Object.values(st.expenses || {})) { const from = m.kind === 'pay' ? m.from : m.kind === 'cash' ? m.from : null, to = m.kind === 'pay' ? m.to : m.who; if (from && from in bal && to in bal && !m.netted) { bal[from] += m.yen; bal[to] -= m.yen; } else if (m.kind === 'pay' && m.netted && m.from in bal && m.to in bal) { bal[m.from] += m.yen; bal[m.to] -= m.yen; } }
     const yen = (n) => '¥' + Math.round(n).toLocaleString('en-US');
     const spend = ex.filter((e) => e.cat !== 'settle').reduce((s, e) => s + e.yen, 0);
     const nasa = (bal.naf || 0) + (bal.sara || 0), mm = (bal.mariam || 0) + (bal.m || 0);

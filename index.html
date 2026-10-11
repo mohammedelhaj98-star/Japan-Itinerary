@@ -1299,7 +1299,7 @@ buildMap(); renderDay(); store.start(); refreshFx(); drawer.init();
   key.innerHTML = `<b>Card colours</b><span class="g">${keyItems(true)}</span>`;
   document.getElementById('tt').prepend(key); }
 // ¥+ opens a new expense already set to the day on screen
-document.getElementById('quickex').addEventListener('click', (e) => { e.currentTarget.href = `prototypes/tools?v=1&add=1&d=${day.id}`; });
+document.getElementById('quickex').addEventListener('click', (e) => { e.currentTarget.href = `money?add=1&d=${day.id}`; });
 // The PIN was refused (it changed, or this phone lost it): enter it again on the trips page, then come straight back.
 store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) location.replace('/?next=japan'); });
 { const el = document.getElementById('unsynced');
@@ -1307,7 +1307,7 @@ store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) locatio
 // Guests look but don't touch: no stamping, editing, adding stops or making choices (the practice tour still lets them try).
 if (GUEST && !SANDBOX) {
   document.body.classList.add('guest');
-  const exOpt = document.querySelector('.tt-opt[href$="v=1"]'); if (exOpt) exOpt.remove(); // the money stays between the four of us
+  const exOpt = document.querySelector('.tt-opt[href$="money"]'); if (exOpt) exOpt.remove(); // the money stays between the four of us
   document.addEventListener('click', (e) => { if (e.target.closest('[data-stamp], [data-edit], [data-addend], [data-choice], #gear, [data-sadd], [data-sedit]')) { e.preventDefault(); e.stopPropagation(); } }, true);
 }
 window.__tourEnv = {
@@ -1337,8 +1337,8 @@ setTimeout(saveAhead, 4000);
   <a class="tt-opt" href="prototypes/tools?v=2"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/></svg></i><span>Bookings</span></a>
   <a class="tt-opt" href="prototypes/tools?v=4"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0012 3z"/></svg></i><span>Ideas</span></a>
   <a class="tt-opt" href="photos"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 016.5 6h1.7l1.5-2h4.6l1.5 2h1.7A2.5 2.5 0 0120 8.5v8a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg></i><span>Photos</span></a>
-  <a class="tt-opt" href="prototypes/tools?v=1"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 4l5 7 5-7M12 11v9M7 12h10M7 16h10"/></svg></i><span>Expenses</span></a>
-  <a class="tt-quick" id="quickex" href="prototypes/tools?v=1&amp;add=1" aria-label="Add an expense">¥<b>+</b></a>
+  <a class="tt-opt" href="money"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 4l5 7 5-7M12 11v9M7 12h10M7 16h10"/></svg></i><span>Expenses</span></a>
+  <a class="tt-quick" id="quickex" href="money?add=1" aria-label="Add an expense">¥<b>+</b></a>
   <button class="tt-btn" id="ttBtn" aria-expanded="false" aria-label="Trip tools"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 </nav>
 <script>

@@ -74,80 +74,83 @@ ok('next opens the top of the pile', second === pile0[0], `${first} → ${second
 ok('left pass goes to bottom of the pile', pile1[pile1.length - 1] === first, pile1.slice(-2).join(','));
 ok('pile now starts at the stop after', pile1[0] === pile0[1], pile1[0]);
 
-// 3 · expenses shared between two phones
+// 3 · money: expenses shared between two phones (the money page, /japan/money)
 const N = await phone();
 await N.page.goto(B + '/'); await N.page.tap('[data-me="naf"]'); await enterPin(N.page); await N.page.waitForTimeout(600); await N.page.tap('[data-trip="japan"]'); await N.page.waitForURL(/\/japan\//);
-await N.page.goto(B + '/japan/prototypes/tools?v=1'); await N.page.waitForTimeout(1500);
-ok('sync line online', /Shared with all four/.test(await N.page.textContent('.ph')));
-ok('home button stacked on Add expense', await N.page.evaluate(() => { const h = document.querySelector('.homefab').getBoundingClientRect(), f = document.getElementById('fab').getBoundingClientRect(); return h.bottom <= f.top - 4 && Math.abs(h.right - f.right) < 2; }));
-await N.page.tap('#fab'); await N.page.waitForTimeout(500);
-await N.page.fill('#x-amt', '4400'); const ti = await N.page.$('#x-title'); if (ti) await ti.fill('Fuunji ramen test');
+await N.page.goto(B + '/japan/money'); await N.page.waitForTimeout(1500);
+ok('sync line online', /Shared with all four/.test(await N.page.textContent('.syncl')));
+ok('money page has Add expense and a way back to the trip', await N.page.$eval('#addfab', (e) => !e.hidden) && !!(await N.page.$('.tback[data-home]')));
+await N.page.tap('#addfab'); await N.page.waitForTimeout(500);
+ok('who-is-in presets read Only Naf · Naf + Sara · All four', (await N.page.$$eval('[data-preset]', (els) => els.map((e) => e.textContent).join('|'))) === 'Only Naf|Naf + Sara|All four');
+await N.page.fill('#famt', '4400'); await N.page.fill('#ftitle', 'Fuunji ramen test'); await N.page.tap('[data-preset="all"]'); await N.page.waitForTimeout(200);
 await N.page.screenshot({ path: SH + 'ex-form.png' });
-await N.page.tap('[data-save]'); await N.page.waitForTimeout(1200);
-ok('Naf sees own expense', /Fuunji ramen test|4,400/.test(await N.page.textContent('#page')));
-await A.page.goto(B + '/japan/prototypes/tools?v=1'); await A.page.waitForTimeout(1800);
-const aTxt = await A.page.textContent('#page');
-ok('Mo sees Naf\'s expense', /Fuunji ramen test|4,400/.test(aTxt));
-ok('balance shows M&M owes', /owes/.test(aTxt));
-await A.page.screenshot({ path: SH + 'ex-mo.png' });
-ok('server stored one expense', exN() === 1);
+await N.page.tap('#fsave'); await N.page.waitForTimeout(1200);
+ok('Naf sees own expense', /Fuunji ramen test/.test(await N.page.textContent('#glist')));
+await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1800);
+ok("Mo sees Naf's expense", /Fuunji ramen test/.test(await A.page.textContent('#glist')));
+ok('settle up says M&M pays Naf', /pays\s*Naf/.test(await A.page.textContent('.settle')));
+await A.page.screenshot({ path: SH + 'ex-mo.png', fullPage: true });
+ok('server stored one expense with each share', exN() === 1 && Object.values(exMap())[0].shares.m === 1100);
 const stOpen = await (await fetch(B + '/api/state')).json(), stPin = await (await fetch(B + '/api/state', { headers: { 'x-trip-pin': PIN } })).json();
-ok('expenses need the PIN to read', !Object.keys(stOpen.expenses).length && Object.keys(stPin.expenses).length === 1 && !!stOpen.checks);
-// split options + undo + swipe to delete
-const chips = await N.page.evaluate(async () => { document.getElementById('fab').click(); await new Promise((r) => setTimeout(r, 400)); return [...document.querySelectorAll('[data-split]')].map((b) => b.textContent); });
-ok('split options read Just me · All four · Couples · Pick people', chips.join('|') === 'Just me|All four|Couples|Pick people', chips.join('|'));
-await N.page.tap('[data-split="couple"]'); await N.page.waitForTimeout(200);
-ok('Couples shows NASA / M&M', (await N.page.$$('[data-couple]')).length === 2);
-await N.page.tap('[data-couple="mm"]'); await N.page.fill('#x-amt', '2000'); await N.page.fill('#x-title', 'Gift for M&M');
-await N.page.tap('[data-save]'); await N.page.waitForTimeout(700);
+ok('expenses and money settings need the PIN to read', !Object.keys(stOpen.expenses).length && !Object.keys(stOpen.money).length && Object.keys(stPin.expenses).length === 1 && !!stOpen.checks);
+// add for Naf + Sara, undo it; then delete the ramen and undo that
+await N.page.tap('#addfab'); await N.page.waitForTimeout(400);
+await N.page.fill('#famt', '2000'); await N.page.fill('#ftitle', 'Gift for NASA'); await N.page.tap('[data-preset="two"]'); await N.page.tap('#fsave'); await N.page.waitForTimeout(700);
 ok('undo toast after add', await N.page.$eval('.toast', (e) => e.classList.contains('on') && /Added/.test(e.textContent)));
-const mmEx = Object.values(exMap()).find((x) => x.title === 'Gift for M&M');
-ok('couple split saved as Mariam + Mo', mmEx && mmEx.split.join() === 'mariam,m', mmEx && mmEx.split.join());
+const gift = Object.values(exMap()).find((x) => x.title === 'Gift for NASA');
+ok('Naf + Sara saved as their two shares', gift && Object.keys(gift.shares).join() === 'naf,sara', gift && JSON.stringify(gift.shares));
 await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
-ok('undo removes the added expense', !/Gift for M&M/.test(await N.page.textContent('#page')) && !Object.values(exMap()).some((x) => x.title === 'Gift for M&M'));
-await N.page.screenshot({ path: SH + 'ex-undo.png' });
-// swipe the ramen row left, confirm, then undo the delete
-const row = await N.page.$eval('.xsw .xrow', (e) => { const r = e.getBoundingClientRect(); return [r.left + r.width - 30, r.top + r.height / 2]; });
-await N.page.mouse.move(row[0], row[1]); await N.page.mouse.down(); for (let i = 1; i <= 8; i++) { await N.page.mouse.move(row[0] - i * 15, row[1]); await N.page.waitForTimeout(16); } await N.page.mouse.up(); await N.page.waitForTimeout(400);
-await N.page.screenshot({ path: SH + 'ex-swipe.png' });
-ok('swipe reveals Delete', await N.page.$eval('.xsw .xrow', (e) => new DOMMatrix(getComputedStyle(e).transform).m41 < -80));
-await N.page.tap('.xdel'); await N.page.waitForTimeout(300);
-ok('asks are you sure', await N.page.$eval('.cfm-bg', (e) => e.classList.contains('on') && /Delete this transaction\?/.test(e.textContent)));
-await N.page.screenshot({ path: SH + 'ex-confirm.png' });
-await N.page.tap('[data-cno]'); await N.page.waitForTimeout(300);
-ok('cancel keeps it', /Fuunji ramen test/.test(await N.page.textContent('#page')));
-await N.page.evaluate(() => document.querySelector('.xdel').click()); await N.page.waitForTimeout(300); await N.page.tap('[data-cyes]'); await N.page.waitForTimeout(800);
-ok('confirm deletes it', !/Fuunji ramen test/.test(await N.page.textContent('#page')) && exN() === 0);
+if (await N.page.$eval('#fpage', (e) => e.classList.contains('on'))) { await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400); }
+ok('undo removes the added expense', !/Gift for NASA/.test(await N.page.textContent('#glist')) && !Object.values(exMap()).some((x) => x.title === 'Gift for NASA'));
+await N.page.tap('#glist .xrow'); await N.page.waitForTimeout(400); await N.page.tap('[data-fdel]'); await N.page.waitForTimeout(300);
+ok('delete asks first', await N.page.$eval('.sheet', (e) => e.classList.contains('on') && !!e.querySelector('[data-delok]')));
+await N.page.tap('[data-delok]'); await N.page.waitForTimeout(800);
+ok('delete removes it', exN() === 0);
 await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
-ok('undo brings it back', /Fuunji ramen test/.test(await N.page.textContent('#page')) && exN() === 1);
+ok('undo brings it back', /Fuunji ramen test/.test(await N.page.textContent('#glist')) && exN() === 1);
+// Mo marks the settle-up paid: it's a payment record, and the row goes
+await A.page.evaluate(() => window.__tourEnv.store.refresh()); await A.page.waitForTimeout(600);
+await A.page.tap('[data-pay]'); await A.page.waitForTimeout(400); await A.page.tap('[data-payok]'); await A.page.waitForTimeout(900);
+const pay = Object.values(exMap()).find((x) => x.kind === 'pay');
+ok('Paid saves a payment that clears the debts', pay && pay.to === 'naf' && pay.yen === 3300 && pay.flows.length >= 1, JSON.stringify(pay));
+ok('nothing left to settle', !(await A.page.$('[data-pay]')));
+// cash given between the couples goes into settle up
+await N.page.evaluate(() => window.__tourEnv.store.refresh()); await N.page.waitForTimeout(600);
+await N.page.tap('[data-view="mine"]'); await N.page.waitForTimeout(300);
+await N.page.tap('.cash [data-gotcash]'); await N.page.waitForTimeout(300); await N.page.tap('[data-cxdir="gave"]'); await N.page.tap('[data-cxwho="m"]'); await N.page.fill('#cashamt', '5000'); await N.page.dispatchEvent('#cashamt', 'input'); await N.page.tap('[data-cashok]'); await N.page.waitForTimeout(900);
+const cash = Object.values(exMap()).find((x) => x.kind === 'cash');
+ok('cash given is saved', cash && cash.from === 'naf' && cash.who === 'm' && cash.yen === 5000);
+await N.page.tap('[data-view="group"]'); await N.page.waitForTimeout(300);
+ok('settle up asks M&M to pay it back', /pays\s*Naf[\s\S]*¥5,000/.test(await N.page.textContent('.settle')));
 
-// 3a · ¥+ on the trip opens a new expense straight away; Just me goes on my Mine page only
+// 3a · ¥+ on the trip opens a new expense straight away; Only Naf stays on Naf's page
 await N.page.goto(B + '/japan/?d=d05'); await N.page.waitForTimeout(2000);
 const dayShown = await N.page.textContent('#dayp');
-await N.page.tap('#quickex'); await N.page.waitForURL(/tools/); await N.page.waitForTimeout(800);
-ok('¥+ opens the expense form straight away', await N.page.$eval('#sheet', (e) => e.classList.contains('on')));
+await N.page.tap('#quickex'); await N.page.waitForURL(/money/); await N.page.waitForTimeout(900);
+ok('¥+ opens the expense form straight away', await N.page.$eval('#fpage', (e) => e.classList.contains('on')));
+ok('…on the day that was on screen', /Day 5/.test(await N.page.textContent('[data-fexp="day"]')));
 await N.page.screenshot({ path: SH + 'quick-add.png' });
-await N.page.tap('[data-split="me"]'); await N.page.fill('#x-amt', '1200'); await N.page.fill('#x-title', 'Matcha');
-ok('Just me hides Paid by', !(await N.page.$('[data-payer]')));
-await N.page.tap('[data-save]'); await N.page.waitForURL(/\/japan\/(\?|$)/); await N.page.waitForTimeout(1500);
+await N.page.fill('#famt', '1200'); await N.page.fill('#ftitle', 'Matcha'); await N.page.tap('[data-preset="one"]');
+await N.page.tap('#fsave'); await N.page.waitForURL(/\/japan\/(\?|$)/); await N.page.waitForTimeout(1500);
 const mat = Object.values(exMap()).find((x) => x.title === 'Matcha');
-ok('saved as Just me, back on the same day of the trip', mat && mat.own === true && mat.payer === 'naf' && mat.split.join() === 'naf' && /^d\d\d$/.test(mat.day) && (await N.page.textContent('#dayp')) === dayShown, JSON.stringify(mat));
-await N.page.goto(B + '/japan/prototypes/tools?v=1'); await N.page.waitForTimeout(1500);
-const grp = await N.page.textContent('#page');
-ok('Just me stays out of the group list and totals', !/Matcha/.test(grp) && /¥4,400/.test(grp));
-await N.page.tap('[data-exview="mine"]'); await N.page.waitForTimeout(500);
-let mine = await N.page.textContent('#page');
-ok('Mine: my share of the ramen + my matcha', /Matcha/.test(mine) && /¥2,300/.test(mine), (mine.match(/You've spent\s*¥[\d,]+/) || [])[0]);
-ok('Mine: what I paid for the others shown apart', /¥3,300/.test(mine) && /You get back/.test(mine));
-await N.page.$eval('#bud-in', (e) => { e.value = '100'; e.dispatchEvent(new Event('change', { bubbles: true })); }); await N.page.waitForTimeout(400);
-mine = await N.page.textContent('#page');
-ok('Mine: a budget shows what is left', /left · .* a day for \d+ day/.test(mine), (mine.match(/[^.]*left[^.]*/) || [])[0]);
+ok('saved as Only Naf, back on the same day of the trip', mat && mat.own === true && mat.payer === 'naf' && Object.keys(mat.shares).join() === 'naf' && mat.day === 'd05' && (await N.page.textContent('#dayp')) === dayShown, JSON.stringify(mat));
+await N.page.goto(B + '/japan/money'); await N.page.waitForTimeout(1500);
+await N.page.tap('[data-view="group"]'); await N.page.waitForTimeout(300);
+const grp = await N.page.textContent('.app');
+ok('Only Naf stays out of the group totals', /¥4,400/.test(await N.page.textContent('.gp-big')) && !/Matcha/.test(await N.page.textContent('.gpass')));
+await N.page.tap('[data-view="mine"]'); await N.page.waitForTimeout(500);
+const mine = await N.page.textContent('.hero');
+ok("Naf's page: the ramen share + the matcha", /¥2,300/.test(mine), mine.replace(/\s+/g, ' '));
+await N.page.tap('[data-budget]'); await N.page.waitForTimeout(300); await N.page.fill('#budin', '100000'); await N.page.tap('[data-budok]'); await N.page.waitForTimeout(700);
+ok('a budget is shared and shows what is left', JSON.parse(store.get('money') || '{}')['b:naf'] === 100000 && /left/.test(await N.page.textContent('.hero')));
 await N.page.screenshot({ path: SH + 'mine.png', fullPage: true });
-await N.page.tap('[data-exview="group"]'); await N.page.waitForTimeout(300);
-await A.page.goto(B + '/japan/prototypes/tools?v=1'); await A.page.waitForTimeout(1500);
-const moGroup = await A.page.textContent('#page'); await A.page.tap('[data-exview="mine"]'); await A.page.waitForTimeout(500);
-const moMine = await A.page.textContent('#page'); await A.page.tap('[data-exview="group"]');
-ok("Mo never sees Naf's Just me", !/Matcha/.test(moGroup) && !/Matcha/.test(moMine) && /¥1,100/.test(moMine));
+await N.page.tap('[data-view="group"]'); await N.page.waitForTimeout(300);
+await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
+const moGroup = await A.page.textContent('.app'); await A.page.tap('[data-view="mine"]'); await A.page.waitForTimeout(500);
+const moMine = await A.page.textContent('.app'); await A.page.tap('[data-view="group"]');
+ok("Mo never sees Naf's own spending", !/Matcha/.test(moGroup) && !/Matcha/.test(moMine));
+await A.page.goto(B + '/japan/prototypes/tools?v=1'); await A.page.waitForTimeout(1200);
+ok('the old Expenses tab opens the money page', /\/japan\/money/.test(A.page.url()));
 
 
 // 3b · settings: profile colour + photo, shared to the other phone, colour key
@@ -163,7 +166,7 @@ await N.page.screenshot({ path: SH + 'settings.png', fullPage: true });
 const ph = await (await fetch(B + '/api/photo/naf?v=1')).arrayBuffer(); ok('photo served by the API', ph.byteLength > 2000, ph.byteLength);
 await A.page.goto(B + '/japan/prototypes/tools?v=5'); await A.page.waitForTimeout(1800);
 ok("Mo sees Naf's photo", await A.page.$$eval('.everyone .av', (els) => els[0].classList.contains('ph')));
-await A.page.goto(B + '/japan/prototypes/tools?v=1'); await A.page.waitForTimeout(1500);
+await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
 ok("Naf's colour/photo used in expenses", await A.page.evaluate(() => [...document.querySelectorAll('.av')].some((e) => e.classList.contains('ph'))) || true);
 await A.page.goto(B + '/?switch=1'); await A.page.waitForTimeout(1500);
 ok("hub shows Naf's photo", await A.page.$eval('[data-me="naf"] .av', (e) => e.classList.contains('ph')));
@@ -339,7 +342,7 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await g.evaluate(() => { const b = document.querySelector('[data-stamp]'); b && b.click(); }); await g.waitForTimeout(500);
   ok('guest tap on stamp does nothing', !Object.keys(JSON.parse(store.get('checks') || '{}')).some((k) => k.startsWith('d07')));
   await g.tap('#ttBtn'); await g.waitForTimeout(400);
-  ok('guest tools have no Expenses', !(await g.$('.tt-opt[href$="v=1"]')) && !!(await g.$('.tt-opt[href$="v=2"]')));
+  ok('guest tools have no Expenses', !(await g.$('.tt-opt[href$="money"]')) && !!(await g.$('.tt-opt[href$="v=2"]')));
   await g.screenshot({ path: SH + 'guest-trip.png' });
   await g.goto(B + '/japan/prototypes/tools?v=1'); await g.waitForTimeout(1500);
   ok('guest asking for expenses gets Bookings', /Booked & to book/.test(await g.textContent('#page')) && await g.$eval('.proto-picker-item', (e) => e.hidden));
@@ -417,8 +420,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('offline: trip page opens on Day 9', /Day 9/.test(await pg.textContent('#dayp').catch(() => '')));
   const img = await pg.evaluate(async () => { const u = [...document.querySelectorAll('.pass')].map((e) => (e.querySelector('.hero') || {}).style?.backgroundImage || '').find((x) => x.includes('img/places')); const m = u && /url\(["']?([^"')]+)/.exec(u); if (!m) return 'none'; try { const r = await fetch(m[1]); return r.ok ? 'ok' : 'bad'; } catch { return 'fail'; } });
   ok('offline: Day 9 photos load', img === 'ok', img);
-  await pg.goto(B + '/japan/prototypes/tools?v=1').catch(() => {}); await pg.waitForTimeout(2000);
-  ok('offline: expenses page opens', /Who owes whom/.test(await pg.textContent('#page').catch(() => '')));
+  await pg.goto(B + '/japan/money').catch(() => {}); await pg.waitForTimeout(2000);
+  ok('offline: money page opens with the expenses', /Fuunji ramen test/.test(await pg.textContent('.app').catch(() => '')) && /Offline/.test(await pg.textContent('.syncl').catch(() => '')));
   await ctx.close();
 }
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));

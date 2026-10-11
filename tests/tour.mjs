@@ -86,16 +86,18 @@ for (const sc of scenarios) {
   await step(10, '#grab', () => pg.tap('#grab'), 'tapping the handle');
   await step(11, '#grab', () => pg.tap('#grab'), 'tapping the handle again');
   await step(12, '#ttBtn', () => pg.tap('#ttBtn'), 'tapping +');
-  await step(13, '.tt-opt[href$="v=1"]', async () => { await pg.tap('.tt-opt[href$="v=1"]'); await pg.waitForURL(/tools/); await pg.waitForTimeout(900); }, 'tapping Expenses');
-  if (!/prototypes\/tools/.test(pg.url())) bad('did not reach the tools page');
-  await step(14, '.card.tot');
-  await step(15, '#fab', () => pg.tap('#fab'), 'tapping Add expense');
-  // the sheet is taller than the room beside it, so the card sits over its top; what you fill in and tap must stay reachable
+  await step(13, '.tt-opt[href$="money"]', async () => { await pg.tap('.tt-opt[href$="money"]'); await pg.waitForURL(/money/); await pg.waitForTimeout(900); }, 'tapping Expenses');
+  if (!/\/japan\/money/.test(pg.url())) bad('did not reach the money page');
+  await step(14, '.gpass');
+  await step(15, '#addfab', () => pg.tap('#addfab'), 'tapping Add expense');
+  // the form fills the screen, so the card sits over part of it; what you fill in and tap must stay reachable
   await pg.waitForFunction(() => /^16 of/.test(document.querySelector('.tour-card .tour-h small')?.textContent || ''), null, { timeout: 8000 }).catch(() => {}); await pg.waitForTimeout(450);
-  for (const s of ['#x-amt', '#x-title', '[data-save]', '#sheet [data-x]']) { const ok = await pg.evaluate((s) => { const el = document.querySelector(s); if (!el) return 'missing'; el.scrollIntoView({ block: 'nearest' }); const r = el.getBoundingClientRect(); const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return h && (h === el || el.contains(h)) ? 'ok' : 'covered by ' + (h ? h.className || h.tagName : 'nothing'); }, s); if (ok !== 'ok') bad(`step 16: ${s} ${ok}`); }
-  await step(16, null, async () => { await pg.fill('#x-amt', '3000'); await pg.fill('#x-title', 'Practice dinner'); await pg.tap('[data-save]'); }, 'adding the expense');
-  await step(17, '.xsw', async () => { await drag('.xsw .xrow', -150, 0); await pg.waitForTimeout(400); await pg.tap('.xdel'); await pg.waitForTimeout(400); await pg.tap('[data-cyes]'); }, 'swiping and deleting');
-  await step(18, '.proto-picker-item:nth-of-type(2)', () => pg.tap('.proto-picker-item:nth-of-type(2)'), 'tapping Bookings');
+  for (const s of ['#famt', '#ftitle', '#fsave', '[data-fcancel]']) { const ok = await pg.evaluate((s) => { const el = document.querySelector(s); if (!el) return 'missing'; const r = el.getBoundingClientRect(); const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return hit && (hit === el || el.contains(hit)) ? 'ok' : 'covered by ' + (hit && hit.className); }, s); if (ok !== 'ok') bad(`step 16: ${s} ${ok}`); }
+  await step(16, null, async () => { await pg.fill('#famt', '3000'); await pg.fill('#ftitle', 'Practice dinner'); await pg.tap('#fsave'); }, 'adding the expense');
+  // "Fix or delete": Next goes on to the tools page, already on Bookings, so the Bookings step passes by itself
+  await step(17, null);
+  await pg.waitForURL(/tools/, { timeout: 8000 }).catch(() => bad('step 17: did not go on to the tools page'));
+  console.log('  18 Bookings (opens on it)');
   await step(19, '.bk.todo [data-bkmark]', () => pg.tap('.bk.todo [data-bkmark]'), 'marking as booked');
   await step(20, '.proto-picker-item:nth-of-type(4)', () => pg.tap('.proto-picker-item:nth-of-type(4)'), 'tapping Food');
   await step(21, '.card:has(#sg-text)', async () => { await pg.fill('#sg-text', 'Practice idea'); await pg.tap('[data-sgpost]'); }, 'posting an idea');
