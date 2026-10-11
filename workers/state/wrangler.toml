@@ -1,0 +1,14 @@
+# The Durable Object that holds the shared trip state (checks, choices, expenses, …) once, in one place, so two phones
+# can never overwrite each other's change. A tiny Worker of its own, because a Pages project can only use a Durable
+# Object that lives in a Worker. Deploy it once with scripts/deploy-state.sh, then bind it to the Pages project (README).
+name = "japan2026-state"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[[durable_objects.bindings]]
+name = "TRIP_STATE"
+class_name = "TripState"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TripState"]

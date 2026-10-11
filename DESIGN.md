@@ -178,6 +178,9 @@ Paper and ink with three working accents, plus a set of meaning colours for pass
 **Body Font:** Zen Kaku Gothic, vendored as 'Zen Kaku' (with Hiragino Sans, Noto Sans JP, system-ui)
 **Japanese Font:** Zen Old Mincho (with Hiragino Mincho ProN, Yu Mincho)
 
+All three are self-hosted from `vendor/fonts/` (woff2, `font-display: swap`); Zen Old Mincho Bold is a subset of the
+characters the site uses, rebuilt with `scripts/font-subset.sh` when Japanese text is added.
+
 **Character:** A printed fare next to a clean Japanese gothic. The serif is used sparingly for numbers that matter; the gothic does all the work.
 
 ### Hierarchy

@@ -3,7 +3,7 @@
 // - Day assets (today + next 2 days): the page sends the list of photos; they're saved ahead of time in 'days'.
 // - Map tiles (MapTiler, OpenStreetMap fallback): saved as you view them; no bulk pre-downloading.
 // - /api: always network; the app keeps its own offline copy of shared state.
-const VERSION = 'japan2026-v17';
+const VERSION = 'japan2026-v19';
 const KEEP = [VERSION, 'tiles', 'days'];
 const SHELL = [
   './', './index.html', './money.html', './prototypes/tools.html', './js/store.js', './js/colors.js', './js/export-docx.js', './js/tour.js', './js/offline.js', './js/report.js',
@@ -11,6 +11,7 @@ const SHELL = [
   './vendor/leaflet/leaflet.js', './vendor/leaflet/leaflet.css', './vendor/maplibre/maplibre-gl.js', './vendor/maplibre/maplibre-gl.css', './vendor/maplibre/leaflet-maplibre-gl.js', './vendor/leaflet/images/marker-icon.png', './vendor/leaflet/images/marker-icon-2x.png', './vendor/leaflet/images/marker-shadow.png',
   './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png',
   './vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2', './vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2', './vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2',
+  './vendor/fonts/instrument-serif-latin-400-normal.woff2', './vendor/fonts/instrument-serif-latin-400-italic.woff2', './vendor/fonts/zen-old-mincho-700-subset.woff2',
 ];
 
 self.addEventListener('install', (e) => {
@@ -35,6 +36,7 @@ self.addEventListener('message', (e) => {
   })());
 });
 
+const bareUrl = (u) => u.origin + u.pathname;
 const fromCache = async (req) => {
   const url = new URL(req.url);
   return (await caches.match(req)) || (await caches.match(req, { ignoreSearch: true }))
@@ -71,7 +73,10 @@ self.addEventListener('fetch', (e) => {
     try {
       // Always revalidate, so a script stuck in the browser's HTTP cache can't outlive a deploy.
       const r = await fetch(e.request, { cache: 'no-cache' });
-      if (r.ok) cache.put(e.request, r.clone());
+      // One saved copy per file: the deploy stamp (?v=…) is dropped from the key, so each visit refreshes the same
+      // entry (the one the install step wrote) instead of adding a copy per deploy, and offline everything comes from
+      // the same deploy. The pages' own ?v= (the Settings tabs) and ?d= (the day) serve the same file, so they share it too.
+      if (r.ok) cache.put(bareUrl(url), r.clone());
       return r;
     } catch {
       return (await fromCache(e.request)) || Response.error();
