@@ -1,5 +1,5 @@
 # Every push: run the three test suites. A push to main: if they all pass, put it live (Cloudflare Pages).
-# Needs two repository secrets: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (README → "If the site breaks").
+# Deploying needs two repository secrets, CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (README); without them only the tests run.
 name: Test and deploy
 on:
   push:
@@ -39,8 +39,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - name: Check the secrets are set
-        run: '[ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || { echo "Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID under Settings → Secrets and variables → Actions"; exit 1; }'
+      # without the secrets this is skipped (sessions deploy by hand with scripts/deploy.sh)
+      - name: Are the Cloudflare secrets set?
+        id: keys
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::Not deployed: no Cloudflare secrets. Deploy by hand with scripts/deploy.sh."; fi
       # the group photo is kept out of git: take it from the live site
-      - run: mkdir -p hub/img && curl -fsS -A "Mozilla/5.0" -o hub/img/group.webp https://ourtrips.date/img/group.webp
-      - run: bash scripts/deploy.sh
+      - if: steps.keys.outputs.ok == 'true'
+        run: mkdir -p hub/img && curl -fsS -A "Mozilla/5.0" -o hub/img/group.webp https://ourtrips.date/img/group.webp
+      - if: steps.keys.outputs.ok == 'true'
+        run: bash scripts/deploy.sh

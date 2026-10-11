@@ -23,8 +23,8 @@ OSRM public routing for walking/driving legs, Cloudflare Pages for hosting, Clou
 
 Live at https://ourtrips.date/japan/ (`/` and `/Japan` redirect there; Pages project `japan2026`, KV namespace `japan2026-state` bound as `TRIP_KV` in `wrangler.toml`).
 The site root (`hub/`) is the trips page: it asks who you are once per phone and lists trips, Japan first. The Japan app is at `/japan/`; expenses, ticks, choices and edits are shared through KV (each expense is its own `ex:<id>` key). The group photo `hub/img/group.webp` is kept out of git; put it back in `hub/img/` before deploying from a fresh clone.
-**Publishing changes:** push to `main`. GitHub Actions (`.github/workflows/test-and-deploy.yml`) runs the three test
-suites on every push to any branch, and on `main` puts the site live only if all of them pass. Work on a branch, then
+**Publishing changes:** GitHub Actions (`.github/workflows/test-and-deploy.yml`) runs the three test suites on every
+push to any branch, and on `main` puts the site live only if all of them pass (once the GitHub secrets below are set). Work on a branch, then
 merge it into `main` when it's ready. (`scripts/deploy.sh` with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set
 still deploys by hand; it uploads only the public site files.)
 
@@ -41,7 +41,10 @@ Rolling back only swaps the code; expenses, ticks and photos are not touched. An
 
 The next push to `main` deploys over a rollback, so fix or revert the problem on `main` before pushing again.
 
-### GitHub secrets (once)
+### GitHub secrets (optional)
+
+Without them GitHub only runs the tests, and sessions deploy by hand with `scripts/deploy.sh` after the tests pass.
+With them, a push to `main` that passes the tests goes live by itself, and the *Roll back the site* action works.
 
 GitHub → this repo → *Settings* → *Secrets and variables* → *Actions* → **New repository secret**, twice:
 `CLOUDFLARE_ACCOUNT_ID` (Cloudflare dashboard → *Workers & Pages* → the Account ID on the right) and
