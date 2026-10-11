@@ -636,7 +636,7 @@ const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == nu
 const ME = ls.get('trips.me', null);
 // Money is just for the four of us. In the practice tour a guest tries it as Naf, on an empty list.
 const WHO = P[ME] ? ME : SANDBOX ? 'naf' : null;
-const S = { me:WHO || 'naf', view:ls.get('money.view', 'group'), cur:ls.get('money.cur', 'CAD'), mode:ls.get('money.mode', 'couple'), senders:{}, recv:{}, openRow:{}, showPays:false, showNews:false, legend:false, searchOpen:false, q:'', fperson:null, gday:null, cscroll:{}, mineDay:'all', mineCat:null, editRow:null, last:ls.get('money.last', { set:['naf','sara','mariam','m'], with:'card' }), draft:null,
+const S = { icWith:ls.get('money.icwith', 'card'), me:WHO || 'naf', view:ls.get('money.view', 'group'), cur:ls.get('money.cur', 'CAD'), mode:ls.get('money.mode', 'couple'), senders:{}, recv:{}, openRow:{}, showPays:false, showNews:false, legend:false, searchOpen:false, q:'', fperson:null, gday:null, cscroll:{}, mineDay:'all', mineCat:null, editRow:null, last:ls.get('money.last', { set:['naf','sara','mariam','m'], with:'card' }), draft:null,
   ex:[], pays:[], cash:[], ic:[], budgets:{}, usBudget:{}, log:[], seen:{}, setBy:{}, unmerged:{} };
 
 /* ───────── the money rules ───────── */
@@ -807,7 +807,7 @@ const shareOf = (x, ids) => ids.reduce((s, i) => s + (x.shares[i] || 0), 0);
 function cashLeft(who) {
   let v = 0;
   for (const c of S.cash) { if (c.who === who) v += c.yen; if (c.from === who) v -= c.yen; }
-  for (const t of S.ic) if (t.who === who) v -= t.yen; // topping up an IC card spends cash
+  for (const t of S.ic) if (t.who === who && t.with !== 'card') v -= t.yen; // a top-up paid in cash comes out of the wallet (by card: Apple Wallet Suica)
   for (const x of S.ex) if (x.payer === who && x.with === 'cash') v -= x.yen;
   for (const p of S.pays) if (p.cash) { if (p.from === who) v -= p.yen; if (p.to === who) v += p.yen; }
   return v;
@@ -1019,9 +1019,10 @@ function openForm(id, opts = {}) {
     F = { id:x.id, amt:x.orig ? String(x.orig.amt) : String(Math.abs(x.yen)), ccy, refund:!!x.refund, payer:x.payer, pickPayer:false, with:x.with, set:Object.keys(x.shares), fixed, owes:{ ...x.owes }, cat:x.cat, catTouched:true, title:x.title, day:x.day, quick:false, draft:false, by:x.by, nights:x.nights || 1, receipt:typeof x.receipt === 'string' ? x.receipt : null, rstamp:typeof x.receipt === 'number' ? x.receipt : null };
   } else if (S.draft && Date.now() - S.draft.t < 15 * 60e3) { F = { ...S.draft.f, quick:opts.quick, draft:true }; }
   else F = blankForm(opts.day || TODAY, opts.quick);
+  if (opts.kind && !x) F.kind = opts.kind;
   fpage.classList.add('on'); fpage.setAttribute('aria-hidden', 'false'); fbar.hidden = false; addfab.hidden = true; renderForm(); fpage.scrollTop = 0;
   if (x && typeof x.receipt === 'number') store.receiptUrl(x.id).then((u) => { if (u && F && F.id === x.id && !F.rmReceipt) { F.receipt = u; renderForm(); } });
-  if (!x && !opts.restore) setTimeout(() => { const a = document.getElementById('famt'); if (a) a.focus({ preventScroll:true }); }, 330);
+  if (!x && !opts.restore) setTimeout(() => { const a = document.getElementById(F && F.kind && F.kind !== 'ex' ? 'fmove' : 'famt'); if (a) a.focus({ preventScroll:true }); }, 330);
 }
 function closeForm(back) { fpage.classList.remove('on'); fpage.setAttribute('aria-hidden', 'true'); fbar.hidden = true; const q = F && F.quick; F = null; if (back && q) return backToTrip(); render(); }
 const fYen = () => Math.round((parseFloat(F.amt) || 0) * RATE[F.ccy]);
@@ -1087,7 +1088,7 @@ function renderMove() {
     <div class="fsec">${cash ? `<div class="seg cxseg">${[['got','Got cash'],['gave','Gave cash']].map(([k, l]) => `<button data-fcxdir="${k}" class="${dir === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="pickrow"><small>${dir === 'got' ? 'From' : 'To'}</small><div class="lineopts">${chips}</div></div>` : ''}
       <div class="amtin"><select disabled aria-hidden="true"><option>¥</option></select><input id="fmove" inputmode="numeric" enterkeyhint="done" placeholder="0" value="${F.mamt ? (+F.mamt).toLocaleString('en-GB') : ''}" aria-label="Amount"></div>
-      ${cash ? '' : '<p class="conv" style="padding:0 4px">Paid from cash</p>'}</div>
+      ${cash ? '' : `<div class="pickrow"><small>Paid with</small><div class="seg cxseg">${[['card','Card'],['cash','Cash']].map(([k, l]) => `<button data-ficwith="${k}" class="${(F.icwith || S.icWith) === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>`}</div>
     <div class="fsec"><div class="details"><button class="pill ${F.exp === 'day' ? 'on' : ''}" data-fexp="day" aria-expanded="${F.exp === 'day'}">${dayLabel} ▾</button></div>
       ${F.exp === 'day' ? `<div class="fstrip" id="fstrip">${DAYS.map((dd) => `<button data-fday="${dd.id}" class="${F.day === dd.id ? 'on' : ''}"><small>${dd.short}${dd.id === TODAY ? ' · today' : ''}</small><b>${dd.dd}</b></button>`).join('')}</div>` : ''}</div></div>`;
   fsave.textContent = cash ? (dir === 'got' ? 'Add cash' : 'Give cash') : 'Add top-up';
@@ -1097,7 +1098,7 @@ function renderMove() {
 function saveMove() {
   const v = +F.mamt || 0, me = S.me; if (!(v > 0)) return;
   let e, msg, lg = null;
-  if (F.kind === 'ic') { e = { id:uid(), who:me, yen:v, day:F.day }; S.ic.push(e); msg = `Topped up IC card ${fmtY(v)}`; }
+  if (F.kind === 'ic') { const w = F.icwith || S.icWith; S.icWith = w; ls.set('money.icwith', w); e = { id:uid(), who:me, yen:v, day:F.day, with:w }; S.ic.push(e); msg = `Topped up IC card ${fmtY(v)}${w === 'cash' ? ' from cash' : ''}`; }
   else {
     const dir = F.cdir || 'got', o = F.cwho || 'atm';
     e = o === 'atm' ? { id:uid(), who:me, yen:v, day:F.day } : dir === 'got' ? { id:uid(), who:me, from:o, yen:v, day:F.day, by:me, at:Date.now() } : { id:uid(), who:o, from:me, yen:v, day:F.day, by:me, at:Date.now() };
@@ -1172,6 +1173,7 @@ fpage.addEventListener('click', (e) => {
   const fk = t('[data-fkind]'); if (fk) { F.kind = fk.dataset.fkind; F.exp = null; renderForm(); const a = document.getElementById(F.kind === 'ex' ? 'famt' : 'fmove'); if (a) a.focus({ preventScroll:true }); return; }
   const cd = t('[data-fcxdir]'); if (cd) { F.cdir = cd.dataset.fcxdir; if (F.cdir === 'got') F.cwho = 'atm'; return renderForm(); }
   const cw = t('[data-fcxwho]'); if (cw) { F.cwho = cw.dataset.fcxwho; return renderForm(); }
+  const iw = t('[data-ficwith]'); if (iw) { F.icwith = iw.dataset.ficwith; return renderForm(); }
   if (t('[data-fblank]')) { S.draft = null; F = blankForm(F.day, F.quick); return renderForm(); }
   if (t('[data-fdel]')) return askDelete(F.id);
     if (t('[data-refund]')) { F.refund = !F.refund; return renderForm(); }
@@ -1321,8 +1323,8 @@ sheet.addEventListener('click', (e) => {
   const rc = t('[data-rcopy]'); if (rc) { const r = window.__tr[+rc.dataset.rcopy], msg = `Japan trip: ${fmtC(r.yen, 'CAD')} (${fmtY(r.yen)}) from ${P[r.from].name} to ${P[r.to].name}`;
     closeSheet(); try { navigator.clipboard.writeText(msg).then(() => toast('Copied: ' + msg), () => toast(msg)); } catch { toast(msg); } return; }
   if (t('[data-budok]')) { const v = +document.getElementById('budin').value.replace(/[^\d]/g, '') || 0; if (S.view === 'us') S.usBudget[P[S.me].couple] = v; else S.budgets[S.me] = v; closeSheet(); return render(); }
-  if (t('[data-gotcash]')) { S.cx = null; openSheet(cashSheet()); const ca = document.getElementById('cashamt'); if (ca) ca.focus(); return; }
-  if (t('[data-ictop]')) return openSheet(icSheet());
+  if (t('[data-gotcash]')) { closeSheet(); return openForm(null, { day:TODAY, kind:'cash' }); }
+  if (t('[data-ictop]')) { closeSheet(); return openForm(null, { day:TODAY, kind:'ic' }); }
 });
 function cashSheet() {
   const me = S.me, c = S.cx = S.cx || { dir:'got', other:'atm' }, others = IDS.filter((i) => i !== me);
@@ -1354,8 +1356,8 @@ app.addEventListener('click', (e) => {
   const gd = t('[data-gday]'); if (gd) return keep(() => { S.gday = S.gday === gd.dataset.gday ? null : gd.dataset.gday; });
   const md = t('[data-mday]'); if (md) return keep(() => { S.mineDay = S.mineDay === md.dataset.mday ? 'all' : md.dataset.mday; });
   const mc = t('[data-mcat]'); if (mc) return keep(() => { S.mineCat = S.mineCat === mc.dataset.mcat ? null : mc.dataset.mcat; });
-  if (t('[data-gotcash]')) { S.cx = null; openSheet(cashSheet()); const ca = document.getElementById('cashamt'); if (ca) ca.focus(); return; }
-  if (t('[data-ictop]')) return openSheet(icSheet());
+  if (t('[data-gotcash]')) { closeSheet(); return openForm(null, { day:TODAY, kind:'cash' }); }
+  if (t('[data-ictop]')) { closeSheet(); return openForm(null, { day:TODAY, kind:'ic' }); }
   const er = t('[data-editrow]'); if (er) return keep(() => { S.editRow = S.editRow === er.dataset.editrow ? null : er.dataset.editrow; });
   const rs = t('[data-rsend]') || t('[data-rrecv]'); if (rs) { const isR = !!rs.dataset.rrecv, [ks, who] = (isR ? rs.dataset.rrecv : rs.dataset.rsend).split(':'); return applyRoute(isR, ks.split(','), who); }
   const rc = t('[data-rcopy]'); if (rc) { const r = window.__tr[+rc.dataset.rcopy], msg = `Japan trip: ${fmtC(r.yen, 'CAD')} (${fmtY(r.yen)}) from ${P[r.from].name} to ${P[r.to].name}`; try { navigator.clipboard.writeText(msg).then(() => toast('Copied: ' + msg), () => toast(msg)); } catch { toast(msg); } return; }

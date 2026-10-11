@@ -155,6 +155,7 @@ function cleanMove(v) {
   if (!isP(v.who)) return null;
   out.who = v.who;
   if (v.kind === 'cash' && isP(v.from) && v.from !== v.who) out.from = v.from;
+  if (v.kind === 'ic' && (v.with === 'card' || v.with === 'cash')) out.with = v.with; // a top-up paid by card (Apple Wallet Suica) doesn't come out of the cash
   return out;
 }
 // A money setting: who sends or receives a payment (s:<key> / r:<key>), who set it (by:s:<key>), payments shown

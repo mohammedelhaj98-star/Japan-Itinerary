@@ -117,9 +117,16 @@ ok('nothing left to settle', !(await A.page.$('[data-pay]')));
 // cash given between the couples goes into settle up
 await N.page.evaluate(() => window.__tourEnv.store.refresh()); await N.page.waitForTimeout(600);
 await N.page.tap('[data-view="mine"]'); await N.page.waitForTimeout(300);
-await N.page.tap('.cash [data-gotcash]'); await N.page.waitForTimeout(300); await N.page.tap('[data-cxdir="gave"]'); await N.page.tap('[data-cxwho="m"]'); await N.page.fill('#cashamt', '5000'); await N.page.dispatchEvent('#cashamt', 'input'); await N.page.tap('[data-cashok]'); await N.page.waitForTimeout(900);
+await N.page.tap('.cash [data-gotcash]'); await N.page.waitForTimeout(400); await N.page.tap('[data-fcxdir="gave"]'); await N.page.tap('[data-fcxwho="m"]'); await N.page.fill('#fmove', '5000'); await N.page.dispatchEvent('#fmove', 'input'); await N.page.tap('#fsave'); await N.page.waitForTimeout(900);
 const cash = Object.values(exMap()).find((x) => x.kind === 'cash');
 ok('cash given is saved', cash && cash.from === 'naf' && cash.who === 'm' && cash.yen === 5000);
+// an IC top-up from the form: by card it doesn't come out of the cash
+await N.page.tap('.iccard [data-ictop]'); await N.page.waitForTimeout(400);
+ok('IC top-up defaults to paid by card', await N.page.$eval('[data-ficwith="card"]', (b) => b.classList.contains('on')));
+await N.page.fill('#fmove', '3000'); await N.page.dispatchEvent('#fmove', 'input'); await N.page.tap('#fsave'); await N.page.waitForTimeout(800);
+const top = Object.values(exMap()).find((x) => x.kind === 'ic');
+ok('IC top-up saved as paid by card', top && top.with === 'card' && top.yen === 3000);
+ok('card top-up leaves the cash alone, adds to the IC card', /−¥5,000/.test(await N.page.textContent('.cash')) && /¥3,000/.test(await N.page.textContent('.iccard')));
 await N.page.tap('[data-view="group"]'); await N.page.waitForTimeout(300);
 ok('settle up asks M&M to pay it back', /pays\s*Naf[\s\S]*¥5,000/.test(await N.page.textContent('.settle')));
 
