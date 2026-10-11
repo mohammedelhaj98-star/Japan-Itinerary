@@ -20,7 +20,7 @@
 //   POST /api/suggestions             { text, name, day, author, kind? }  (kind: food | shop | place)
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
-//   POST /api/log                     { errors:[…] }  problem reports from the phones (no PIN; a few a day at most)
+//   POST /api/log                     { errors:[…] }  problem reports from the phones (no PIN; a few a day at most; each carries v, the deploy it came from)
 //   GET  /api/log                     → the problem reports (with the PIN)
 //   GET  /api/backup                  → when the money was last backed up to Google Drive (with the PIN)
 //   POST /api/backup                  back the money up now (see lib/backup.js; it also runs after the first money change of each day)
@@ -57,10 +57,9 @@ async function readKey(kv, key, fallback) {
 }
 
 async function readState(kv) {
-  const [checks, choices, suggestions, custom, expenses, money, profiles, covers] = await Promise.all([
-    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv), readKey(kv, 'money', {}), readProfiles(kv), readKey(kv, 'covers', {}),
+  const [checks, choices, suggestions, custom, expenses, money, profiles, covers, updatedAt] = await Promise.all([
+    readKey(kv, 'checks', {}), readKey(kv, 'choices', {}), readKey(kv, 'suggestions', []), readKey(kv, 'custom', {}), readExpenses(kv), readKey(kv, 'money', {}), readProfiles(kv), readKey(kv, 'covers', {}), kv.get('updatedAt'),
   ]);
-  const updatedAt = await kv.get('updatedAt');
   return { checks, choices, suggestions, custom, expenses, money, profiles, covers, updatedAt: updatedAt || null };
 }
 
@@ -78,9 +77,10 @@ async function readMap(kv, key, prefix) {
 const readExpenses = (kv) => readMap(kv, 'expenses', 'ex:');
 const readProfiles = (kv) => readMap(kv, 'profiles', 'pf:');
 
+// The value and the version stamp go out together (KV has no ordering between keys anyway; the phones re-read the
+// state whenever the stamp differs from theirs, so a stamp seen a moment early just means one extra read).
 async function writeKey(kv, key, value) {
-  await kv.put(key, JSON.stringify(value));
-  await kv.put('updatedAt', new Date().toISOString());
+  await Promise.all([kv.put(key, JSON.stringify(value)), kv.put('updatedAt', new Date().toISOString())]);
 }
 
 const clean = (s, max) => String(s ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim().slice(0, max);
@@ -325,7 +325,7 @@ export async function onRequest(ctx) {
       const list = (await kv.get('log', 'json')) || [], now = Date.now();
       if (list.filter((e) => e.got > now - 864e5).length >= 50) return json({ ok: true, dropped: true });
       const errs = (Array.isArray(body.errors) ? body.errors : []).slice(0, 10).map((e) => e && typeof e === 'object' && {
-        msg: clean(e.msg, 300), stack: clean(e.stack, 600), page: clean(e.page, 80), who: isP(e.who) || e.who === 'guest' ? e.who : '', ua: clean(e.ua, 160), at: stamp(e.at) || now, got: now }).filter((e) => e && e.msg);
+        msg: clean(e.msg, 300), stack: clean(e.stack, 600), page: clean(e.page, 80), who: isP(e.who) || e.who === 'guest' ? e.who : '', ua: clean(e.ua, 160), v: clean(e.v, 20), at: stamp(e.at) || now, got: now }).filter((e) => e && e.msg);
       if (!errs.length) return json({ ok: true });
       await kv.put('log', JSON.stringify([...list, ...errs].slice(-200)));
       return json({ ok: true });

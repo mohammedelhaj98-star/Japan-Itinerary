@@ -1,4 +1,4 @@
-# Every push: run the three test suites. A push to main: if they all pass, put it live (Cloudflare Pages).
+# Every push: run the three test suites, side by side. A push to main: if they all pass, put it live (Cloudflare Pages).
 # Deploying needs two repository secrets, CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (README); without them only the tests run.
 name: Test and deploy
 on:
@@ -9,24 +9,31 @@ concurrency:
   cancel-in-progress: false
 jobs:
   test:
+    name: ${{ matrix.suite.name }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          - { name: 'App (e2e)', run: 'npm test', shots: tests/shots }
+          - { name: 'Practice tour', run: 'npm run test:tour', shots: tests/shots/tour }
+          - { name: 'Photos and money backups', run: 'npm run test:photos', shots: tests/shots/photos }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm install --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
-      - name: App (e2e)
-        run: npm test
-      - name: Practice tour
-        run: npm run test:tour
-      - name: Photos and money backups
-        run: npm run test:photos
+      - name: ${{ matrix.suite.name }}
+        run: ${{ matrix.suite.run }}
       - name: Screenshots, if something failed
         if: failure()
         uses: actions/upload-artifact@v4
-        with: { name: shots, path: tests/shots, retention-days: 7 }
+        with:
+          name: shots-${{ strategy.job-index }}
+          path: ${{ matrix.suite.shots }}
+          retention-days: 7
   deploy:
     needs: test
     if: github.ref == 'refs/heads/main'

@@ -234,8 +234,9 @@ export const store = {
     if (SANDBOX || GUEST) return false;
     try { await this.api('receipt', { id, photo }); return true; } catch (err) { if (err.pin) this._locked(); return false; }
   },
-  async receiptUrl(id) {
-    try { const res = await fetch('/api/receipt/' + encodeURIComponent(id), { headers: pinOf() ? { 'x-trip-pin': pinOf() } : undefined }); if (!res.ok) return ''; return URL.createObjectURL(await res.blob()); } catch { return ''; }
+  // v is the expense's receipt stamp: the photo is cached for a year, so a replaced receipt needs a new URL.
+  async receiptUrl(id, v) {
+    try { const res = await fetch('/api/receipt/' + encodeURIComponent(id) + (v ? '?v=' + encodeURIComponent(v) : ''), { headers: pinOf() ? { 'x-trip-pin': pinOf() } : undefined }); if (!res.ok) return ''; return URL.createObjectURL(await res.blob()); } catch { return ''; }
   },
 
   // Profiles: colour and photo per person. The photo itself is served by /api/photo/<id>?v=<photo stamp>.

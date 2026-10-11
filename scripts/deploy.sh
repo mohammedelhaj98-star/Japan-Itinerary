@@ -21,6 +21,8 @@ EOF
 # whatever _headers says, so each deploy needs new URLs for phones to pick up new code and data.
 V=$(date +%s)
 find dist/japan -name '*.html' -exec sed -i -E "s#(\.js)\?v=[0-9]+'#\1?v=$V'#g" {} +
+# The same stamp on <html data-v>, so a problem report (js/report.js) says which deploy it came from.
+find dist -name '*.html' -exec sed -i -E "0,/<html lang=\"en\">/s##<html lang=\"en\" data-v=\"$V\">#" {} +
 # Code and data must never come stale from the browser cache (Pages defaults JS to 4 hours). Photos can cache.
 cat > dist/_headers <<'EOF'
 /

@@ -149,7 +149,10 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.tap('#fsave'); await p.waitForTimeout(300); await p.tap('#fsave'); await p.waitForTimeout(1200);
   const saved = Object.entries(exMap()).find(([, x]) => x.title === 'Split ramen test');
   ok('split: saved with the expense', saved && saved[1].byItem && saved[1].byItem.lines.length === 3 && saved[1].byItem.lines[0].who.join() === 'naf' && saved[1].byItem.lines[2].n.sara === 2, saved && JSON.stringify(saved[1].byItem));
+  const rc = []; p.on('request', (r) => { if (/\/api\/receipt\//.test(r.url())) rc.push(new URL(r.url()).pathname + new URL(r.url()).search); });
   await p.tap(`[data-ex="${saved && saved[0]}"]`); await p.waitForTimeout(600);
+  // the photo is cached for a year, so the request carries the receipt's stamp: a replaced receipt gets a new URL
+  ok('the receipt photo is asked for under its stamp', rc.length === 1 && saved && rc[0] === `/api/receipt/${saved[0]}?v=${saved[1].receipt}`, rc.join() || 'no receipt request');
   ok('split: shown again when the expense is opened', /Split by item from the receipt/.test(await p.textContent('.byitem').catch(() => '')) && !(await p.$('.scanl')));
   await p.tap('[data-iopen]'); await p.waitForTimeout(300);
   const back = await p.$$eval('.irow .iwho', (els) => els.map((e) => e.textContent).join(' | '));
@@ -487,6 +490,9 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await pg.goto(B + '/japan/'); await pg.waitForTimeout(2000);
   await pg.evaluate(() => navigator.serviceWorker.ready); await pg.reload(); await pg.waitForTimeout(1000);
   const msg = await done; ok('photos for the next days saved', !!msg, msg && msg.text());
+  // one saved copy per page, script and data file, under its bare URL: not one per deploy stamp (?v=…)
+  const keys = await pg.evaluate(async () => { const n = (await caches.keys()).find((k) => /^japan2026-v/.test(k)); const c = await caches.open(n); return (await c.keys()).map((r) => new URL(r.url).pathname + new URL(r.url).search); });
+  ok('offline copy: one copy per file, none under a deploy stamp', keys.length > 10 && keys.includes('/japan/js/store.js') && keys.includes('/japan/') && !keys.some((k) => /\?/.test(k)), keys.filter((k) => /\?/.test(k)).slice(0, 4).join() || `${keys.length} files`);
   // Settings: the offline line, and saving the whole trip before a flight
   const offLine = () => pg.textContent('#off-line').catch(() => '');
   await pg.goto(B + '/japan/prototypes/tools.html?v=5'); await pg.waitForFunction(() => /saved|ready|Not/.test(document.getElementById('off-line')?.textContent || ''), null, { timeout: 10000 }).catch(() => {});

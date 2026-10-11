@@ -45,7 +45,7 @@ The next push to `main` deploys over a rollback, so fix or revert the problem on
 
 Any error on a phone is sent to the server once (`js/report.js` → `POST /api/log`, at most 50 a day). A session reads
 them with `curl -A "Mozilla/5.0" -H "x-trip-pin: <PIN>" https://ourtrips.date/api/log`: the message, the page, whose
-phone and when. Every morning at 07:17 Japan time, GitHub runs `tests/live-check.mjs` (`.github/workflows/site-check.yml`)
+phone, when, and which deploy it came from (`v`: the stamp `scripts/deploy.sh` puts on each page). Every morning at 07:17 Japan time, GitHub runs `tests/live-check.mjs` (`.github/workflows/site-check.yml`)
 against the live site: the pages load and show their content without errors, the storage answers, no problem reports in
 the last day, the money backup didn't fail. If anything is wrong the run fails and GitHub emails the owner.
 (Scheduled runs only happen from the repo's default branch, which must be `main`.)
