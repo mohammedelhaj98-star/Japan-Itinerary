@@ -126,6 +126,7 @@ function cleanExpense(v) {
   out.owes = owes;
   if (['cash', 'card', 'ic'].includes(v.with)) out.with = v.with;
   if (v.refund === true) out.refund = true;
+  if (v.taxfree === true) out.taxfree = true; // bought tax-free (免税) with a passport
   if (v.orig && CCYS.includes(v.orig.ccy) && num(v.orig.amt, -10000000, 10000000) != null) out.orig = { ccy: v.orig.ccy, amt: v.orig.amt };
   const nights = int(v.nights, 1, 30); if (nights > 1) out.nights = nights;
   if (isP(v.by)) out.by = v.by;
@@ -140,17 +141,18 @@ function cleanExpense(v) {
 // Llama 4 Scout read every receipt right in a comparison with Mistral Small 3.1, Gemma 3 and Llama 3.2 Vision
 const SCAN_MODELS = ['@cf/meta/llama-4-scout-17b-16e-instruct'];
 const SCAN_PROMPT = `This is a photo of a receipt from Japan. Read it and answer with JSON only, no other text:
-{"total": number, "cash_given": number or null, "change": number or null, "tax": number or null, "pretax": number or null, "shop": string, "shop_en": string, "date": "YYYY-MM-DD" or null, "type": one of "food","transport","tickets","shopping","hotel","other", "items": [string]}
+{"total": number, "cash_given": number or null, "change": number or null, "tax": number or null, "pretax": number or null, "shop": string, "shop_en": string, "date": "YYYY-MM-DD" or null, "type": one of "food","transport","tickets","shopping","hotel","other", "taxfree": boolean, "items": [string]}
 - total: the final amount paid in yen as a plain number. It is the line marked 合計, 合計金額, お会計, ご請求額, 現金計 or 金…円也. Never お預り/お預かり (cash handed over), お釣り/釣銭 (change), 小計 (subtotal) or a tax line.
 - cash_given: the cash handed over (お預り, お預かり, 現金 when it is followed by change), or null. change: the change given back (お釣り, 釣銭), or null.
 - tax: the consumption tax in yen (消費税, 内税, 外税, 内消費税等; add the 8% and 10% lines together), or null if none is printed.
 - pretax: the amount before consumption tax (税抜 / 小計 before tax), or null if not printed.
 - shop: the shop or restaurant name as printed; shop_en: the same name in English or romaji.
 - date: the date printed on the receipt. The receipts are from a trip to Japan in October 2026: a short year like 26年 or 26/10 means 2026.
+- taxfree: true if the receipt shows the purchase was tax-free (免税, 免税販売, Tax-free, Tax Free), otherwise false.
 - items: up to 5 item names in English, short.`;
 const num_ = { type: ['number', 'null'] };
 const SCAN_SCHEMA = { type: 'object', properties: { total: { type: 'number' }, cash_given: num_, change: num_, tax: num_, pretax: num_, shop: { type: 'string' }, shop_en: { type: 'string' }, date: { type: ['string', 'null'] },
-  type: { type: 'string', enum: ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'] }, items: { type: 'array', items: { type: 'string' } } }, required: ['total', 'cash_given', 'change', 'tax', 'pretax', 'shop', 'shop_en', 'date', 'type', 'items'] };
+  type: { type: 'string', enum: ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'] }, taxfree: { type: 'boolean' }, items: { type: 'array', items: { type: 'string' } } }, required: ['total', 'cash_given', 'change', 'tax', 'pretax', 'shop', 'shop_en', 'date', 'type', 'taxfree', 'items'] };
 async function scanReceipt(env, photo, model) {
   if (!env.AI) return { error: 'AI is not set up on this site' };
   const m = SCAN_MODELS.includes(model) ? model : SCAN_MODELS[0];
@@ -173,7 +175,7 @@ async function scanReceipt(env, photo, model) {
   if (!total || !pretax || pretax >= total || pretax < total * 0.85) pretax = null;
   const types = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'];
   return { model: m, total, pretax, shop: clean(data.shop, 60), shop_en: clean(data.shop_en, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(data.date || '') ? data.date : null,
-    type: types.includes(data.type) ? data.type : null, items: Array.isArray(data.items) ? data.items.slice(0, 5).map((x) => clean(x, 40)) : [] };
+    type: types.includes(data.type) ? data.type : null, taxfree: data.taxfree === true, items: Array.isArray(data.items) ? data.items.slice(0, 5).map((x) => clean(x, 40)) : [] };
 }
 
 // Money moving between people: a settle-up payment (pay), cash handed over or taken out (cash), an IC card top-up (ic).
