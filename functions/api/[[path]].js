@@ -137,31 +137,42 @@ function cleanExpense(v) {
   return out;
 }
 // Reading a receipt photo with Workers AI. The model is asked for JSON; whatever comes back is checked and trimmed.
-const SCAN_MODELS = ['@cf/meta/llama-4-scout-17b-16e-instruct', '@cf/mistralai/mistral-small-3.1-24b-instruct', '@cf/google/gemma-3-12b-it', '@cf/meta/llama-3.2-11b-vision-instruct'];
+// Llama 4 Scout read every receipt right in a comparison with Mistral Small 3.1, Gemma 3 and Llama 3.2 Vision
+const SCAN_MODELS = ['@cf/meta/llama-4-scout-17b-16e-instruct'];
 const SCAN_PROMPT = `This is a photo of a receipt from Japan. Read it and answer with JSON only, no other text:
-{"total": number, "shop": string, "shop_en": string, "date": "YYYY-MM-DD" or null, "type": one of "food","transport","tickets","shopping","hotel","other", "items": [string]}
+{"total": number, "cash_given": number or null, "change": number or null, "tax": number or null, "pretax": number or null, "shop": string, "shop_en": string, "date": "YYYY-MM-DD" or null, "type": one of "food","transport","tickets","shopping","hotel","other", "items": [string]}
 - total: the final amount paid in yen as a plain number. It is the line marked 合計, 合計金額, お会計, ご請求額, 現金計 or 金…円也. Never お預り/お預かり (cash handed over), お釣り/釣銭 (change), 小計 (subtotal) or a tax line.
+- cash_given: the cash handed over (お預り, お預かり, 現金 when it is followed by change), or null. change: the change given back (お釣り, 釣銭), or null.
+- tax: the consumption tax in yen (消費税, 内税, 外税, 内消費税等; add the 8% and 10% lines together), or null if none is printed.
+- pretax: the amount before consumption tax (税抜 / 小計 before tax), or null if not printed.
 - shop: the shop or restaurant name as printed; shop_en: the same name in English or romaji.
-- date: the date printed on the receipt.
+- date: the date printed on the receipt. The receipts are from a trip to Japan in October 2026: a short year like 26年 or 26/10 means 2026.
 - items: up to 5 item names in English, short.`;
+const num_ = { type: ['number', 'null'] };
+const SCAN_SCHEMA = { type: 'object', properties: { total: { type: 'number' }, cash_given: num_, change: num_, tax: num_, pretax: num_, shop: { type: 'string' }, shop_en: { type: 'string' }, date: { type: ['string', 'null'] },
+  type: { type: 'string', enum: ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'] }, items: { type: 'array', items: { type: 'string' } } }, required: ['total', 'cash_given', 'change', 'tax', 'pretax', 'shop', 'shop_en', 'date', 'type', 'items'] };
 async function scanReceipt(env, photo, model) {
   if (!env.AI) return { error: 'AI is not set up on this site' };
   const m = SCAN_MODELS.includes(model) ? model : SCAN_MODELS[0];
   let out;
-  if (m.includes('llama-3.2-11b-vision')) {
-    const bin = atob(photo.split(',')[1]); const bytes = new Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    try { await env.AI.run(m, { prompt: 'agree' }); } catch { /* the licence only needs agreeing once */ }
-    out = await env.AI.run(m, { image: bytes, prompt: SCAN_PROMPT, max_tokens: 500 });
-  } else {
-    out = await env.AI.run(m, { messages: [{ role: 'user', content: [{ type: 'text', text: SCAN_PROMPT }, { type: 'image_url', image_url: { url: photo } }] }], max_tokens: 500 });
-  }
+  const messages = [{ role: 'user', content: [{ type: 'text', text: SCAN_PROMPT }, { type: 'image_url', image_url: { url: photo } }] }];
+  // a strict JSON answer and no randomness: the same photo reads the same way every time
+  try { out = await env.AI.run(m, { messages, max_tokens: 500, temperature: 0, response_format: { type: 'json_schema', json_schema: SCAN_SCHEMA } }); }
+  catch { out = await env.AI.run(m, { messages, max_tokens: 500, temperature: 0 }); }
   const text = typeof out === 'string' ? out : out && (out.response ?? out.result ?? (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content));
   let data = text && typeof text === 'object' ? text : null;
   if (!data) { const j = String(text || '').match(/\{[\s\S]*\}/); try { data = j ? JSON.parse(j[0]) : null; } catch { data = null; } }
   if (!data) return { model: m, error: 'unreadable', raw: String(text || '').slice(0, 400) };
-  const total = Math.round(Number(String(data.total ?? '').replace(/[^\d.]/g, '')));
+  const yen = (v) => { const n = Math.round(Number(String(v ?? '').replace(/[^\d.]/g, ''))); return n > 0 && n < 10000000 ? n : null; };
+  let total = yen(data.total); const tax = yen(data.tax), given = yen(data.cash_given), change = Number(String(data.change ?? '').replace(/[^\d.]/g, ''));
+  // a cash receipt checks itself: what was paid is the cash handed over less the change. This catches the model
+  // picking お預り (the cash given) as the total.
+  if (given && Number.isFinite(change) && change > 0 && given - change > 0 && total !== given - change && (!total || total === given || total > given - change)) total = given - change;
+  // before tax: the total less the tax printed on it, or the model's own reading of 税抜, if it's sensible
+  let pretax = total && tax && tax < total * 0.2 ? total - tax : yen(data.pretax);
+  if (!total || !pretax || pretax >= total || pretax < total * 0.85) pretax = null;
   const types = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'];
-  return { model: m, total: total > 0 && total < 10000000 ? total : null, shop: clean(data.shop, 60), shop_en: clean(data.shop_en, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(data.date || '') ? data.date : null,
+  return { model: m, total, pretax, shop: clean(data.shop, 60), shop_en: clean(data.shop_en, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(data.date || '') ? data.date : null,
     type: types.includes(data.type) ? data.type : null, items: Array.isArray(data.items) ? data.items.slice(0, 5).map((x) => clean(x, 40)) : [] };
 }
 
@@ -250,13 +261,12 @@ export async function onRequest({ request, env }) {
     let body = {};
     try { body = await request.json(); } catch { return json({ error: 'invalid JSON' }, 400); }
 
-    // reading a receipt: the four of us, or the temporary test key while we try the models out
+    // reading a receipt (the four of us only)
     if (path === 'scan') {
-      const tester = env.SCAN_TEST_KEY && request.headers.get('x-scan-test') === String(env.SCAN_TEST_KEY);
-      if (!member && !tester) return json({ error: 'pin required', pin: true }, 403);
+      if (!member) return json({ error: 'pin required', pin: true }, 403);
       if (typeof body.photo !== 'string' || body.photo.length > MAX_RECEIPT * 2 || !/^data:image\/(jpeg|png|webp);base64,/.test(body.photo)) return json({ error: 'bad photo' }, 400);
       const t0 = Date.now();
-      try { return json({ ...(await scanReceipt(env, body.photo, tester ? body.model : null)), ms: Date.now() - t0 }); } catch (err) { return json({ error: String(err && err.message || err), ms: Date.now() - t0 }, 502); }
+      try { return json({ ...(await scanReceipt(env, body.photo)), ms: Date.now() - t0 }); } catch (err) { return json({ error: String(err && err.message || err), ms: Date.now() - t0 }, 502); }
     }
 
     if (path === 'unlock') return pin && String(body.pin ?? '') !== pin ? json({ error: 'wrong pin' }, 403) : json({ ok: true });

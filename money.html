@@ -551,6 +551,20 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 /* the form's tabs: an expense, cash, or an IC top-up */
 .kindtabs { display:flex; margin:10px 12px 0; } .kindtabs button { flex:1; min-height:40px; }
 
+/* scan a receipt: a camera button in the amount box */
+.amtin { position:relative; }
+.scanb { flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; width:52px; height:52px; margin-right:-6px; border-radius:14px; background:var(--fill); color:var(--ink); font-size:11px; font-weight:700; cursor:pointer; }
+.scanb svg { width:22px; height:22px; }
+.scanb.busy { color:var(--ink3); pointer-events:none; }
+.spin { width:18px; height:18px; border-radius:50%; border:2.5px solid var(--line); border-top-color:var(--ink); animation:spin 700ms linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.scanl { font-size:13.5px; color:var(--ink2); padding:0 4px; min-height:24px; display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+.scanl.err { color:var(--warn); }
+.scanl .linkb { min-height:32px; }
+.amtin.flash { animation:amtflash 1.4s var(--ease); }
+@keyframes amtflash { 0%, 30% { box-shadow:0 0 0 3px var(--blue); background:color-mix(in srgb, var(--blue) 7%, var(--card)); } 100% { box-shadow:0 0 0 1px var(--line); } }
+@media (prefers-reduced-motion:reduce) { .spin { animation-duration:2s; } .amtin.flash { animation:none; } }
+
 /* the real page: back to the trip, add an expense, sync status, and a note for guests */
 .app { padding-top:calc(52px + env(safe-area-inset-top,0px)); }
 .tback { position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); left:max(12px, calc(50% - 218px)); z-index:60; display:flex; align-items:center; gap:4px; height:36px; padding:0 14px 0 9px; border-radius:999px; background:rgba(252,250,246,.9); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:var(--ink); font-size:14px; font-weight:700; text-decoration:none; box-shadow:0 6px 18px -8px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,10,.08); }
@@ -1109,6 +1123,31 @@ function saveMove() {
   vibrate(); closeForm(); if (quick) { setTimeout(backToTrip, 350); return; }
   toast(msg, () => { S[list] = S[list].filter((q) => q !== e); if (lg) S.log = S.log.filter((q) => q !== lg); render(); });
 }
+/* ───────── scanning a receipt: the photo is read on the server (Workers AI) and fills in the form ───────── */
+const CAMERA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.6"/></svg>';
+let scanApi = async () => { throw new Error('offline'); }; // the real page sends it to /api/scan
+let shrinkPhoto = (file) => new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(file); });
+// after a scan: what was paid, with the before-tax amount one tap away
+function scanLine() {
+  const sc = F.scan; if (!sc || !sc.total) return F.scanErr ? `<p class="scanl err">${esc(F.scanErr)}</p>` : '';
+  const amt = +F.amt, onPre = sc.pretax && amt === sc.pretax;
+  return `<p class="scanl">Read ${fmtY(sc.total)} paid${sc.pretax ? ` · <button class="linkb" data-scanamt="${onPre ? sc.total : sc.pretax}">${onPre ? `Use paid ${fmtY(sc.total)}` : `Use before tax ${fmtY(sc.pretax)}`}</button>` : ''}</p>`;
+}
+async function scanReceipt(file) {
+  const id0 = F; F.scanning = true; F.scanErr = null; renderForm();
+  let photo; try { photo = await shrinkPhoto(file); } catch { F.scanning = false; F.scanErr = "That photo couldn't be opened."; return renderForm(); }
+  if (F !== id0) return; F.receipt = photo; F.rmReceipt = false;
+  let r = null; try { r = await scanApi(photo); } catch { r = null; }
+  if (F !== id0) return; F.scanning = false;
+  if (!r || !r.total) { F.scanErr = navigator.onLine === false ? 'No signal: the receipt is attached, type the amount.' : "Couldn't read the total: the receipt is attached, type the amount."; return renderForm(); }
+  F.ccy = 'JPY'; F.fixed = {}; F.amt = String(r.total); F.scan = { total:r.total, pretax:r.pretax || null };
+  if (!F.title.trim() && (r.shop_en || r.shop)) F.title = r.shop_en || r.shop;
+  if (r.type && CATS[r.type] && !F.catTouched) { F.cat = r.type; F.catGuess = true; }
+  const d = r.date && DAYS.find((x) => x.date === r.date); if (d) F.day = d.id;
+  renderForm();
+  const box = document.querySelector('#fpage .amtin'); if (box) { box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash'); }
+}
+
 function renderForm() {
   if (F.kind === 'cash' || F.kind === 'ic') return renderMove();
   const { x, left, total } = formExpense(), pre = presetOf();
@@ -1128,7 +1167,8 @@ function renderForm() {
   fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${F.id ? 'Edit expense' : 'New expense'}</b><button class="del" data-fdel style="${F.id ? '' : 'visibility:hidden'}">Delete</button></div>${F.id ? '' : kindTabs()}
     ${SANDBOX ? '<div class="draft"><span>Practice: type an amount (like 3000), check who paid, then tap Add expense. Nothing is saved.</span></div>' : ''}
     ${F.draft ? '<div class="draft"><span>Filled in from the expense that was undone.</span><button data-fblank>Start blank</button></div>' : ''}
-    <div class="fsec"><div class="amtin"><select id="fccy" aria-label="Currency">${['JPY','CAD','QAR','USD'].map((c) => `<option value="${c}" ${F.ccy === c ? 'selected' : ''}>${c === 'JPY' ? '¥' : c}</option>`).join('')}</select><input id="famt" inputmode="decimal" enterkeyhint="done" placeholder="0" value="${esc(F.amt)}" aria-label="Amount"></div>
+    <div class="fsec"><div class="amtin"><select id="fccy" aria-label="Currency">${['JPY','CAD','QAR','USD'].map((c) => `<option value="${c}" ${F.ccy === c ? 'selected' : ''}>${c === 'JPY' ? '¥' : c}</option>`).join('')}</select><input id="famt" inputmode="decimal" enterkeyhint="done" placeholder="0" value="${esc(F.amt)}" aria-label="Amount">${F.id ? '' : `<label class="scanb ${F.scanning ? 'busy' : ''}" for="fscan" aria-label="Scan a receipt">${F.scanning ? '<i class="spin"></i>' : CAMERA}<span>${F.scanning ? 'Reading' : 'Scan'}</span></label><input id="fscan" type="file" accept="image/*" capture="environment" hidden>`}</div>
+      ${scanLine()}
       <div class="subline"><span class="conv" id="fconv">${convText(total)}</span><button class="oweme" data-refund aria-pressed="${F.refund}"><span class="sw ${F.refund ? 'on' : ''}"></span>Refund</button></div>
       <input class="tin" id="ftitle" placeholder="What for, e.g. Ramen at Fuunji" value="${esc(F.title)}" autocomplete="off" enterkeyhint="done" aria-label="What for"><div class="sugg" id="fsugg">${suggHtml()}</div></div>
     <div class="fsec"><span class="flabel">Paid by</span><div class="lineopts"><button class="paidby" data-pickpayer aria-expanded="${F.pickPayer}">${av(F.payer)}${payer.name} ▾</button>
@@ -1164,6 +1204,7 @@ fpage.addEventListener('input', (e) => {
 fpage.addEventListener('change', (e) => {
   if (!F) return;
   if (e.target.dataset.wamt) { commitShare(e.target); liveForm(); }
+  if (e.target.id === 'fscan' && e.target.files[0]) { scanReceipt(e.target.files[0]); e.target.value = ''; return; }
   if (e.target.id === 'freceipt' && e.target.files[0]) { compressPhoto(e.target.files[0]).then((d) => { if (F) { F.receipt = d; F.rmReceipt = false; renderForm(); } }, (err) => toast(err.message)); }
 });
 fpage.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.dataset && (e.target.dataset.wamt || e.target.id === 'ftitle')) e.target.blur(); });
@@ -1173,6 +1214,7 @@ fpage.addEventListener('click', (e) => {
   const fk = t('[data-fkind]'); if (fk) { F.kind = fk.dataset.fkind; F.exp = null; renderForm(); const a = document.getElementById(F.kind === 'ex' ? 'famt' : 'fmove'); if (a) a.focus({ preventScroll:true }); return; }
   const cd = t('[data-fcxdir]'); if (cd) { F.cdir = cd.dataset.fcxdir; if (F.cdir === 'got') F.cwho = 'atm'; return renderForm(); }
   const cw = t('[data-fcxwho]'); if (cw) { F.cwho = cw.dataset.fcxwho; return renderForm(); }
+  const sa = t('[data-scanamt]'); if (sa) { F.amt = sa.dataset.scanamt; F.fixed = {}; return renderForm(); }
   const iw = t('[data-ficwith]'); if (iw) { F.icwith = iw.dataset.ficwith; return renderForm(); }
   if (t('[data-fblank]')) { S.draft = null; F = blankForm(F.day, F.quick); return renderForm(); }
   if (t('[data-fdel]')) return askDelete(F.id);
@@ -1454,6 +1496,8 @@ function compressPhoto(file) {
     img.onload = () => { const k = Math.min(1, 1200 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); ok(c.toDataURL('image/jpeg', 0.72)); };
     img.onerror = () => no(new Error("That photo couldn't be read")); img.src = u; });
 }
+shrinkPhoto = compressPhoto;
+scanApi = (photo) => store.api('scan', { photo });
 function uploadReceipt(id, data) {
   store.setReceipt(id, data).then((ok) => { if (ok || SANDBOX) return; const x = S.ex.find((e) => e.id === id); if (x) { delete x.receipt; render(); } toast("The receipt photo didn't upload. Try adding it again with signal."); });
 }

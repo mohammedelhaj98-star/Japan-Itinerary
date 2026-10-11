@@ -15,13 +15,15 @@ const KV = {
   async delete(k) { store.delete(k); meta.delete(k); },
   async list({ prefix = '' } = {}) { return { keys: [...store.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name, metadata: meta.get(name) })), list_complete: true }; },
 };
+// Workers AI stand-in for /api/scan: it "reads" a ramen receipt where the total was mistaken for the cash handed over
+const FAKE_AI = { run: async () => ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost:8790');
   if (u.pathname.startsWith('/api/')) {
     const chunks = []; for await (const c of req) chunks.push(c);
-    const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: { TRIP_KV: KV, TRIP_PIN: PIN } });
+    const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI } });
     res.writeHead(r.status, { 'content-type': 'application/json' }); return res.end(await r.text());
   }
   let p = decodeURIComponent(u.pathname); if (p === '/japan') { res.writeHead(301, { location: '/japan/' }); return res.end(); }
@@ -93,6 +95,15 @@ await A.page.screenshot({ path: SH + 'ex-mo.png', fullPage: true });
 ok('server stored one expense with each share', exN() === 1 && Object.values(exMap())[0].shares.m === 1100);
 const stOpen = await (await fetch(B + '/api/state')).json(), stPin = await (await fetch(B + '/api/state', { headers: { 'x-trip-pin': PIN } })).json();
 ok('expenses and money settings need the PIN to read', !Object.keys(stOpen.expenses).length && !Object.keys(stOpen.money).length && Object.keys(stPin.expenses).length === 1 && !!stOpen.checks);
+// scan a receipt: the total is checked against cash given − change, the shop and day fill in, before-tax is a tap away
+await N.page.tap('#addfab'); await N.page.waitForTimeout(400);
+await N.page.setInputFiles('#fscan', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForTimeout(1500);
+ok('scan fills in what was paid, the shop and the day', (await N.page.inputValue('#famt')) === '2380' && (await N.page.inputValue('#ftitle')) === 'Ichiran Dotonbori' && /Day 7/.test(await N.page.textContent('[data-fexp="day"]')), await N.page.inputValue('#famt'));
+ok('scan attaches the photo as the receipt', !!(await N.page.$('.rcpt img')));
+await N.page.tap('[data-scanamt]'); await N.page.waitForTimeout(200);
+ok('one tap swaps to the amount before tax', (await N.page.inputValue('#famt')) === '2164');
+await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
+ok('scanning needs the PIN', (await fetch(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ photo: 'data:image/jpeg;base64,AAAA' }) })).status === 403);
 // add for Naf + Sara, undo it; then delete the ramen and undo that
 await N.page.tap('#addfab'); await N.page.waitForTimeout(400);
 await N.page.fill('#famt', '2000'); await N.page.fill('#ftitle', 'Gift for NASA'); await N.page.tap('[data-preset="two"]'); await N.page.tap('#fsave'); await N.page.waitForTimeout(700);
