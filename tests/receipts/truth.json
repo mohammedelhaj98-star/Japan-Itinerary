@@ -1,0 +1,59 @@
+{
+ "konbini": {
+  "total": 1036,
+  "merchant": "7-Eleven",
+  "date": "2026-10-22",
+  "cat": "food",
+  "file": "photo_konbini.jpg"
+ },
+ "ramen": {
+  "total": 2380,
+  "merchant": "Ichiran",
+  "date": "2026-10-22",
+  "cat": "food",
+  "file": "photo_ramen.jpg"
+ },
+ "donki": {
+  "total": 8756,
+  "merchant": "Don Quijote",
+  "date": "2026-10-23",
+  "cat": "shopping",
+  "file": "photo_donki.jpg"
+ },
+ "taxi": {
+  "total": 3200,
+  "merchant": "MK Taxi",
+  "date": "2026-10-21",
+  "cat": "transport",
+  "file": "photo_taxi.jpg"
+ },
+ "ryoshusho": {
+  "total": 28600,
+  "merchant": "Sushi Yoshikawa",
+  "date": "2026-10-18",
+  "cat": "food",
+  "file": "photo_ryoshusho.jpg"
+ },
+ "super": {
+  "total": 4317,
+  "merchant": "Life Supermarket",
+  "date": "2026-10-27",
+  "cat": "food",
+  "file": "photo_super.jpg"
+ },
+ "hama": {
+  "total": 1617,
+  "merchant": "Hama Sushi",
+  "date": "2018-04-03",
+  "cat": "food",
+  "file": "real_hama.png"
+ },
+ "taxfree": {
+  "total": 28780,
+  "merchant": "Bic Camera",
+  "date": "2026-10-30",
+  "cat": "shopping",
+  "taxfree": true,
+  "file": "photo_taxfree.png"
+ }
+}
