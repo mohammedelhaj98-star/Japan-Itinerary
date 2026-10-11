@@ -509,6 +509,21 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('offline: money page opens with the expenses', /Fuunji ramen test/.test(await pg.textContent('.app').catch(() => '')) && /Offline/.test(await pg.textContent('.syncl').catch(() => '')));
   await ctx.close();
 }
+// problem reports: an error on a phone reaches the server once (the same one isn't sent again), and the health check counts it
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' }); const pg = await ctx.newPage();
+  await pg.addInitScript(() => { localStorage.setItem('trips.me', '"mariam"'); localStorage.setItem('trips.pin', '6666'); });
+  await pg.goto(B + '/japan/money'); await pg.waitForTimeout(1500);
+  await pg.evaluate(() => { setTimeout(() => { throw new Error('Test problem report'); }); setTimeout(() => { throw new Error('Test problem report'); }, 50); Promise.reject(new Error('Test rejected promise')); });
+  await pg.waitForTimeout(4500);
+  const log = (await (await fetch(B + '/api/log', { headers: { 'x-trip-pin': PIN } })).json()).log || [];
+  const mine = log.filter((e) => /Test (problem report|rejected promise)/.test(e.msg));
+  ok('problem reports reach the server, once each, with page and person', mine.length === 2 && mine.every((e) => e.page.startsWith('/japan/money') && e.who === 'mariam'), JSON.stringify(mine.map((e) => [e.msg, e.page, e.who])));
+  ok('problem reports need the PIN to read', (await fetch(B + '/api/log')).status === 403);
+  const h = await (await fetch(B + '/api/health')).json();
+  ok('health check counts the day\'s problems', h.ok && h.errors24h >= 2, JSON.stringify(h));
+  await ctx.close();
+}
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

@@ -20,6 +20,8 @@
 //   POST /api/suggestions             { text, name, day, author, kind? }  (kind: food | shop | place)
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
+//   POST /api/log                     { errors:[…] }  problem reports from the phones (no PIN; a few a day at most)
+//   GET  /api/log                     → the problem reports (with the PIN)
 //   GET  /api/backup                  → when the money was last backed up to Google Drive (with the PIN)
 //   POST /api/backup                  back the money up now (see lib/backup.js; it also runs after the first money change of each day)
 //   /api/photos/…                                          trip photos in Google Drive (see lib/photos.js)
@@ -268,7 +270,14 @@ export async function onRequest(ctx) {
     return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type, x-trip-pin, x-photo-token' } });
   }
 
-  if (path === 'health') return json({ ok: true, kv: !!kv });
+  // the daily site check reads this: no trip data, just whether anything went wrong
+  if (path === 'health') {
+    if (!kv) return json({ ok: true, kv: false });
+    const [log, bk] = await Promise.all([kv.get('log', 'json'), kv.get('backup', 'json')]);
+    const day = Date.now() - 864e5;
+    return json({ ok: true, kv: true, errors24h: (log || []).filter((e) => e.got > day).length,
+      backup: bk ? { at: bk.at || null, failing: !!(bk.error && bk.errAt > (bk.at || 0)) } : null });
+  }
   if (!kv) return json({ error: 'KV namespace TRIP_KV is not bound. See README.' }, 503);
   if (path === 'photos' || path.startsWith('photos/')) return handlePhotos({ request, env, url, path, kv });
 
@@ -287,6 +296,10 @@ export async function onRequest(ctx) {
     }
 
     const loadMoney = async () => ({ expenses: await readExpenses(kv), money: await readKey(kv, 'money', {}) });
+    if (path === 'log' && request.method === 'GET') {
+      if (!member) return json({ error: 'pin required', pin: true }, 403);
+      return json({ log: (await kv.get('log', 'json')) || [] });
+    }
     if (path === 'backup') {
       if (!member) return json({ error: 'pin required', pin: true }, 403);
       if (request.method === 'POST') await backupMoney(env, kv, loadMoney);
@@ -305,6 +318,17 @@ export async function onRequest(ctx) {
       if (typeof body.photo !== 'string' || body.photo.length > MAX_RECEIPT * 2 || !/^data:image\/(jpeg|png|webp);base64,/.test(body.photo)) return json({ error: 'bad photo' }, 400);
       const t0 = Date.now();
       try { return json({ ...(await scanReceipt(env, body.photo)), ms: Date.now() - t0 }); } catch (err) { return json({ error: String(err && err.message || err), ms: Date.now() - t0 }, 502); }
+    }
+
+    // problem reports: open (a guest's phone can break too), so kept small: 10 per request, 50 a day, the last 200
+    if (path === 'log') {
+      const list = (await kv.get('log', 'json')) || [], now = Date.now();
+      if (list.filter((e) => e.got > now - 864e5).length >= 50) return json({ ok: true, dropped: true });
+      const errs = (Array.isArray(body.errors) ? body.errors : []).slice(0, 10).map((e) => e && typeof e === 'object' && {
+        msg: clean(e.msg, 300), stack: clean(e.stack, 600), page: clean(e.page, 80), who: isP(e.who) || e.who === 'guest' ? e.who : '', ua: clean(e.ua, 160), at: stamp(e.at) || now, got: now }).filter((e) => e && e.msg);
+      if (!errs.length) return json({ ok: true });
+      await kv.put('log', JSON.stringify([...list, ...errs].slice(-200)));
+      return json({ ok: true });
     }
 
     if (path === 'unlock') return pin && String(body.pin ?? '') !== pin ? json({ error: 'wrong pin' }, 403) : json({ ok: true });
