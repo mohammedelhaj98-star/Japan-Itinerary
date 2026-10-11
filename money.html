@@ -126,6 +126,15 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .parts .sep { justify-self:start; min-height:32px; }
 .settle-f { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-height:46px; padding:0 16px; border-top:1px solid var(--line); font-size:13.5px; color:var(--ink2); text-align:left; }
 .even { padding:16px; text-align:center; font-size:14.5px; color:var(--ink2); }
+.even .evtick { display:inline-grid; place-items:center; width:22px; height:22px; margin:-3px 6px 0 0; vertical-align:middle; border-radius:50%; background:#e3f4e8; color:var(--ok-ink); }
+.even .evtick svg { width:15px; height:15px; }
+/* the moment the couples come out square: the line rises in and its tick lands */
+.even.sq-in { animation:reveal 260ms var(--ease) both var(--sqt, 0ms); }
+.even.sq-in .evtick { animation:sqtick 420ms cubic-bezier(.2,1.3,.4,1) both calc(80ms + var(--sqt, 0ms)); }
+@keyframes sqtick { from { opacity:0; transform:scale(.4) rotate(-20deg); } }
+/* a list opened by a tap unfolds from what it hangs under; a re-draw for anything else leaves it still */
+.unfold { animation:unfold 240ms var(--ease) both; }
+@keyframes unfold { from { opacity:0; transform:translate3d(0,-10px,0); } }
 
 /* filters + expense lists */
 .searchrow { display:flex; align-items:center; gap:8px; margin:0 12px 8px; }
@@ -875,7 +884,7 @@ function settleCard() {
   const pays = cross.length || loans.length ? `<button class="settle-f" data-showpays aria-expanded="${!!S.showPays}"><span>${[made.length ? `${pl(made.length, 'payment')} · ${fmtY(cross.reduce((s, p) => s + (p.netted ? -p.yen : p.yen), 0))}` : '', loans.length ? `Cash given · ${fmtY(loans.reduce((s, c) => s + c.yen, 0))}` : ''].filter(Boolean).join(' · ')}</span><span class="chev">›</span></button>
     ${S.showPays ? loans.map((c) => `<button class="xrow" data-loan="${c.id}"><span class="ic" style="--c:#6b4226">${CASH_ICON}</span><span class="m"><b>${P[c.from].name} gave ${P[c.who].name} cash</b><small>${DAY[c.day].short}</small></span><span class="r"><b>${fmtY(c.yen)}</b></span></button>`).join('') : ''}
     ${S.showPays ? cross.map((p) => `<button class="xrow" data-payedit="${p.id}"><span class="ic" style="--c:#2f9e57">${TICK}</span><span class="m"><b>${P[p.from].name} paid ${P[p.to].name}</b><small>${p.netted ? 'netted, no money moved · ' : ''}${DAY[p.day].short} · ${p.cash ? 'cash' : 'transfer'} · ${esc(p.ccyAmt)}</small></span><span class="r"><b>${fmtY(p.yen)}</b></span></button>`).join('') : ''}` : '';
-  return `<div class="card settle">${rows.length ? rows.map((t, i) => trRow(t, i)).join('') : '<p class="even">The two couples are square.</p>'}${pays}</div>`;
+  return `<div class="card settle">${rows.length ? rows.map((t, i) => trRow(t, i)).join('') : `<p class="even"><span class="evtick" aria-hidden="true">${TICK}</span>The two couples are square.</p>`}${pays}</div>`;
 }
 // inside one couple: one line, with what it's made of underneath
 function betweenCard(cpl) {
@@ -946,6 +955,7 @@ function render() {
   commit();
   if (!WHO) { app.innerHTML = `<div class="nomoney"><h1>Money</h1><p>The expenses are just for the four of us. Pick your name on the trips page to see them.</p><a class="pill" href="/?next=japan">Go to the trips page</a></div>`; addfab.hidden = true; return; }
   people(); app.innerHTML = renderExpenses() + `<p class="syncl">${syncLine()}</p>`; addfab.hidden = !!F;
+  countUp(); squareIn();
   document.querySelectorAll('.dscroll').forEach((el) => {
     const k = el.dataset.chart, t = el.querySelector('.today');
     // opening a page: today is always in view, as the right-most bar once the trip is past its first week
@@ -954,6 +964,47 @@ function render() {
   });
 }
 const keepTop = () => { const y = scrollY; render(); scrollTo(0, y); };
+// the big spend figures tick from what they showed to the new amount when it changes (an expense lands, one is
+// deleted, another phone adds one); the first time a figure is drawn it just shows
+const RM = matchMedia('(prefers-reduced-motion: reduce)');
+const unfold = (els) => { if (!RM.matches) [...els].slice(0, 8).forEach((el, i) => { el.style.animationDelay = `${i * 25}ms`; el.classList.add('unfold'); }); };
+// a settle-up row that has just been paid slides out and closes up before the card is redrawn; if that leaves
+// nobody owing anybody, the "square" line comes in with its tick
+// the chevron on a toggle is redrawn with the card, so it turns here rather than snapping
+const turnChev = (el, open) => { if (el && !RM.matches) el.animate([{ transform: `rotate(${open ? 0 : 90}deg)` }, { transform: `rotate(${open ? 90 : 0}deg)` }], { duration: 200, easing: 'cubic-bezier(.23,1,.32,1)' }); };
+let sqAt = 0;
+// the save that follows redraws the card again, so the square line carries on from where its animation got to
+function squareIn() { const t = performance.now() - sqAt, ev = sqAt && t < 600 && document.querySelector('.settle .even'); if (ev) { ev.style.setProperty('--sqt', `${-t}ms`); ev.classList.add('sq-in'); } }
+function settleAway(row) {
+  const done = () => {
+    const was = !!document.querySelector('.settle .even'), y = scrollY;
+    if (!was && !RM.matches) sqAt = performance.now();
+    render(); scrollTo(0, y); if (!document.querySelector('.settle .even')) sqAt = 0;
+  };
+  if (!row || !row.isConnected || RM.matches) return done();
+  const h = row.offsetHeight, ease = 'cubic-bezier(.23,1,.32,1)';
+  row.style.overflow = 'hidden'; row.style.pointerEvents = 'none';
+  row.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(28px)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
+  const a = row.animate([{ height: h + 'px' }, { height: '0px', paddingTop: '0px', paddingBottom: '0px' }], { duration: 200, delay: 140, easing: ease, fill: 'forwards' });
+  a.finished.then(done, done);
+}
+const shownFig = {}, figRaf = {};
+function countUp() {
+  document.querySelectorAll('[data-count]').forEach((el) => {
+    const k = el.dataset.count, to = +el.dataset.v, from = shownFig[k];
+    shownFig[k] = to; cancelAnimationFrame(figRaf[k]);
+    if (from == null || from === to || RM.matches) return;
+    // the serif's figures aren't all one width: hold the box at the wider of the two amounts so what follows stays put
+    el.style.display = 'inline-block'; const wTo = el.offsetWidth; el.textContent = fmtY(from); el.style.minWidth = Math.max(wTo, el.offsetWidth) + 'px';
+    const t0 = performance.now(), d = 420;
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - p, 3), v = Math.round(from + (to - from) * e);
+      el.textContent = fmtY(v); shownFig[k] = p < 1 ? v : to;
+      if (p < 1) figRaf[k] = requestAnimationFrame(tick); else el.style.minWidth = '';
+    };
+    figRaf[k] = requestAnimationFrame(tick);
+  });
+}
 const fmtK = (v) => (v >= 1000 ? `¥${(v / 1000).toFixed(v >= 100000 ? 0 : 1).replace(/\.0$/, '')}k` : fmtY(v));
 // the day chart, swiped sideways; tap a day to filter the list below
 function dayChart(id, byDay, byDayCat, sel, attr) {
@@ -985,7 +1036,7 @@ function renderExpenses() {
   const gpass = `<div class="gpass ticket">
     <div class="gp-top"><span>Group spend</span>${news.length ? `<button class="gp-news hit" data-shownews aria-expanded="${!!S.showNews}"><i class="dot"></i>${news.length} new</button>` : ''}</div>
     <span class="seal" aria-hidden="true"><span>Day<b>${DAY[TODAY].n}</b>of 17</span></span>
-    <div class="gp-big">${fmtY(total)}<em>${fmtC(total)}</em></div>
+    <div class="gp-big"><span data-count="group" data-v="${total}">${fmtY(total)}</span><em>${fmtC(total)}</em></div>
     ${dayChart('group', byDay, byDayCat, S.gday, 'gday')}
     <button class="gp-cats" data-legend aria-expanded="${!!S.legend}" aria-label="Spend by type">${cats.slice(0, S.legend ? 9 : 3).map(([k, v]) => `<span style="--c:${CATS[k][1]}"><i></i>${CATS[k][0]} <b>${Math.round(v / total * 100)}%</b>${S.legend ? ` <em class="lg-y">${fmtY(v)}</em>` : ''}</span>`).join('')}${!S.legend && cats.length > 3 ? `<span><b>+${cats.length - 3}</b></span>` : ''}</button>
   </div>`;
@@ -1054,7 +1105,7 @@ function renderMine(ids, kind) {
   const hero = `<div class="hero ticket" style="--c:${color};--c2:${us ? P[pb].c : color}">
     <span class="seal" aria-label="Today ${fmtY(today)}"><span>Today<b>${fmtK(today)}</b></span></span>
     <div class="hero-top"><span>${us ? `${COUPLE[cpl].ids.map((i) => P[i].name).join(' + ')} have spent` : `${who} has spent`}</span></div>
-    <div class="hero-big">${fmtY(spent)}${budget ? `<em>of ${fmtY(budget)}</em>` : ''}</div>
+    <div class="hero-big"><span data-count="${kind}:${ids.join()}" data-v="${spent}">${fmtY(spent)}</span>${budget ? `<em>of ${fmtY(budget)}</em>` : ''}</div>
     ${budget ? `<div class="hero-track" role="img" aria-label="${Math.round(pct)}% of the budget"><i style="width:${pct}%"></i><b style="left:${mark}%" title="Where on-pace spending would be"></b></div>` : ''}
     <div class="hero-foot"><span>${budget ? (left < 0 ? `Over by ${fmtY(-left)}` : (started ? `${fmtY(left)} left · ${fmtY(left / daysLeft)}/day · ${spent > should ? 'over pace' : 'on pace'}` : `${fmtY(left)} left · ${fmtY(left / n)}/day`)) : fmtC(spent)}</span><button class="hero-btn" data-budget>${budget ? 'Budget' : 'Set a budget'}</button></div>
     ${split ? `<div class="hsplit">${split.map(([i, v]) => `<i style="--c:${P[i].c};flex:${Math.max(v, 1)}"></i>`).join('')}</div><div class="hsplit-l">${split.map(([i, v]) => `<span><i style="--c:${P[i].c}"></i>${P[i].name} ${fmtY(v)}</span>`).join('')}</div>` : ''}
@@ -1069,7 +1120,7 @@ function renderMine(ids, kind) {
   const forOther = paid.reduce((s, x) => s + shareOf(x, COUPLE[otherC].ids), 0);
   const forPartner = us ? 0 : paid.reduce((s, x) => s + (x.shares[P[me].partner] || 0), 0);
   const payments = `<p class="sec">${COUPLE[cpl].name} settle up ${modeSeg()}</p>
-    <div class="card settle">${mineRows.length ? mineRows.map(([t, i]) => trRow(t, i)).join('') : `<p class="even">Nothing for ${who} to pay or collect.</p>`}
+    <div class="card settle">${mineRows.length ? mineRows.map(([t, i]) => trRow(t, i)).join('') : `<p class="even"><span class="evtick" aria-hidden="true">${TICK}</span>Nothing for ${who} to pay or collect.</p>`}
       <p class="paidfor">${who} paid ${fmtY(forOther)} for ${COUPLE[otherC].name}${us ? '' : ` · ${fmtY(forPartner)} for ${P[P[me].partner].name}`}</p></div>
     ${us ? `<p class="sec">Between ${COUPLE[cpl].name}</p>${betweenCard(cpl)}` : ''}`;
 
@@ -1552,7 +1603,7 @@ sheet.addEventListener('click', (e) => {
   if (t('[data-paycash]')) { PAY.cash = !PAY.cash; const b = t('[data-paycash]'); b.firstElementChild.classList.toggle('on', PAY.cash); b.setAttribute('aria-pressed', PAY.cash); return; }
   if (t('[data-payok]')) { const yen = +PAY.amt || 0; if (yen > 0) {
     const made = recordPay(PAY, yen / PAY.yen, PAY.cash);
-    closeSheet(); render(); toast(`Marked ${P[PAY.from].name} → ${P[PAY.to].name} ${fmtY(yen)} paid`, () => { S.pays = S.pays.filter((q) => !made.includes(q.id)); render(); }); } return; }
+    closeSheet(); settleAway(PAY.el); toast(`Marked ${P[PAY.from].name} → ${P[PAY.to].name} ${fmtY(yen)} paid`, () => { S.pays = S.pays.filter((q) => !made.includes(q.id)); render(); }); } return; }
   if (t('[data-dupok]')) { closeSheet(); if (F) { F.dupOk = true; fsave.click(); } return; }
   if (t('[data-icok]')) { const v = +document.getElementById('icamt').value.replace(/[^\d]/g, '') || 0; if (v > 0) { S.ic.push({ id:uid(), who:S.me, yen:v, day:TODAY }); closeSheet(); render(); toast(`Topped up IC card ${fmtY(v)}`); } return; }
   const pok = t('[data-payeditok]'); if (pok) { const p = S.pays.find((q) => q.id === pok.dataset.payeditok), v = +document.getElementById('peamt').value.replace(/[^\d]/g, '') || 0; if (p && v > 0) { const f = v / p.yen, sc = (o) => o && Object.fromEntries(Object.entries(o).map(([k, x]) => [k, x * f])); Object.assign(p, { yen:v, alloc:sc(p.alloc), credit:sc(p.credit), ...(p.flows ? { flows:p.flows.map(([d, c, x]) => [d, c, x * f]) } : {}), ccyAmt:fmtC(v) }); closeSheet(); render(); toast(`Payment changed to ${fmtY(v)}`); } return; }
@@ -1633,9 +1684,9 @@ app.addEventListener('click', (e) => {
   const m = t('[data-mode]'); if (m) { S.mode = m.dataset.mode; ls.set('money.mode', S.mode); return render(); }
   const keep = (fn) => { const y = scrollY; fn(); render(); scrollTo(0, y); };
   const um = t('[data-unmerge]'); if (um) return keep(() => { const k = um.dataset.unmerge; S.unmerged[k] = !S.unmerged[k]; S.openRow[k] = false; });
-  const orow = t('[data-openrow]'); if (orow) return keep(() => { S.openRow[orow.dataset.openrow] = !S.openRow[orow.dataset.openrow]; });
-  if (t('[data-showpays]')) return keep(() => { S.showPays = !S.showPays; });
-  if (t('[data-shownews]')) return keep(() => { S.showNews = !S.showNews; });
+  const orow = t('[data-openrow]'); if (orow) { const k = orow.dataset.openrow; keep(() => { S.openRow[k] = !S.openRow[k]; }); if (S.openRow[k]) unfold(document.querySelectorAll(`.tr[data-mkey="${CSS.escape(k)}"] .parts`)); return; }
+  if (t('[data-showpays]')) { keep(() => { S.showPays = !S.showPays; }); if (S.showPays) unfold(document.querySelectorAll('.settle .xrow')); turnChev(document.querySelector('[data-showpays] .chev'), S.showPays); return; }
+  if (t('[data-shownews]')) { keep(() => { S.showNews = !S.showNews; }); if (S.showNews) unfold(document.querySelectorAll('.gpass + .drop')); return; }
   if (t('[data-seen]')) return keep(() => { S.seen[S.me] = Date.now(); S.showNews = false; });
   if (t('[data-legend]')) return keep(() => { S.legend = !S.legend; });
   if (t('[data-searchopen]')) { keep(() => { S.searchOpen = true; }); const q = document.getElementById('gq'); if (q) q.focus(); return; }
@@ -1650,8 +1701,8 @@ app.addEventListener('click', (e) => {
   const rs = t('[data-rsend]') || t('[data-rrecv]'); if (rs) { const isR = !!rs.dataset.rrecv, [ks, who] = (isR ? rs.dataset.rrecv : rs.dataset.rsend).split(':'); return applyRoute(isR, ks.split(','), who); }
   const rc = t('[data-rcopy]'); if (rc) { const r = window.__tr[+rc.dataset.rcopy], msg = `Japan trip: ${fmtC(r.yen, 'CAD')} (${fmtY(r.yen)}) from ${P[r.from].name} to ${P[r.to].name}`; try { navigator.clipboard.writeText(msg).then(() => toast('Copied: ' + msg), () => toast(msg)); } catch { toast(msg); } return; }
   if (t('[data-payin]')) return openPay(window.__trIn);
-  const clr = t('[data-clearrow]'); if (clr) { const row = window.__tr[+clr.dataset.clearrow], made = recordPay(row, 1, false); return keep(() => toast('Cleared: they cancel out', () => { S.pays = S.pays.filter((q) => !made.includes(q.id)); render(); })); }
-  const pay = t('[data-pay]'); if (pay) return openPay(window.__tr[+pay.dataset.pay]);
+  const clr = t('[data-clearrow]'); if (clr) { const row = window.__tr[+clr.dataset.clearrow], made = recordPay(row, 1, false); toast('Cleared: they cancel out', () => { S.pays = S.pays.filter((q) => !made.includes(q.id)); render(); }); return settleAway(clr.closest('.tr')); }
+  const pay = t('[data-pay]'); if (pay) { openPay(window.__tr[+pay.dataset.pay]); PAY.el = pay.closest('.tr'); return; }
   const lo = t('[data-loan]'); if (lo) { const c = S.cash.find((q) => q.id === lo.dataset.loan); if (!c) return;
     const settled = S.pays.some((p) => p.at > (c.at || 0) && (P[p.from].couple === P[c.from].couple || P[p.to].couple === P[c.from].couple));
     return openSheet(`<h3>${P[c.from].name} gave ${P[c.who].name} ${fmtY(c.yen)} cash<small>${DAY[c.day].short}${c.by ? ` · logged by ${P[c.by].name}` : ''}</small></h3>${settled ? `<p class="warn">Payments have been made since. Removing this changes what's left to settle.</p>` : ''}<div class="row"><button class="d" data-loandel="${c.id}">Remove</button><button data-x>Keep</button></div>`); }

@@ -69,8 +69,10 @@ body.guest [data-stamp], body.guest [data-edit], body.guest [data-addend], body.
 body.guest [data-choice] { pointer-events:none; }
 .top { position:fixed; top:var(--top); left:10px; right:10px; z-index:600; display:flex; gap:8px; justify-content:center; max-width:460px; margin:0 auto; }
 /* changes made with no signal, still waiting to reach the other phones */
-.unsynced { position:fixed; top:calc(var(--top) + 56px); left:50%; transform:translateX(-50%); z-index:600; display:none; font-size:12px; font-weight:600; color:#7a5a00; background:#fff6dd; border-radius:12px; padding:4px 10px; box-shadow:0 1px 4px rgba(0,0,0,.12); pointer-events:none; white-space:nowrap; }
-.unsynced.on { display:block; }
+.unsynced { position:fixed; top:calc(var(--top) + 56px); left:50%; transform:translate3d(-50%,-6px,0) scale(.96); opacity:0; visibility:hidden; transition:opacity 160ms ease, transform 240ms var(--ease), background-color 200ms ease, color 200ms ease, visibility 0s linear 240ms; z-index:880; /* above the day dial drawer's top edge */ font-size:12px; font-weight:600; color:#7a5a00; background:#fff6dd; border-radius:12px; padding:4px 10px; box-shadow:0 1px 4px rgba(0,0,0,.12); pointer-events:none; white-space:nowrap; }
+/* waits 600ms before showing, so a change that reaches the server straight away never flashes it */
+.unsynced.on { opacity:1; visibility:visible; transform:translate3d(-50%,0,0); transition-delay:600ms; }
+.unsynced.ok { opacity:1; visibility:visible; transform:translate3d(-50%,0,0); transition-delay:0s; background:#e3f4e8; color:#1f7a45; }
 .tb { height:48px; min-width:48px; border-radius:24px; display:grid; place-items:center; }
 .tb:disabled { opacity:.35; }
 .dayp { flex:1 1 0; width:0; min-width:0; overflow:hidden; max-width:250px; padding:6px 16px; text-align:center; line-height:1.15; display:block; }
@@ -116,6 +118,11 @@ body.mapmax .mapmax-hint { display:block; }
 .fadein > * { animation:rise 520ms var(--ease) both; }
 .fadein > *:nth-child(2) { animation-delay:40ms; } .fadein > *:nth-child(3) { animation-delay:80ms; } .fadein > *:nth-child(4) { animation-delay:120ms; } .fadein > *:nth-child(n+5) { animation-delay:160ms; }
 @keyframes rise { from { opacity:0; transform:translateY(14px); } }
+/* stepping to another day: the day comes in from the side you went, short, since it happens many times a day */
+.dayin > * { animation:dayin 300ms var(--ease) both; }
+.dayin > *:nth-child(3) { animation-delay:30ms; } .dayin > *:nth-child(n+4) { animation-delay:60ms; }
+.dayin.back { --dx:-22px; }
+@keyframes dayin { from { opacity:0; transform:translate3d(var(--dx, 22px),0,0); } }
 .hd { padding:0 20px; }
 .hd-r { display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .eb { font-size:13px; color:var(--ink3); font-weight:500; }
@@ -200,9 +207,8 @@ body.mapmax .mapmax-hint { display:block; }
 .dc-t { font-family:var(--serif); font-size:42px; line-height:.9; letter-spacing:-.02em; }
 .dc-t small { font-family:var(--sans); font-size:13px; letter-spacing:0; margin-left:3px; color:var(--ink3); }
 .dc-n { font-size:14.5px; font-weight:700; margin:4px auto 0; max-width:17ch; line-height:1.25; min-height:1.25em; transition:opacity 140ms, filter 140ms; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.dc-n
 /* ── wallet of passes ── */
-.stack { position:relative; margin:18px 12px 0; }
+.stack { position:relative; } /* the passes are placed inside it; full width, as they have shown since the day panel moved */
 .pass { position:absolute; left:0; right:0; top:0; border-radius:22px; overflow:hidden; color:#fff; background:linear-gradient(165deg, color-mix(in srgb, var(--c) 82%, #fff) 0, var(--c) 36%, color-mix(in srgb, var(--c) 82%, #000) 100%); box-shadow:0 -1px 0 rgba(255,255,255,.2) inset, 0 -8px 22px -12px rgba(0,0,0,.45); will-change:transform; transform-origin:50% 0; }
 .band { height:64px; display:flex; align-items:center; gap:12px; padding:0 10px 0 16px; cursor:pointer; }
 .pn { font-family:var(--serif); font-style:italic; font-size:30px; line-height:1; width:32px; opacity:.92; flex:none; }
@@ -438,6 +444,7 @@ body.mapmax .mapmax-hint { display:block; }
 
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation-duration:1ms !important; animation-iteration-count:1 !important; transition-duration:120ms !important; transition-delay:0ms !important; }
+  .unsynced.on { transition-delay:600ms !important; } /* not motion: it keeps a change that syncs at once from flashing the note */
 }
 @media (prefers-reduced-transparency:reduce) {
   .glass, .sheet, .kit { background:#fff; -webkit-backdrop-filter:none; backdrop-filter:none; }
@@ -637,7 +644,7 @@ const qs = new URLSearchParams(location.search);
 const todayJST = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const tripDay = DAYS.find((d) => d.date === todayJST);
 const ui = SANDBOX ? { dayId: 'd07', who: 'all', sel: null } : { dayId: qs.get('d') || (tripDay ? tripDay.id : DAYS[0].id), who: ls.get('japan2026.whoMix', 'all'), sel: null };
-let day, events, asides, stops, map, layers = [], pinEls = {}, dialApi = null, stackApi = null;
+let day, events, asides, stops, map, layers = [], pinEls = {}, dialApi = null, stackApi = null, shownDay = null;
 const nowMin = () => { const t = new Date(Date.now() + 9 * 3600e3); return t.getUTCHours() * 60 + t.getUTCMinutes(); };
 
 const CUSTOM = () => store.state.custom || {};
@@ -700,13 +707,15 @@ const toName = (i) => { for (let j = i + 1; j < events.length; j++) if (events[j
 /* ═══ render: top chrome ═══ */
 // A couple's own days: M&M's plan starts on Oct 21, so their view skips the days before.
 const hasEvents = (d, who = ui.who) => who === 'all' || dayItems(d, { who }).some((x) => x.type === 'event');
-function renderTop() {
+function renderTop(enter) {
   const i = DAYS.indexOf(day);
   document.getElementById('prev').innerHTML = I.chevL; document.getElementById('next').innerHTML = I.chevR;
   document.getElementById('prev').disabled = !DAYS.slice(0, i).some((d) => hasEvents(d)); document.getElementById('next').disabled = !DAYS.slice(i + 1).some((d) => hasEvents(d));
   const dt = new Date(day.date + 'T00:00:00');
   document.getElementById('dayp-s').textContent = `Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
   document.getElementById('dayp-b').textContent = day.title;
+  // the day bar's title slides the same way as the day below it
+  if (!RM && (enter === 'fwd' || enter === 'back')) { const dx = enter === 'fwd' ? 12 : -12; ['dayp-s', 'dayp-b'].forEach((id, k) => document.getElementById(id).animate([{ opacity: 0, transform: `translateX(${dx}px)` }, { opacity: 1, transform: 'none' }], { duration: 260, delay: k * 20, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' })); }
 }
 
 /* ═══ render: sheet ═══ */
@@ -737,7 +746,7 @@ function passHTML(e, i) {
   return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}<div class="hanko" aria-hidden="true">済</div></article>`;
 }
 
-function renderSheet() {
+function renderSheet(enter) {
   const sh = document.getElementById('sheet');
   const dt = new Date(day.date + 'T00:00:00');
   const h0 = hotel(); const ref = stops[0] ? stops[0].e.place : h0;
@@ -750,7 +759,7 @@ function renderSheet() {
   }).join('');
   const know = (KNOW[day.city] || []).map(([t, x]) => `<div class="card"><small>${esc(day.city)}</small><h3>${esc(t)}</h3><p>${withFx(x)}</p></div>`).join('');
   const hpi = PLACES[h0.name] || {};
-  sh.innerHTML = `<div class="fadein"><div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
+  sh.innerHTML = `<div class="${enter === 'rise' ? 'fadein' : enter ? 'dayin ' + enter : ''}"><div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
     <div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button></div>
     <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
@@ -1153,13 +1162,19 @@ setp.addEventListener('click', (e) => {
 function renderDay({ keepScroll, keepSel, selId } = {}) {
   const prevSel = selId || (keepSel ? ui.sel : null);
   { const d0 = DAYS.find((d) => d.id === ui.dayId) || DAYS[0]; if (!hasEvents(d0)) { const i = DAYS.indexOf(d0); const to = DAYS.slice(i + 1).find((d) => hasEvents(d)) || DAYS.slice(0, i).reverse().find((d) => hasEvents(d)); if (to) ui.dayId = to.id; } }
-  prepare(); renderTop(); renderSheet(); renderMap();
-  if (prevSel && events.some((e) => e.id === prevSel)) { ui.sel = prevSel; stackApi.layout(true); syncPins(); dialApi.focus(prevSel, true); const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url); return; }
+  prepare();
+  // only a new day animates in: a filter, a choice or another phone's change re-draws the same day in place
+  const enter = shownDay == null ? 'rise' : shownDay === day.id ? '' : DAYS.indexOf(day) > DAYS.findIndex((d) => d.id === shownDay) ? 'fwd' : 'back';
+  shownDay = day.id;
+  renderTop(enter); renderSheet(enter); renderMap();
+  // redrawn in place: the open stop stays put too, rather than fading its details in again
+  const still = () => { if (!enter) document.querySelectorAll('.pass.open .body').forEach((b) => b.getAnimations().forEach((a) => a.finish())); };
+  if (prevSel && events.some((e) => e.id === prevSel)) { ui.sel = prevSel; stackApi.layout(true); syncPins(); dialApi.focus(prevSel, true); still(); const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url); return; }
   const nx = nextEv(); const first = isToday() ? (nowEv() || nx) : nx;
   ui.sel = null; const target = (first || events[0] || {}).id;
   if (target) { ui.sel = target; stackApi.layout(true); syncPins(); const s = span(events.find((e) => e.id === target)); dialApi.initAt ? dialApi.initAt(tripDay && tripDay.id === day.id ? nowMin() : (s ? s[0] : 0)) : null; if (!(tripDay && tripDay.id === day.id)) setTimeout(() => dialApi.focus(target), 0); }
   if (!keepScroll) window.scrollTo(0, 0);
-  const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url);
+  still(); const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url);
 }
 function go(delta) { let i = DAYS.indexOf(day) + delta; while (i >= 0 && i < DAYS.length && !hasEvents(DAYS[i])) i += delta; if (i < 0 || i >= DAYS.length) return; ui.dayId = DAYS[i].id; renderDay(); }
 document.getElementById('prev').addEventListener('click', () => go(-1));
@@ -1311,7 +1326,15 @@ document.getElementById('quickex').addEventListener('click', (e) => { e.currentT
 // The PIN was refused (it changed, or this phone lost it): enter it again on the trips page, then come straight back.
 store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) location.replace('/?next=japan'); });
 { const el = document.getElementById('unsynced');
-  store.subscribe(() => { const n = store.pending(); el.textContent = n ? `${n} change${n === 1 ? '' : 's'} not synced yet` : ''; el.classList.toggle('on', !!n); }); }
+  // once changes that waited (no signal) reach the other phones, the note turns green for a moment, then goes
+  let since = 0, okT = 0;
+  store.subscribe(() => {
+    const n = store.pending();
+    if (n) { if (!since) since = Date.now(); clearTimeout(okT); el.classList.remove('ok'); el.textContent = `${n} change${n === 1 ? '' : 's'} not synced yet`; el.classList.add('on'); return; }
+    if (!since) return;
+    const shown = Date.now() - since > 600; since = 0; el.classList.remove('on');
+    if (shown) { el.textContent = 'All changes synced'; el.classList.add('ok'); okT = setTimeout(() => el.classList.remove('ok'), 1600); }
+  }); }
 // Guests look but don't touch: no stamping, editing, adding stops or making choices (the practice tour still lets them try).
 if (GUEST && !SANDBOX) {
   document.body.classList.add('guest');
