@@ -128,17 +128,25 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
   await browser.close();
 
   // stamp frames onto finished-video time and encode at 60 fps
-  const startTs = frames.find((t) => t >= t0) ?? frames[0];
-  let list = ''; const kept = frames.map((t, i) => [t, i]).filter(([t]) => t >= startTs - 0.2);
-  kept.forEach(([t, i], k) => { const next = k + 1 < kept.length ? kept[k + 1][0] : t0 + tEnd * slow; list += `file 'frames/${String(i).padStart(6, '0')}.jpg'\nduration ${Math.max((next - t) / slow, 0.001).toFixed(5)}\n`; });
-  // the browser only sends a frame when the screen changes, and ffmpeg's concat ignores the last entry's duration,
-  // so a still ending would be cut short: repeat the last frame so its hold is kept, and trim to the exact length
+  // video time 0 is t0, the moment the tap log starts: begin on the screen as it was then (the last frame sent before
+  // t0, since a still screen sends nothing new), so the picture never runs ahead of the logged taps
+  let s0 = 0; frames.forEach((t, i) => { if (t <= t0) s0 = i; });
+  let list = ''; const kept = frames.map((t, i) => [Math.max(t, t0), i]).slice(s0);
+  kept.forEach(([t, i], k) => {
+    const last = k + 1 === kept.length, next = last ? t0 + tEnd * slow : kept[k + 1][0], f = `file 'frames/${String(i).padStart(6, '0')}.jpg'\n`;
+    let d = Math.max((next - t) / slow, 0.001);
+    // the browser only sends a frame when the screen changes, and ffmpeg's concat drops the time of the last entry,
+    // so a still ending would be cut short: spell the final hold out as many short entries of the same frame
+    if (last) while (d > 0.05) { list += `${f}duration 0.05000\n`; d -= 0.05; }
+    list += `${f}duration ${d.toFixed(5)}\n`;
+  });
+  // and repeat the very last frame once more (the usual concat workaround), then trim to the exact length
   if (kept.length) list += `file 'frames/${String(kept.at(-1)[1]).padStart(6, '0')}.jpg'
 `;
   fs.writeFileSync(work + '/frames.txt', list);
   execFileSync(ffmpegBin(REPO), ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-r', '60', '-fps_mode', 'cfr', '-t', tEnd.toFixed(3), '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'clip.mp4')], { cwd: work });
   const meta = { name, chapter: chapterMeta, duration: tEnd, viewport, scale, events, errors, frames: kept.length, fpsCaptured: kept.length / tEnd };
   fs.writeFileSync(dir + '/timeline.json', JSON.stringify(meta, null, 2));
-  fs.rmSync(work, { recursive: true, force: true });
+  if (process.env.KEEP_REC) console.log('kept raw frames in', work); else fs.rmSync(work, { recursive: true, force: true });
   return meta;
 }

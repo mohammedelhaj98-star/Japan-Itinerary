@@ -2,6 +2,8 @@ import { Composition, staticFile } from 'remotion';
 import { Chapter, INTRO, OUTRO } from './Chapter.jsx';
 import { Tutorial, plan } from './Tutorial.jsx';
 import { HomeScreen, HOME_SECS } from './HomeScreen.jsx';
+import { Feature } from './Feature.jsx';
+import { SCENES, planFeature } from './featurePlan.js';
 import { Reel, TRICKS, MONTAGE, OPEN as REEL_OPEN, CLOSE as REEL_CLOSE, PLAY_AT, trimOf } from './Reel.jsx';
 import { CHAPTERS, MUST_KNOW, withMeta } from './chapters.js';
 import { FPS, W, H } from './theme.js';
@@ -31,6 +33,15 @@ const reelMeta = async ({ props }) => {
   return { fps, durationInFrames: Math.ceil(total * fps) + 2, props: { ...props, items, montage } };
 };
 
+// the 4-feature video, timed to Mo's voiceover (public/audio/vo.json, made by vo.mjs)
+const featureMeta = async ({ props }) => {
+  const fps = props.fps || FPS;
+  const vo = await fetch(staticFile('audio/vo.json')).then((r) => r.json());
+  const tls = Object.fromEntries(await Promise.all(SCENES.map(async (sc) => [sc.key, await fetch(staticFile(`clips/${sc.key}/timeline.json`)).then((r) => r.json())])));
+  const plan = planFeature(vo, tls);
+  return { fps, durationInFrames: Math.ceil(plan.total * fps), props: { ...props, plan } };
+};
+
 const LOOKS = { ch11: ['rail', 'paper', 'camera'] }; // the other two looks are kept for chapter 11 only, for comparison
 export const Root = () => (
   <>
@@ -38,6 +49,7 @@ export const Root = () => (
       defaultProps={{ segments: null, sub: '21 short answers in 4 parts. Skip to the one you need.' }} calculateMetadata={tutorialMeta(null, true)} />
     <Composition id="must-know" component={Tutorial} fps={FPS} width={W} height={H} durationInFrames={60}
       defaultProps={{ segments: null, title: 'The trip site in 2 minutes', sub: 'The six things everyone needs.' }} calculateMetadata={tutorialMeta(MUST_KNOW, false)} />
+    <Composition id="feature" component={Feature} fps={FPS} width={W} height={H} durationInFrames={60} defaultProps={{ plan: null, music: 'audio/music.wav' }} calculateMetadata={featureMeta} />
     <Composition id="tricks" component={Reel} fps={FPS} width={W} height={H} durationInFrames={60} defaultProps={{ items: null, montage: null }} calculateMetadata={reelMeta} />
     <Composition id="ch21-home" component={HomeScreen} fps={FPS} width={W} height={H} durationInFrames={Math.round(HOME_SECS * FPS)}
       calculateMetadata={async ({ props }) => ({ fps: props.fps || FPS, durationInFrames: Math.round(HOME_SECS * (props.fps || FPS)) })} />

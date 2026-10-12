@@ -45,6 +45,7 @@ async function makeUploads(pg) {
 // so a still closing screen would cut the closing hold short. A 2px, near-invisible dot that moves every frame keeps frames coming.
 
 let files = [];
+export const uploads = () => files; // the sample photos prepare() made, for scripts built on this one (f4-photos)
 export default {
   name: 'ch21-photos-settings',
   path: '/japan/photos',
