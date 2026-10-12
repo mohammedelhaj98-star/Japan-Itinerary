@@ -3,7 +3,7 @@
 How-to videos for the Japan 2026 site, made from the real app. Nothing here is deployed (`scripts/deploy.sh` copies
 only the site files).
 
-1. **Record** a chapter: `node video/capture/run.mjs ch11` (from the repo root, after `npm install` there).
+1. **Record** a chapter: `node video/capture/run.mjs ch11` (from the repo root, after `npm install` in `video/`; it brings its own Playwright).
    It builds the site, serves it with the real API on an in-memory store seeded with sample spending
    (`capture/seed.mjs`), opens it on a pretend iPhone in practice mode, and taps through the chapter script
    (`capture/ch11.mjs`). The page runs 5× slower while frames are grabbed, then the clip is put back to normal

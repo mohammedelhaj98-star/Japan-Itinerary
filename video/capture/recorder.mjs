@@ -16,8 +16,11 @@ function ffmpegBin(REPO) {
 }
 
 export async function record(REPO, { name, url, out, slow = 5, viewport = { width: 390, height: 844 }, scale = 3, time, me = 'm', who = 'all', practice = true, tourStep = 0, sandboxState = null, script, prepare, meta: chapterMeta = null, init = null }) {
-  const require = createRequire(REPO + '/package.json');
-  const { chromium } = require('playwright');
+  // Playwright comes from video/ (its own dependency) or, failing that, the repo root, so either install works
+  const load = (base) => { try { return createRequire(base + '/package.json')('playwright'); } catch { return null; } };
+  const pw = load(REPO + '/video') || load(REPO);
+  if (!pw) throw new Error('Playwright is missing: run npm install in video/ (or in the repo root)');
+  const { chromium } = pw;
   const executablePath = process.env.CHROMIUM || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
   const browser = await chromium.launch({ executablePath, args: ['--no-sandbox', '--hide-scrollbars', '--font-render-hinting=none'] });
   const ctx = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: scale, serviceWorkers: 'block', locale: 'en-CA', timezoneId: 'Asia/Tokyo' });
