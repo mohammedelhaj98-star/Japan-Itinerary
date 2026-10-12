@@ -1,8 +1,8 @@
-// node track.mjs public/audio/track-raw.wav  → public/audio/track.wav + track.json
+// node track.mjs public/audio/track-raw.wav  → public/audio/track.wav + track.json (+ tick.wav, whoosh.wav via sfx.mjs)
 // Prepares a bought music track for the 4-feature video: evens its loudness out to sit under the voice like the
 // stand-in does, and finds its tempo and where its beats fall (from the rhythm of its loudness), so the video can
 // start it on a bar line and land its natural ending on the last word.
-import fs from 'fs'; import path from 'path'; import { execFileSync } from 'child_process'; import { fileURLToPath } from 'url';
+import fs from 'fs'; import path from 'path'; import { execFileSync } from 'child_process'; import { fileURLToPath } from 'url'; import { makeSfx } from './sfx.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url)), OUT = path.join(HERE, 'public/audio');
 const FF = process.env.FFMPEG || ['compositor-win32-x64-msvc/ffmpeg.exe', 'compositor-linux-x64-gnu/ffmpeg', 'compositor-darwin-arm64/ffmpeg'].map((p) => path.join(HERE, 'node_modules/@remotion', p)).find((p) => fs.existsSync(p)) || 'ffmpeg';
 const src = process.argv[2] || path.join(OUT, 'track-raw.wav');
@@ -31,4 +31,5 @@ const down = bar.indexOf(Math.max(...bar));
 const ends = n / SR; let last = frames - 1; while (last > 0 && env[last] < Math.log(1e-6 + HOP * 1e-6)) last--;
 const info = { bpm: +best.bpm.toFixed(2), beat: +beat.toFixed(5), firstDownbeat: +(phase.off + down * beat).toFixed(4), duration: +ends.toFixed(3), soundEnds: +((last * HOP) / SR).toFixed(3) };
 fs.writeFileSync(path.join(OUT, 'track.json'), JSON.stringify(info, null, 2));
-console.log(info);
+makeSfx(); // the tick and whoosh the video also needs
+console.log(info, '+ tick.wav, whoosh.wav');

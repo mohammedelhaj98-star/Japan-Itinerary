@@ -111,7 +111,9 @@ function Rail(P) {
   const PW = 560, top = 330, left = W - PW - 56, s = PW / VIEW.w;
   const phoneX = clampI(g, rise, rise + 0.9, W + 40, left, Easing.bezier(0.16, 1, 0.3, 1));
   const playing = g >= rise;
-  const stepsList = T.captions.filter((c) => c.step);
+  // one station per step number: a step can span several taps (two items, two keys), and each tap repeats its
+  // caption, so keep the first caption of each step and number the stations by step, as the arrow does
+  const stepsList = T.captions.filter((c, i, all) => c.step && all.findIndex((x) => x.step === c.step) === i);
   const holdEnd = T.captions.filter((c) => !c.step).slice(-1)[0];
   const tEnd = holdEnd && holdEnd.t > (stepsList.at(-1)?.t ?? 0) ? holdEnd.t : null; // the result caption after the last step
   const railTop = 380, gap = 205, railX = 92, labelW = left - railX - 96;
@@ -127,7 +129,7 @@ function Rail(P) {
   const arrived = tEnd != null ? sm(T0, tEnd, 0.4) : sm(g, outro, 0.4);
   // the arrow: from the lit station to the lit button
   const sp = playing && g < outro ? spotAt(T, tc) : null;
-  const stationY = (n) => railTop + (n - 1) * gap;
+  const stationY = (n) => railTop + Math.max(0, stepsList.findIndex((c) => c.step === n)) * gap; // a step's station, by its place on the line
   let arrow = null;
   if (sp && sp.step) {
     const sy = sp.prevStep ? stationY(sp.prevStep) + (stationY(sp.step) - stationY(sp.prevStep)) * sp.glide : stationY(sp.step);
@@ -155,10 +157,10 @@ function Rail(P) {
       <div style={{ position: 'absolute', left: railX - 5, top: railTop, width: 10, height: gap * stepsList.length * intro, borderRadius: 5, background: 'rgba(255,255,255,.14)' }} />
       <div style={{ position: 'absolute', left: railX - 5, top: railTop, width: 10, borderRadius: 5, background: `linear-gradient(${C.red}, #ff6a4d)`, height: fill * gap, boxShadow: '0 0 18px rgba(226,59,46,.45)' }} />
       {stepsList.map((c, i) => {
-        const n = i + 1, a = 0.5 + i * 0.12;
+        const n = c.step, a = 0.5 + i * 0.12;
         const lit = sm(T0, startOf(i), 0.35) * (1 - sm(T0, endOf(i), 0.35)) * (1 - sm(g, outro, 0.3));
         const done = sm(T0, endOf(i), 0.3);
-        const y = stationY(n);
+        const y = railTop + i * gap;
         const bg = interpolateColors(lit, [0, 1], [done > 0.5 ? '#ffffff' : '#121210', C.red]);
         return (
           <div key={i} style={{ position: 'absolute', left: railX - 34, top: y - 34, display: 'flex', gap: 26, width: labelW + 94, opacity: clampI(g, a, a + 0.3, 0, 1), transform: `translateX(${clampI(g, a, a + 0.45, -16, 0)}px)` }}>

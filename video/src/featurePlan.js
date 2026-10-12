@@ -75,7 +75,7 @@ export function planWithTrack(vo, tls, track, { endPad = 0.25 } = {}) {
 }
 
 // the music's volume at time t: full between lines, tucked under the voice, faded in and out at the ends
-export function musicVolume(plan, t, { base = 0.7, under = 0.17, ramp = 0.18 } = {}) {
+export function musicVolume(plan, t, { base = 0.36, under = 0.075, ramp = 0.18 } = {}) {
   let duck = 0;
   for (const [a, b] of plan.speech) {
     if (t > a - ramp && t < b + ramp * 1.5) duck = Math.max(duck, Math.min(1, (t - (a - ramp)) / ramp, (b + ramp * 1.5 - t) / (ramp * 1.5)));
