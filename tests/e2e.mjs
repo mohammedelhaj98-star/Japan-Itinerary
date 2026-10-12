@@ -195,6 +195,22 @@ const second = await openPass(A.page); const pile1 = await pileOrder(A.page);
 ok('next opens the top of the pile', second === pile0[0], `${first} → ${second}`);
 ok('left pass goes to bottom of the pile', pile1[pile1.length - 1] === first, pile1.slice(-2).join(','));
 ok('pile now starts at the stop after', pile1[0] === pile0[1], pile1[0]);
+// stops before the open one fade under "Earlier in the day"; opening one of them from the pile brings it back to full strength
+const fadeState = () => A.page.evaluate(() => ({ open: getComputedStyle(document.querySelector('.pass.open')).opacity, past: [...document.querySelectorAll('.pass.past')].map((e) => e.dataset.id), label: document.getElementById('pastlbl').classList.contains('on') }));
+const fs1 = await fadeState();
+ok('the stop just left fades as earlier in the day', fs1.past.includes(first) && fs1.label && fs1.open === '1', JSON.stringify(fs1));
+await A.page.evaluate((id) => document.querySelector(`.pass[data-id="${id}"] [data-pick]`).click(), first); await A.page.waitForTimeout(1200);
+const fs2 = await fadeState();
+ok('an earlier stop opened from the pile is not faded', (await openPass(A.page)) === first && fs2.open === '1' && !fs2.past.includes(first) && !fs2.label, JSON.stringify(fs2));
+// a stamped stop stays faded, open or not; un-stamping it brings it back
+const opac = (id) => A.page.evaluate((id) => getComputedStyle(document.querySelector(`.pass[data-id="${id}"]`)).opacity, id);
+await A.page.evaluate(() => document.querySelector('.pass.open [data-stamp]').click()); await A.page.waitForTimeout(700);
+ok('a stamped stop fades while open', (await opac(first)) === '0.55', await opac(first));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-step="1"]').click()); await A.page.waitForTimeout(900);
+await A.page.evaluate((id) => document.querySelector(`.pass[data-id="${id}"] [data-pick]`).click(), first); await A.page.waitForTimeout(900);
+ok('going back to a stamped stop keeps it faded', (await openPass(A.page)) === first && (await opac(first)) === '0.55', await opac(first));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-stamp]').click()); await A.page.waitForTimeout(700);
+ok('un-stamping it brings it back to full strength', (await opac(first)) === '1', await opac(first));
 
 // 3 · money: expenses shared between two phones (the money page, /japan/money)
 const N = await phone();

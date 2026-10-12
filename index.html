@@ -370,9 +370,10 @@ body.mapmax .mapmax-hint { display:block; }
 .who-tag { display:inline-flex; align-items:center; gap:4px; }
 .addgap { position:absolute; left:50%; top:0; z-index:5; transform:translate(-50%,0); height:34px; padding:0 14px 0 10px; border-radius:999px; background:#fff; color:var(--ink); font-size:13px; font-weight:700; display:none; align-items:center; gap:6px; box-shadow:0 4px 14px -6px rgba(0,0,0,.3); white-space:nowrap; }
 .addgap.on { display:inline-flex; }
-/* stops already passed: the pile wraps round after the last stop, so the morning's passes fade and sit under a label */
+/* stops already passed fade in the pile: it wraps round after the last stop, so the morning's passes sit under a label.
+   Going back to one opens it at full strength. A stop stamped as done stays faded wherever it is, open or not. */
 .pass { transition:opacity 320ms var(--ease); }
-.pass.past { opacity:.55; }
+.pass.past:not(.open), .pass.done { opacity:.55; }
 .pastlbl { position:absolute; left:26px; top:0; z-index:5; display:none; align-items:center; gap:6px; height:34px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700; pointer-events:none; will-change:transform; }
 .pastlbl.on { display:flex; }
 .pastlbl svg { width:14px; height:14px; }
@@ -909,7 +910,7 @@ function buildStack() {
   const st = cards.map((el) => { const o = { y: 0, s: 1 }; const ap = () => { el.style.transform = `translate3d(0,${o.y.toFixed(2)}px,0) scale(${o.s.toFixed(4)})`; }; return { el, id: el.dataset.id, o, Y: new Spring(0, (v) => { o.y = v; ap(); }, 0.3), S: new Spring(1, (v) => { o.s = v; ap(); }, 0.0005) }; });
   const layout = (instant) => {
     const selIdx = st.findIndex((c) => c.id === ui.sel);
-    st.forEach((c) => c.el.classList.toggle('open', c.id === ui.sel));
+    st.forEach((c) => { c.el.classList.toggle('open', c.id === ui.sel); if (c.id === ui.sel) c.el.classList.remove('past'); }); // an earlier stop opened from the pile is no longer "earlier"
     const Hs = selIdx >= 0 ? st[selIdx].el.offsetHeight : 0;
     // The pile is the deck turned round after the open pass: the next stop is on top of the pile, the one you just left goes to the bottom.
     const pile = selIdx >= 0 ? [...st.slice(selIdx + 1), ...st.slice(0, selIdx)] : st;
