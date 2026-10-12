@@ -404,6 +404,23 @@ body.mapmax .mapmax-hint { display:block; }
 .edx { display:flex; gap:8px; margin-top:10px; }
 .edx button { flex:1; height:46px; border-radius:14px; background:#fff; font-size:14px; font-weight:700; border:1px solid rgba(0,0,0,.06); }
 .edx .danger { color:#c62d22; }
+/* filling in a stop from its name */
+.fillb, .fillx { display:flex; align-items:center; gap:10px; width:100%; min-height:52px; margin:-4px 0 12px; padding:8px 12px; border-radius:14px; background:#fff; border:1px solid rgba(0,0,0,.06); text-align:left; }
+.fillb { color:var(--blue); font-size:14px; font-weight:700; }
+.fillb svg, .fspk svg { flex:none; }
+.fspk { flex:none; width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:rgba(30,107,255,.09); color:var(--blue); }
+.fillx.busy .fspk svg { animation:fspk 1.1s var(--ease) infinite alternate; }
+@keyframes fspk { from { transform:scale(.8) rotate(-20deg); opacity:.55; } to { transform:scale(1.1) rotate(20deg); opacity:1; } }
+@media (prefers-reduced-motion: reduce) { .fillx.busy .fspk svg { animation:none; } }
+.fthumb { flex:none; width:36px; height:36px; border-radius:10px; background:#ddd center/cover; }
+.fx-t { flex:1; min-width:0; line-height:1.25; }
+.fx-t b { display:block; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fx-t b span { font-family:var(--mincho); font-weight:700; }
+.fx-t small { display:block; font-size:12.5px; color:var(--ink3); font-weight:500; }
+.fillx button { flex:none; min-height:44px; padding:0 6px; font-size:13.5px; font-weight:700; color:var(--ink2); }
+.fphoto { position:relative; height:150px; border-radius:14px; background:#ddd center/cover; }
+.fphoto button { position:absolute; right:8px; bottom:8px; height:34px; padding:0 12px; border-radius:999px; background:rgba(0,0,0,.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:#fff; font-size:13px; font-weight:700; }
+.fcred { display:block; margin:5px 2px 0; font-size:11.5px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .edmsg { font-size:12.5px; color:var(--ink3); text-align:center; margin-top:10px; }
 /* settings page */
 .setp { position:fixed; inset:0; z-index:960; background:var(--paper); overflow-y:auto; overscroll-behavior:contain; transform:translate3d(100%,0,0); transition:transform 380ms var(--ease); padding:0 0 calc(40px + env(safe-area-inset-bottom)); }
@@ -559,6 +576,7 @@ const I = {
   chevR: '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   swap: '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   plus: '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  spark: '<svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 3l1.9 5.6L19.5 10.5l-5.6 1.9L12 18l-1.9-5.6L4.5 10.5l5.6-1.9zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z" fill="currentColor"/></svg>',
   pen: '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
   pin2: '<svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   x: '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
@@ -580,8 +598,9 @@ function parseTime(t, mer) { const m = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM|noon)?/i
 function span(e) { const parts = (e.time || '').replace(/~/g, '').split(/[–-]/).map((s) => s.trim()).filter(Boolean); if (!parts.length) return null; const mer2 = parts[1] && (/(AM|PM)/i.exec(parts[1]) || [])[1]; const a = parseTime(parts[0], mer2); if (a == null) return null; let b = parts[1] ? parseTime(parts[1]) : null; if (b == null || b <= a) b = a + 30; return [a, b]; }
 const fmt = (m) => { const h = Math.floor(m / 60) % 24, mm = Math.round(m % 60) % 60; return [`${h % 12 || 12}:${String(mm).padStart(2, '0')}`, h < 12 ? 'AM' : 'PM']; };
 const placeInfo = (p) => (p && PLACES[p.name]) || null;
-const imgUrl = (pi) => (pi && pi.img ? `./img/places/${pi.img}` : '');
-const thumbUrl = (pi) => (pi && pi.img ? `./img/places/t/${pi.img}` : '');
+// the trip's own photos, or the Wikimedia one found when an added stop was filled in (a full https address)
+const imgUrl = (pi) => (pi && pi.img ? (/^https:/.test(pi.img) ? pi.img : `./img/places/${pi.img}`) : '');
+const thumbUrl = (pi) => (pi && pi.img ? (/^https:/.test(pi.img) ? pi.thumb || pi.img : `./img/places/t/${pi.img}`) : '');
 
 /* ═══ sun times (after suncalc, V. Agafonkin) → minutes in JST ═══ */
 function sunTimes(dateStr, lat, lng) {
@@ -667,7 +686,7 @@ function dayItems(d, { who = ui.who, withHidden = false } = {}) {
     else { const it = patch(raw); if (allowed(it)) items.push(it); }
   }
   const added = Object.entries(C).filter(([, c]) => c.added && c.day === d.id).sort((x, y) => String(x[1].ts).localeCompare(String(y[1].ts)))
-    .map(([id, c]) => ({ type: 'event', id, title: c.title || 'New stop', time: c.time || '', desc: c.desc || '', cost: c.cost || '', who: c.who || 'all', place: c.place ? { ...c.place, q: c.place.name } : null, tags: c.cat ? [c.cat] : [], hidden: !!c.hidden, _added: true, _after: c.after }))
+    .map(([id, c]) => ({ type: 'event', id, title: c.title || 'New stop', time: c.time || '', desc: c.desc || '', cost: c.cost || '', who: c.who || 'all', place: c.place ? { ...c.place, q: c.place.name } : null, tags: c.cat ? [c.cat] : [], hidden: !!c.hidden, _added: true, _after: c.after, _info: c.info || null }))
     .filter(allowed);
   for (const a of added) {
     const s0 = span(a);
@@ -725,7 +744,9 @@ function renderTop(enter) {
 /* ═══ render: sheet ═══ */
 function passHTML(e, i) {
   const c = catOf(e), n = numOf(e.id), tk = isTicket(e), d = done(e.id);
-  const host = e.place || placeOfEvent(i); const pi0 = placeInfo(host); const pi = pi0 && !e.place ? { ...pi0, area: pi0.area || host.name, key: null } : pi0;
+  // an added stop that was filled in carries its own Japanese name, story and photo (the trip's own entry wins)
+  const own = e._info && !(e.place && PLACES[e.place.name]) ? e._info : null;
+  const host = e.place || placeOfEvent(i); const pi0 = own || placeInfo(host); const pi = pi0 && !e.place && !own ? { ...pi0, area: pi0.area || host.name, key: null } : pi0;
   // a photo one of us chose for this stop (Photos → Use as this stop's photo) replaces the stock picture
   const cover = (store.state.covers || {})[e.id]; const photo = cover ? `/api/photos/thumb/${encodeURIComponent(cover)}?s=780` : imgUrl(pi);
   const color = tk ? legHex(e) : c.c;
@@ -735,13 +756,14 @@ function passHTML(e, i) {
   if (e.travel && !tk) chips.push(`<span class="chip">${modeIcon(e)}${esc(legMin(e))}</span>`);
   if (e.optional) chips.push('<span class="chip">Optional</span>');
   if (e.who && e.who !== 'all') chips.push(`<span class="chip">${e.who === 'nasa' ? 'NASA' : 'M&amp;M'} only</span>`);
+  if (FILLING.has(e.id)) chips.push(`<span class="chip">${I.spark}Filling in…</span>`);
   if (e._added) chips.push('<span class="chip">Added</span>'); else if (e._edited) chips.push('<span class="chip">Edited</span>');
-  const story = pi && pi.story ? `<div class="storyx"><b>${e.place ? 'The story' : 'About ' + esc(host.name)}</b>${esc(pi.story)}</div>` : '';
+  const story = pi && pi.story ? `<div class="storyx"><b>${e.place || own ? 'The story' : 'About ' + esc(host.name)}</b>${esc(pi.story)}</div>` : '';
   const body = `<div class="body">${story}${tk && routeOf(e, i) ? `<div class="route"><div><small>From</small><b>${esc(routeOf(e, i)[0])}</b></div><span class="arr">${I.arrow}</span><div><small>To</small><b>${esc(routeOf(e, i)[1])}</b></div></div>` : ''}
     <div class="chips">${chips.join('')}</div>
     ${e.travel && tk ? `<p class="desc"><b>${esc(e.travel.label || '')}</b></p>` : ''}
     ${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
-    ${pi && pi.ja && host ? `<button class="say press" data-jp="${esc(host.name)}"><span class="say-l"><b>${esc(pi.ja)}</b>${pi.ro ? `<small>${esc(pi.ro)}</small>` : ''}</span><span class="say-r">Phrases<br>for here${I.chevR}</span></button>` : ''}
+    ${pi && pi.ja && host ? `<button class="say press" data-jp="${esc(own ? (e.place ? e.place.name : e.title) : host.name)}"><span class="say-l"><b>${esc(pi.ja)}</b>${pi.ro ? `<small>${esc(pi.ro)}</small>` : ''}</span><span class="say-r">Phrases<br>for here${I.chevR}</span></button>` : ''}
     <div class="acts">${e.place ? `<a class="a-dir press" href="${gmDir(e.place, e.travel && e.travel.mode)}" target="_blank" rel="noopener">${I.dir}Directions</a>` : ''}<button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>
     ${pi && pi.credit && !tk && !cover ? `<p class="credit">Photo${pi.area ? ` (${esc(pi.area)})` : ''}: <a href="${esc(pi.file)}" target="_blank" rel="noopener">${esc(pi.credit)}</a></p>` : ''}</div>`;
   const nav = `<div class="pnav"><button class="st" data-step="-1" ${events.length < 2 ? 'disabled' : ''} aria-label="Previous stop">${I.chevL}</button><div class="mid">${pi && pi.key ? `<button class="keyp" data-story="${e.id}"><span>${esc(pi.key)}</span>${pi.story ? '<i>Read the story</i>' : ''}</button>` : `<span class="cnt">${i + 1} of ${events.length}</span>`}</div><button class="st" data-step="1" ${events.length < 2 ? 'disabled' : ''} aria-label="Next stop">${I.chevR}</button></div>`;
@@ -1046,8 +1068,10 @@ const PH = {
   attraction: [['Four adults, please', '大人4枚お願いします', 'otona yon-mai onegaishimasu'], ['Where do we line up?', 'どこに並びますか', 'doko ni narabimasu ka'], ['How long is the wait?', '待ち時間はどのくらいですか', 'machi jikan wa dono kurai desu ka'], ['Is there a locker?', 'ロッカーはありますか', 'rokkā wa arimasu ka'], ['Can I take photos?', '写真を撮ってもいいですか', 'shashin o tottemo ii desu ka']],
   hotel: [['We have a reservation', '予約しています', 'yoyaku shite imasu'], ['Can you keep our luggage?', '荷物を預かってもらえますか', 'nimotsu o azukatte moraemasu ka'], ['I want to send this bag ahead', 'この荷物を送りたいです', 'kono nimotsu o okuritai desu'], ['What time is breakfast?', '朝食は何時からですか', 'chōshoku wa nanji kara desu ka'], ['Can you call us a taxi?', 'タクシーを呼んでもらえますか', 'takushī o yonde moraemasu ka']],
 };
+// the Japanese name of an added stop that was filled in, for its phrases
+const ownInfo = (name) => { const c = Object.values(CUSTOM()).find((x) => x && x.info && x.info.ja && ((x.place && x.place.name) || x.title) === name); return c ? c.info : null; };
 function showPhrases(name) {
-  const pi = PLACES[name] || {}; const ja = pi.ja || name, ro = pi.ro || name;
+  const pi = PLACES[name] || ownInfo(name) || {}; const ja = pi.ja || name, ro = pi.ro || name;
   const fill = (t, w) => t.replace('{name}', name).replace('{ja}', ja).replace('{ro}', ro);
   const cards = [['Please take me here', 'ここまでお願いします', 'koko made onegaishimasu', true]].concat((PH[pi.kind] || PH.sight).map(([en, j, r]) => [fill(en), fill(j), fill(r)]));
   jp.classList.add('car');
@@ -1072,9 +1096,113 @@ function openEditor(opts) {
   const sp0 = it ? span(it) : null;
   const refPlace = (() => { const d = f.d || DAYS.find((x) => x.id === opts.dayId); const evs = dayItems(d, { who: 'all' }).filter((x) => x.type === 'event'); const k = evs.findIndex((x) => x.id === opts.after); for (let j = k; j >= 0; j--) if (evs[j] && evs[j].place) return evs[j].place; const h = HOTELS.find((x) => x.id === d.hotel); return h; })();
   edState = { ...opts, dayId: (f.d && f.d.id) || opts.dayId, it, orig, title: it ? it.title : '', start: sp0 ? sp0[0] : null, end: sp0 && it && /[–-]/.test(it.time || '') ? sp0[1] : null,
-    who: it ? it.who || 'all' : ui.who, cat: it ? catOf(it).key : null, place: it ? it.place || null : null, desc: it ? it.desc || '' : '', cost: it ? it.cost || '' : '', more: opts.mode === 'edit', results: null, ref: refPlace, msg: '' };
+    who: it ? it.who || 'all' : ui.who, cat: it ? catOf(it).key : null, place: it ? it.place || null : null, desc: it ? it.desc || '' : '', cost: it ? it.cost || '' : '', more: opts.mode === 'edit', results: null, ref: refPlace, msg: '', info: it ? it._info || null : null, fill: null, filledFor: '', catSet: false };
   edState.t0 = { start: edState.start, end: edState.end };
   renderEditor(); scrim.style.zIndex = 970; scrim.classList.add('on'); EY.set(innerHeight); EY.to(0, { response: 0.42, damping: 0.88 });
+}
+/* filling in an added stop from its name: /api/fill (Claude) says what it is; this phone then finds it on the map
+   (the Wikipedia article's position, else an OpenStreetMap search near the stop before) and its photo (the article's,
+   else a Wikimedia Commons search), with the photo's credit. Only empty fields are filled, and Undo puts them back. */
+const FILLING = new Set(); // saved stops still waiting for theirs
+const WIKI = 'https://en.wikipedia.org/w/api.php?format=json&formatversion=2&origin=*&action=query&redirects=1';
+const getJSON = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
+const km = (a, b) => Math.hypot(a.lat - b.lat, (a.lng - b.lng) * Math.cos(a.lat * Math.PI / 180)) * 111;
+const plain = (h) => new DOMParser().parseFromString(String(h || ''), 'text/html').body.textContent.replace(/\s+/g, ' ').trim();
+const canFill = (s0) => s0.mode === 'add' || !!(s0.it && s0.it._added);
+const canAutoFill = (s0) => !SANDBOX && s0.mode === 'add' && s0.title.length >= 3 && s0.title !== s0.filledFor && !(s0.fill && s0.fill.busy);
+function fillRow(s0) {
+  if (!canFill(s0)) return '';
+  const f = s0.fill;
+  if (f && f.busy) return `<div class="fillx busy" id="f-fill" aria-live="polite"><span class="fspk">${I.spark}</span><span class="fx-t"><b>Filling in the rest…</b><small>Place, type, notes, cost and a photo</small></span></div>`;
+  if (f && f.done) return `<div class="fillx" id="f-fill" aria-live="polite">${s0.info && s0.info.img ? `<span class="fthumb" style="background-image:url('${s0.info.thumb || s0.info.img}')"></span>` : `<span class="fspk">${I.spark}</span>`}<span class="fx-t"><b>Filled in${s0.info && s0.info.ja ? ` · <span lang="ja">${esc(s0.info.ja)}</span>` : ''}</b><small>${esc(f.got)}</small></span><button data-fundo>Undo</button></div>`;
+  return `<button class="fillb" id="f-fill" data-ffill>${I.spark}<span>Fill in the rest from the name</span></button>`;
+}
+// re-drawn without losing the field being typed in
+function rerenderKeep() {
+  const a = document.activeElement, id = a && edEl.contains(a) ? a.id : ''; let ss = null, se = null; try { ss = a.selectionStart; se = a.selectionEnd; } catch {}
+  const b = document.getElementById('edb'), top = b.scrollTop, q = (document.getElementById('f-q') || {}).value || '';
+  renderEditor(); b.scrollTop = top; const q2 = document.getElementById('f-q'); if (q2) q2.value = q;
+  const n = id && document.getElementById(id); if (n) { n.focus({ preventScroll: true }); try { if (ss != null) n.setSelectionRange(ss, se); } catch {} }
+}
+function autoFill() { if (!edState) return; readFormSafe(); if (canAutoFill(edState)) runFill(edState, true); }
+async function runFill(s, auto) {
+  const live = () => edState === s;
+  if (live()) readFormSafe();
+  const name = s.title;
+  if (name.length < 2 || SANDBOX) { if (!auto && live()) { s.msg = SANDBOX ? 'Filling in is off in the practice tour.' : 'Type a name first.'; rerenderKeep(); } return; }
+  if (s.fill && s.fill.busy) return;
+  if (s.fill && s.fill.done) revertFill(s); // a new name: what the last one filled in goes first
+  s.fill = { busy: true }; s.filledFor = name; s.msg = '';
+  if (live()) { const row = document.getElementById('f-fill'); if (row) row.outerHTML = fillRow(s); }
+  const d = DAYS.find((x) => x.id === s.dayId) || day;
+  let r = null, found = {};
+  try { r = await store.api('fill', { name, city: d.city, date: d.date, near: (s.ref && s.ref.name) || '' }); found = await findPlace(r, s.ref).catch(() => ({})); }
+  catch (err) { s.msg = err.pin ? 'Filling in needs the PIN.' : navigator.onLine === false ? 'Filling in needs a connection.' : "Couldn't fill this one in. Add the details yourself."; r = null; }
+  if (live()) readFormSafe();
+  // the name changed while it was out: this answer is for the old one (a stop saved meanwhile asks again for its name)
+  if (s.title !== name) { s.fill = null; if (!live() && s.savedId && s.title.length >= 2) return runFill(s, true); if (live()) rerenderKeep(); else if (s.savedId) saveFill(s, false); return; }
+  if (r) applyFill(s, r, found); else s.fill = null;
+  if (live()) rerenderKeep();
+  else if (s.savedId) saveFill(s, !!r);
+}
+async function findPlace(r, ref) {
+  const out = {}; if (!r || !r.known) return out;
+  const guess = r.lat != null ? { lat: r.lat, lng: r.lng } : null, near = guess || (ref && ref.lat ? ref : null);
+  let page = null;
+  if (r.wikipedia) { try { const j = await getJSON(`${WIKI}&prop=pageimages|coordinates&piprop=name&pilicense=free&titles=${encodeURIComponent(r.wikipedia)}`); const p = j.query && j.query.pages && j.query.pages[0]; if (p && !p.missing) page = { file: p.pageimage || '', ...(p.coordinates ? { lat: p.coordinates[0].lat, lng: p.coordinates[0].lon } : {}) }; } catch {} }
+  // the article stands for this place only if it's where Claude thinks the place is
+  if (page && guess && page.lat != null && km(page, guess) > 3) page = null;
+  if (page && page.lat != null) out.place = { name: r.name, lat: +page.lat.toFixed(5), lng: +page.lng.toFixed(5) };
+  if (!out.place && r.search) {
+    try { const vb = near ? `&viewbox=${near.lng - 0.25},${near.lat + 0.2},${near.lng + 0.25},${near.lat - 0.2}` : '';
+      const hits = (await getJSON(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=jp&accept-language=en${vb}&q=${encodeURIComponent(r.search)}`)).map((x) => ({ lat: +x.lat, lng: +x.lon }));
+      const best = near ? hits.sort((a, b) => km(a, near) - km(b, near))[0] : hits[0];
+      if (best && (!guess || km(best, guess) < 5)) out.place = { name: r.name, lat: +best.lat.toFixed(5), lng: +best.lng.toFixed(5) }; } catch {}
+  }
+  if (!out.place && guess) out.place = { name: r.name, lat: guess.lat, lng: guess.lng };
+  const photoOf = (p) => { const ii = p && p.imageinfo && p.imageinfo[0], m = (ii && ii.extmetadata) || {}; const lic = m.LicenseShortName && plain(m.LicenseShortName.value);
+    if (!ii || !lic || /fair use|non-free/i.test(lic)) return null; const img = String(ii.thumburl || ii.url).split('?')[0]; const who = plain(m.Artist && m.Artist.value).slice(0, 60);
+    return { img, thumb: img.replace(/\/960px-/, '/330px-'), credit: who ? `${who}, ${lic}` : lic, file: ii.descriptionurl }; };
+  const II = '&prop=imageinfo&iiprop=url|extmetadata&iiextmetadatafilter=Artist|LicenseShortName&iiurlwidth=960';
+  try { if (page && page.file) out.photo = photoOf((await getJSON(`${WIKI}${II}&titles=${encodeURIComponent('File:' + page.file)}`)).query.pages[0]); } catch {}
+  if (!out.photo) { try { const ps = ((await getJSON(`https://commons.wikimedia.org/w/api.php?format=json&formatversion=2&origin=*&action=query&generator=search&gsrnamespace=6&gsrlimit=5&gsrsearch=${encodeURIComponent((r.search || r.name) + ' filetype:bitmap')}${II}`)).query || {}).pages || [];
+    for (const p of ps.sort((a, b) => a.index - b.index)) { out.photo = photoOf(p); if (out.photo) break; } } catch {} }
+  return out;
+}
+function applyFill(s, r, found) {
+  const before = { place: s.place, cat: s.cat, desc: s.desc, cost: s.cost, end: s.end, info: s.info, more: s.more }, set = {}, got = [];
+  if (!s.place && found.place) { set.place = found.place; got.push('place'); }
+  if (!s.catSet && r.cat && r.cat !== s.cat) { set.cat = r.cat; got.push('type'); }
+  if (!String(s.desc || '').trim() && r.notes) { set.desc = r.notes; got.push('notes'); }
+  if (!String(s.cost || '').trim() && r.cost) { set.cost = r.cost; got.push('cost'); }
+  if (s.start != null && s.end == null && r.minutes) { set.end = Math.min(s.start + Math.max(15, Math.round(r.minutes / 15) * 15), 1439); got.push('end time'); }
+  const info = { ...(r.ja ? { ja: r.ja, ro: r.ro } : {}), kind: r.kind, ...(r.story ? { story: r.story, ...(r.key ? { key: r.key } : {}) } : {}), ...(found.photo || {}) };
+  if (found.photo) got.push('photo'); if (r.ja) got.push('Japanese name');
+  set.info = r.ja || r.story || found.photo ? info : s.info; set.more = true;
+  Object.assign(s, set);
+  s.fill = { done: true, before, set, got: got.length ? 'Added ' + got.join(', ').replace(/, ([^,]*)$/, ' and $1') : 'Nothing to add: the rest is already filled in' };
+}
+// back to how the fields were, except any the user has changed since
+function revertFill(s) {
+  const f = s.fill; if (!f || !f.done) return;
+  for (const k of Object.keys(f.set)) if (s[k] === f.set[k]) s[k] = f.before[k];
+  s.fill = null;
+}
+function undoFill(s) { readFormSafe(); revertFill(s); s.fill = { undone: true }; rerenderKeep(); }
+// the editor closed before the answer came: fill in the saved stop (what's still empty on it)
+function saveFill(s, ok) {
+  FILLING.delete(s.savedId); const c = CUSTOM()[s.savedId];
+  if (ok && c && c.title === s.title && s.fill && s.fill.done) { // renamed since saving: the answer is for the old name
+    const patch = { ...c }; delete patch.ts;
+    if (!c.place && s.place) patch.place = s.place;
+    if (!s.catSet && s.cat && c.cat === s.savedCat) patch.cat = s.cat; // unless the type was changed since
+    if (!c.desc && s.desc) patch.desc = s.desc;
+    if (!c.cost && s.cost) patch.cost = s.cost;
+    if (c.time === s.savedTime && s.end != null) patch.time = fmtRange(s.start, s.end);
+    if (s.info) patch.info = s.info;
+    store.setCustom(s.savedId, patch);
+  }
+  renderDay({ keepScroll: true, keepSel: true });
 }
 function closeEditor() { scrim.classList.remove('on'); setTimeout(() => { if (!edState) scrim.style.zIndex = ''; }, 300); EY.to(innerHeight, { response: 0.36, damping: 1 }); edState = null; }
 function renderEditor() {
@@ -1083,11 +1211,12 @@ function renderEditor() {
   const cats = [['sight', 'Sight'], ['food', 'Food'], ['shop', 'Shop'], ['transit', 'Transit'], ['plan', 'Plan']].map(([k, l]) => `<button data-fcat="${k}" class="${s0.cat === k ? 'on' : ''}">${l}</button>`).join('');
   const res = s0.results === 'loading' ? '<p>Searching…</p>' : Array.isArray(s0.results) ? (s0.results.length ? s0.results.map((r, k) => `<button data-fres="${k}"><b>${esc(r.name)}</b><small>${esc(r.sub)}</small></button>`).join('') : '<p>No matches. Try a shorter name.</p>') : '';
   b.innerHTML = `<div class="ed-h"><b>${adding ? 'Add a stop' : 'Edit stop'}</b><button data-edx>Cancel</button></div>
-    <label class="fld"><span>Name</span><input id="f-title" value="${esc(s0.title)}" placeholder="e.g. Coffee at % Arabica" autocomplete="off"></label>
+    <label class="fld"><span>Name</span><input id="f-title" value="${esc(s0.title)}" placeholder="e.g. Coffee at % Arabica" autocomplete="off"></label>${fillRow(s0)}
     <div class="row2"><label class="fld"><span>Start</span><input id="f-start" type="time" value="${toHM(s0.start)}"></label><label class="fld"><span>End (optional)</span><input id="f-end" type="time" value="${toHM(s0.end)}"></label></div>
     <div class="fld"><span>Who's going</span><div class="seg" id="f-who">${whoB}<i></i></div></div>
     <div class="fld"><span>Place (optional)</span>${s0.place ? `<div class="pcur">${I.pin2}<span>${esc(s0.place.name)}</span><button data-fclear>Remove</button></div>` : ''}
       <input id="f-q" placeholder="${s0.place ? 'Search to change the place' : 'Search a place, shop or address'}" autocomplete="off"><div class="pres">${res}</div><button class="here" data-fhere>${I.pin2}Use where I am now</button></div>
+    ${s0.info && s0.info.img ? `<div class="fld"><span>Photo</span><div class="fphoto" style="background-image:url('${s0.info.img}')"><button data-fnophoto>Remove</button></div>${s0.info.credit ? `<small class="fcred">Wikimedia Commons: ${esc(s0.info.credit)}</small>` : ''}</div>` : ''}
     ${s0.more ? `<div class="fld"><span>Type</span><div class="tchips">${cats}</div></div>
       <label class="fld"><span>Notes</span><textarea id="f-desc" placeholder="Anything the group should know">${esc(s0.desc)}</textarea></label>
       <label class="fld"><span>Cost</span><input id="f-cost" value="${esc(s0.cost)}" placeholder="e.g. ¥1,500 per person"></label>` : `<button class="more" data-fmore>+ Notes, cost and type</button>`}
@@ -1113,7 +1242,10 @@ function saveEditor() {
   if (s0.mode === 'add' || (s0.it && s0.it._added)) {
     const id = s0.mode === 'add' ? 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : s0.it.id;
     const prev = s0.mode === 'add' ? {} : CUSTOM()[id] || {};
-    store.setCustom(id, { ...prev, added: true, day: s0.dayId, after: s0.mode === 'add' ? s0.after || null : prev.after ?? null, title: s0.title, time: fmtRange(s0.start, s0.end), who: s0.who, cat: s0.cat || (s0.place ? 'sight' : 'plan'), place: s0.place, desc: s0.desc || '', cost: s0.cost || '' });
+    store.setCustom(id, { ...prev, added: true, day: s0.dayId, after: s0.mode === 'add' ? s0.after || null : prev.after ?? null, title: s0.title, time: fmtRange(s0.start, s0.end), who: s0.who, cat: s0.cat || (s0.place ? 'sight' : 'plan'), place: s0.place, desc: s0.desc || '', cost: s0.cost || '', info: s0.info || null });
+    // "type the name, tap Add stop": the rest fills in on the saved stop when it arrives
+    s0.savedId = id; s0.savedTime = fmtRange(s0.start, s0.end); s0.savedCat = s0.cat || (s0.place ? 'sight' : 'plan');
+    if (s0.fill && s0.fill.busy) FILLING.add(id); else if (s0.mode === 'add' && canAutoFill(s0)) { FILLING.add(id); runFill(s0, true); }
     const keepDay = s0.dayId; closeEditor(); if (keepDay !== day.id) { ui.dayId = keepDay; } renderDay({ keepScroll: true, selId: id }); buzz(10); return;
   }
   const o = s0.orig, prev = CUSTOM()[s0.it.id] || {}, patch = { ...prev };
@@ -1129,8 +1261,12 @@ function saveEditor() {
 edEl.addEventListener('click', (e) => {
   if (!edState) return;
   if (e.target.closest('[data-edx]')) { closeEditor(); return; }
+  if (!e.target.closest('[data-ffill], [data-fundo], [data-fsave]')) autoFill();
   const w = e.target.closest('[data-fwho]'); if (w) { readForm(); edState.who = w.dataset.fwho; renderEditor(); return; }
-  const c = e.target.closest('[data-fcat]'); if (c) { readForm(); edState.cat = c.dataset.fcat; renderEditor(); return; }
+  const c = e.target.closest('[data-fcat]'); if (c) { readForm(); edState.cat = c.dataset.fcat; edState.catSet = true; renderEditor(); return; }
+  if (e.target.closest('[data-ffill]')) { runFill(edState, false); return; }
+  if (e.target.closest('[data-fundo]')) { undoFill(edState); return; }
+  if (e.target.closest('[data-fnophoto]')) { readForm(); const { img, thumb, credit, file, ...rest } = edState.info; edState.info = Object.keys(rest).length ? rest : null; renderEditor(); return; }
   if (e.target.closest('[data-fmore]')) { readForm(); edState.more = true; renderEditor(); return; }
   if (e.target.closest('[data-fclear]')) { readForm(); edState.place = null; renderEditor(); return; }
   const r = e.target.closest('[data-fres]'); if (r) { readForm(); const x = edState.results[+r.dataset.fres]; edState.place = { name: x.name, lat: x.lat, lng: x.lng }; edState.results = null; if (!edState.title) edState.title = x.name; renderEditor(); return; }
@@ -1141,6 +1277,9 @@ edEl.addEventListener('click', (e) => {
   if (e.target.closest('[data-freset]')) { const id = edState.it.id; store.setCustom(id, null); closeEditor(); renderDay({ keepScroll: true, selId: id }); return; }
   if (e.target.closest('[data-fdel]')) { if (!confirm('Delete this stop for everyone?')) return; store.setCustom(edState.it.id, null); closeEditor(); renderDay({ keepScroll: true }); return; }
 });
+// leaving the name (to the time, the place, anywhere) is when the rest gets filled in
+edEl.addEventListener('change', (e) => { if (e.target.id === 'f-title') autoFill(); });
+edEl.addEventListener('focusin', (e) => { if (e.target.id && e.target.id !== 'f-title') autoFill(); });
 edEl.addEventListener('input', (e) => { if (e.target.id !== 'f-q') return; clearTimeout(searchT); const q = e.target.value.trim(); if (q.length < 2) return; searchT = setTimeout(() => searchPlaces(q), 700); });
 scrim.addEventListener('click', () => { if (edState) closeEditor(); });
 

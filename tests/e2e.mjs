@@ -41,7 +41,9 @@ const DO = { idFromName: (n) => n, get: (id) => {
 } };
 store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store.set('updatedAt', '2026-10-01T00:00:00.000Z');
 // Workers AI stand-in for /api/scan: it "reads" a ramen receipt where the total was mistaken for the cash handed over
-const FAKE_AI = { run: async () => ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
+// …and for /api/fill (a question in words rather than a photo): it knows Yanaka Ginza
+const FILL_SAID = { known: true, name: 'Yanaka Ginza shopping street', ja: '谷中銀座商店街', ro: 'Yanaka Ginza Shōtengai', cat: 'shop', kind: 'shop', notes: 'Old-Tokyo shopping street. The menchi-katsu is usually pork and beef: ask for beef only.', cost: '¥500–1,500 per person', minutes: 60, key: 'Since the 1940s · About 60 shops', story: 'It survived the 1923 earthquake and the war, so it still looks like 1950s Tokyo.', wikipedia: 'Yanaka Ginza', search: 'Yanaka Ginza', lat: 35.7277, lng: 139.766 };
+const FAKE_AI = { run: async (m, inp) => typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
@@ -114,6 +116,21 @@ const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.
     const r2 = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
     ok('/api/scan falls back to Workers AI when Claude is down', r2.total === 2380 && r2.model !== CLAUDE_MODEL, JSON.stringify(r2).slice(0, 120));
   } finally { globalThis.fetch = realFetch; }
+  // filling in a new stop from its name
+  const { fillRequest, fillStop, tidyFill } = await import(REPO + '/lib/fill-claude.js');
+  const fq = fillRequest('sk-test', { name: 'Yanaka Ginza', city: 'Tokyo', date: '2026-10-17', near: 'Nezu Shrine' }), fb = JSON.parse(fq.body);
+  ok('fill-in: one Claude request asking for the stop as JSON', fq.url === 'https://api.anthropic.com/v1/messages?beta=true' && fq.headers['x-api-key'] === 'sk-test' && fb.model === CLAUDE_MODEL && fb.output_config.format.schema.required.includes('wikipedia') && /"Yanaka Ginza"/.test(fb.messages[0].content) && /Nezu Shrine/.test(fb.messages[0].content) && /no pork/.test(fb.messages[0].content));
+  const saidFill = { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ ...FILL_SAID, lat: 48.85, lng: 2.35, minutes: 9999 }) }] };
+  const f1 = await fillStop({ ANTHROPIC_API_KEY: 'k' }, { name: 'Yanaka Ginza' }, { fetchFn: answer(200, saidFill) });
+  ok('fill-in: Claude\'s answer comes back checked (a position outside Japan and a silly length dropped)', f1.model === CLAUDE_MODEL && f1.ja === '谷中銀座商店街' && f1.cat === 'shop' && f1.lat === null && f1.minutes === null && f1.wikipedia === 'Yanaka Ginza', JSON.stringify(f1).slice(0, 200));
+  const f2 = await fillStop({ ANTHROPIC_API_KEY: 'k', AI: FAKE_AI }, { name: 'Yanaka Ginza' }, { fetchFn: answer(500, 'down') });
+  ok('fill-in: Workers AI answers when Claude is down', f2.model !== CLAUDE_MODEL && f2.ja === '谷中銀座商店街' && f2.lat === 35.7277, JSON.stringify(f2).slice(0, 120));
+  const t1 = tidyFill({ known: false, name: 'Laundry', ja: '洗濯', cat: 'plan', notes: 'Coin laundry near the hotel.', wikipedia: 'Laundry', lat: 35.7, lng: 139.7 }, 'x');
+  ok('fill-in: an activity, not a place, gets no place, Japanese name or photo search', t1.cat === 'plan' && !t1.ja && !t1.wikipedia && t1.lat === null && t1.notes === 'Coin laundry near the hotel.');
+  const fr = (body, pin = PIN) => onRequest({ request: new Request(B + '/api/fill', { method: 'POST', headers: { 'content-type': 'application/json', ...(pin ? { 'x-trip-pin': pin } : {}) }, body: JSON.stringify(body) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI } });
+  ok('/api/fill needs the PIN and a name', (await fr({ name: 'Yanaka Ginza' }, '')).status === 403 && (await fr({ name: '  ' })).status === 400);
+  const fr1 = await (await fr({ name: 'Yanaka Ginza', city: 'Tokyo' })).json();
+  ok('/api/fill answers with the stop filled in', fr1.name === 'Yanaka Ginza shopping street' && fr1.kind === 'shop' && fr1.key === 'Since the 1940s · About 60 shops' && typeof fr1.ms === 'number', JSON.stringify(fr1).slice(0, 160));
 }
 
 // 0b · the shared state in the Durable Object: KV's data copied in once, no change lost to a race, KV kept as a mirror
@@ -617,6 +634,78 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await pg.goto(B + '/japan/money').catch(() => {}); await pg.waitForTimeout(2000);
   ok('offline: money page opens with the expenses', /Fuunji ramen test/.test(await pg.textContent('.app').catch(() => '')) && /Offline/.test(await pg.textContent('.syncl').catch(() => '')));
   await ctx.close();
+}
+// adding a stop by its name: the rest fills in (Claude stand-in above; Wikipedia, Commons and OpenStreetMap answered here)
+{
+  const F = await phone('2026-10-12T03:00:00Z'), pg = F.page;
+  const PHOTO = fs.readFileSync(REPO + '/img/places/yanaka-ginza.webp'), THUMB = fs.readFileSync(REPO + '/img/places/t/yanaka-ginza.webp'); const asked = [];
+  let wait = 0; await pg.route('**/api/fill', async (route) => { await new Promise((r) => setTimeout(r, wait)); return route.continue(); });
+  await F.ctx.route(/wikipedia\.org|wikimedia\.org|nominatim\.openstreetmap\.org/, (route) => {
+    const u = new URL(route.request().url()); asked.push(u.host);
+    if (/^(upload|thumb)\./.test(u.host)) return route.fulfill({ body: /330px/.test(u.pathname) ? THUMB : PHOTO, contentType: 'image/webp' });
+    if (u.host === 'nominatim.openstreetmap.org') return route.fulfill({ json: [] });
+    if (u.searchParams.get('prop') === 'pageimages|coordinates') return route.fulfill({ json: { query: { pages: [{ title: 'Yanaka Ginza', pageimage: 'Yanaka_Ginza.jpg', coordinates: [{ lat: 35.72766, lon: 139.76606 }] }] } } });
+    if (u.searchParams.get('prop') === 'imageinfo') return route.fulfill({ json: { query: { pages: [{ imageinfo: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Yanaka_Ginza.jpg', thumburl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Yanaka_Ginza.jpg/960px-Yanaka_Ginza.jpg', descriptionurl: 'https://commons.wikimedia.org/wiki/File:Yanaka_Ginza.jpg', extmetadata: { Artist: { value: '<a href="//commons.wikimedia.org/wiki/User:Someone">Some One</a><img src=x onerror="window.__x=1">' }, LicenseShortName: { value: 'CC BY-SA 4.0' } } }] }] } } });
+    return route.fulfill({ json: {} });
+  });
+  await pg.goto(B + '/japan/'); await pg.waitForURL(/\/\?next=japan/); await pg.tap('[data-me="m"]'); await enterPin(pg); await pg.waitForURL(/\/japan\//);
+  await pg.evaluate(() => localStorage.setItem('japan2026.whoMix', '"all"')); await pg.goto(B + '/japan/?d=d03'); await pg.waitForTimeout(2200);
+  const addedIds = () => Object.entries(JSON.parse(store.get('custom') || '{}')).filter(([, c]) => c.added);
+  const n0 = addedIds().length;
+  await pg.evaluate(() => document.querySelector('[data-addend]').click()); await pg.waitForTimeout(700);
+  ok('fill-in: the add-a-stop form offers to fill in the rest', /Fill in the rest from the name/.test(await pg.textContent('#f-fill')));
+  await pg.tap('#f-title'); await pg.fill('#f-title', 'Yanaka Ginza'); await pg.tap('#f-start'); await pg.fill('#f-start', '16:00');
+  await pg.waitForSelector('.fillx:not(.busy)', { timeout: 6000 }).catch(() => {});
+  const form = await pg.evaluate(() => ({ card: document.getElementById('f-fill').textContent, place: (document.querySelector('.pcur span') || {}).textContent, notes: (document.getElementById('f-desc') || {}).value, cost: (document.getElementById('f-cost') || {}).value, end: document.getElementById('f-end').value, type: (document.querySelector('[data-fcat].on') || {}).dataset?.fcat, photo: !!document.querySelector('.fphoto'), credit: (document.querySelector('.fcred') || {}).textContent, focus: document.activeElement.id, x: window.__x }));
+  ok('fill-in: leaving the name fills in the place, type, notes, cost, end time and photo', /Filled in · 谷中銀座商店街/.test(form.card) && form.place === 'Yanaka Ginza shopping street' && /menchi-katsu/.test(form.notes) && form.cost === '¥500–1,500 per person' && form.end === '17:00' && form.type === 'shop' && form.photo, JSON.stringify(form));
+  ok('fill-in: the photo is credited, and the credit is only text', form.credit === 'Wikimedia Commons: Some One, CC BY-SA 4.0' && form.x === undefined, form.credit);
+  ok('fill-in: the field being typed in keeps its place', form.focus === 'f-start', form.focus);
+  await pg.evaluate(() => document.activeElement.blur()); await pg.screenshot({ path: SH + 'fill-form.png' });
+  await pg.tap('[data-fundo]'); await pg.waitForTimeout(200);
+  const undone = await pg.evaluate(() => ({ place: !!document.querySelector('.pcur'), photo: !!document.querySelector('.fphoto'), end: document.getElementById('f-end').value, notes: (document.getElementById('f-desc') || {}).value || '', title: document.getElementById('f-title').value }));
+  ok('fill-in: Undo puts the form back as it was, name and start kept', !undone.place && !undone.photo && undone.end === '' && undone.notes === '' && undone.title === 'Yanaka Ginza', JSON.stringify(undone));
+  await pg.tap('[data-ffill]'); await pg.waitForSelector('.fillx:not(.busy)', { timeout: 6000 }).catch(() => {});
+  await pg.fill('#f-cost', '¥800'); await pg.tap('[data-fsave]'); await pg.waitForTimeout(1500);
+  const saved = addedIds().find(([, c]) => c.title === 'Yanaka Ginza');
+  ok('fill-in: saved with its photo, credit and Japanese name, and the cost typed over it', saved && saved[1].info && saved[1].info.img === 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Yanaka_Ginza.jpg/960px-Yanaka_Ginza.jpg' && saved[1].info.thumb.includes('/330px-') && saved[1].info.ja === '谷中銀座商店街' && saved[1].cost === '¥800' && saved[1].place.lat === 35.72766, JSON.stringify(saved && saved[1]).slice(0, 300));
+  const pass = await pg.evaluate((id) => { const p = document.getElementById('p-' + id); return p && { hero: p.querySelector('.hero').style.backgroundImage, say: (p.querySelector('.say') || {}).textContent, key: (p.querySelector('.keyp') || {}).textContent, credit: (p.querySelector('.credit') || {}).textContent }; }, saved && saved[0]);
+  ok('fill-in: the stop shows its photo, Japanese name, phrases and story', pass && pass.hero.includes('960px-Yanaka_Ginza') && /谷中銀座商店街/.test(pass.say) && /Since the 1940s/.test(pass.key) && /Some One, CC BY-SA 4.0/.test(pass.credit), JSON.stringify(pass));
+  await pg.evaluate((id) => document.querySelector(`#p-${id} .say`).click(), saved[0]); await pg.waitForTimeout(400);
+  ok('fill-in: its phrases use the Japanese name', /谷中銀座商店街/.test(await pg.textContent('#jpcard').catch(() => '')));
+  await pg.evaluate(() => document.querySelector('#jpcard [data-jpx]').click()); await pg.waitForTimeout(400);
+  await pg.screenshot({ path: SH + 'fill-pass.png' });
+  // type the name and tap Add stop straight away: the stop is saved now, and filled in when the answer comes
+  wait = 1500; await pg.evaluate(() => document.querySelector('[data-addend]').click()); await pg.waitForTimeout(700);
+  await pg.tap('#f-title'); await pg.fill('#f-title', 'Yanaka Ginza again'); await pg.tap('[data-fsave]'); await pg.waitForTimeout(600);
+  const early = addedIds().find(([, c]) => c.title === 'Yanaka Ginza again');
+  const chip = await pg.evaluate((id) => (document.getElementById('p-' + id) || {}).textContent || '', early && early[0]);
+  ok('fill-in: saving before the answer keeps the stop, marked as filling in', early && !early[1].info && /Filling in…/.test(chip), chip.slice(0, 120));
+  await pg.waitForTimeout(3000);
+  const late = addedIds().find(([, c]) => c.title === 'Yanaka Ginza again');
+  ok('fill-in: then the saved stop is filled in', late && late[1].info && late[1].info.ja === '谷中銀座商店街' && late[1].cat === 'shop' && /menchi-katsu/.test(late[1].desc) && !/Filling in…/.test(await pg.evaluate((id) => document.getElementById('p-' + id).textContent, late[0])), JSON.stringify(late && late[1]).slice(0, 200));
+  // the name corrected while the first answer is still out, then saved: the stop is filled in for the new name
+  let fills = 0; pg.on('request', (r) => { if (/\/api\/fill$/.test(r.url())) fills++; });
+  await pg.evaluate(() => document.querySelector('[data-addend]').click()); await pg.waitForTimeout(700);
+  await pg.tap('#f-title'); await pg.fill('#f-title', 'Yanaka Ginzza'); await pg.tap('#f-start'); await pg.waitForTimeout(200);
+  await pg.tap('#f-title'); await pg.fill('#f-title', 'Yanaka Ginza street'); await pg.tap('[data-fsave]'); await pg.waitForTimeout(5500);
+  const fixed = addedIds().find(([, c]) => c.title === 'Yanaka Ginza street');
+  ok('fill-in: a name corrected while filling in is asked about again once saved', fills === 2 && fixed && fixed[1].info && fixed[1].info.ja === '谷中銀座商店街', `${fills} asks, ${JSON.stringify(fixed && fixed[1]).slice(0, 120)}`);
+  const { offline: off } = await import(REPO + '/js/offline.js');
+  ok('fill-in: Save whole trip includes added stops\' photos', off({ DAYS: [], HOTELS: [], PLACES: {} }).allPhotos(JSON.parse(store.get('custom') || '{}')).size >= 2);
+  ok('fill-in: the photo and the map pin come from Wikipedia, no map search needed', asked.includes('en.wikipedia.org') && !asked.includes('nominatim.openstreetmap.org'), [...new Set(asked)].join(','));
+  ok('no page errors while filling in', !F.errs.length, F.errs.join(' | '));
+  for (const [id] of addedIds().slice(n0)) await fetch(B + '/api/custom', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ id, value: null }) });
+  await F.ctx.close();
+}
+// the API keeps only Wikimedia photos on a stop
+{
+  const put = (value) => onRequest({ request: new Request(B + '/api/custom', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ id: 'u-photo-test', value }) }), env: ENV }).then((r) => r.json());
+  const a = await put({ added: true, day: 'd03', title: 'X', info: { ja: 'エックス', img: 'https://evil.example/x.jpg', credit: 'Me', story: 'S' } });
+  const b = await put({ added: true, day: 'd03', title: 'X', info: { img: "https://upload.wikimedia.org/a.jpg') ; background:url('x", kind: 'nope' } });
+  const c = await put({ added: true, day: 'd03', title: 'X', info: { img: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/X.jpg', file: 'https://commons.wikimedia.org/wiki/File:X.jpg', credit: 'Someone, CC BY 4.0', kind: 'shop' } });
+  const ia = a.custom['u-photo-test'] && a.custom['u-photo-test'].info, ib = b.custom['u-photo-test'].info, ic = c.custom['u-photo-test'].info;
+  ok('a stop\'s photo must be a Wikimedia address (anything else is dropped, with its credit)', ia && !ia.img && !ia.credit && ia.ja === 'エックス' && !ib && ic.img.endsWith('/X.jpg') && ic.thumb === ic.img && ic.credit && ic.kind === 'shop', JSON.stringify([ia, ib, ic]));
+  await put(null);
 }
 // problem reports: an error on a phone reaches the server once (the same one isn't sent again), and the health check counts it
 {

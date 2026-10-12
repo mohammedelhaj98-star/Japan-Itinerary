@@ -16,6 +16,8 @@
 //   POST /api/receipt                 { id, photo:dataURL|null }  (an expense's receipt photo)
 //   GET  /api/receipt/:id             → the receipt photo (with the PIN)
 //   POST /api/scan                    { photo:dataURL, model? }  → what a receipt says: total, shop, date, type (Workers AI)
+//   POST /api/fill                    { name, city?, date?, near? }  → a new stop filled in from its name: Japanese name,
+//                                       type, notes, cost, time there, background, and what to search for its place and photo
 //   POST /api/profile                 { id, color?, photo?:dataURL|null }  (a person's colour and photo)
 //   GET  /api/photo/:id               → the person's photo (image bytes)
 //   POST /api/unlock                  { pin }  → { ok } when the PIN is right (the hub asks for it once per phone)
@@ -34,6 +36,7 @@
 //
 import { handlePhotos } from '../../lib/photos.js';
 import { readReceiptClaude, CLAUDE_MODEL } from '../../lib/scan-claude.js';
+import { fillStop } from '../../lib/fill-claude.js';
 import { autoBackup, backupMoney, backupStatus } from '../../lib/backup.js';
 import { stateStore } from '../../lib/state-store.js';
 
@@ -86,7 +89,21 @@ function cleanCustom(v) {
     const lat = num(v.place.lat, -90, 90), lng = num(v.place.lng, -180, 180), name = clean(v.place.name, 90);
     if (name && lat != null && lng != null) out.place = { name, lat, lng };
   }
+  if (v.info === null) out.info = null;
+  else if (v.info && typeof v.info === 'object') { const info = cleanInfo(v.info); if (info) out.info = info; }
   if (typeof v.ts === 'string') out.ts = clean(v.ts, 40);
+  return Object.keys(out).length ? out : null;
+}
+// What filling in an added stop found (lib/fill-claude.js and the phone): its Japanese name and background, and a
+// Wikimedia photo with its credit. Photos only from Wikimedia, so a stop can't point the phones anywhere else.
+const WM = /^https:\/\/(upload|thumb)\.wikimedia\.org\/[^\s"'()<>\\]{1,400}$/;
+const WM_PAGE = /^https:\/\/(commons\.wikimedia|en\.wikipedia)\.org\/[^\s"'()<>\\]{1,300}$/;
+function cleanInfo(v) {
+  const out = {};
+  for (const [k, max] of Object.entries({ ja: 40, ro: 60, key: 50, story: 400, credit: 120 })) if (typeof v[k] === 'string' && clean(v[k], max)) out[k] = clean(v[k], max);
+  if (['temple', 'shrine', 'station', 'food', 'shop', 'park', 'sight', 'attraction', 'hotel'].includes(v.kind)) out.kind = v.kind;
+  if (WM.test(v.img || '')) { out.img = v.img; out.thumb = WM.test(v.thumb || '') ? v.thumb : v.img; if (WM_PAGE.test(v.file || '')) out.file = v.file; }
+  else delete out.credit;
   return Object.keys(out).length ? out : null;
 }
 
@@ -306,6 +323,14 @@ export async function onRequest(ctx) {
       if (typeof body.photo !== 'string' || body.photo.length > MAX_RECEIPT * 2 || !/^data:image\/(jpeg|png|webp);base64,/.test(body.photo)) return json({ error: 'bad photo' }, 400);
       const t0 = Date.now();
       try { return json({ ...(await scanReceipt(env, body.photo)), ms: Date.now() - t0 }); } catch (err) { return json({ error: String(err && err.message || err), ms: Date.now() - t0 }, 502); }
+    }
+
+    // filling in a new stop from its name (the four of us only)
+    if (path === 'fill') {
+      if (!member) return json({ error: 'pin required', pin: true }, 403);
+      if (typeof body.name !== 'string' || !clean(body.name, 90)) return json({ error: 'name required' }, 400);
+      const t0 = Date.now();
+      try { const r = await fillStop(env, body); return json({ ...r, ms: Date.now() - t0 }, r.error ? 502 : 200); } catch (err) { return json({ error: String(err && err.message || err), ms: Date.now() - t0 }, 502); }
     }
 
     // problem reports: open (a guest's phone can break too), so kept small: 10 per request, 50 a day, the last 200
