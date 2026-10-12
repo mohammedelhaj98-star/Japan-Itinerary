@@ -16,7 +16,8 @@ export function buildTimeline(tl) {
     const nextFocus = ev.slice(i + 1).find((x) => x.kind === 'focus' || x.kind === 'hold');
     const tap = ev.slice(i + 1).find((x) => x.kind === 'tap' && x.sel === e.sel);
     const typed = ev.slice(i + 1).find((x) => x.kind === 'typed' && x.sel === e.sel);
-    const end = Math.min(nextFocus ? nextFocus.t - 0.05 : tl.duration, (typed || tap || e).t + 0.9);
+    // a tap usually opens something new, so the camera lets go right after it; typing holds a moment longer
+    const end = Math.min(nextFocus ? nextFocus.t - 0.05 : tl.duration, typed ? typed.t + 0.6 : tap ? tap.t + 0.3 : e.t + 0.9);
     focus.push({ t0: e.t, t1: end, box: (tap && tap.box) || e.box, sel: e.sel });
   });
   const taps = ev.filter((e) => e.kind === 'tap' && e.box);
