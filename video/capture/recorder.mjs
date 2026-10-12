@@ -15,7 +15,7 @@ function ffmpegBin(REPO) {
   return 'ffmpeg';
 }
 
-export async function record(REPO, { name, url, out, slow = 5, viewport = { width: 390, height: 844 }, scale = 3, time, me = 'm', who = 'all', practice = true, tourStep = 0, sandboxState = null, script }) {
+export async function record(REPO, { name, url, out, slow = 5, viewport = { width: 390, height: 844 }, scale = 3, time, me = 'm', who = 'all', practice = true, tourStep = 0, sandboxState = null, script, prepare, meta: chapterMeta = null, init = null }) {
   const require = createRequire(REPO + '/package.json');
   const { chromium } = require('playwright');
   const executablePath = process.env.CHROMIUM || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
@@ -28,7 +28,7 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
     try {
       // start the practice from the sample trip data (normally the trip page loads it before you reach other pages)
       if (practice && sandboxState && !sessionStorage.getItem('tour.state')) sessionStorage.setItem('tour.state', JSON.stringify(sandboxState));
-      if (!localStorage.getItem('trips.me')) { localStorage.setItem('trips.me', JSON.stringify(me)); localStorage.setItem('trips.pin', '6666'); localStorage.setItem('japan2026.whoMix', JSON.stringify(who)); }
+      if (me && !localStorage.getItem('trips.me')) { localStorage.setItem('trips.me', JSON.stringify(me)); localStorage.setItem('trips.pin', '6666'); localStorage.setItem('japan2026.whoMix', JSON.stringify(who)); }
       if (practice) { sessionStorage.setItem('tour.on', '1'); if (!sessionStorage.getItem('tour.step')) sessionStorage.setItem('tour.step', String(tourStep)); }
     } catch {}
     // the practice tour's coaching cards and banner stay out of the shot
@@ -39,6 +39,7 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
     const hidePractice = () => { for (const el of document.querySelectorAll('.syncl, .draft, .sync, p, span, div')) { if (el.children.length < 2 && /^\s*Practice:/.test(el.textContent || '')) el.style.display = 'none'; } };
     new MutationObserver(hidePractice).observe(document, { childList: true, subtree: true });
   }, [me, who, practice, tourStep, sandboxState]);
+  if (init) await pg.addInitScript(init);
 
   // frames go to a temp folder (outside OneDrive/the repo), only clip.mp4 and timeline.json land in out/<name>
   const dir = path.join(out, name); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
@@ -62,6 +63,12 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
 
   const events = []; let t0 = null;
   const nowT = () => (t0 == null ? 0 : (Date.now() / 1000 - t0) / slow); // seconds of finished video
+  // scroll a target to the middle of the screen if any of it is hidden, so the ring is never off screen
+  const reveal = async (sel) => {
+    const moved = await pg.$eval(sel, (e) => { const r = e.getBoundingClientRect(); if (r.top >= 0 && r.bottom <= innerHeight) return false; e.scrollIntoView({ block: 'center', behavior: 'smooth' }); return true; }).catch(() => false);
+    if (moved) await wait(0.9);
+  };
+  const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y]) => ({ x, y })) });
   const box = async (sel) => pg.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }).catch(() => null);
   const wait = (s) => new Promise((r) => setTimeout(r, s * 1000 * slow)); // s = seconds in the finished video
   const api = {
@@ -69,25 +76,42 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
     mark: (label, extra = {}) => events.push({ t: nowT(), kind: 'mark', label, ...extra }),
     // show the button (caption + zoom happen in the video project), give viewers a beat, then tap it
     tap: async (sel, { caption, lead = 1.7, after = 2.0, step, opens = false } = {}) => {
-      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 });
+      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
       const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step });
       await wait(lead);
       const b2 = (await box(sel)) || b; events.push({ t: nowT(), kind: 'tap', sel, box: b2, opens });
       await pg.tap(sel, { timeout: 15000 }); await wait(after);
     },
     type: async (sel, text, { caption, step, lead = 1.5, after = 1.4, perChar = 0.13 } = {}) => {
-      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 });
+      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
       const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step });
       await wait(lead); events.push({ t: nowT(), kind: 'tap', sel, box: b });
       await pg.tap(sel); await wait(0.25);
       for (const ch of text) { await pg.keyboard.type(ch); await wait(perChar); }
       events.push({ t: nowT(), kind: 'typed', sel, box: await box(sel) }); await wait(after);
     },
+    // ring something and explain it without tapping (a card to show staff, a number to read)
+    point: async (sel, { caption, step, s = 3 } = {}) => {
+      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
+      events.push({ t: nowT(), kind: 'focus', sel, box: await box(sel), caption, step }); await wait(s);
+    },
+    // a finger drag on `sel`: from its centre (or `from`, page px) by dx/dy, taking `dur` seconds of finished video
+    drag: async (sel, { dx = 0, dy = 0, from, dur = 0.8, caption, step, lead = 1.7, after = 2.0, opens = false } = {}) => {
+      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
+      const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step }); await wait(lead);
+      const [x0, y0] = from || [b.x + b.w / 2, b.y + b.h / 2];
+      events.push({ t: nowT(), kind: 'tap', sel, box: b, opens, drag: { dx, dy } });
+      await touch('touchStart', [[x0, y0]]); const n = Math.max(8, Math.round(dur * 30));
+      for (let i = 1; i <= n; i++) { const k = i / n, e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2; await touch('touchMove', [[x0 + dx * e, y0 + dy * e]]); await wait(dur / n); }
+      await touch('touchEnd', []); await wait(after);
+    },
+    reveal,
     hold: async (s, caption, extra = {}) => { events.push({ t: nowT(), kind: 'hold', caption, ...extra }); await wait(s); },
     box,
   };
 
   await pg.goto(url, { waitUntil: 'load' }); await pg.waitForTimeout(2500); // let fonts, data and tiles settle at full speed
+  if (prepare) { await prepare(pg); await pg.waitForTimeout(800); }
   await slowDown();
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: viewport.width * scale, maxHeight: viewport.height * scale });
   await new Promise((r) => setTimeout(r, 400)); t0 = Date.now() / 1000;
@@ -102,7 +126,7 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
   kept.forEach(([t, i], k) => { const next = k + 1 < kept.length ? kept[k + 1][0] : t0 + tEnd * slow; list += `file 'frames/${String(i).padStart(6, '0')}.jpg'\nduration ${Math.max((next - t) / slow, 0.001).toFixed(5)}\n`; });
   fs.writeFileSync(work + '/frames.txt', list);
   execFileSync(ffmpegBin(REPO), ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-r', '60', '-fps_mode', 'cfr', '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'clip.mp4')], { cwd: work });
-  const meta = { name, duration: tEnd, viewport, scale, events, errors, frames: kept.length, fpsCaptured: kept.length / tEnd };
+  const meta = { name, chapter: chapterMeta, duration: tEnd, viewport, scale, events, errors, frames: kept.length, fpsCaptured: kept.length / tEnd };
   fs.writeFileSync(dir + '/timeline.json', JSON.stringify(meta, null, 2));
   fs.rmSync(work, { recursive: true, force: true });
   return meta;

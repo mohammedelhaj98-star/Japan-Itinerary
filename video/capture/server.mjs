@@ -4,8 +4,9 @@ import http from 'http'; import fs from 'fs'; import path from 'path'; import { 
 
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 
-export async function startServer(REPO, { port = 8797, seed = {} } = {}) {
-  execSync('bash scripts/deploy.sh', { cwd: REPO, stdio: 'ignore', env: { ...process.env, BUILD_ONLY: '1' } });
+// PORT picks the port (so several recordings can run side by side); SKIP_BUILD=1 reuses an existing dist/
+export async function startServer(REPO, { port = Number(process.env.PORT) || 8797, seed = {} } = {}) {
+  if (process.env.SKIP_BUILD !== '1' || !fs.existsSync(REPO + '/dist/japan/index.html')) execSync('bash scripts/deploy.sh', { cwd: REPO, stdio: 'ignore', env: { ...process.env, BUILD_ONLY: '1' } });
   const DIST = REPO + '/dist';
   const { onRequest } = await import(pathToFileURL(REPO + '/functions/api/[[path]].js').href + '?' + Date.now());
   const kv = new Map(Object.entries(seed).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)]));

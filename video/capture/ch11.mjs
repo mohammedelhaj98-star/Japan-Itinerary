@@ -4,6 +4,11 @@ export default {
   path: '/japan/money',
   time: '2026-10-22T03:20:00Z', // Day 7, 12:20 pm in Osaka
   tourStep: 13, // the practice tour's money step, so the tour keeps us on this page
+  meta: {
+    why: 'So nobody has to keep the bill in their head.',
+    recap: ['¥+', 'Amount', 'What for', 'Paid by', "Who's in", 'Add expense'],
+    next: 'Next: scan a receipt and split it by item',
+  },
   async script({ tap, type, hold, wait, pg }) {
     await hold(2.6, 'This is the money page: what the group has spent, and who owes whom.');
     await tap('#addfab', { step: 1, caption: 'Tap ¥+', opens: true });

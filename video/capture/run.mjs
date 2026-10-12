@@ -6,7 +6,7 @@ const ids = process.argv.slice(2); if (!ids.length) { console.log('usage: node v
 const srv = await startServer(REPO, { seed });
 for (const id of ids) {
   const ch = (await import(`./${id}.mjs`)).default;
-  const sandboxState = { checks: {}, choices: {}, suggestions: [], custom: {}, money: {}, profiles: {}, covers: {}, ...seed, updatedAt: null };
+  const sandboxState = { checks: {}, choices: {}, suggestions: [], custom: {}, money: {}, profiles: {}, covers: {}, ...seed, ...(ch.state || {}), updatedAt: null }; // ch.state: extra sample data just for this chapter (practice only)
   const meta = await record(REPO, { sandboxState, ...ch, url: srv.url + ch.path, out: path.join(REPO, 'video/public/clips') });
   console.log(`${ch.name}: ${meta.duration.toFixed(1)} s, ${meta.fpsCaptured.toFixed(0)} frames/s captured${meta.errors.length ? ', page errors: ' + meta.errors.join(' | ') : ''}`);
 }
