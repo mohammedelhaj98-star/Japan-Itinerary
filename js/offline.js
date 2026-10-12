@@ -6,6 +6,8 @@
 
 const at = (p) => new URL(p, import.meta.url).href;
 const photo = (pi) => (pi && pi.img ? [at(`../img/places/${pi.img}`), at(`../img/places/t/${pi.img}`)] : []);
+// an added stop that was filled in has its own Wikimedia photo
+const ownPhotos = (c) => (c && c.info && c.info.img ? [...new Set([c.info.img, c.info.thumb || c.info.img])] : []);
 // the pages and code the app needs offline (the service worker keeps these)
 const SHELL = ['../', '../index.html', '../money.html', '../prototypes/tools.html', './store.js', '../data/itinerary.js', '../data/places.js'].map(at);
 
@@ -23,11 +25,11 @@ export function offline({ DAYS, HOTELS, PLACES }) {
     walk(d.items);
     const h = HOTELS.find((x) => x.id === d.hotel); if (h) add(h.name);
     for (const c of Object.values(custom)) if (c && c.day === d.id && c.place) add(c.place.name);
-    // an added stop that was filled in has its own Wikimedia photo
-    for (const c of Object.values(custom)) if (c && c.day === d.id && c.info && c.info.img) [c.info.img, c.info.thumb].forEach((u) => u && out.add(u));
+    for (const c of Object.values(custom)) if (c && c.day === d.id) ownPhotos(c).forEach((u) => out.add(u));
     return out;
   }
-  const allPhotos = () => new Set(Object.values(PLACES).flatMap(photo));
+  // the trip's own photos, and those of added stops that were filled in (Wikimedia)
+  const allPhotos = (custom = {}) => new Set([...Object.values(PLACES).flatMap(photo), ...Object.values(custom).flatMap(ownPhotos)]);
 
   const saved = async (url) => !!(await caches.match(url, { ignoreSearch: true }));
   const countSaved = async (urls) => (await Promise.all([...urls].map(saved))).filter(Boolean).length;
@@ -36,17 +38,17 @@ export function offline({ DAYS, HOTELS, PLACES }) {
   async function offlineStatus(custom = {}) {
     if (!('caches' in window) || !('serviceWorker' in navigator)) return { ready: false, app: false };
     const app = !!navigator.serviceWorker.controller && (await countSaved(SHELL)) === SHELL.length;
-    const days = nextDays(), du = new Set(days.flatMap((d) => [...dayPhotos(d, custom)])), all = allPhotos();
+    const days = nextDays(), du = new Set(days.flatMap((d) => [...dayPhotos(d, custom)])), all = allPhotos(custom);
     const ds = await countSaved(du), ws = await countSaved(all);
     return { ready: app && ds === du.size, app, days: { n: days.length, saved: ds, total: du.size }, whole: { saved: ws, total: all.size } };
   }
 
   // Save every place photo (4 at a time); onProgress(done, total). Asks the phone to keep the saved files.
-  async function saveWholeTrip(onProgress = () => {}) {
+  async function saveWholeTrip(onProgress = () => {}, custom = {}) {
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     // the app itself: the service worker saves it while the pages are fetched with it in control
     await Promise.all(SHELL.map((u) => fetch(u, { cache: 'no-cache' }).catch(() => null)));
-    const c = await caches.open('days'), urls = [...allPhotos()]; let done = 0, failed = 0;
+    const c = await caches.open('days'), urls = [...allPhotos(custom)]; let done = 0, failed = 0;
     const one = async (u) => { if (!(await saved(u))) { try { const r = await fetch(u); if (r.ok) await c.put(u, r); else failed++; } catch { failed++; } } onProgress(++done, urls.length); };
     for (let i = 0; i < urls.length; i += 4) await Promise.all(urls.slice(i, i + 4).map(one));
     return { total: urls.length, failed };

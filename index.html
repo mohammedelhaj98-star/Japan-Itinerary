@@ -1139,7 +1139,8 @@ async function runFill(s, auto) {
   try { r = await store.api('fill', { name, city: d.city, date: d.date, near: (s.ref && s.ref.name) || '' }); found = await findPlace(r, s.ref).catch(() => ({})); }
   catch (err) { s.msg = err.pin ? 'Filling in needs the PIN.' : navigator.onLine === false ? 'Filling in needs a connection.' : "Couldn't fill this one in. Add the details yourself."; r = null; }
   if (live()) readFormSafe();
-  if (s.title !== name) r = null; // the name changed while it was out: this answer is for the old one
+  // the name changed while it was out: this answer is for the old one (a stop saved meanwhile asks again for its name)
+  if (s.title !== name) { s.fill = null; if (!live() && s.savedId && s.title.length >= 2) return runFill(s, true); if (live()) rerenderKeep(); else if (s.savedId) saveFill(s, false); return; }
   if (r) applyFill(s, r, found); else s.fill = null;
   if (live()) rerenderKeep();
   else if (s.savedId) saveFill(s, !!r);
@@ -1194,7 +1195,7 @@ function saveFill(s, ok) {
   if (ok && c && s.fill && s.fill.done) {
     const patch = { ...c }; delete patch.ts;
     if (!c.place && s.place) patch.place = s.place;
-    if (!s.catSet && s.cat) patch.cat = s.cat;
+    if (!s.catSet && s.cat && c.cat === s.savedCat) patch.cat = s.cat; // unless the type was changed since
     if (!c.desc && s.desc) patch.desc = s.desc;
     if (!c.cost && s.cost) patch.cost = s.cost;
     if (c.time === s.savedTime && s.end != null) patch.time = fmtRange(s.start, s.end);
@@ -1243,7 +1244,7 @@ function saveEditor() {
     const prev = s0.mode === 'add' ? {} : CUSTOM()[id] || {};
     store.setCustom(id, { ...prev, added: true, day: s0.dayId, after: s0.mode === 'add' ? s0.after || null : prev.after ?? null, title: s0.title, time: fmtRange(s0.start, s0.end), who: s0.who, cat: s0.cat || (s0.place ? 'sight' : 'plan'), place: s0.place, desc: s0.desc || '', cost: s0.cost || '', info: s0.info || null });
     // "type the name, tap Add stop": the rest fills in on the saved stop when it arrives
-    s0.savedId = id; s0.savedTime = fmtRange(s0.start, s0.end);
+    s0.savedId = id; s0.savedTime = fmtRange(s0.start, s0.end); s0.savedCat = s0.cat || (s0.place ? 'sight' : 'plan');
     if (s0.fill && s0.fill.busy) FILLING.add(id); else if (s0.mode === 'add' && canAutoFill(s0)) { FILLING.add(id); runFill(s0, true); }
     const keepDay = s0.dayId; closeEditor(); if (keepDay !== day.id) { ui.dayId = keepDay; } renderDay({ keepScroll: true, selId: id }); buzz(10); return;
   }

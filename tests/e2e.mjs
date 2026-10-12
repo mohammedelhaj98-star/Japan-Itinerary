@@ -683,6 +683,15 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await pg.waitForTimeout(3000);
   const late = addedIds().find(([, c]) => c.title === 'Yanaka Ginza again');
   ok('fill-in: then the saved stop is filled in', late && late[1].info && late[1].info.ja === '谷中銀座商店街' && late[1].cat === 'shop' && /menchi-katsu/.test(late[1].desc) && !/Filling in…/.test(await pg.evaluate((id) => document.getElementById('p-' + id).textContent, late[0])), JSON.stringify(late && late[1]).slice(0, 200));
+  // the name corrected while the first answer is still out, then saved: the stop is filled in for the new name
+  let fills = 0; pg.on('request', (r) => { if (/\/api\/fill$/.test(r.url())) fills++; });
+  await pg.evaluate(() => document.querySelector('[data-addend]').click()); await pg.waitForTimeout(700);
+  await pg.tap('#f-title'); await pg.fill('#f-title', 'Yanaka Ginzza'); await pg.tap('#f-start'); await pg.waitForTimeout(200);
+  await pg.tap('#f-title'); await pg.fill('#f-title', 'Yanaka Ginza street'); await pg.tap('[data-fsave]'); await pg.waitForTimeout(5500);
+  const fixed = addedIds().find(([, c]) => c.title === 'Yanaka Ginza street');
+  ok('fill-in: a name corrected while filling in is asked about again once saved', fills === 2 && fixed && fixed[1].info && fixed[1].info.ja === '谷中銀座商店街', `${fills} asks, ${JSON.stringify(fixed && fixed[1]).slice(0, 120)}`);
+  const { offline: off } = await import(REPO + '/js/offline.js');
+  ok('fill-in: Save whole trip includes added stops\' photos', off({ DAYS: [], HOTELS: [], PLACES: {} }).allPhotos(JSON.parse(store.get('custom') || '{}')).size >= 2);
   ok('fill-in: the photo and the map pin come from Wikipedia, no map search needed', asked.includes('en.wikipedia.org') && !asked.includes('nominatim.openstreetmap.org'), [...new Set(asked)].join(','));
   ok('no page errors while filling in', !F.errs.length, F.errs.join(' | '));
   for (const [id] of addedIds().slice(n0)) await fetch(B + '/api/custom', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ id, value: null }) });

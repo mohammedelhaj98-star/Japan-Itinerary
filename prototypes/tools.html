@@ -709,8 +709,8 @@ function offlineRow() {
   return `<div class="card scard"><div class="setrow"><span id="off-line">${line}</span>${whole && !off.busy ? '' : `<button class="setb" data-saveall ${off.busy || !navigator.onLine ? 'disabled' : ''}>Save whole trip</button>`}</div></div>`;
 }
 async function saveAll() {
-  off.busy = true; off.done = 0; off.total = OFF.allPhotos().size; off.failed = 0; render();
-  const r = await OFF.saveWholeTrip((done, total) => { off.done = done; off.total = total; const el = document.getElementById('off-line'); if (el) el.textContent = `Saving… ${done} of ${total}`; });
+  off.busy = true; off.done = 0; off.total = OFF.allPhotos(store.state.custom || {}).size; off.failed = 0; render();
+  const r = await OFF.saveWholeTrip((done, total) => { off.done = done; off.total = total; const el = document.getElementById('off-line'); if (el) el.textContent = `Saving… ${done} of ${total}`; }, store.state.custom || {});
   off.busy = false; off.failed = r.failed; off.st = null; loadOffline();
 }
 // Backing the money up to Google Drive: once a day by itself (on the server), or now
