@@ -75,14 +75,14 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
     pg, wait,
     mark: (label, extra = {}) => events.push({ t: nowT(), kind: 'mark', label, ...extra }),
     // show the button (caption + zoom happen in the video project), give viewers a beat, then tap it
-    tap: async (sel, { caption, lead = 1.7, after = 2.0, step, opens = false } = {}) => {
+    tap: async (sel, { caption, lead = 1.25, after = 1.45, step, opens = false } = {}) => {
       await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
       const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step });
       await wait(lead);
       const b2 = (await box(sel)) || b; events.push({ t: nowT(), kind: 'tap', sel, box: b2, opens });
       await pg.tap(sel, { timeout: 15000 }); await wait(after);
     },
-    type: async (sel, text, { caption, step, lead = 1.5, after = 1.4, perChar = 0.13 } = {}) => {
+    type: async (sel, text, { caption, step, lead = 1.1, after = 1.0, perChar = 0.085 } = {}) => {
       await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
       const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step });
       await wait(lead); events.push({ t: nowT(), kind: 'tap', sel, box: b });
@@ -91,12 +91,12 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
       events.push({ t: nowT(), kind: 'typed', sel, box: await box(sel) }); await wait(after);
     },
     // ring something and explain it without tapping (a card to show staff, a number to read)
-    point: async (sel, { caption, step, s = 3 } = {}) => {
+    point: async (sel, { caption, step, s = 2.4 } = {}) => {
       await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
       events.push({ t: nowT(), kind: 'focus', sel, box: await box(sel), caption, step }); await wait(s);
     },
     // a finger drag on `sel`: from its centre (or `from`, page px) by dx/dy, taking `dur` seconds of finished video
-    drag: async (sel, { dx = 0, dy = 0, from, dur = 0.8, caption, step, lead = 1.7, after = 2.0, opens = false } = {}) => {
+    drag: async (sel, { dx = 0, dy = 0, from, dur = 0.8, caption, step, lead = 1.25, after = 1.45, opens = false } = {}) => {
       await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
       const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step }); await wait(lead);
       const [x0, y0] = from || [b.x + b.w / 2, b.y + b.h / 2];

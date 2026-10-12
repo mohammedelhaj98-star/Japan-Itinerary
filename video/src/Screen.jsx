@@ -1,12 +1,15 @@
 // The recorded phone screen with the tutorial camera: zooms to the button being explained, rings it, shows the touch.
 import { OffthreadVideo, staticFile } from 'remotion';
-import { VIEW, cameraAt, focusAt, tapsAt, fade } from './timeline.js';
+import { VIEW, cameraAt, focusAt, spotAt, tapsAt, fade } from './timeline.js';
+import { Easing } from 'remotion';
+const pop = Easing.bezier(0.34, 1.4, 0.64, 1); // a soft overshoot as the spotlight lands
 
 export function Screen({ T, t, clip, width, radius = 56, camOpts, ring = '#e23b2e', touch = 'dark', shadow = true, extraZoom = 1, dim = 0.18 }) {
   const s = width / VIEW.w, height = VIEW.h * s;
   const cam = cameraAt(T, t, camOpts);
   const z = cam.z * extraZoom;
-  const f = focusAt(T, t);
+  const f = camOpts?.still ? null : focusAt(T, t);
+  const sp = camOpts?.still ? spotAt(T, t) : null;
   const px = (v) => v * s;
   return (
     <div style={{ width, height, borderRadius: radius, overflow: 'hidden', position: 'relative', background: '#fff',
@@ -19,6 +22,17 @@ export function Screen({ T, t, clip, width, radius = 56, camOpts, ring = '#e23b2
             width: px(f.box.w) + 14 / z * 1.5, height: px(f.box.h) + 14 / z * 1.5, borderRadius: 18 / z * 1.5,
             border: `${4 / z}px solid ${ring}`, boxShadow: `0 0 0 ${8 / z}px ${ring}33, 0 0 0 4000px rgba(20,20,18,${dim})`, opacity: fade(t, f.t0, f.t1, 0.45) }} />
         )}
+        {sp && (() => {
+          // the still look: a lit hole that glides between buttons, a gentle pop when it lands, a slow breathing glow
+          const landed = sp.linkedPrev ? 1 : pop(Math.min(1, sp.age / 0.45)), sc = 1 + (1 - landed) * 0.14;
+          const breathe = 0.5 - 0.5 * Math.cos((sp.age / 1.6) * Math.PI * 2), pad = 7;
+          const x = px(sp.box.x) - pad, y = px(sp.box.y) - pad, w = px(sp.box.w) + pad * 2, h = px(sp.box.h) + pad * 2;
+          return (
+            <div style={{ position: 'absolute', left: x, top: y, width: w, height: h, borderRadius: Math.min(20, h / 2), opacity: sp.o,
+              transform: `scale(${sc})`, transformOrigin: '50% 50%',
+              border: `4px solid ${ring}`, boxShadow: `0 0 0 ${6 + breathe * 7}px ${ring}2e, 0 0 26px 4px ${ring}55, 0 0 0 4000px rgba(12,12,10,${dim})` }} />
+          );
+        })()}
         {tapsAt(T, t).map((x, i) => {
           const cx = px(x.box.x + x.box.w / 2), cy = px(x.box.y + x.box.h / 2), d = 92 / z, k = x.age;
           const press = k < 0.25 ? 1 - k * 0.6 : 0.85 + (k - 0.25) * 0.2;

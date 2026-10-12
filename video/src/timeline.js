@@ -18,8 +18,8 @@ export function buildTimeline(tl) {
     const tap = rest.find((x) => x.kind === 'tap' && x.sel === e.sel);
     const typed = rest.find((x) => x.kind === 'typed' && x.sel === e.sel);
     const next = rest.find((x) => x.kind === 'focus' || x.kind === 'hold');
-    const ringEnd = Math.min(next ? next.t : tl.duration, typed ? typed.t + 0.4 : tap ? tap.t + 0.35 : e.t + 1.2);
-    focus.push({ t0: e.t, t1: ringEnd, box: (tap && tap.box) || e.box, sel: e.sel });
+    const ringEnd = Math.min(next ? next.t : tl.duration, typed ? typed.t + 0.4 : tap ? tap.t + (tap.opens ? 0 : 0.35) : next ? next.t : e.t + 2.4); // a tap that opens a new screen: the ring leaves as it's pressed
+    focus.push({ t0: e.t, t1: ringEnd, box: (tap && tap.box) || e.box, sel: e.sel, step: e.step || null, opens: !!(tap && tap.opens), tap: tap ? tap.t : null });
     shots.push({ t: e.t, box: (tap && tap.box) || e.box });
     if (tap && tap.opens) shots.push({ t: tap.t + 0.15, wide: true });
     else if (!next || next.kind === 'hold') shots.push({ t: next ? next.t : ringEnd + 0.4, wide: true });
@@ -59,6 +59,28 @@ export function cameraAt(T, t, opts = {}, dur = 1.3) {
   return mix(from, cam, glide(Math.min(1, Math.max(0, (t - start) / dur))));
 }
 
-export const tapsAt = (T, t, life = 0.7) => T.taps.filter((x) => t >= x.t && t < x.t + life).map((x) => ({ ...x, age: (t - x.t) / life }));
+// The still look's spotlight at time t: which box is lit, how strongly, and how it got there. Between two
+// buttons on the same screen it glides across; when a tap opens a new screen it fades out and pops in again.
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const lerpBox = (a, b, k) => ({ x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), w: lerp(a.w, b.w, k), h: lerp(a.h, b.h, k) });
+export const glideEase = Easing.bezier(0.65, 0, 0.25, 1);
+export function spotAt(T, t, { glide = 0.6, fadeIn = 0.4, fadeOut = 0.35, bridge = 1.9 } = {}) {
+  const F = T.focus; let i = -1;
+  for (let j = 0; j < F.length; j++) if (F[j].t0 <= t) i = j;
+  if (i < 0) return null;
+  const f = F[i], prev = F[i - 1], next = F[i + 1];
+  const linkedPrev = !!(prev && !prev.opens && f.t0 - prev.t1 < bridge);
+  const linkedNext = !!(next && !f.opens && next.t0 - f.t1 < bridge);
+  const gk = linkedPrev ? glideEase(clamp01((t - f.t0) / glide)) : 1;
+  const box = linkedPrev ? lerpBox(prev.box, f.box, gk) : f.box;
+  let o = t < f.t1 ? (linkedPrev ? 1 : clamp01((t - f.t0) / fadeIn)) : linkedNext ? 1 : 1 - clamp01((t - f.t1) / (f.opens ? 0.1 : fadeOut));
+  o = ease(o);
+  if (o <= 0.001) return null;
+  return { box, o, age: t - f.t0, step: f.step, prevStep: linkedPrev ? prev.step : null, glide: gk, linkedPrev };
+}
+
+// a tap that opens a new screen keeps its touch mark short, so it doesn't sit on top of the new screen
+export const tapsAt = (T, t, life = 0.7) => T.taps.map((x) => [x, x.opens ? life * 0.45 : life]).filter(([x, L]) => t >= x.t && t < x.t + L).map(([x, L]) => ({ ...x, age: (t - x.t) / L }));
 export const fade = (t, a, b, d = 0.3) => interpolate(t, [a, a + d, b - d, b], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 export { ease };

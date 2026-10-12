@@ -1,10 +1,10 @@
 // One tutorial chapter in one of three looks: 'paper', 'rail' or 'camera'.
-import { AbsoluteFill, Freeze, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Easing, Freeze, Sequence, interpolate, interpolateColors, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
 import { C, FONT, W, H, fontCss } from './theme.js';
-import { buildTimeline, captionAt, focusAt, ease, VIEW } from './timeline.js';
+import { buildTimeline, captionAt, focusAt, spotAt, ease, VIEW } from './timeline.js';
 import { Screen, boxOnCanvas } from './Screen.jsx';
 
-export const INTRO = 3.2, OUTRO = 5;
+export const INTRO = 2.8, OUTRO = 4.2;
 const clampI = (t, a, b, from, to, e = ease) => interpolate(t, [a, b], [from, to], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: e });
 
 export function Chapter({ look = 'paper', chapter, tl }) {
@@ -103,21 +103,46 @@ function Recap({ P, dark }) {
 }
 
 /* ─────────────── 2. Rail: night signage, the steps as stations on a line ─────────────── */
+// The phone never moves. A red spotlight lights the button for each step (gliding between buttons on the same
+// screen), an arrow draws itself from the lit station on the line to that button, and the line fills as you go.
+const sm = (t, a, d) => ease(Math.min(1, Math.max(0, (t - a) / d))); // 0→1 eased over d seconds from a
 function Rail(P) {
   const { T, g, tc, rise, outro, chapter } = P;
-  const PW = 560, top = 330, left = W - PW - 56;
-  const phoneX = clampI(g, rise, rise + 0.8, W + 40, left);
-  const cur = g >= rise ? captionAt(T, tc) : null;
-  const curStep = g >= outro ? T.totalSteps + 1 : cur && cur.step ? cur.step : (g >= rise && tc > 1 ? T.totalSteps + 0.5 : 0);
+  const PW = 560, top = 330, left = W - PW - 56, s = PW / VIEW.w;
+  const phoneX = clampI(g, rise, rise + 0.9, W + 40, left, Easing.bezier(0.16, 1, 0.3, 1));
+  const playing = g >= rise;
   const stepsList = T.captions.filter((c) => c.step);
-  const railTop = 380, gap = 205, railX = 92;
-  const fill = clampI(g, 0.4, 1.4, 0, 1);
+  const holdEnd = T.captions.filter((c) => !c.step).slice(-1)[0];
+  const tEnd = holdEnd && holdEnd.t > (stepsList.at(-1)?.t ?? 0) ? holdEnd.t : null; // the result caption after the last step
+  const railTop = 380, gap = 205, railX = 92, labelW = left - railX - 96;
+  const intro = clampI(g, 0.4, 1.4, 0, 1);
+  // how far the red has run down the line, in stations: each new step fills the segment before it
+  const T0 = playing ? tc : -99;
+  let fill = 0;
+  stepsList.forEach((c, i) => { if (i > 0) fill += sm(T0, c.t, 0.7); });
+  if (tEnd != null) fill += 0.5 * sm(T0, tEnd, 0.7);
+  fill += (tEnd != null ? 0.5 : 1) * sm(g, outro, 0.7);
+  // each station's state, eased: lit while it's the current step, ticked once the next one starts
+  const startOf = (i) => stepsList[i].t, endOf = (i) => (i + 1 < stepsList.length ? stepsList[i + 1].t : tEnd ?? T.duration + 99);
+  const arrived = tEnd != null ? sm(T0, tEnd, 0.4) : sm(g, outro, 0.4);
+  // the arrow: from the lit station to the lit button
+  const sp = playing && g < outro ? spotAt(T, tc) : null;
+  const stationY = (n) => railTop + (n - 1) * gap;
+  let arrow = null;
+  if (sp && sp.step) {
+    const sy = sp.prevStep ? stationY(sp.prevStep) + (stationY(sp.step) - stationY(sp.prevStep)) * sp.glide : stationY(sp.step);
+    const sx = railX + 34 + 22 + labelW + 14;
+    const ex = phoneX + sp.box.x * s - 22, ey = top + (sp.box.y + sp.box.h / 2) * s;
+    const d = Math.min(170, Math.max(8, (ex - sx) * 0.5)); // short hops stay a clean line, long ones curve
+    const draw = sp.linkedPrev ? 1 : sm(sp.age, 0.15, 0.55);
+    arrow = { path: `M ${sx} ${sy} C ${sx + d} ${sy}, ${ex - d} ${ey}, ${ex} ${ey}`, ex, ey, draw, o: sp.o, age: sp.age };
+  }
   return (
     <AbsoluteFill style={{ background: '#121210' }}>
       <AbsoluteFill style={{ background: 'radial-gradient(90% 60% at 80% 40%, rgba(226,59,46,.16), transparent 70%)' }} />
       {/* station sign */}
       <div style={{ position: 'absolute', left: 56, top: 86, right: 56 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 22, opacity: clampI(g, 0, 0.35, 0, 1) }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 22, opacity: clampI(g, 0, 0.35, 0, 1), transform: `translateY(${clampI(g, 0, 0.5, 12, 0)}px)` }}>
           <div style={{ height: 76, padding: '0 26px', borderRadius: 16, background: '#fff', color: C.ink, display: 'flex', alignItems: 'center', gap: 14, fontWeight: 700, fontSize: 40 }}>
             <span style={{ width: 16, height: 46, borderRadius: 4, background: C.red }} />{String(chapter.n).padStart(2, '0')}
           </div>
@@ -126,38 +151,61 @@ function Rail(P) {
         <div style={{ marginTop: 30, fontSize: 68, fontWeight: 700, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1.05,
           clipPath: `inset(0 ${100 - clampI(g, 0.25, 1.0, 0, 100)}% 0 0)` }}>{chapter.title}</div>
       </div>
-      {/* the line */}
-      <div style={{ position: 'absolute', left: railX - 5, top: railTop, width: 10, height: gap * (stepsList.length) * fill, borderRadius: 5, background: 'rgba(255,255,255,.14)' }} />
-      <div style={{ position: 'absolute', left: railX - 5, top: railTop, width: 10, borderRadius: 5, background: C.red,
-        height: Math.max(0, Math.min(stepsList.length, curStep - 1 + (curStep > 0 ? 0.0 : 0)) ) * gap }} />
+      {/* the line: grey track, then the red running down it */}
+      <div style={{ position: 'absolute', left: railX - 5, top: railTop, width: 10, height: gap * stepsList.length * intro, borderRadius: 5, background: 'rgba(255,255,255,.14)' }} />
+      <div style={{ position: 'absolute', left: railX - 5, top: railTop, width: 10, borderRadius: 5, background: `linear-gradient(${C.red}, #ff6a4d)`, height: fill * gap, boxShadow: '0 0 18px rgba(226,59,46,.45)' }} />
       {stepsList.map((c, i) => {
-        const n = i + 1, done = curStep > n, on = curStep === n && g < outro; // after the last step (curStep n+0.5) every station reads done
-        const y = railTop + i * gap, a = 0.5 + i * 0.12;
+        const n = i + 1, a = 0.5 + i * 0.12;
+        const lit = sm(T0, startOf(i), 0.35) * (1 - sm(T0, endOf(i), 0.35)) * (1 - sm(g, outro, 0.3));
+        const done = sm(T0, endOf(i), 0.3);
+        const y = stationY(n);
+        const bg = interpolateColors(lit, [0, 1], [done > 0.5 ? '#ffffff' : '#121210', C.red]);
         return (
-          <div key={i} style={{ position: 'absolute', left: railX - 34, top: y - 34, display: 'flex', gap: 26, width: left - railX - 10, opacity: clampI(g, a, a + 0.3, 0, 1) }}>
-            <div style={{ width: 68, height: 68, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 32,
-              background: on ? C.red : done ? '#fff' : '#121210', color: on ? '#fff' : done ? C.ink : 'rgba(255,255,255,.6)',
-              border: on || done ? 'none' : '4px solid rgba(255,255,255,.3)', transform: `scale(${on ? 1.12 : 1})`, boxShadow: on ? '0 0 0 12px rgba(226,59,46,.25)' : 'none' }}>{done ? '✓' : n}</div>
-            <div style={{ fontSize: on ? 38 : 32, fontWeight: on ? 700 : 500, lineHeight: 1.18, color: on ? '#fff' : done ? 'rgba(255,255,255,.62)' : 'rgba(255,255,255,.4)', paddingTop: 10 }}>{c.text}</div>
+          <div key={i} style={{ position: 'absolute', left: railX - 34, top: y - 34, display: 'flex', gap: 26, width: labelW + 94, opacity: clampI(g, a, a + 0.3, 0, 1), transform: `translateX(${clampI(g, a, a + 0.45, -16, 0)}px)` }}>
+            <div style={{ width: 68, height: 68, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 32, position: 'relative',
+              background: bg, color: lit > 0.5 ? '#fff' : done > 0.5 ? C.ink : 'rgba(255,255,255,.6)',
+              border: `4px solid rgba(255,255,255,${0.3 * (1 - Math.max(lit, done))})`, boxSizing: 'border-box',
+              transform: `scale(${1 + 0.14 * lit})`, boxShadow: `0 0 0 ${12 * lit}px rgba(226,59,46,.25), 0 0 ${30 * lit}px rgba(226,59,46,${0.5 * lit})` }}>
+              <span style={{ position: 'absolute', opacity: 1 - done, transform: `scale(${1 - done * 0.4})` }}>{n}</span>
+              <span style={{ position: 'absolute', opacity: done, transform: `scale(${0.4 + done * 0.6}) rotate(${(1 - done) * -30}deg)` }}>✓</span>
+            </div>
+            <div style={{ fontSize: 32 + 6 * lit, fontWeight: lit > 0.5 ? 700 : 500, lineHeight: 1.18, paddingTop: 10, width: labelW,
+              color: `rgba(255,255,255,${0.4 + 0.6 * lit + 0.22 * done * (1 - lit)})`, transform: `translateX(${8 * lit}px)` }}>{c.text}</div>
           </div>
         );
       })}
-      {/* last stop: the result / next chapter */}
+      {/* last stop: the result, then the next chapter */}
       {(() => {
         const y = railTop + stepsList.length * gap, k = g - outro;
-        const hold = T.captions.filter((c) => !c.step).slice(-1)[0];
-        const showHold = g >= rise && hold && tc >= hold.t;
+        const label = k > 0.4 ? chapter.next : arrived > 0 && tEnd != null ? holdEnd.text : 'Done';
         return (
-          <div style={{ position: 'absolute', left: railX - 34, top: y - 34, width: left - railX - 10, display: 'flex', gap: 26, opacity: showHold || k > 0 ? 1 : clampI(g, 1.3, 1.6, 0, 0.35) }}>
-            <div style={{ width: 68, height: 68, borderRadius: 14, flex: 'none', background: showHold || k > 0 ? C.green : 'transparent', border: showHold || k > 0 ? 'none' : '4px solid rgba(255,255,255,.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 34 }}>済</div>
-            <div style={{ fontSize: 34, fontWeight: 700, color: '#fff', lineHeight: 1.2, paddingTop: 8 }}>{k > 0.4 ? chapter.next : showHold ? hold.text : 'Done'}</div>
+          <div style={{ position: 'absolute', left: railX - 34, top: y - 34, width: labelW + 94, display: 'flex', gap: 26, opacity: Math.max(arrived, clampI(g, 1.3, 1.6, 0, 0.35)) }}>
+            <div style={{ width: 68, height: 68, borderRadius: 14, flex: 'none', background: interpolateColors(arrived, [0, 1], ['rgba(47,158,87,0)', C.green]), border: `4px solid rgba(255,255,255,${0.3 * (1 - arrived)})`, boxSizing: 'border-box',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 34, fontFamily: FONT.jp,
+              transform: `scale(${1 + 0.18 * Math.sin(Math.min(1, arrived) * Math.PI)})`, boxShadow: `0 0 ${34 * arrived}px rgba(47,158,87,${0.45 * arrived})` }}>済</div>
+            <div style={{ fontSize: 34, fontWeight: 700, color: '#fff', lineHeight: 1.2, paddingTop: 8, width: labelW }}>{label}</div>
           </div>
         );
       })()}
-      <div style={{ position: 'absolute', left: phoneX, top }}>
-        <Clip P={P} width={PW} radius={50} ring={C.red} touch="dark" camOpts={{ still: true }} dim={0.55} />
+      <div style={{ position: 'absolute', left: phoneX, top, filter: 'drop-shadow(0 40px 60px rgba(0,0,0,.55))' }}>
+        <Clip P={P} width={PW} radius={50} ring={C.red} touch="dark" camOpts={{ still: true }} dim={0.68} shadow={false} />
       </div>
+      {/* the arrow, drawn over everything: it draws itself on, then a light runs along it now and then */}
+      {arrow && (
+        <svg width={W} height={H} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', opacity: arrow.o }}>
+          <defs>
+            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6" /></filter>
+          </defs>
+          <path d={arrow.path} pathLength={1} fill="none" stroke={C.red} strokeOpacity={0.5} strokeWidth={14} strokeLinecap="round" filter="url(#glow)"
+            strokeDasharray="1 1" strokeDashoffset={1 - arrow.draw} />
+          <path d={arrow.path} pathLength={1} fill="none" stroke={C.red} strokeWidth={6} strokeLinecap="round" strokeDasharray="1 1" strokeDashoffset={1 - arrow.draw} />
+          <path d={arrow.path} pathLength={1} fill="none" stroke="#fff" strokeOpacity={0.85} strokeWidth={4} strokeLinecap="round"
+            strokeDasharray="0.06 1" strokeDashoffset={-(((arrow.age - 0.7) % 1.8) / 1.8) * 1.1} style={{ display: arrow.draw >= 1 && arrow.age > 0.7 ? 'block' : 'none' }} />
+          <g transform={`translate(${arrow.ex} ${arrow.ey}) scale(${sm(arrow.draw, 0.8, 0.2)})`}>
+            <path d="M -20 -13 L 2 0 L -20 13" fill="none" stroke={C.red} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" />
+          </g>
+        </svg>
+      )}
     </AbsoluteFill>
   );
 }
