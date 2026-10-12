@@ -20,19 +20,10 @@ export function planFeature(vo, tls, { beat = BEAT } = {}) {
   const voPlace = [], taps = [], whooshes = [];
   const say = (id, at) => voPlace.push({ id, at, from: line[id].start, to: line[id].end });
 
-  // cold open: quick one-beat cuts under the first half of the opening line, then the title slams in
+  // soft open: the title fades up slowly under the opening line
   const open = line.open;
-  say('open', 0.3);
-  const titleAt = snap(0.3 + open.len * 0.5);
-  const openEnd = snap(0.3 + open.len + 0.35);
-  const moments = [['f1-dial', 'tap', 0, 0.5], ['f2-receipt', 'focus', 2, 0.3], ['f2-receipt', 'tap', 4, 0.15], ['f3-settle', 'tap', 2, 0.3], ['f4-photos', 'tap', 1, 0.9], ['f4-photos', 'tap', 3, 0.8], ['f1-dial', 'tap', 0, 1.1], ['f2-receipt', 'tap', 6, 0.4]];
-  const cuts = [];
-  for (let t = 0, i = 0; t < titleAt - 1e-6; t += beat, i++) {
-    const [key, kind, n, off] = moments[i % moments.length];
-    // the nth tap (or focus) of that scene; if a re-recorded scene has fewer, its last one, never the still first frame
-    const evs = tls[key].events.filter((e) => e.kind === kind), ev = evs[Math.min(n, evs.length - 1)] || tls[key].events[0];
-    cuts.push({ clip: key, at: Math.max(0, Math.min(tls[key].duration - beat - 0.05, ev.t + off)), start: t, dur: Math.min(beat, titleAt - t) });
-  }
+  say('open', 0.6);
+  const openEnd = snap(0.6 + open.len + 0.5);
 
   // the four scenes
   let t = openEnd; const scenes = [];
@@ -59,7 +50,7 @@ export function planFeature(vo, tls, { beat = BEAT } = {}) {
   say('outro', O + 0.45);
   const total = snap(O + 0.45 + line.outro.len + 1.4);
   const speech = voPlace.map((p) => [p.at, p.at + (p.to - p.from)]);
-  return { total, open: { titleAt, end: openEnd, cuts }, scenes, outro: { start: O, end: total }, voPlace, taps, whooshes, speech, musicFrom: 0, voEnd: O + 0.45 + line.outro.len };
+  return { total, open: { end: openEnd }, scenes, outro: { start: O, end: total }, voPlace, taps, whooshes, speech, musicFrom: 0, voEnd: O + 0.45 + line.outro.len };
 }
 
 // fit a real track (track.json from track.mjs): plan on its beat, start it on a bar line chosen so its natural ending
@@ -81,6 +72,6 @@ export function musicVolume(plan, t, { base = 0.36, under = 0.075, ramp = 0.18 }
   for (const [a, b] of plan.speech) {
     if (t > a - ramp && t < b + ramp * 1.5) duck = Math.max(duck, Math.min(1, (t - (a - ramp)) / ramp, (b + ramp * 1.5 - t) / (ramp * 1.5)));
   }
-  const fadeIn = Math.min(1, t / 0.25), fadeOut = Math.min(1, Math.max(0, (plan.total - t) / (plan.musicFrom ? 0.3 : 1.2)));
+  const fadeIn = Math.min(1, t / 1.5), fadeOut = Math.min(1, Math.max(0, (plan.total - t) / (plan.musicFrom ? 0.3 : 1.2)));
   return (base - (base - under) * duck) * fadeIn * fadeOut;
 }

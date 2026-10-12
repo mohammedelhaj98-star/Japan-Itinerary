@@ -1,4 +1,4 @@
-// The 4-feature video: Mo's voiceover, cut snappy, with music. Cold open of quick cuts and a title slam, then each
+// The 4-feature video: Mo's voiceover, cut snappy, with music. A soft open where the title fades up, then each
 // feature arrives like a train ("next stop" splash), opens on its real-trip moment as a big quote, and plays on a
 // still phone with the spotlight and arrow while one red line down the left carries the four features.
 import { AbsoluteFill, Audio, Easing, Freeze, Sequence, interpolate, interpolateColors, staticFile, useCurrentFrame, useVideoConfig } from 'remotion';
@@ -22,11 +22,8 @@ export function Feature({ plan, music = 'audio/music.wav' }) {
   return (
     <AbsoluteFill style={{ background: '#0f0f0d', fontFamily: FONT.body }}>
       <style>{fontCss(staticFile)}</style>
-      {/* cold open */}
-      {plan.open.cuts.map((c, i) => (
-        <Sequence key={'c' + i} from={F(c.start)} durationInFrames={F(c.dur)}><Cut c={c} i={i} tl={plan.scenes.find((s) => s.key === c.clip).tl} /></Sequence>
-      ))}
-      <Sequence from={F(plan.open.titleAt)} durationInFrames={F(plan.open.end - plan.open.titleAt + 0.3)}><Title /></Sequence>
+      {/* soft open */}
+      <Sequence from={0} durationInFrames={F(plan.open.end + 0.3)}><SoftOpen end={plan.open.end} /></Sequence>
       {/* the four scenes, each staying up until the next splash has covered it */}
       {plan.scenes.map((sc, i) => (
         <Sequence key={sc.key} from={F(sc.S)} durationInFrames={F(nextStart(i) + 0.32 - sc.S)}><Scene sc={sc} i={i} n={plan.scenes.length} /></Sequence>
@@ -43,33 +40,26 @@ export function Feature({ plan, music = 'audio/music.wav' }) {
   );
 }
 
-/* ── cold open: one quick cut ── */
-function Cut({ c, i, tl }) {
+/* ── soft open: everything fades up slowly, nothing snaps ── */
+function SoftOpen({ end }) {
   const f = useCurrentFrame(); const { fps } = useVideoConfig(); const t = f / fps;
-  const pw = 760, ph = VIEW.h * (pw / VIEW.w), T = buildTimeline(tl);
+  const soft = Easing.bezier(0.25, 0.1, 0.25, 1);
+  const up = (a, d = 1.1) => ({ opacity: k(t, a, a + d, 0, 1, soft), transform: `translateY(${k(t, a, a + d * 1.2, 18, 0, soft)}px)` });
   return (
-    <AbsoluteFill>
-      <Glow />
-      <div style={{ position: 'absolute', left: (W - pw) / 2, top: (H - ph) / 2, transform: `scale(${k(t, 0, 0.3, 1.12, 1)}) rotate(${k(t, 0, 0.35, i % 2 ? -2.5 : 2.5, 0)}deg)` }}>
-        <Screen T={T} t={c.at + t} clip={c.clip} width={pw} radius={64} camOpts={{ still: true }} dim={0.4} ring={C.red} startFrom={Math.round(c.at * fps)} shadow={false} />
-      </div>
-      <AbsoluteFill style={{ background: '#fff', opacity: k(t, 0, 0.1, 0.5, 0) }} />
-    </AbsoluteFill>
-  );
-}
-
-/* ── the title slams in on "four things" ── */
-function Title() {
-  const f = useCurrentFrame(); const { fps } = useVideoConfig(); const t = f / fps;
-  const words = ['things', 'on', 'our', 'trip', 'site', 'that', 'save', 'a', 'lot', 'of', 'hassle'];
-  return (
-    <AbsoluteFill style={{ background: '#0f0f0d' }}>
-      <Glow />
-      <div style={{ position: 'absolute', left: 80, right: 80, top: 560 }}>
-        <div style={{ fontSize: 460, lineHeight: 0.8, fontWeight: 700, color: C.red, letterSpacing: '-0.05em', transform: `scale(${k(t, 0, 0.4, 2, 1, snapIn)})`, transformOrigin: '0% 100%', opacity: k(t, 0, 0.08) }}>4</div>
-        <div style={{ marginTop: 44, display: 'flex', flexWrap: 'wrap', gap: '4px 22px', fontSize: 92, fontWeight: 700, color: '#fff', letterSpacing: '-0.035em', lineHeight: 1.04 }}>
-          {words.map((w, i) => { const a = 0.18 + i * 0.06; return <span key={i} style={{ display: 'inline-block', opacity: k(t, a, a + 0.16), transform: `translateY(${k(t, a, a + 0.3, 36, 0)}px)`, color: i >= 6 ? C.red : '#fff' }}>{w}</span>; })}
+    <AbsoluteFill style={{ background: '#0f0f0d', opacity: k(t, 0, 1.2, 0, 1, soft) }}>
+      <AbsoluteFill style={{ background: 'radial-gradient(80% 55% at 70% 45%, rgba(226,59,46,.2), transparent 70%)', opacity: k(t, 0.2, 3, 0.3, 1, soft) }} />
+      <div style={{ position: 'absolute', left: 80, right: 80, top: 600, transform: `scale(${k(t, 0, end, 1, 1.035, Easing.linear)})`, transformOrigin: '0% 50%' }}>
+        <div style={{ ...up(0.5), display: 'inline-flex', alignItems: 'center', gap: 14, height: 72, padding: '0 24px', borderRadius: 16, background: '#fff', color: C.ink, fontSize: 38, fontWeight: 700 }}>
+          <span style={{ width: 14, height: 42, borderRadius: 4, background: C.red }} />Japan 2026
         </div>
+        <div style={{ ...up(1.3, 1.4), marginTop: 46, display: 'flex', alignItems: 'baseline', gap: 26 }}>
+          <span style={{ fontSize: 300, lineHeight: 0.8, fontWeight: 700, color: C.red, letterSpacing: '-0.05em' }}>4</span>
+          <span style={{ fontSize: 92, fontWeight: 700, color: '#fff', letterSpacing: '-0.035em' }}>things</span>
+        </div>
+        <div style={{ ...up(2.3, 1.4), marginTop: 26, fontSize: 70, fontWeight: 500, color: 'rgba(255,255,255,.8)', letterSpacing: '-0.025em', lineHeight: 1.12 }}>
+          on our trip site that save<br />a lot of hassle
+        </div>
+        <div style={{ marginTop: 60, height: 8, borderRadius: 4, background: `linear-gradient(90deg, ${C.red}, #ff6a4d)`, width: `${k(t, 2.8, end, 0, 100, soft)}%`, boxShadow: '0 0 14px rgba(226,59,46,.4)' }} />
       </div>
     </AbsoluteFill>
   );
