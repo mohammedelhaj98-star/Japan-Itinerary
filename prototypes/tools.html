@@ -370,7 +370,9 @@ const ME = (() => { try { return JSON.parse(localStorage.getItem('trips.me')); }
 const VIEW = GUEST && !SANDBOX;
 // "Just me" expenses (own) are someone's personal spending: only on their own Mine page, never in who-owes-whom.
 const allEx = () => Object.entries(store.getExpenses()).map(([id, x]) => ({ id, ...x })).filter((x) => P[x.payer] && x.split && x.split.every((id) => P[id]) && CATS[x.cat]);
-const ex = { get list() { return allEx().filter((x) => !x.own); }, get own() { return allEx().filter((x) => x.own && x.payer === ME); }, cur: ls.get('proto.excur', 'USD'), mode: ls.get('proto.exmode2', 'couples'), view: P[ME] ? ls.get('proto.exview', 'group') : 'group' };
+const MINE = P[ME] && !SANDBOX ? ME : null;
+const savePrefs = (p) => { if (MINE) store.setProfile(MINE, p); }; // see store.watchPrefs
+const ex = { get list() { return allEx().filter((x) => !x.own); }, get own() { return allEx().filter((x) => x.own && x.payer === ME); }, cur: ls.get('money.cur', 'CAD'), mode: ls.get('money.mode', 'couple'), view: P[ME] ? ls.get('proto.exview', 'group') : 'group' };
 const saveExpense = (id, rec) => store.setExpense(id, rec ? { title: rec.title, yen: rec.yen, payer: rec.payer, split: rec.split, cat: rec.cat, day: rec.day || null, ...(ME && P[ME] ? { by: ME } : {}), ...(rec.own ? { own: true } : {}) } : null);
 const syncLine = () => store.mode === 'locked' ? '<span class="sync off">Locked: <a href="/?next=japan">enter the PIN</a> to save changes</span>' : store.mode === 'sandbox' ? '<span class="sync off">Practice mode: nothing here is saved</span>' : store.pending() ? `<span class="sync off">${store.mode === 'online' ? 'Syncing' : 'Offline'}: ${store.pending()} change${store.pending() === 1 ? '' : 's'} saved on this phone, will sync when back online</span>` : store.mode === 'online' ? '<span class="sync on">Shared with all four phones</span>' : store.mode === 'local' ? '<span class="sync off">Offline: showing what this phone last saw</span>' : '<span class="sync">Connecting…</span>';
 
@@ -381,7 +383,7 @@ function balances() {
   return b;
 }
 function transfers(b) {
-  let parties = ex.mode === 'couples' ? Object.entries(COUPLES).map(([k, c]) => ({ id: k, name: c.name, ini: c.ini, c: c.c, v: c.ids.reduce((s, id) => s + b[id], 0) })) : PEOPLE.map((p) => ({ id: p.id, name: p.name, ini: p.ini, c: p.c, photo: p.photo, v: b[p.id] }));
+  let parties = ex.mode === 'couple' ? Object.entries(COUPLES).map(([k, c]) => ({ id: k, name: c.name, ini: c.ini, c: c.c, v: c.ids.reduce((s, id) => s + b[id], 0) })) : PEOPLE.map((p) => ({ id: p.id, name: p.name, ini: p.ini, c: p.c, photo: p.photo, v: b[p.id] }));
   const cr = parties.filter((p) => p.v > 0.5).map((p) => ({ ...p })).sort((a, z) => z.v - a.v), db = parties.filter((p) => p.v < -0.5).map((p) => ({ ...p, v: -p.v })).sort((a, z) => z.v - a.v);
   const out = [];
   while (cr.length && db.length) { const a = db[0], c = cr[0], amt = Math.min(a.v, c.v); out.push({ from: a, to: c, yen: amt }); a.v -= amt; c.v -= amt; if (a.v < 0.5) db.shift(); if (c.v < 0.5) cr.shift(); db.sort((x, y) => y.v - x.v); cr.sort((x, y) => y.v - x.v); }
@@ -395,9 +397,9 @@ function renderExpenses() {
   const b = balances(), t = transfers(b), total = ex.list.filter((x) => x.cat !== 'settle').reduce((s, x) => s + x.yen, 0);
   const byCat = {}; ex.list.filter((x) => x.cat !== 'settle').forEach((x) => (byCat[x.cat] = (byCat[x.cat] || 0) + x.yen));
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
-  const modeSeg = [['couples', 'Couples'], ['people', 'People']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
+  const modeSeg = [['couple', 'By couple'], ['each', 'Person to person']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
   const groups = {}; [...ex.list].sort((a, z) => (z.day || '').localeCompare(a.day || '') || String(z.id).localeCompare(String(a.id))).forEach((x) => (groups[x.day] = groups[x.day] || []).push(x));
-  const balCards = ex.mode === 'couples'
+  const balCards = ex.mode === 'couple'
     ? Object.entries(COUPLES).map(([k, c]) => { const v = c.ids.reduce((s, id) => s + b[id], 0); return `<div class="card"><span class="av" style="--c:${c.c};font-size:11px">${esc(c.ini)}</span><span><b>${esc(c.name)}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('')
     : PEOPLE.map((p) => { const v = b[p.id]; return `<div class="card"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span><span><b>${p.name}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('');
   return `<header class="ph">${viewSeg()}<small>Shared expenses</small><h1>Who owes whom</h1><p>Log anything someone paid for the group. It splits it and works out the fewest payments to settle up.</p>${syncLine()}</header>
@@ -676,7 +678,7 @@ function renderSettings() {
       <p class="sub" style="margin:14px 0 8px">Route lines on the map</p><div class="key">${lines.map(([k, t, dash]) => `<div><i class="ln ${dash ? 'dash' : ''}" style="--c:${MODE[k][0]}"></i><span>${t}</span></div>`).join('')}</div>
       <p class="sub" style="margin-top:12px">A faded card is stamped as done. Dashed outline means optional. NASA or M&amp;M on a card means it's only for that couple.</p></div>`;
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
-  const modeSeg = [['couples', 'Couples'], ['people', 'People']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
+  const modeSeg = [['couple', 'By couple'], ['each', 'Person to person']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
   const prefs = VIEW ? '' : `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div>${backupRow()}</div>`;
   if (sub === 'stamps') return renderStamps();
   const nSt = Object.keys(store.state.checks || {}).length;
@@ -857,10 +859,10 @@ page.addEventListener('click', (e) => {
   if (t('[data-saveall]')) { saveAll(); return; }
   const pc = t('[data-pcolor]'); if (pc && P[ME]) { store.setProfile(ME, { color: pc.dataset.pcolor }); return render(); }
   if (t('[data-rmphoto]') && P[ME]) { store.setProfile(ME, { photo: null }); return render(); }
-  const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
-  const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('proto.exmode2', ex.mode); return render(); }
+  const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('money.cur', ex.cur); savePrefs({ cur: ex.cur }); return render(); }
+  const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('money.mode', ex.mode); savePrefs({ mode: ex.mode }); return render(); }
   const ev = t('[data-exview]'); if (ev) { ex.view = ev.dataset.exview; ls.set('proto.exview', ex.view); return render(); }
-  const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couples' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couples' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
+  const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couple' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couple' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
     const sid = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); saveExpense(sid, { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); render(); return undoable(`Marked ${tr.from.name} → ${tr.to.name} paid`, () => saveExpense(sid, null)); }
   const xr = t('[data-ex]'); if (xr) return openEx(xr.dataset.ex);
   const h = t('[data-hotel]'); if (h) return openDriver(h.dataset.hotel);
@@ -889,7 +891,16 @@ store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode +
 let ckSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.checks || {}); if (sig === ckSig) return; ckSig = sig; if (tab === 4 && !cfmBg.classList.contains('on')) render(); });
 let sgSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.suggestions || []); if (sig === sgSig) return; sgSig = sig; if (tab === 3 && foodView !== 'nearby' && document.activeElement?.id !== 'sg-text') render(); });
 let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });
+// your currency and settle-up choice, from your profile (another phone, or the money page)
+store.watchPrefs(MINE, (p) => {
+  let ch = false;
+  if (RATE[p.cur] && p.cur !== ex.cur) { ex.cur = p.cur; ls.set('money.cur', ex.cur); ch = true; }
+  if ((p.mode === 'couple' || p.mode === 'each') && p.mode !== ex.mode) { ex.mode = p.mode; ls.set('money.mode', ex.mode); ch = true; }
+  if (ch && !sheet.classList.contains('on')) render();
+});
 store.start();
+// Coming back to a page the browser kept (Back from the money page): pick up a currency or settle-up choice made there.
+addEventListener('pageshow', (e) => { if (!e.persisted) return; const c = ls.get('money.cur', ex.cur), m = ls.get('money.mode', ex.mode); if (c !== ex.cur || m !== ex.mode) { ex.cur = c; ex.mode = m; render(); } });
 // The PIN was refused (it changed, or this phone lost it): enter it again on the trips page, then come back to the trip.
 store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) location.replace('/?next=japan'); });
 window.__tourEnv = {

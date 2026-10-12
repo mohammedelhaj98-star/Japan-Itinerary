@@ -1683,8 +1683,8 @@ const icSheet = () => `<h3>${P[S.me].name} topped up an IC card<small>Paid from 
 app.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
   const v = t('[data-view]'); if (v) { S.view = v.dataset.view; S.mineDay = 'all'; S.mineCat = null; ls.set('money.view', S.view); return render(); }
-  const c = t('[data-cur]'); if (c) { S.cur = c.dataset.cur; ls.set('money.cur', S.cur); return render(); }
-  const m = t('[data-mode]'); if (m) { S.mode = m.dataset.mode; ls.set('money.mode', S.mode); return render(); }
+  const c = t('[data-cur]'); if (c) { S.cur = c.dataset.cur; ls.set('money.cur', S.cur); savePrefs({ cur:S.cur }); return render(); }
+  const m = t('[data-mode]'); if (m) { S.mode = m.dataset.mode; ls.set('money.mode', S.mode); savePrefs({ mode:S.mode }); return render(); }
   const keep = (fn) => { const y = scrollY; fn(); render(); scrollTo(0, y); };
   const um = t('[data-unmerge]'); if (um) return keep(() => { const k = um.dataset.unmerge; S.unmerged[k] = !S.unmerged[k]; S.openRow[k] = false; });
   const orow = t('[data-openrow]'); if (orow) { const k = orow.dataset.openrow; keep(() => { S.openRow[k] = !S.openRow[k]; }); if (S.openRow[k]) unfold(document.querySelectorAll(`.tr[data-mkey="${CSS.escape(k)}"] .parts`)); return; }
@@ -1809,6 +1809,8 @@ document.querySelectorAll('[data-home]').forEach((a) => a.addEventListener('clic
 const addfab = document.getElementById('addfab');
 addfab.addEventListener('click', () => openForm(null, { day:TODAY }));
 
+const MINE = P[ME] && !SANDBOX ? ME : null;
+const savePrefs = (p) => { if (MINE) store.setProfile(MINE, p); }; // see store.watchPrefs
 // another phone changed something: show it, unless the form or a sheet is open (then on the next draw)
 let sig = '';
 store.subscribe(() => {
@@ -1827,7 +1829,16 @@ store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) locatio
 load();
 if (WHO && !S.seen[S.me]) S.seen[S.me] = Date.now(); // first visit: nothing is "new" yet
 render();
+// your currency and settle-up choice, from your profile (another phone, or Settings)
+store.watchPrefs(MINE, (p) => {
+  let ch = false;
+  if (p.cur && RATE[p.cur] && p.cur !== S.cur) { S.cur = p.cur; ls.set('money.cur', S.cur); ch = true; }
+  if ((p.mode === 'couple' || p.mode === 'each') && p.mode !== S.mode) { S.mode = p.mode; ls.set('money.mode', S.mode); ch = true; }
+  if (ch && !F && !sheet.classList.contains('on') && !settling) render();
+});
 store.start();
+// Coming back to a page the browser kept (Back from Settings): pick up a currency or settle-up choice made there.
+addEventListener('pageshow', (e) => { if (!e.persisted) return; const c = ls.get('money.cur', S.cur), m = ls.get('money.mode', S.mode); if (c !== S.cur || m !== S.mode) { S.cur = c; S.mode = m; render(); } });
 // The ¥+ button on the trip lands here with ?add=1&d=<day>: straight into a new expense for that day.
 { const q = new URLSearchParams(location.search);
   if (q.get('add') && WHO) { const u = new URL(location); u.searchParams.delete('add'); u.searchParams.delete('d'); history.replaceState(null, '', u); openForm(null, { day:DAY[q.get('d')] ? q.get('d') : TODAY, quick:true }); } }

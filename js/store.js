@@ -176,7 +176,7 @@ export const store = {
     try {
       const remote = await this.api('state');
       if (remote.live) this._liveOk = true;
-      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), money: remote.money || {}, profiles: { ...(remote.profiles || {}), ...this._pfRecent() }, covers: remote.covers || {}, updatedAt: remote.updatedAt || null };
+      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), money: remote.money || {}, profiles: { ...(remote.profiles || {}), ...this._pfRecent(remote.profiles) }, covers: remote.covers || {}, updatedAt: remote.updatedAt || null };
       this._replay(this.state); // anything changed while the copy was downloading
       this.persist();
       this.setMode(this.mode === 'locked' && !pinOf() ? 'locked' : 'online');
@@ -266,14 +266,15 @@ export const store = {
     try { const res = await fetch('/api/receipt/' + encodeURIComponent(id) + (v ? '?v=' + encodeURIComponent(v) : ''), { headers: pinOf() ? { 'x-trip-pin': pinOf() } : undefined }); if (!res.ok) return ''; return URL.createObjectURL(await res.blob()); } catch { return ''; }
   },
 
-  // Profiles: colour and photo per person. The photo itself is served by /api/photo/<id>?v=<photo stamp>.
+  // Profiles: colour, photo and money choices (cur, mode) per person. The photo itself is served by /api/photo/<id>?v=<photo stamp>.
   _pf: new Map(),
-  _pfRecent() { const out = {}; const now = Date.now(); for (const [id, r] of this._pf) { if (now - r.t > 90000) this._pf.delete(id); else out[id] = r.v; } return out; },
+  // what this phone set lately wins over a copy that may be older; a record saved after it (another phone) wins over it
+  _pfRecent(remote = {}) { const out = {}; const now = Date.now(); for (const [id, r] of this._pf) { const rr = remote[id]; if (now - r.t > 90000 || (rr && rr.ts && r.v.ts && rr.ts > r.v.ts)) this._pf.delete(id); else out[id] = r.v; } return out; },
   getProfiles() { return this.state.profiles || {}; },
   photoUrl(id) { const p = (this.state.profiles || {})[id]; if (!p || !p.photo) return ''; return p.local || `/api/photo/${id}?v=${p.photo}`; },
   setProfile(id, patch, localPhoto) {
     const cur = { ...((this.state.profiles || {})[id] || {}) };
-    if (patch.color !== undefined) cur.color = patch.color;
+    for (const k of ['color', 'cur', 'mode']) if (patch[k] !== undefined) cur[k] = patch[k];
     if (patch.photo === null) { delete cur.photo; delete cur.local; } else if (patch.photo) { cur.photo = Date.now(); cur.local = localPhoto || patch.photo; }
     this._pf.set(id, { v: cur, t: Date.now() });
     return this._send(
@@ -281,6 +282,26 @@ export const store = {
       'profile', { id, ...patch },
       (d, s) => { if (d.profiles) { const keep = d.profiles[id] && cur.local && d.profiles[id].photo ? { ...d.profiles[id], local: cur.local } : d.profiles[id]; s.profiles = { ...d.profiles, [id]: keep }; this._pf.set(id, { v: keep, t: Date.now() }); } },
     );
+  },
+
+  // A person's currency and settle-up choice (money.cur, money.mode on this phone) follow them to another phone on
+  // their profile. apply({ cur?, mode? }) gets what changed on the profile; only a change, so an old copy of the
+  // profile can't undo a choice just made. Once online, a choice made on this phone before goes on a profile with none.
+  watchPrefs(id, apply) {
+    if (!id || SANDBOX) return;
+    let seen = {}, seeded = false;
+    const check = () => {
+      const p = (this.state.profiles || {})[id] || {}, got = {};
+      for (const k of ['cur', 'mode']) if (p[k] && p[k] !== seen[k]) got[k] = p[k];
+      seen = { cur: p.cur, mode: p.mode };
+      if (!seeded && this.mode === 'online') {
+        seeded = true; const up = {};
+        for (const k of ['cur', 'mode']) { const v = lsGet('money.' + k, null); if (!p[k] && v) up[k] = v; }
+        if (Object.keys(up).length) this.setProfile(id, up);
+      }
+      if (Object.keys(got).length) apply(got);
+    };
+    check(); this.subscribe(check);
   },
 
   addSuggestion({ text, name, day, kind = 'food' }) {

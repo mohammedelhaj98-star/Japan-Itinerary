@@ -18,7 +18,8 @@
 //   POST /api/scan                    { photo:dataURL, model? }  → what a receipt says: total, shop, date, type (Workers AI)
 //   POST /api/fill                    { name, city?, date?, near? }  → a new stop filled in from its name: Japanese name,
 //                                       type, notes, cost, time there, background, and what to search for its place and photo
-//   POST /api/profile                 { id, color?, photo?:dataURL|null }  (a person's colour and photo)
+//   POST /api/profile                 { id, color?, photo?:dataURL|null, cur?, mode? }  (a person's colour, photo,
+//                                       and how they like money shown: CAD/QAR/USD, settle up by couple/each)
 //   GET  /api/photo/:id               → the person's photo (image bytes)
 //   POST /api/unlock                  { pin }  → { ok } when the PIN is right (the hub asks for it once per phone)
 //   POST /api/suggestions             { text, name, day, author, kind? }  (kind: food | shop | place)
@@ -421,6 +422,8 @@ export async function onRequest(ctx) {
       if (!PEOPLE.includes(body.id)) return json({ error: 'bad person' }, 400);
       const color = body.color !== undefined ? String(body.color || '').toLowerCase() : undefined;
       if (color !== undefined && !/^#[0-9a-f]{6}$/.test(color)) return json({ error: 'bad colour' }, 400);
+      if (body.cur !== undefined && !['CAD', 'QAR', 'USD'].includes(body.cur)) return json({ error: 'bad currency' }, 400);
+      if (body.mode !== undefined && !['couple', 'each'].includes(body.mode)) return json({ error: 'bad settle-up mode' }, 400);
       let photo; // the photo itself stays in KV (one key per person); the profile carries when it changed
       if (body.photo === null) { await kv.delete('ph:' + body.id); photo = null; }
       else if (body.photo !== undefined) {
@@ -431,6 +434,8 @@ export async function onRequest(ctx) {
       const r = await change(store, 'profiles', (map) => {
         const rec = { ...(map[body.id] || {}) };
         if (color !== undefined) rec.color = color;
+        if (body.cur !== undefined) rec.cur = body.cur;
+        if (body.mode !== undefined) rec.mode = body.mode;
         if (photo === null) delete rec.photo; else if (photo !== undefined) rec.photo = photo;
         rec.ts = new Date().toISOString();
         map[body.id] = rec;
