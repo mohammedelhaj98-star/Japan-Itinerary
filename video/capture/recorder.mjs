@@ -36,7 +36,7 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
     const add = () => { const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s); };
     if (document.head) add(); else document.addEventListener('DOMContentLoaded', add);
     // and so do the "Practice: nothing is saved" notes: the tutorial shows the app as it normally looks
-    const hidePractice = () => { for (const el of document.querySelectorAll('.syncl, .draft, .sync, p, span, div')) { if (el.children.length < 2 && /^\s*Practice:/.test(el.textContent || '')) el.style.display = 'none'; } };
+    const hidePractice = () => { for (const el of document.querySelectorAll('.syncl, .draft, .sync, p, span, div')) { if (el.children.length < 2 && /^\s*Practice( mode)?:/.test(el.textContent || '')) el.style.display = 'none'; } };
     new MutationObserver(hidePractice).observe(document, { childList: true, subtree: true });
   }, [me, who, practice, tourStep, sandboxState]);
   if (init) await pg.addInitScript(init);
