@@ -385,6 +385,7 @@ ok("hub shows Naf's photo", await A.page.$eval('[data-me="naf"] .av', (e) => e.c
 await A.page.goto(B + '/japan/prototypes/tools?v=5'); await A.page.waitForTimeout(1500);
 await A.page.tap('[data-cur="QAR"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="each"]'); await A.page.waitForTimeout(300);
 await A.page.screenshot({ path: SH + 'settings-money.png' });
+ok('the choice is saved on your profile', pfOf('m').cur === 'QAR' && pfOf('m').mode === 'each', JSON.stringify(pfOf('m')));
 await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
 ok('money page shows the currency picked in Settings', await A.page.$eval('[data-cur="QAR"]', (e) => e.classList.contains('on')) && /QAR \d/.test(await A.page.textContent('.app')));
 ok('money page settles up the way Settings says', await A.page.$eval('[data-mode="each"]', (e) => e.classList.contains('on')));
@@ -397,6 +398,21 @@ const backShows = async (pg, cur) => { await pg.evaluate((c) => { localStorage.s
 ok('Settings picks up a change when you come Back to it', await backShows(A.page, 'USD'));
 await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
 ok('the money page picks up a change when you come Back to it', await backShows(A.page, 'CAD'));
+// …and it follows you to another phone, and back again while the money page is open
+await A.page.tap('[data-cur="USD"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="each"]'); await A.page.waitForTimeout(600);
+const A2 = await phone();
+await A2.page.goto(B + '/'); await A2.page.evaluate((pin) => { localStorage.setItem('trips.me', '"m"'); localStorage.setItem('trips.pin', pin); }, PIN);
+await A2.page.goto(B + '/japan/money'); await A2.page.waitForTimeout(1800);
+ok("Mo's other phone shows money the way he picked", await A2.page.$eval('[data-cur="USD"]', (e) => e.classList.contains('on')) && await A2.page.$eval('[data-mode="each"]', (e) => e.classList.contains('on')));
+await A2.page.goto(B + '/japan/prototypes/tools?v=5'); await A2.page.waitForTimeout(1500);
+ok('…and so does Settings there', await A2.page.$eval('[data-cur="USD"]', (e) => e.classList.contains('on')));
+await A2.page.tap('[data-cur="QAR"]'); await A2.page.waitForTimeout(2500);
+ok('a change on the other phone reaches the open money page', await A.page.$eval('[data-cur="QAR"]', (e) => e.classList.contains('on')) && await A.page.evaluate(() => JSON.parse(localStorage.getItem('money.cur'))) === 'QAR');
+ok('no page errors on the other phone', !A2.errs.length, A2.errs.join(' | '));
+await A2.ctx.close();
+const badPf = await fetch(B + '/api/profile', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ id: 'm', cur: 'EUR', mode: 'nobody' }) });
+ok('the server only keeps a known currency and settle-up choice', badPf.status === 400 && pfOf('m').cur === 'QAR');
+await A.page.tap('[data-cur="CAD"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="couple"]'); await A.page.waitForTimeout(600);
 // 3d · settings: unstamp + export
 const api = (path, body, pin = PIN) => fetch(B + '/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', ...(pin ? { 'x-trip-pin': pin } : {}) }, body: JSON.stringify(body) });
 ok('a change without the PIN is refused', (await api('checks', { id: 'd03-omakase', value: true }, null)).status === 403 && (await api('checks', { id: 'd03-omakase', value: true }, '0000')).status === 403 && !/omakase/.test(store.get('checks') || ''));

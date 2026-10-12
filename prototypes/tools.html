@@ -370,6 +370,8 @@ const ME = (() => { try { return JSON.parse(localStorage.getItem('trips.me')); }
 const VIEW = GUEST && !SANDBOX;
 // "Just me" expenses (own) are someone's personal spending: only on their own Mine page, never in who-owes-whom.
 const allEx = () => Object.entries(store.getExpenses()).map(([id, x]) => ({ id, ...x })).filter((x) => P[x.payer] && x.split && x.split.every((id) => P[id]) && CATS[x.cat]);
+const MINE = P[ME] && !SANDBOX ? ME : null;
+const savePrefs = (p) => { if (MINE) store.setProfile(MINE, p); }; // see store.watchPrefs
 const ex = { get list() { return allEx().filter((x) => !x.own); }, get own() { return allEx().filter((x) => x.own && x.payer === ME); }, cur: ls.get('money.cur', 'CAD'), mode: ls.get('money.mode', 'couple'), view: P[ME] ? ls.get('proto.exview', 'group') : 'group' };
 const saveExpense = (id, rec) => store.setExpense(id, rec ? { title: rec.title, yen: rec.yen, payer: rec.payer, split: rec.split, cat: rec.cat, day: rec.day || null, ...(ME && P[ME] ? { by: ME } : {}), ...(rec.own ? { own: true } : {}) } : null);
 const syncLine = () => store.mode === 'locked' ? '<span class="sync off">Locked: <a href="/?next=japan">enter the PIN</a> to save changes</span>' : store.mode === 'sandbox' ? '<span class="sync off">Practice mode: nothing here is saved</span>' : store.pending() ? `<span class="sync off">${store.mode === 'online' ? 'Syncing' : 'Offline'}: ${store.pending()} change${store.pending() === 1 ? '' : 's'} saved on this phone, will sync when back online</span>` : store.mode === 'online' ? '<span class="sync on">Shared with all four phones</span>' : store.mode === 'local' ? '<span class="sync off">Offline: showing what this phone last saw</span>' : '<span class="sync">Connecting…</span>';
@@ -857,8 +859,8 @@ page.addEventListener('click', (e) => {
   if (t('[data-saveall]')) { saveAll(); return; }
   const pc = t('[data-pcolor]'); if (pc && P[ME]) { store.setProfile(ME, { color: pc.dataset.pcolor }); return render(); }
   if (t('[data-rmphoto]') && P[ME]) { store.setProfile(ME, { photo: null }); return render(); }
-  const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('money.cur', ex.cur); return render(); }
-  const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('money.mode', ex.mode); return render(); }
+  const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('money.cur', ex.cur); savePrefs({ cur: ex.cur }); return render(); }
+  const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('money.mode', ex.mode); savePrefs({ mode: ex.mode }); return render(); }
   const ev = t('[data-exview]'); if (ev) { ex.view = ev.dataset.exview; ls.set('proto.exview', ex.view); return render(); }
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couple' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couple' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
     const sid = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); saveExpense(sid, { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); render(); return undoable(`Marked ${tr.from.name} → ${tr.to.name} paid`, () => saveExpense(sid, null)); }
@@ -889,6 +891,13 @@ store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode +
 let ckSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.checks || {}); if (sig === ckSig) return; ckSig = sig; if (tab === 4 && !cfmBg.classList.contains('on')) render(); });
 let sgSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.suggestions || []); if (sig === sgSig) return; sgSig = sig; if (tab === 3 && foodView !== 'nearby' && document.activeElement?.id !== 'sg-text') render(); });
 let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });
+// your currency and settle-up choice, from your profile (another phone, or the money page)
+store.watchPrefs(MINE, (p) => {
+  let ch = false;
+  if (RATE[p.cur] && p.cur !== ex.cur) { ex.cur = p.cur; ls.set('money.cur', ex.cur); ch = true; }
+  if ((p.mode === 'couple' || p.mode === 'each') && p.mode !== ex.mode) { ex.mode = p.mode; ls.set('money.mode', ex.mode); ch = true; }
+  if (ch && !sheet.classList.contains('on')) render();
+});
 store.start();
 // Coming back to a page the browser kept (Back from the money page): pick up a currency or settle-up choice made there.
 addEventListener('pageshow', (e) => { if (!e.persisted) return; const c = ls.get('money.cur', ex.cur), m = ls.get('money.mode', ex.mode); if (c !== ex.cur || m !== ex.mode) { ex.cur = c; ex.mode = m; render(); } });
