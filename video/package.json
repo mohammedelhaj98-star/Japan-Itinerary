@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "setup": "playwright install chromium",
     "capture": "node capture/run.mjs",
-    "studio": "remotion studio src/index.jsx",
+    "studio": "node prepare.mjs && remotion studio src/index.jsx",
     "render": "node render.mjs"
   },
   "dependencies": {

@@ -22,7 +22,10 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
   if (!pw) throw new Error('Playwright is missing: run npm install in video/ (or in the repo root)');
   const { chromium } = pw;
   const executablePath = process.env.CHROMIUM || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-  const browser = await chromium.launch({ executablePath, args: ['--no-sandbox', '--hide-scrollbars', '--font-render-hinting=none'] });
+  const browser = await chromium.launch({ executablePath, args: ['--no-sandbox', '--hide-scrollbars', '--font-render-hinting=none'] }).catch((e) => {
+    if (/Executable doesn't exist/.test(e.message)) throw new Error('No Chromium for recording: run `npm run setup` in video/ once (or set CHROMIUM to a Chrome binary).\n' + e.message);
+    throw e;
+  });
   const ctx = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: scale, serviceWorkers: 'block', locale: 'en-CA', timezoneId: 'Asia/Tokyo' });
   // the trip page looks up the weather and exchange rates as it loads: answer both here, so no recording calls an
   // outside service (a chapter's own routes, set later on the page, still win)
