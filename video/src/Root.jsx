@@ -1,6 +1,7 @@
 import { Composition, staticFile } from 'remotion';
 import { Chapter, INTRO, OUTRO } from './Chapter.jsx';
 import { Tutorial, plan } from './Tutorial.jsx';
+import { HomeScreen, HOME_SECS } from './HomeScreen.jsx';
 import { CHAPTERS, MUST_KNOW, withMeta } from './chapters.js';
 import { FPS, W, H } from './theme.js';
 
@@ -26,6 +27,8 @@ export const Root = () => (
       defaultProps={{ segments: null, sub: '21 short answers in 4 parts. Skip to the one you need.' }} calculateMetadata={tutorialMeta(null, true)} />
     <Composition id="must-know" component={Tutorial} fps={FPS} width={W} height={H} durationInFrames={60}
       defaultProps={{ segments: null, title: 'The trip site in 2 minutes', sub: 'The six things everyone needs.' }} calculateMetadata={tutorialMeta(MUST_KNOW, false)} />
+    <Composition id="ch21-home" component={HomeScreen} fps={FPS} width={W} height={H} durationInFrames={Math.round(HOME_SECS * FPS)}
+      calculateMetadata={async ({ props }) => ({ fps: props.fps || FPS, durationInFrames: Math.round(HOME_SECS * (props.fps || FPS)) })} />
     {CHAPTERS.flatMap((ch) => (LOOKS[ch.id] || ['rail']).map((look) => (
       <Composition key={ch.id + look} id={`${ch.id}-${look}`} component={Chapter} fps={FPS} width={W} height={H} durationInFrames={60}
         defaultProps={{ look, chapter: ch, tl: null }}

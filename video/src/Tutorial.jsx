@@ -5,6 +5,7 @@ import { C, FONT, fontCss } from './theme.js';
 import { ease } from './timeline.js';
 import { Chapter } from './Chapter.jsx';
 import { PARTS } from './chapters.js';
+import { HomeScreen, HOME_SECS } from './HomeScreen.jsx';
 
 export const OPEN = 5, PART = 4.6, CLOSE = 4.5;
 const k = (t, a, b, from = 0, to = 1) => interpolate(t, [a, b], [from, to], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: ease });
@@ -18,6 +19,7 @@ export function plan(items, { parts = true } = {}) {
       lastPart = it.chapter.partN;
     }
     out.push({ kind: 'chapter', ...it, dur: it.dur });
+    if (it.chapter.n === 21) out.push({ kind: 'home', dur: HOME_SECS }); // Add to Home Screen, drawn (Safari can't be recorded)
   }
   out.push({ kind: 'close', dur: CLOSE });
   let t = 0; for (const x of out) { x.start = t; t += x.dur; }
@@ -36,6 +38,7 @@ export function Tutorial({ segments, title = 'How to use the trip site', sub }) 
             {s.kind === 'open' && <Open title={title} sub={sub} />}
             {s.kind === 'part' && <PartCard part={s.part} chapters={s.chapters} />}
             {s.kind === 'chapter' && <Chapter look="rail" chapter={s.chapter} tl={s.tl} />}
+            {s.kind === 'home' && <HomeScreen />}
             {s.kind === 'close' && <Close />}
           </Series.Sequence>
         ))}
