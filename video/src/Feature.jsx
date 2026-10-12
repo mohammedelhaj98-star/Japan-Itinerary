@@ -33,7 +33,7 @@ export function Feature({ plan, music = 'audio/music.wav' }) {
       ))}
       <Sequence from={F(plan.outro.start)} durationInFrames={F(plan.outro.end - plan.outro.start)}><Outro n={plan.scenes.length} /></Sequence>
       {/* sound: the voice line by line, the music tucked under it, a tick for each tap and a whoosh for each splash */}
-      <Audio src={staticFile(music)} volume={(f) => musicVolume(plan, f / fps)} />
+      <Audio src={staticFile(music)} startFrom={F(plan.musicFrom || 0)} volume={(f) => musicVolume(plan, f / fps)} />
       {plan.voPlace.map((p) => (
         <Sequence key={p.id} from={F(p.at)} durationInFrames={F(p.to - p.from) + 2}><Audio src={staticFile('audio/vo.wav')} startFrom={F(p.from)} endAt={F(p.to)} /></Sequence>
       ))}
