@@ -16,17 +16,21 @@ export async function startServer(REPO, { port = Number(process.env.PORT) || 879
     async list({ prefix = '' } = {}) { return { keys: [...kv.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })), list_complete: true }; },
   };
   const server = http.createServer(async (req, res) => {
-    const u = new URL(req.url, `http://localhost:${port}`);
+    const u = new URL(req.url, `http://127.0.0.1:${port}`);
     if (u.pathname.startsWith('/api/')) {
       const ch = []; for await (const c of req) ch.push(c);
       const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(ch) : undefined }), env: { TRIP_KV: KV } });
       res.writeHead(r.status, { 'content-type': 'application/json' }); return res.end(await r.text());
     }
-    const p = decodeURIComponent(u.pathname); let f = path.join(DIST, p);
+    let p; try { p = decodeURIComponent(u.pathname); } catch { res.writeHead(400); return res.end(); }
+    // only ever serve files inside dist/: an encoded "../" (/..%2fpackage.json) must not reach the rest of the disk
+    const root = path.resolve(DIST), inside = (x) => x === root || x.startsWith(root + path.sep);
+    let f = path.resolve(root, '.' + path.sep + p);
+    if (!inside(f)) { res.writeHead(403); return res.end(); }
     if (p.endsWith('/')) f = path.join(f, 'index.html'); else if (!fs.existsSync(f) && fs.existsSync(f + '.html')) f += '.html';
-    if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end(); }
+    if (!inside(f) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end(); }
     res.writeHead(200, { 'content-type': types[path.extname(f)] || 'text/plain' }); fs.createReadStream(f).pipe(res);
   });
-  await new Promise((r) => server.listen(port, r));
-  return { url: `http://localhost:${port}`, kv, close: () => server.close() };
+  await new Promise((r) => server.listen(port, '127.0.0.1', r)); // this machine only, never the local network
+  return { url: `http://127.0.0.1:${port}`, kv, close: () => server.close() };
 }

@@ -15,7 +15,18 @@ function ffmpegBin(REPO) {
   return 'ffmpeg';
 }
 
-export async function record(REPO, { name, url, out, slow = 5, viewport = { width: 390, height: 844 }, scale = 3, time, me = 'm', who = 'all', practice = true, tourStep = 0, sandboxState = null, script, prepare, meta: chapterMeta = null, init = null }) {
+// whatever happens (a selector times out, a script throws, ffmpeg fails), the browser, the clock ticker and the temp
+// frames are cleaned up; KEEP_REC=1 keeps the frames for debugging
+export async function record(REPO, opts) {
+  const res = { browser: null, work: null, stop: null };
+  try { return await recordInner(REPO, opts, res); } finally {
+    if (res.stop) await res.stop().catch(() => {});
+    if (res.browser) await res.browser.close().catch(() => {});
+    if (res.work) { if (process.env.KEEP_REC) console.log('kept raw frames in', res.work); else fs.rmSync(res.work, { recursive: true, force: true }); }
+  }
+}
+
+async function recordInner(REPO, { name, url, out, slow = 5, viewport = { width: 390, height: 844 }, scale = 3, time, me = 'm', who = 'all', practice = true, tourStep = 0, sandboxState = null, script, prepare, meta: chapterMeta = null, init = null }, res) {
   // Playwright comes from video/ (its own dependency) or, failing that, the repo root, so either install works
   const load = (base) => { try { return createRequire(base + '/package.json')('playwright'); } catch { return null; } };
   const pw = load(REPO + '/video') || load(REPO);
@@ -26,6 +37,7 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
     if (/Executable doesn't exist/.test(e.message)) throw new Error('No Chromium for recording: run `npm run setup` in video/ once (or set CHROMIUM to a Chrome binary).\n' + e.message);
     throw e;
   });
+  res.browser = browser;
   const ctx = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: scale, serviceWorkers: 'block', locale: 'en-CA', timezoneId: 'Asia/Tokyo' });
   // the trip page looks up the weather and exchange rates as it loads: answer both here, so no recording calls an
   // outside service (a chapter's own routes, set later on the page, still win)
@@ -53,7 +65,7 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
 
   // frames go to a temp folder (outside OneDrive/the repo), only clip.mp4 and timeline.json land in out/<name>
   const dir = path.join(out, name); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-' + name + '-')); fs.mkdirSync(work + '/frames');
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-' + name + '-')); res.work = work; fs.mkdirSync(work + '/frames');
   const cdp = await ctx.newCDPSession(pg);
   await cdp.send('Animation.enable');
   const frames = [];
@@ -64,6 +76,7 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
 
   // slow time: the page clock advances 1/slow of real time, CSS/Web animations play at 1/slow
   let running = false, ticker = null;
+  res.stop = async () => { running = false; await ticker; };
   const slowDown = async () => {
     // a slow load or prepare() can carry the page clock past the moment we pause at; wind its date back first
     // (only what Date says changes, timers aren't fired), so pauseAt never has to go backwards
@@ -153,6 +166,5 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
   execFileSync(ffmpegBin(REPO), ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-r', '60', '-fps_mode', 'cfr', '-t', tEnd.toFixed(3), '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'clip.mp4')], { cwd: work });
   const meta = { name, chapter: chapterMeta, duration: tEnd, viewport, scale, events, errors, frames: kept.length, fpsCaptured: kept.length / tEnd };
   fs.writeFileSync(dir + '/timeline.json', JSON.stringify(meta, null, 2));
-  if (process.env.KEEP_REC) console.log('kept raw frames in', work); else fs.rmSync(work, { recursive: true, force: true });
-  return meta;
+  return meta; // record() cleans up the browser and the temp frames
 }
