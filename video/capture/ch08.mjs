@@ -8,7 +8,6 @@ export default {
   init: () => {
     // keep one invisible pixel changing so the screencast always has a fresh frame: otherwise a still screen at the
     // end sends no frames, and the encoder drops the last frame's time (the closing hold came out ~4 s short)
-    setInterval(() => { let px = document.getElementById('rec-tick'); if (!px && document.body) { px = document.createElement('i'); px.id = 'rec-tick'; px.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(px); } if (px) px.style.background = px.style.background === 'rgba(0, 0, 0, 0.01)' ? 'rgba(0, 0, 0, 0.02)' : 'rgba(0, 0, 0, 0.01)'; }, 50);
     const real = window.fetch;
     window.fetch = (u, o) => {
       const s = String((u && u.url) || u);
