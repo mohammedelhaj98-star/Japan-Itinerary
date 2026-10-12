@@ -1192,7 +1192,7 @@ function undoFill(s) { readFormSafe(); revertFill(s); s.fill = { undone: true };
 // the editor closed before the answer came: fill in the saved stop (what's still empty on it)
 function saveFill(s, ok) {
   FILLING.delete(s.savedId); const c = CUSTOM()[s.savedId];
-  if (ok && c && s.fill && s.fill.done) {
+  if (ok && c && c.title === s.title && s.fill && s.fill.done) { // renamed since saving: the answer is for the old name
     const patch = { ...c }; delete patch.ts;
     if (!c.place && s.place) patch.place = s.place;
     if (!s.catSet && s.cat && c.cat === s.savedCat) patch.cat = s.cat; // unless the type was changed since
