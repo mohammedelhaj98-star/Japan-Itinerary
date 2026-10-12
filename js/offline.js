@@ -23,6 +23,8 @@ export function offline({ DAYS, HOTELS, PLACES }) {
     walk(d.items);
     const h = HOTELS.find((x) => x.id === d.hotel); if (h) add(h.name);
     for (const c of Object.values(custom)) if (c && c.day === d.id && c.place) add(c.place.name);
+    // an added stop that was filled in has its own Wikimedia photo
+    for (const c of Object.values(custom)) if (c && c.day === d.id && c.info && c.info.img) [c.info.img, c.info.thumb].forEach((u) => u && out.add(u));
     return out;
   }
   const allPhotos = () => new Set(Object.values(PLACES).flatMap(photo));

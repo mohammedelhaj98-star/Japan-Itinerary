@@ -14,6 +14,7 @@ OSRM public routing for walking/driving legs, Cloudflare Pages for hosting, Clou
 - **Bookings** — what's still to book (red = book now) and everything confirmed, each linked to its day.
 - **Guide** — must-eat food by city with map links, cafés, and all the logistics / money / dining / shopping tips.
 - **Ideas** — curated picks for every open slot (TBD dinners, free evenings, optional mornings) plus a shared suggestion board with voting.
+- **Add a stop by its name** — type the name and the rest fills in: the place on the map, its type, a short note (with pork and alcohol warnings for food), the usual cost and time there, its Japanese name for the phrases card, a line of background, and a credited Wikimedia photo. Claude answers when the `ANTHROPIC_API_KEY` secret is set, Workers AI otherwise (`POST /api/fill`, `lib/fill-claude.js`); the phone finds the map position and photo itself. Only empty fields are filled, and Undo puts them back.
 - **Shared state** — checkmarks, day-of choices, suggestions and votes sync across everyone's phones (Cloudflare KV). If the API is unreachable the app keeps working on a local copy and says so.
 - **Search** — ⌕ or Ctrl/Cmd+K searches every event, note, booking, food spot and tip.
 - **Today** — opens on the current trip day automatically; ← → keys move between days on desktop.

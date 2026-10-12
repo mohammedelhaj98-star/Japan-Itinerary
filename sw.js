@@ -3,7 +3,7 @@
 // - Day assets (today + next 2 days): the page sends the list of photos; they're saved ahead of time in 'days'.
 // - Map tiles (MapTiler, OpenStreetMap fallback): saved as you view them; no bulk pre-downloading.
 // - /api: always network; the app keeps its own offline copy of shared state.
-const VERSION = 'japan2026-v19';
+const VERSION = 'japan2026-v20';
 const KEEP = [VERSION, 'tiles', 'days'];
 const SHELL = [
   './', './index.html', './money.html', './prototypes/tools.html', './js/store.js', './js/colors.js', './js/export-docx.js', './js/tour.js', './js/offline.js', './js/report.js',
@@ -52,6 +52,14 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/api/')) return; // always network
   if (url.origin !== location.origin) {
     // Map tiles, styles, fonts and icons: saved as you view them (MapTiler's terms allow a personal browser cache).
+    // Photos of added stops (Wikimedia): cache-first like our own, saved as they're seen
+    if (url.host === 'upload.wikimedia.org' || url.host === 'thumb.wikimedia.org') {
+      e.respondWith((async () => {
+        const hit = await caches.match(e.request, { ignoreSearch: true }); if (hit) return hit;
+        try { const r = await fetch(e.request); if (r.ok || r.type === 'opaque') (await caches.open('days')).put(e.request, r.clone()); return r; } catch { return Response.error(); }
+      })());
+      return;
+    }
     if (/tile\.openstreetmap\.org/.test(url.host) || url.host === 'api.maptiler.com') {
       e.respondWith(caches.open('tiles').then(async (c) => {
         try { const r = await fetch(e.request); if (r.ok) c.put(e.request, r.clone()); return r; } catch { return (await c.match(e.request)) || Response.error(); }
