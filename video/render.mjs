@@ -6,7 +6,9 @@ import './prepare.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const browserExecutable = process.env.CHROMIUM || ['/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell'].find((p) => fs.existsSync(p)) || null;
 const serveUrl = await bundle({ entryPoint: path.join(HERE, 'src/index.jsx'), publicDir: path.join(HERE, 'public') });
-const fpsArg = process.argv.find((a) => a.startsWith('--fps=')); const inputProps = fpsArg ? { fps: Number(fpsArg.slice(6)) } : {};
+// --fps=30 for a quick preview; --music=audio/music.wav picks the 4-feature video's music (default: the bought track)
+const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3);
+const inputProps = { ...(arg('fps') ? { fps: Number(arg('fps')) } : {}), ...(arg('music') ? { music: arg('music') } : {}) };
 let ids = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 if (!ids.length) ids = ['tutorial'];
 fs.mkdirSync(path.join(HERE, 'out'), { recursive: true });

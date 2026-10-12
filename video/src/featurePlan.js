@@ -25,11 +25,12 @@ export function planFeature(vo, tls, { beat = BEAT } = {}) {
   say('open', 0.3);
   const titleAt = snap(0.3 + open.len * 0.5);
   const openEnd = snap(0.3 + open.len + 0.35);
-  const moments = [['f1-dial', 'tap', 0, 0.5], ['f2-receipt', 'focus', 2, 0.3], ['f2-receipt', 'tap', 4, 0.15], ['f3-settle', 'tap', 3, 0.3], ['f4-photos', 'tap', 1, 0.9], ['f4-photos', 'tap', 3, 0.8], ['f1-dial', 'tap', 0, 1.1], ['f2-receipt', 'tap', 6, 0.4]];
+  const moments = [['f1-dial', 'tap', 0, 0.5], ['f2-receipt', 'focus', 2, 0.3], ['f2-receipt', 'tap', 4, 0.15], ['f3-settle', 'tap', 2, 0.3], ['f4-photos', 'tap', 1, 0.9], ['f4-photos', 'tap', 3, 0.8], ['f1-dial', 'tap', 0, 1.1], ['f2-receipt', 'tap', 6, 0.4]];
   const cuts = [];
   for (let t = 0, i = 0; t < titleAt - 1e-6; t += beat, i++) {
     const [key, kind, n, off] = moments[i % moments.length];
-    const ev = tls[key].events.filter((e) => e.kind === kind)[n] || tls[key].events[0];
+    // the nth tap (or focus) of that scene; if a re-recorded scene has fewer, its last one, never the still first frame
+    const evs = tls[key].events.filter((e) => e.kind === kind), ev = evs[Math.min(n, evs.length - 1)] || tls[key].events[0];
     cuts.push({ clip: key, at: Math.max(0, Math.min(tls[key].duration - beat - 0.05, ev.t + off)), start: t, dur: Math.min(beat, titleAt - t) });
   }
 

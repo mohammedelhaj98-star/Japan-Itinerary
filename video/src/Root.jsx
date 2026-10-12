@@ -39,9 +39,11 @@ const featureMeta = async ({ props }) => {
   const vo = await fetch(staticFile('audio/vo.json')).then((r) => r.json());
   const tls = Object.fromEntries(await Promise.all(SCENES.map(async (sc) => [sc.key, await fetch(staticFile(`clips/${sc.key}/timeline.json`)).then((r) => r.json())])));
   // with a bought track (track.json from track.mjs), time the video to its beat and its ending
-  const track = props.music === 'audio/track.wav' ? await fetch(staticFile('audio/track.json')).then((r) => r.json()) : null;
+  // without the bought track (track.mjs not run), fall back to the stand-in from music.mjs
+  const track = props.music === 'audio/track.wav' ? await fetch(staticFile('audio/track.json')).then((r) => (r.ok ? r.json() : null)).catch(() => null) : null;
+  const music = props.music === 'audio/track.wav' && !track ? 'audio/music.wav' : props.music;
   const plan = track ? planWithTrack(vo, tls, track) : planFeature(vo, tls);
-  return { fps, durationInFrames: Math.ceil(plan.total * fps), props: { ...props, plan } };
+  return { fps, durationInFrames: Math.ceil(plan.total * fps), props: { ...props, music, plan } };
 };
 
 const LOOKS = { ch11: ['rail', 'paper', 'camera'] }; // the other two looks are kept for chapter 11 only, for comparison
