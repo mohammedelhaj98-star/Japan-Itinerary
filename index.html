@@ -962,8 +962,9 @@ function declutter() {
     group.forEach((k, m) => { used.add(k); const a = (-90 + (360 / group.length) * m) * Math.PI / 180; els[k].el.style.translate = `${(Math.cos(a) * r).toFixed(1)}px ${(Math.sin(a) * r).toFixed(1)}px`; });
   }
 }
-function syncPins() { const nx = nextEv(); stops.forEach((s) => { const el = pinEls[s.n]; if (!el) return; const d = s.ids.every(done); if (d && !el.classList.contains('done') && el.dataset.seen && !RM) popPin(el); el.dataset.seen = 1; el.classList.toggle('done', d); el.classList.toggle('nx', !!nx && s.ids.includes(nx.id)); el.classList.toggle('sel', s.ids.includes(ui.sel)); }); }
-// Only a pin that was already drawn pops, so a day opening with stops already stamped stays still.
+function syncPins() { const nx = nextEv(); stops.forEach((s) => { const el = pinEls[s.n]; if (!el) return; const d = s.ids.every(done); if (d && !el.classList.contains('done') && el.dataset.seen && synced && !RM) popPin(el); el.dataset.seen = 1; el.classList.toggle('done', d); el.classList.toggle('nx', !!nx && s.ids.includes(nx.id)); el.classList.toggle('sel', s.ids.includes(ui.sel)); }); }
+// Only a pin that was already drawn pops, and only once the first sync is in, so a day opening with stops already stamped stays still.
+let synced = false;
 function popPin(el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); el.addEventListener('animationend', (e) => { if (e.animationName === 'pinpop') el.classList.remove('pop'); }); }
 function focusMap(id) {
   const i = events.findIndex((e) => e.id === id); if (i < 0) return; const pl = placeOfEvent(i) || hotel(); if (!pl || !pl.lat) return;
@@ -1321,7 +1322,7 @@ const mapMax = (() => {
   addEventListener('resize', () => { if (on) Y.set(travel()); });
   return { set, isOn: () => on };
 })();
-buildMap(); renderDay(); store.start(); refreshFx(); drawer.init();
+buildMap(); renderDay(); store.start().finally(() => (synced = true)); refreshFx(); drawer.init();
 requestAnimationFrame(() => { drawnMap(); }); // after the first paint of the plan
 // The card colour key sits on top of the tools bubble, so nobody has to go to Settings to remember it.
 { const key = document.createElement('div'); key.className = 'tt-key'; key.setAttribute('aria-label', 'Card colours');
