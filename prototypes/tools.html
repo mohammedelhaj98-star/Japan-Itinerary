@@ -890,6 +890,8 @@ let ckSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.c
 let sgSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.suggestions || []); if (sig === sgSig) return; sgSig = sig; if (tab === 3 && foodView !== 'nearby' && document.activeElement?.id !== 'sg-text') render(); });
 let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });
 store.start();
+// Coming back to a page the browser kept (Back from the money page): pick up a currency or settle-up choice made there.
+addEventListener('pageshow', (e) => { if (!e.persisted) return; const c = ls.get('money.cur', ex.cur), m = ls.get('money.mode', ex.mode); if (c !== ex.cur || m !== ex.mode) { ex.cur = c; ex.mode = m; render(); } });
 // The PIN was refused (it changed, or this phone lost it): enter it again on the trips page, then come back to the trip.
 store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) location.replace('/?next=japan'); });
 window.__tourEnv = {

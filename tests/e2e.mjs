@@ -392,6 +392,11 @@ await A.page.screenshot({ path: SH + 'money-after-settings.png' });
 await A.page.tap('[data-cur="CAD"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="couple"]'); await A.page.waitForTimeout(300);
 await A.page.goto(B + '/japan/prototypes/tools?v=5'); await A.page.waitForTimeout(1500);
 ok('Settings shows what was picked on the money page', await A.page.$eval('[data-cur="CAD"]', (e) => e.classList.contains('on')) && await A.page.$eval('[data-mode="couple"]', (e) => e.classList.contains('on')));
+// Back restores a page the browser kept: it re-reads the choice made on the other page
+const backShows = async (pg, cur) => { await pg.evaluate((c) => { localStorage.setItem('money.cur', JSON.stringify(c)); dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })); }, cur); await pg.waitForTimeout(300); return pg.$eval(`[data-cur="${cur}"]`, (e) => e.classList.contains('on')); };
+ok('Settings picks up a change when you come Back to it', await backShows(A.page, 'USD'));
+await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
+ok('the money page picks up a change when you come Back to it', await backShows(A.page, 'CAD'));
 // 3d · settings: unstamp + export
 const api = (path, body, pin = PIN) => fetch(B + '/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', ...(pin ? { 'x-trip-pin': pin } : {}) }, body: JSON.stringify(body) });
 ok('a change without the PIN is refused', (await api('checks', { id: 'd03-omakase', value: true }, null)).status === 403 && (await api('checks', { id: 'd03-omakase', value: true }, '0000')).status === 403 && !/omakase/.test(store.get('checks') || ''));
