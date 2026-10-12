@@ -1,0 +1,164 @@
+// Records one chapter of the tutorial in slow motion, then speeds it back up, so the clip is smooth.
+//
+// Why slow motion: the browser can only hand over ~16 screenshots a second. So the page's clock (timers,
+// requestAnimationFrame) and its CSS animations are run SLOW times slower while we grab frames, and the frames
+// are stamped back onto real time afterwards. The result plays at full speed with SLOW × as many frames.
+//
+// Every tap is logged with where the button was, so the video project can zoom to it and draw the touch.
+import fs from 'fs'; import path from 'path'; import { runFf } from '../ffmpeg.mjs';
+import { createRequire } from 'module'; import os from 'os';
+
+
+// whatever happens (a selector times out, a script throws, ffmpeg fails), the browser, the clock ticker and the temp
+// frames are cleaned up; KEEP_REC=1 keeps the frames for debugging
+export async function record(REPO, opts) {
+  const res = { browser: null, work: null, stop: null };
+  try { return await recordInner(REPO, opts, res); } finally {
+    if (res.stop) await res.stop().catch(() => {});
+    if (res.browser) await res.browser.close().catch(() => {});
+    if (res.work) { if (process.env.KEEP_REC) console.log('kept raw frames in', res.work); else fs.rmSync(res.work, { recursive: true, force: true }); }
+  }
+}
+
+async function recordInner(REPO, { name, url, out, slow = 5, viewport = { width: 390, height: 844 }, scale = 3, time, me = 'm', who = 'all', practice = true, tourStep = 0, sandboxState = null, script, prepare, meta: chapterMeta = null, init = null }, res) {
+  // Playwright comes from video/ (its own dependency) or, failing that, the repo root, so either install works
+  const load = (base) => { try { return createRequire(base + '/package.json')('playwright'); } catch { return null; } };
+  const pw = load(REPO + '/video') || load(REPO);
+  if (!pw) throw new Error('Playwright is missing: run npm install in video/ (or in the repo root)');
+  const { chromium } = pw;
+  const executablePath = process.env.CHROMIUM || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+  const browser = await chromium.launch({ executablePath, args: ['--no-sandbox', '--hide-scrollbars', '--font-render-hinting=none'] }).catch((e) => {
+    if (/Executable doesn't exist/.test(e.message)) throw new Error('No Chromium for recording: run `npm run setup` in video/ once (or set CHROMIUM to a Chrome binary).\n' + e.message);
+    throw e;
+  });
+  res.browser = browser;
+  const ctx = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: scale, serviceWorkers: 'block', locale: 'en-CA', timezoneId: 'Asia/Tokyo' });
+  // the trip page looks up the weather and exchange rates as it loads: answer both here, so no recording calls an
+  // outside service (a chapter's own routes, set later on the page, still win)
+  await ctx.route(/api\.open-meteo\.com/, (r) => r.fulfill({ json: { daily: { temperature_2m_max: [21.4], temperature_2m_min: [13.6], precipitation_probability_max: [10], weather_code: [1] } } }));
+  await ctx.route(/open\.er-api\.com/, (r) => r.fulfill({ json: { result: 'error' } })); // the app falls back to its built-in rates
+  const pg = await ctx.newPage();
+  const errors = []; pg.on('pageerror', (e) => errors.push(e.message));
+  await pg.clock.install({ time: new Date(time) });
+  await pg.addInitScript(([me, who, practice, tourStep, sandboxState]) => {
+    try {
+      // start the practice from the sample trip data (normally the trip page loads it before you reach other pages)
+      if (practice && sandboxState && !sessionStorage.getItem('tour.state')) sessionStorage.setItem('tour.state', JSON.stringify(sandboxState));
+      if (me && !localStorage.getItem('trips.me')) { localStorage.setItem('trips.me', JSON.stringify(me)); localStorage.setItem('trips.pin', '6666'); localStorage.setItem('japan2026.whoMix', JSON.stringify(who)); }
+      if (practice) { sessionStorage.setItem('tour.on', '1'); if (!sessionStorage.getItem('tour.step')) sessionStorage.setItem('tour.step', String(tourStep)); }
+    } catch {}
+    // the practice tour's coaching cards and banner stay out of the shot
+    const css = '.tour,.tour-bar{display:none!important}';
+    const add = () => { const s = document.createElement('style'); s.textContent = css; document.head.appendChild(s); };
+    if (document.head) add(); else document.addEventListener('DOMContentLoaded', add);
+    // and so do the "Practice: nothing is saved" notes: the tutorial shows the app as it normally looks
+    const hidePractice = () => { for (const el of document.querySelectorAll('.syncl, .draft, .sync, p, span, div')) { if (el.children.length < 2 && /^\s*Practice( mode)?:/.test(el.textContent || '')) el.style.display = 'none'; } };
+    new MutationObserver(hidePractice).observe(document, { childList: true, subtree: true });
+  }, [me, who, practice, tourStep, sandboxState]);
+  if (init) await pg.addInitScript(init);
+
+  // frames go to a temp folder (outside OneDrive/the repo), only clip.mp4 and timeline.json land in out/<name>
+  const dir = path.join(out, name); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-' + name + '-')); res.work = work; fs.mkdirSync(work + '/frames');
+  const cdp = await ctx.newCDPSession(pg);
+  await cdp.send('Animation.enable');
+  const frames = [];
+  cdp.on('Page.screencastFrame', (f) => {
+    const n = frames.length; fs.writeFileSync(`${work}/frames/${String(n).padStart(6, '0')}.jpg`, Buffer.from(f.data, 'base64'));
+    frames.push(f.metadata.timestamp); cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
+  });
+
+  // slow time: the page clock advances 1/slow of real time, CSS/Web animations play at 1/slow
+  let running = false, ticker = null;
+  res.stop = async () => { running = false; await ticker; };
+  const slowDown = async () => {
+    // a slow load or prepare() can carry the page clock past the moment we pause at; wind its date back first
+    // (only what Date says changes, timers aren't fired), so pauseAt never has to go backwards
+    await pg.clock.setSystemTime(new Date(new Date(time).getTime() + 3000));
+    await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 / slow });
+    await pg.clock.pauseAt(new Date(new Date(time).getTime() + 5000));
+    running = true; let last = Date.now();
+    ticker = (async () => { while (running) { const now = Date.now(); const d = (now - last) / slow; last = now; await pg.clock.runFor(Math.max(1, Math.round(d))).catch(() => {}); await new Promise((r) => setTimeout(r, 8)); } })();
+  };
+
+  const events = []; let t0 = null;
+  const nowT = () => (t0 == null ? 0 : (Date.now() / 1000 - t0) / slow); // seconds of finished video
+  // scroll a target to the middle of the screen if any of it is hidden, so the ring is never off screen
+  const reveal = async (sel) => {
+    const moved = await pg.$eval(sel, (e) => { const r = e.getBoundingClientRect(); if (r.top >= 0 && r.bottom <= innerHeight) return false; e.scrollIntoView({ block: 'center', behavior: 'smooth' }); return true; }).catch(() => false);
+    if (moved) await wait(0.9);
+  };
+  const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts.map(([x, y]) => ({ x, y })) });
+  const box = async (sel) => pg.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }).catch(() => null);
+  const wait = (s) => new Promise((r) => setTimeout(r, s * 1000 * slow)); // s = seconds in the finished video
+  const api = {
+    pg, wait,
+    mark: (label, extra = {}) => events.push({ t: nowT(), kind: 'mark', label, ...extra }),
+    // show the button (caption + zoom happen in the video project), give viewers a beat, then tap it
+    tap: async (sel, { caption, lead = 1.25, after = 1.45, step, opens = false } = {}) => {
+      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
+      const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step });
+      await wait(lead);
+      const b2 = (await box(sel)) || b; events.push({ t: nowT(), kind: 'tap', sel, box: b2, opens });
+      await pg.tap(sel, { timeout: 15000 }); await wait(after);
+    },
+    type: async (sel, text, { caption, step, lead = 1.1, after = 1.0, perChar = 0.085 } = {}) => {
+      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
+      const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step });
+      await wait(lead); events.push({ t: nowT(), kind: 'tap', sel, box: b });
+      await pg.tap(sel); await wait(0.25);
+      for (const ch of text) { await pg.keyboard.type(ch); await wait(perChar); }
+      events.push({ t: nowT(), kind: 'typed', sel, box: await box(sel) }); await wait(after);
+    },
+    // ring something and explain it without tapping (a card to show staff, a number to read)
+    point: async (sel, { caption, step, s = 2.4 } = {}) => {
+      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
+      events.push({ t: nowT(), kind: 'focus', sel, box: await box(sel), caption, step }); await wait(s);
+    },
+    // a finger drag on `sel`: from its centre (or `from`, page px) by dx/dy, taking `dur` seconds of finished video
+    drag: async (sel, { dx = 0, dy = 0, from, dur = 0.8, caption, step, lead = 1.25, after = 1.45, opens = false } = {}) => {
+      await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 }); await reveal(sel);
+      const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step }); await wait(lead);
+      const [x0, y0] = from || [b.x + b.w / 2, b.y + b.h / 2];
+      events.push({ t: nowT(), kind: 'tap', sel, box: b, opens, drag: { dx, dy } });
+      await touch('touchStart', [[x0, y0]]); const n = Math.max(8, Math.round(dur * 30));
+      for (let i = 1; i <= n; i++) { const k = i / n, e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2; await touch('touchMove', [[x0 + dx * e, y0 + dy * e]]); await wait(dur / n); }
+      await touch('touchEnd', []); await wait(after);
+    },
+    reveal,
+    hold: async (s, caption, extra = {}) => { events.push({ t: nowT(), kind: 'hold', caption, ...extra }); await wait(s); },
+    box,
+  };
+
+  await pg.goto(url, { waitUntil: 'load' }); await pg.waitForTimeout(2500); // let fonts, data and tiles settle at full speed
+  if (prepare) { await prepare(pg); await pg.waitForTimeout(800); }
+  await slowDown();
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: viewport.width * scale, maxHeight: viewport.height * scale });
+  await new Promise((r) => setTimeout(r, 400)); t0 = Date.now() / 1000;
+  await script(api);
+  const tEnd = nowT();
+  await cdp.send('Page.stopScreencast'); running = false; await ticker;
+  await browser.close();
+
+  // stamp frames onto finished-video time and encode at 60 fps
+  // video time 0 is t0, the moment the tap log starts: begin on the screen as it was then (the last frame sent before
+  // t0, since a still screen sends nothing new), so the picture never runs ahead of the logged taps
+  let s0 = 0; frames.forEach((t, i) => { if (t <= t0) s0 = i; });
+  let list = ''; const kept = frames.map((t, i) => [Math.max(t, t0), i]).slice(s0);
+  kept.forEach(([t, i], k) => {
+    const last = k + 1 === kept.length, next = last ? t0 + tEnd * slow : kept[k + 1][0], f = `file 'frames/${String(i).padStart(6, '0')}.jpg'\n`;
+    let d = Math.max((next - t) / slow, 0.001);
+    // the browser only sends a frame when the screen changes, and ffmpeg's concat drops the time of the last entry,
+    // so a still ending would be cut short: spell the final hold out as many short entries of the same frame
+    if (last) while (d > 0.05) { list += `${f}duration 0.05000\n`; d -= 0.05; }
+    list += `${f}duration ${d.toFixed(5)}\n`;
+  });
+  // and repeat the very last frame once more (the usual concat workaround), then trim to the exact length
+  if (kept.length) list += `file 'frames/${String(kept.at(-1)[1]).padStart(6, '0')}.jpg'
+`;
+  fs.writeFileSync(work + '/frames.txt', list);
+  runFf(['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-r', '60', '-fps_mode', 'cfr', '-t', tEnd.toFixed(3), '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'clip.mp4')], { cwd: work });
+  const meta = { name, chapter: chapterMeta, duration: tEnd, viewport, scale, events, errors, frames: kept.length, fpsCaptured: kept.length / tEnd };
+  fs.writeFileSync(dir + '/timeline.json', JSON.stringify(meta, null, 2));
+  return meta; // record() cleans up the browser and the temp frames
+}
