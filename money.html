@@ -1828,6 +1828,8 @@ load();
 if (WHO && !S.seen[S.me]) S.seen[S.me] = Date.now(); // first visit: nothing is "new" yet
 render();
 store.start();
+// Coming back to a page the browser kept (Back from Settings): pick up a currency or settle-up choice made there.
+addEventListener('pageshow', (e) => { if (!e.persisted) return; const c = ls.get('money.cur', S.cur), m = ls.get('money.mode', S.mode); if (c !== S.cur || m !== S.mode) { S.cur = c; S.mode = m; render(); } });
 // The ¥+ button on the trip lands here with ?add=1&d=<day>: straight into a new expense for that day.
 { const q = new URLSearchParams(location.search);
   if (q.get('add') && WHO) { const u = new URL(location); u.searchParams.delete('add'); u.searchParams.delete('d'); history.replaceState(null, '', u); openForm(null, { day:DAY[q.get('d')] ? q.get('d') : TODAY, quick:true }); } }

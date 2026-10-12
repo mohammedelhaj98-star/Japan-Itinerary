@@ -381,6 +381,17 @@ await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
 ok("Naf's colour/photo used in expenses", await A.page.evaluate(() => [...document.querySelectorAll('.av')].some((e) => e.classList.contains('ph'))) || true);
 await A.page.goto(B + '/?switch=1'); await A.page.waitForTimeout(1500);
 ok("hub shows Naf's photo", await A.page.$eval('[data-me="naf"] .av', (e) => e.classList.contains('ph')));
+// 3c · settings: "Show money in" and "Settle up by" are the same choices as on the money page, both ways
+await A.page.goto(B + '/japan/prototypes/tools?v=5'); await A.page.waitForTimeout(1500);
+await A.page.tap('[data-cur="QAR"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="each"]'); await A.page.waitForTimeout(300);
+await A.page.screenshot({ path: SH + 'settings-money.png' });
+await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
+ok('money page shows the currency picked in Settings', await A.page.$eval('[data-cur="QAR"]', (e) => e.classList.contains('on')) && /QAR \d/.test(await A.page.textContent('.app')));
+ok('money page settles up the way Settings says', await A.page.$eval('[data-mode="each"]', (e) => e.classList.contains('on')));
+await A.page.screenshot({ path: SH + 'money-after-settings.png' });
+await A.page.tap('[data-cur="CAD"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="couple"]'); await A.page.waitForTimeout(300);
+await A.page.goto(B + '/japan/prototypes/tools?v=5'); await A.page.waitForTimeout(1500);
+ok('Settings shows what was picked on the money page', await A.page.$eval('[data-cur="CAD"]', (e) => e.classList.contains('on')) && await A.page.$eval('[data-mode="couple"]', (e) => e.classList.contains('on')));
 // 3d · settings: unstamp + export
 const api = (path, body, pin = PIN) => fetch(B + '/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', ...(pin ? { 'x-trip-pin': pin } : {}) }, body: JSON.stringify(body) });
 ok('a change without the PIN is refused', (await api('checks', { id: 'd03-omakase', value: true }, null)).status === 403 && (await api('checks', { id: 'd03-omakase', value: true }, '0000')).status === 403 && !/omakase/.test(store.get('checks') || ''));
