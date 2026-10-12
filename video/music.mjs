@@ -2,9 +2,8 @@
 // A stand-in backing track made from scratch (so there are no licence questions): a light, bouncy 120 BPM groove
 // in G (G–D–Em–C) with kick, clap, shaker, plucked bass, offbeat chord stabs and a bell melody, plus a soft tick
 // for taps and a whoosh for the station splashes. Swap music.wav for a real track any time.
-import fs from 'fs'; import path from 'path'; import { execFileSync } from 'child_process'; import { fileURLToPath } from 'url'; import { makeSfx } from './sfx.mjs';
+import fs from 'fs'; import path from 'path'; import { fileURLToPath } from 'url'; import { runFf } from './ffmpeg.mjs'; import { makeSfx } from './sfx.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url)), OUT = path.join(HERE, 'public/audio');
-const FF = process.env.FFMPEG || ['compositor-win32-x64-msvc/ffmpeg.exe', 'compositor-linux-x64-gnu/ffmpeg', 'compositor-darwin-arm64/ffmpeg'].map((p) => path.join(HERE, 'node_modules/@remotion', p)).find((p) => fs.existsSync(p)) || 'ffmpeg';
 const SR = 48000, BPM = 120, BEAT = 60 / BPM, BAR = BEAT * 4;
 const secs = Number(process.argv[2]) || 96;
 const N = Math.ceil(secs * SR), L = new Float32Array(N), R = new Float32Array(N);
@@ -57,7 +56,7 @@ function wav(file, chans) {
 }
 fs.mkdirSync(OUT, { recursive: true });
 const raw = path.join(OUT, 'music-raw.wav'); wav(raw, [L, R]);
-execFileSync(FF, ['-loglevel', 'error', '-y', '-i', raw, '-af', 'loudnorm=I=-17:TP=-1.5:LRA=7', '-ar', String(SR), '-c:a', 'pcm_s16le', path.join(OUT, 'music.wav')]); fs.rmSync(raw);
+runFf(['-loglevel', 'error', '-y', '-i', raw, '-af', 'loudnorm=I=-17:TP=-1.5:LRA=7', '-ar', String(SR), '-c:a', 'pcm_s16le', path.join(OUT, 'music.wav')]); fs.rmSync(raw);
 
 makeSfx(); // the tick and whoosh (sfx.mjs)
 console.log('music.wav', secs, 's at', BPM, 'BPM; tick.wav, whoosh.wav');

@@ -2,17 +2,16 @@
 // Prepares a bought music track for the 4-feature video: evens its loudness out to sit under the voice like the
 // stand-in does, and finds its tempo and where its beats fall (from the rhythm of its loudness), so the video can
 // start it on a bar line and land its natural ending on the last word.
-import fs from 'fs'; import path from 'path'; import { execFileSync } from 'child_process'; import { fileURLToPath } from 'url'; import { makeSfx } from './sfx.mjs';
+import fs from 'fs'; import path from 'path'; import { fileURLToPath } from 'url'; import { runFf } from './ffmpeg.mjs'; import { makeSfx } from './sfx.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url)), OUT = path.join(HERE, 'public/audio');
-const FF = process.env.FFMPEG || ['compositor-win32-x64-msvc/ffmpeg.exe', 'compositor-linux-x64-gnu/ffmpeg', 'compositor-darwin-arm64/ffmpeg'].map((p) => path.join(HERE, 'node_modules/@remotion', p)).find((p) => fs.existsSync(p)) || 'ffmpeg';
 const src = process.argv[2] || path.join(OUT, 'track-raw.wav');
 
 // 1. loudness to match the stand-in (-17 LUFS), 48 kHz stereo
-execFileSync(FF, ['-loglevel', 'error', '-y', '-i', src, '-af', 'loudnorm=I=-17:TP=-1.5:LRA=9', '-ar', '48000', '-ac', '2', '-c:a', 'pcm_s16le', path.join(OUT, 'track.wav')]);
+runFf(['-loglevel', 'error', '-y', '-i', src, '-af', 'loudnorm=I=-17:TP=-1.5:LRA=9', '-ar', '48000', '-ac', '2', '-c:a', 'pcm_s16le', path.join(OUT, 'track.wav')]);
 
 // 2. tempo and beat positions from an onset envelope (rises in loudness, every ~11.6 ms)
 const SR = 22050, HOP = 128;
-const wav = execFileSync(FF, ['-loglevel', 'error', '-i', src, '-ac', '1', '-ar', String(SR), '-c:a', 'pcm_s16le', '-f', 'wav', '-'], { maxBuffer: 1 << 30 });
+const wav = runFf(['-loglevel', 'error', '-i', src, '-ac', '1', '-ar', String(SR), '-c:a', 'pcm_s16le', '-f', 'wav', '-'], { maxBuffer: 1 << 30 });
 let d = 12; while (wav.toString('latin1', d, d + 4) !== 'data') d += 8 + wav.readUInt32LE(d + 4);
 const n = Math.floor((wav.length - d - 8) / 2), x = new Float32Array(n); for (let i = 0; i < n; i++) x[i] = wav.readInt16LE(d + 8 + i * 2) / 32768;
 const frames = Math.floor(n / HOP), env = new Float32Array(frames);
@@ -29,7 +28,10 @@ const beat = 60 / best.bpm, phase = { off: best.off };
 const bar = [0, 0, 0, 0]; for (let k = 0; phase.off + k * beat < n / SR; k++) { const f = Math.round((phase.off + k * beat) * fps); bar[k % 4] += Math.max(on[f] || 0, on[f + 1] || 0); }
 const down = bar.indexOf(Math.max(...bar));
 const ends = n / SR; let last = frames - 1; while (last > 0 && env[last] < Math.log(1e-6 + HOP * 1e-6)) last--;
-const info = { bpm: +best.bpm.toFixed(2), beat: +beat.toFixed(5), firstDownbeat: +(phase.off + down * beat).toFixed(4), duration: +ends.toFixed(3), soundEnds: +((last * HOP) / SR).toFixed(3) };
+// where the music audibly ends (above -50 dBFS, which keeps the last note's ring), not the last trace of noise: the video lands its last
+// word just before this
+const loud = Math.log(1e-6 + HOP * 1e-5); let lastLoud = frames - 1; while (lastLoud > 0 && env[lastLoud] < loud) lastLoud--;
+const info = { bpm: +best.bpm.toFixed(2), beat: +beat.toFixed(5), firstDownbeat: +(phase.off + down * beat).toFixed(4), duration: +ends.toFixed(3), soundEnds: +((last * HOP) / SR).toFixed(3), musicEnds: +((lastLoud * HOP) / SR).toFixed(3) };
 fs.writeFileSync(path.join(OUT, 'track.json'), JSON.stringify(info, null, 2));
 makeSfx(); // the tick and whoosh the video also needs
 console.log(info, '+ tick.wav, whoosh.wav');

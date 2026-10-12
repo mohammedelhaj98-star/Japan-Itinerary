@@ -5,15 +5,9 @@
 // are stamped back onto real time afterwards. The result plays at full speed with SLOW × as many frames.
 //
 // Every tap is logged with where the button was, so the video project can zoom to it and draw the touch.
-import fs from 'fs'; import path from 'path'; import { execFileSync } from 'child_process';
+import fs from 'fs'; import path from 'path'; import { runFf } from '../ffmpeg.mjs';
 import { createRequire } from 'module'; import os from 'os';
 
-// ffmpeg: $FFMPEG, else the one bundled with Remotion (video/node_modules), else whatever is on the PATH
-function ffmpegBin(REPO) {
-  if (process.env.FFMPEG) return process.env.FFMPEG;
-  for (const p of ['compositor-win32-x64-msvc/ffmpeg.exe', 'compositor-linux-x64-gnu/ffmpeg', 'compositor-darwin-arm64/ffmpeg']) { const f = path.join(REPO, 'video/node_modules/@remotion', p); if (fs.existsSync(f)) return f; }
-  return 'ffmpeg';
-}
 
 // whatever happens (a selector times out, a script throws, ffmpeg fails), the browser, the clock ticker and the temp
 // frames are cleaned up; KEEP_REC=1 keeps the frames for debugging
@@ -163,7 +157,7 @@ async function recordInner(REPO, { name, url, out, slow = 5, viewport = { width:
   if (kept.length) list += `file 'frames/${String(kept.at(-1)[1]).padStart(6, '0')}.jpg'
 `;
   fs.writeFileSync(work + '/frames.txt', list);
-  execFileSync(ffmpegBin(REPO), ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-r', '60', '-fps_mode', 'cfr', '-t', tEnd.toFixed(3), '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'clip.mp4')], { cwd: work });
+  runFf(['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-r', '60', '-fps_mode', 'cfr', '-t', tEnd.toFixed(3), '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'clip.mp4')], { cwd: work });
   const meta = { name, chapter: chapterMeta, duration: tEnd, viewport, scale, events, errors, frames: kept.length, fpsCaptured: kept.length / tEnd };
   fs.writeFileSync(dir + '/timeline.json', JSON.stringify(meta, null, 2));
   return meta; // record() cleans up the browser and the temp frames
