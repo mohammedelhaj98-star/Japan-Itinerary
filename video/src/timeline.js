@@ -48,6 +48,7 @@ const WIDE = { z: 1, x: 0, y: 0 };
 
 // the camera at time t: each move takes `dur` seconds and starts from wherever the last move had got to
 export function cameraAt(T, t, opts = {}, dur = 1.3) {
+  if (opts.still) return WIDE; // the whole screen stays put; the spotlight does the pointing
   let cam = WIDE, from = WIDE, start = -10;
   for (const s of T.shots) {
     if (s.t > t) break;

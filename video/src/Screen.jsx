@@ -2,7 +2,7 @@
 import { OffthreadVideo, staticFile } from 'remotion';
 import { VIEW, cameraAt, focusAt, tapsAt, fade } from './timeline.js';
 
-export function Screen({ T, t, clip, width, radius = 56, camOpts, ring = '#e23b2e', touch = 'dark', shadow = true, extraZoom = 1 }) {
+export function Screen({ T, t, clip, width, radius = 56, camOpts, ring = '#e23b2e', touch = 'dark', shadow = true, extraZoom = 1, dim = 0.18 }) {
   const s = width / VIEW.w, height = VIEW.h * s;
   const cam = cameraAt(T, t, camOpts);
   const z = cam.z * extraZoom;
@@ -17,7 +17,7 @@ export function Screen({ T, t, clip, width, radius = 56, camOpts, ring = '#e23b2
         {f && (
           <div style={{ position: 'absolute', left: px(f.box.x) - 7 / z * 1.5, top: px(f.box.y) - 7 / z * 1.5,
             width: px(f.box.w) + 14 / z * 1.5, height: px(f.box.h) + 14 / z * 1.5, borderRadius: 18 / z * 1.5,
-            border: `${4 / z}px solid ${ring}`, boxShadow: `0 0 0 ${8 / z}px ${ring}33, 0 0 0 4000px rgba(20,20,18,.18)`, opacity: fade(t, f.t0, f.t1, 0.45) }} />
+            border: `${4 / z}px solid ${ring}`, boxShadow: `0 0 0 ${8 / z}px ${ring}33, 0 0 0 4000px rgba(20,20,18,${dim})`, opacity: fade(t, f.t0, f.t1, 0.45) }} />
         )}
         {tapsAt(T, t).map((x, i) => {
           const cx = px(x.box.x + x.box.w / 2), cy = px(x.box.y + x.box.h / 2), d = 92 / z, k = x.age;

@@ -156,7 +156,7 @@ function Rail(P) {
         );
       })()}
       <div style={{ position: 'absolute', left: phoneX, top }}>
-        <Clip P={P} width={PW} radius={50} ring={C.red} touch="dark" />
+        <Clip P={P} width={PW} radius={50} ring={C.red} touch="dark" camOpts={{ still: true }} dim={0.55} />
       </div>
     </AbsoluteFill>
   );
