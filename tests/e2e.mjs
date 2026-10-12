@@ -490,6 +490,7 @@ await C.page.evaluate(() => document.querySelector('.pass.open [data-step="-1"]'
 ok('moved away', (await openPass(C.page)) !== 'd07-shinsaibashi');
 await C.page.evaluate(() => [...document.querySelectorAll('.pass [data-pick]')].pop().click()); await C.page.waitForTimeout(1200);
 ok('after sunset the knob and the side tab dot turn into the moon', JSON.stringify(await sky()) === '[true,true]', JSON.stringify(await sky()));
+ok('the night part of the track is the dusky blue', !!(await C.page.$('#arc #dusk')) && (await C.page.$$eval('#arc .trk.dk', (p) => p.length)) >= 1);
 await C.page.evaluate(() => document.getElementById('nowb').click()); await C.page.waitForTimeout(1200);
 ok('Now recentres', (await openPass(C.page)) === 'd07-shinsaibashi');
 ok('back at 4 PM the sun comes back', JSON.stringify(await sky()) === '[false,false]', JSON.stringify(await sky()));

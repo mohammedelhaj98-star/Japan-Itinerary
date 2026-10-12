@@ -148,6 +148,7 @@ body.mapmax .mapmax-hint { display:block; }
 .dial { position:relative; margin:0 auto; width:100%; max-width:300px; padding:0 8px; touch-action:none; -webkit-user-select:none; user-select:none; }
 #arc { width:100%; display:block; overflow:visible; }
 #arc .trk { fill:none; stroke-width:20; stroke-linecap:round; }
+#arc .trk.dk { stroke-width:28; }
 #arc .ev { fill:none; stroke-width:20; transition:opacity 300ms; }
 #arc .ev.done { opacity:.28; }
 #arc .ev.opt { stroke-dasharray:3 3; }
@@ -843,9 +844,10 @@ function buildDial(sun) {
   let g = '';
   /* daylight vs night on the track itself */
   const aRise = ang(sun.rise), aSet = ang(sun.set);
-  if (aRise > A0) g += `<path class="trk" stroke="#dcdbe6" d="${arc(A0, aRise, R)}"/>`;
+  // night is a dusky blue, a little wider than the stops so it rims the evening's stops too; after sunset it runs from the sunset glow into the blue
+  if (aRise > A0) g += `<path class="trk dk" stroke="#8a90bd" d="${arc(A0, aRise, R)}"/>`;
   g += `<path class="trk" stroke="#efe5cc" d="${arc(Math.max(A0, aRise), Math.min(A1, aSet), R)}"/>`;
-  if (aSet < A1) g += `<path class="trk" stroke="#d6d5e2" d="${arc(aSet, A1, R)}"/>`;
+  if (aSet < A1) { const [sx, sy] = pt(aSet, R), [ex, ey] = pt(A1, R); g += `<defs><linearGradient id="dusk" gradientUnits="userSpaceOnUse" x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}"><stop offset="0" stop-color="#f1cf9a"/><stop offset=".22" stop-color="#b9a3c4"/><stop offset=".55" stop-color="#6f78ad"/><stop offset="1" stop-color="#4a5387"/></linearGradient></defs><path class="trk dk" stroke="url(#dusk)" d="${arc(aSet, A1, R)}"/>`; }
   sp.forEach(({ e, s }) => { const a0 = ang(s[0]) + 0.7, a1 = Math.max(a0 + 1.4, ang(s[1]) - 0.7); g += `<path class="ev ${done(e.id) ? 'done' : ''} ${e.optional ? 'opt' : ''}" data-arc="${e.id}" stroke="${dialHex(e)}" d="${arc(a0, Math.min(a1, A1), R)}"/>`; });
   const hs = Math.ceil(t0 / 60), he = Math.floor(t1 / 60), step = he - hs > 12 ? 3 : 2;
   for (let h = hs; h <= he; h++) { const a = ang(h * 60); const [x0, y0] = pt(a, R + 15), [x1, y1] = pt(a, R + 20); g += `<line class="tk" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>`; }
