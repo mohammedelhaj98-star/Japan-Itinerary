@@ -127,8 +127,12 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
   const startTs = frames.find((t) => t >= t0) ?? frames[0];
   let list = ''; const kept = frames.map((t, i) => [t, i]).filter(([t]) => t >= startTs - 0.2);
   kept.forEach(([t, i], k) => { const next = k + 1 < kept.length ? kept[k + 1][0] : t0 + tEnd * slow; list += `file 'frames/${String(i).padStart(6, '0')}.jpg'\nduration ${Math.max((next - t) / slow, 0.001).toFixed(5)}\n`; });
+  // the browser only sends a frame when the screen changes, and ffmpeg's concat ignores the last entry's duration,
+  // so a still ending would be cut short: repeat the last frame so its hold is kept, and trim to the exact length
+  if (kept.length) list += `file 'frames/${String(kept.at(-1)[1]).padStart(6, '0')}.jpg'
+`;
   fs.writeFileSync(work + '/frames.txt', list);
-  execFileSync(ffmpegBin(REPO), ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-r', '60', '-fps_mode', 'cfr', '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'clip.mp4')], { cwd: work });
+  execFileSync(ffmpegBin(REPO), ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-r', '60', '-fps_mode', 'cfr', '-t', tEnd.toFixed(3), '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'clip.mp4')], { cwd: work });
   const meta = { name, chapter: chapterMeta, duration: tEnd, viewport, scale, events, errors, frames: kept.length, fpsCaptured: kept.length / tEnd };
   fs.writeFileSync(dir + '/timeline.json', JSON.stringify(meta, null, 2));
   fs.rmSync(work, { recursive: true, force: true });
