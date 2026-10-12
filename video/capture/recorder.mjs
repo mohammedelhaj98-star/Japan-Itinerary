@@ -59,14 +59,14 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
     pg, wait,
     mark: (label, extra = {}) => events.push({ t: nowT(), kind: 'mark', label, ...extra }),
     // show the button (caption + zoom happen in the video project), give viewers a beat, then tap it
-    tap: async (sel, { caption, lead = 0.9, after = 1.2, step } = {}) => {
+    tap: async (sel, { caption, lead = 1.7, after = 2.0, step, opens = false } = {}) => {
       await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 });
       const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step });
       await wait(lead);
-      const b2 = (await box(sel)) || b; events.push({ t: nowT(), kind: 'tap', sel, box: b2 });
+      const b2 = (await box(sel)) || b; events.push({ t: nowT(), kind: 'tap', sel, box: b2, opens });
       await pg.tap(sel, { timeout: 15000 }); await wait(after);
     },
-    type: async (sel, text, { caption, step, lead = 0.6, after = 0.8, perChar = 0.09 } = {}) => {
+    type: async (sel, text, { caption, step, lead = 1.5, after = 1.4, perChar = 0.13 } = {}) => {
       await pg.waitForSelector(sel, { state: 'visible', timeout: 15000 });
       const b = await box(sel); events.push({ t: nowT(), kind: 'focus', sel, box: b, caption, step });
       await wait(lead); events.push({ t: nowT(), kind: 'tap', sel, box: b });

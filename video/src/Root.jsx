@@ -11,7 +11,8 @@ export const Root = () => (
         defaultProps={{ look, chapter: ch, tl: null }}
         calculateMetadata={async ({ props }) => {
           const tl = await fetch(staticFile(`clips/${ch.clip}/timeline.json`)).then((r) => r.json());
-          return { durationInFrames: Math.ceil((INTRO - 0.75 + tl.duration + OUTRO) * FPS), props: { ...props, tl } };
+          const fps = props.fps || FPS; // previews render at 30, the final at 60
+          return { fps, durationInFrames: Math.ceil((INTRO - 0.75 + tl.duration + OUTRO) * fps), props: { ...props, tl } };
         }} />
     )))}
   </>

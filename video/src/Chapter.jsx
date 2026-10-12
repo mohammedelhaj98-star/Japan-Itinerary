@@ -4,7 +4,7 @@ import { C, FONT, W, H, fontCss } from './theme.js';
 import { buildTimeline, captionAt, focusAt, ease, VIEW } from './timeline.js';
 import { Screen, boxOnCanvas } from './Screen.jsx';
 
-export const INTRO = 2.6, OUTRO = 3.6;
+export const INTRO = 3.2, OUTRO = 5;
 const clampI = (t, a, b, from, to, e = ease) => interpolate(t, [a, b], [from, to], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: e });
 
 export function Chapter({ look = 'paper', chapter, tl }) {
@@ -68,7 +68,7 @@ function Paper(P) {
       {/* caption */}
       {cap && (
         <div style={{ position: 'absolute', left: 70, right: 70, top: top + PW / VIEW.w * VIEW.h + 34, display: 'flex', alignItems: 'center', gap: 26,
-          opacity: clampI(capT, 0, 0.3, 0, 1), transform: `translateY(${clampI(capT, 0, 0.45, 22, 0)}px)` }}>
+          opacity: clampI(capT, 0, 0.45, 0, 1), transform: `translateY(${clampI(capT, 0, 0.7, 18, 0)}px)` }}>
           {cap.step ? <Badge n={cap.step} size={74} /> : null}
           <div style={{ fontSize: cap.step ? 44 : 40, fontWeight: cap.step ? 700 : 500, color: cap.step ? C.ink : C.ink2, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{cap.text}</div>
         </div>
@@ -87,7 +87,7 @@ function Recap({ P, dark }) {
       <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: C.red, opacity: clampI(k, 0.2, 0.5, 0, 1) }}>In short</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '18px 14px', marginTop: 26 }}>
         {chapter.recap.map((w, i) => {
-          const a = 0.35 + i * 0.16;
+          const a = 0.4 + i * 0.3;
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, opacity: clampI(k, a, a + 0.25, 0, 1), transform: `translateY(${clampI(k, a, a + 0.4, 18, 0)}px)` }}>
               <span style={{ padding: '14px 26px', borderRadius: 999, background: dark ? 'rgba(255,255,255,.1)' : '#fff', border: dark ? '1px solid rgba(255,255,255,.18)' : '1px solid rgba(20,20,10,.08)',
@@ -97,7 +97,7 @@ function Recap({ P, dark }) {
           );
         })}
       </div>
-      <div style={{ marginTop: 70, fontSize: 36, color: sub, opacity: clampI(k, 1.8, 2.2, 0, 1) }}>{chapter.next}</div>
+      <div style={{ marginTop: 70, fontSize: 36, color: sub, opacity: clampI(k, 2.6, 3.1, 0, 1) }}>{chapter.next}</div>
     </div>
   );
 }
@@ -165,7 +165,7 @@ function Rail(P) {
 /* ─────────────── 3. Camera: big moves, kinetic words, notes pinned to the button ─────────────── */
 function Camera(P) {
   const { T, g, tc, rise, outro, chapter } = P;
-  const PW = 720, top = 300, left = (W - PW) / 2, camOpts = { maxZoom: 2.1, minZoom: 1.45, fill: 0.62 };
+  const PW = 720, top = 300, left = (W - PW) / 2, camOpts = { maxZoom: 1.5, minZoom: 1.22, fill: 0.72 };
   const cur = g >= rise && g < outro ? captionAt(T, tc) : null;
   const f = g >= rise && g < outro ? focusAt(T, tc) : null;
   const word = cur && cur.step ? chapter.recap[cur.step - 1] : null;
@@ -229,7 +229,7 @@ function Camera(P) {
       {g >= outro && (
         <div style={{ position: 'absolute', left: 80, right: 80, top: 440 }}>
           {chapter.recap.map((w, i) => {
-            const a = 0.3 + i * 0.22;
+            const a = 0.35 + i * 0.32;
             return (
               <div key={i} style={{ fontFamily: FONT.display, fontSize: 118, lineHeight: 1.04, letterSpacing: '-0.02em', color: i === chapter.recap.length - 1 ? C.red : C.ink,
                 opacity: clampI(g - outro, a, a + 0.25, 0, 1), transform: `translateX(${clampI(g - outro, a, a + 0.5, -60, 0)}px)` }}>
@@ -237,7 +237,7 @@ function Camera(P) {
               </div>
             );
           })}
-          <div style={{ marginTop: 50, fontSize: 36, color: C.ink2, opacity: clampI(g - outro, 2.2, 2.6, 0, 1) }}>{chapter.next}</div>
+          <div style={{ marginTop: 50, fontSize: 36, color: C.ink2, opacity: clampI(g - outro, 2.8, 3.3, 0, 1) }}>{chapter.next}</div>
         </div>
       )}
     </AbsoluteFill>
