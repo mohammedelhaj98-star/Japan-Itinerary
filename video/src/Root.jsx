@@ -2,6 +2,7 @@ import { Composition, staticFile } from 'remotion';
 import { Chapter, INTRO, OUTRO } from './Chapter.jsx';
 import { Tutorial, plan } from './Tutorial.jsx';
 import { HomeScreen, HOME_SECS } from './HomeScreen.jsx';
+import { Reel, TRICKS, MONTAGE, OPEN as REEL_OPEN, CLOSE as REEL_CLOSE, PLAY_AT, trimOf } from './Reel.jsx';
 import { CHAPTERS, MUST_KNOW, withMeta } from './chapters.js';
 import { FPS, W, H } from './theme.js';
 
@@ -20,6 +21,16 @@ const tutorialMeta = (only, parts) => async ({ props }) => {
   return { fps, durationInFrames: Math.ceil(p.total * fps), props: { ...props, segments: p.segments, markers } };
 };
 
+// the "8 things" reel: each trick's clip trimmed to its taps, and the cold open's quick cuts
+const reelMeta = async ({ props }) => {
+  const fps = props.fps || FPS; const byId = Object.fromEntries(CHAPTERS.map((c) => [c.id, c]));
+  const load = async (id) => { const c = byId[id]; const tl = await loadTl(c); if (!tl) throw new Error(id + " isn't recorded yet"); return { c, tl }; };
+  const items = await Promise.all(TRICKS.map(async (x) => { const { c, tl } = await load(x.ch); return { ...x, clip: c.clip, tl, ...trimOf(tl) }; }));
+  const montage = await Promise.all(MONTAGE.map(async ([id, tap, off]) => { const { c, tl } = await load(id); const taps = tl.events.filter((e) => e.kind === 'tap'); return { clip: c.clip, tl, at: Math.max(0, (taps[tap] || taps[0]).t + off - 0.2) }; }));
+  const total = REEL_OPEN + items.reduce((a, x) => a + PLAY_AT + x.t1 - x.t0, 0) + REEL_CLOSE;
+  return { fps, durationInFrames: Math.ceil(total * fps) + 2, props: { ...props, items, montage } };
+};
+
 const LOOKS = { ch11: ['rail', 'paper', 'camera'] }; // the other two looks are kept for chapter 11 only, for comparison
 export const Root = () => (
   <>
@@ -27,6 +38,7 @@ export const Root = () => (
       defaultProps={{ segments: null, sub: '21 short answers in 4 parts. Skip to the one you need.' }} calculateMetadata={tutorialMeta(null, true)} />
     <Composition id="must-know" component={Tutorial} fps={FPS} width={W} height={H} durationInFrames={60}
       defaultProps={{ segments: null, title: 'The trip site in 2 minutes', sub: 'The six things everyone needs.' }} calculateMetadata={tutorialMeta(MUST_KNOW, false)} />
+    <Composition id="tricks" component={Reel} fps={FPS} width={W} height={H} durationInFrames={60} defaultProps={{ items: null, montage: null }} calculateMetadata={reelMeta} />
     <Composition id="ch21-home" component={HomeScreen} fps={FPS} width={W} height={H} durationInFrames={Math.round(HOME_SECS * FPS)}
       calculateMetadata={async ({ props }) => ({ fps: props.fps || FPS, durationInFrames: Math.round(HOME_SECS * (props.fps || FPS)) })} />
     {CHAPTERS.flatMap((ch) => (LOOKS[ch.id] || ['rail']).map((look) => (

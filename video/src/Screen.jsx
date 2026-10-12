@@ -4,7 +4,7 @@ import { VIEW, cameraAt, focusAt, spotAt, tapsAt, fade } from './timeline.js';
 import { Easing } from 'remotion';
 const pop = Easing.bezier(0.34, 1.4, 0.64, 1); // a soft overshoot as the spotlight lands
 
-export function Screen({ T, t, clip, width, radius = 56, camOpts, ring = '#e23b2e', touch = 'dark', shadow = true, extraZoom = 1, dim = 0.18 }) {
+export function Screen({ T, t, clip, width, radius = 56, camOpts, ring = '#e23b2e', touch = 'dark', shadow = true, extraZoom = 1, dim = 0.18, startFrom = 0 }) {
   const s = width / VIEW.w, height = VIEW.h * s;
   const cam = cameraAt(T, t, camOpts);
   const z = cam.z * extraZoom;
@@ -16,7 +16,7 @@ export function Screen({ T, t, clip, width, radius = 56, camOpts, ring = '#e23b2
       boxShadow: shadow ? '0 50px 90px -40px rgba(20,20,10,.45), 0 0 0 1px rgba(20,20,10,.06)' : 'none' }}>
       <div style={{ position: 'absolute', left: 0, top: 0, width, height, transformOrigin: '0 0',
         transform: `translate(${-px(cam.x) * z}px, ${-px(cam.y) * z}px) scale(${z})` }}>
-        <OffthreadVideo src={staticFile(`clips/${clip}/clip.mp4`)} style={{ width, height, display: 'block' }} muted />
+        <OffthreadVideo src={staticFile(`clips/${clip}/clip.mp4`)} startFrom={startFrom} style={{ width, height, display: 'block' }} muted />
         {f && (
           <div style={{ position: 'absolute', left: px(f.box.x) - 7 / z * 1.5, top: px(f.box.y) - 7 / z * 1.5,
             width: px(f.box.w) + 14 / z * 1.5, height: px(f.box.h) + 14 / z * 1.5, borderRadius: 18 / z * 1.5,
