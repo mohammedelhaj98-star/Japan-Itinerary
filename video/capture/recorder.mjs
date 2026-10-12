@@ -55,6 +55,9 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
   // slow time: the page clock advances 1/slow of real time, CSS/Web animations play at 1/slow
   let running = false, ticker = null;
   const slowDown = async () => {
+    // a slow load or prepare() can carry the page clock past the moment we pause at; wind its date back first
+    // (only what Date says changes, timers aren't fired), so pauseAt never has to go backwards
+    await pg.clock.setSystemTime(new Date(new Date(time).getTime() + 3000));
     await cdp.send('Animation.setPlaybackRate', { playbackRate: 1 / slow });
     await pg.clock.pauseAt(new Date(new Date(time).getTime() + 5000));
     running = true; let last = Date.now();
