@@ -370,6 +370,12 @@ body.mapmax .mapmax-hint { display:block; }
 .who-tag { display:inline-flex; align-items:center; gap:4px; }
 .addgap { position:absolute; left:50%; top:0; z-index:5; transform:translate(-50%,0); height:34px; padding:0 14px 0 10px; border-radius:999px; background:#fff; color:var(--ink); font-size:13px; font-weight:700; display:none; align-items:center; gap:6px; box-shadow:0 4px 14px -6px rgba(0,0,0,.3); white-space:nowrap; }
 .addgap.on { display:inline-flex; }
+/* stops already passed: the pile wraps round after the last stop, so the morning's passes fade and sit under a label */
+.pass { transition:opacity 320ms var(--ease); }
+.pass.past { opacity:.55; }
+.pastlbl { position:absolute; left:26px; top:0; z-index:5; display:none; align-items:center; gap:6px; height:34px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700; pointer-events:none; will-change:transform; }
+.pastlbl.on { display:flex; }
+.pastlbl svg { width:14px; height:14px; }
 .addgap svg, .addend svg { width:18px; height:18px; }
 .addend { display:flex; align-items:center; justify-content:center; gap:6px; margin:14px 12px 0; width:calc(100% - 24px); height:52px; border-radius:18px; border:1.5px dashed rgba(0,0,0,.18); font-size:14.5px; font-weight:700; color:var(--ink2); }
 .hd .gear { width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,.05); display:grid; place-items:center; flex:none; }
@@ -764,7 +770,7 @@ function renderSheet(enter) {
   const know = (KNOW[day.city] || []).map(([t, x]) => `<div class="card"><small>${esc(day.city)}</small><h3>${esc(t)}</h3><p>${withFx(x)}</p></div>`).join('');
   const hpi = PLACES[h0.name] || {};
   sh.innerHTML = `<div class="${enter === 'rise' ? 'fadein' : enter ? 'dayin ' + enter : ''}"><div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
-    <div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button></div>
+    <div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
     <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
     ${know ? `<p class="sec">Good to know in ${esc(day.city)}</p><div class="know">${know}</div>` : ''}
@@ -875,7 +881,9 @@ function buildDial(sun) {
 /* ═══ wallet: chosen pass rises to the top, the rest fall into a pile ═══ */
 function buildStack() {
   const stack = document.getElementById('stack'); const cards = [...stack.querySelectorAll('.pass')];
-  const BAND = 64, GAP = 58; const addBtn = document.getElementById('addgap');
+  const BAND = 64, GAP = 58, LBL = 34; const addBtn = document.getElementById('addgap');
+  // the "Earlier in the day" label, which moves with the first passed stop; it is laid out like a card so it springs with them
+  const lbl = document.getElementById('pastlbl'); const LY = new Spring(0, (v) => { lbl.style.transform = `translate3d(0,${v.toFixed(2)}px,0)`; }, 0.3);
   const st = cards.map((el) => { const o = { y: 0, s: 1 }; const ap = () => { el.style.transform = `translate3d(0,${o.y.toFixed(2)}px,0) scale(${o.s.toFixed(4)})`; }; return { el, id: el.dataset.id, o, Y: new Spring(0, (v) => { o.y = v; ap(); }, 0.3), S: new Spring(1, (v) => { o.s = v; ap(); }, 0.0005) }; });
   const layout = (instant) => {
     const selIdx = st.findIndex((c) => c.id === ui.sel);
@@ -884,12 +892,17 @@ function buildStack() {
     // The pile is the deck turned round after the open pass: the next stop is on top of the pile, the one you just left goes to the bottom.
     const pile = selIdx >= 0 ? [...st.slice(selIdx + 1), ...st.slice(0, selIdx)] : st;
     if (selIdx >= 0) { const c = st[selIdx]; c.el.style.zIndex = 1; if (instant) c.Y.set(0); else c.Y.to(0, { response: 0.48, damping: 0.86 }); }
-    const k = pile.length;
+    const k = pile.length, top = selIdx >= 0 ? Hs + GAP : 0;
+    // Stops before the open one come round after the last of the day. They fade, and a label sits above the first of them.
+    const pastFrom = selIdx > 0 ? st.length - 1 - selIdx : -1;
     pile.forEach((c, j) => {
-      const y = (selIdx >= 0 ? Hs + GAP : 0) + j * BAND; c.el.style.zIndex = 10 + j; c.el.style.height = '';
+      const past = pastFrom >= 0 && j >= pastFrom; c.el.classList.toggle('past', past);
+      const y = top + j * BAND + (past ? LBL : 0); c.el.style.zIndex = 10 + j; c.el.style.height = '';
       if (instant) c.Y.set(y); else c.Y.to(y, { response: 0.48, damping: 0.86 });
     });
-    stack.style.height = (selIdx >= 0 ? Hs + GAP : 0) + Math.max(0, k - 1) * BAND + 76 + 'px';
+    lbl.classList.toggle('on', pastFrom >= 0);
+    if (pastFrom >= 0) { const y = top + pastFrom * BAND; if (instant) LY.set(y); else LY.to(y, { response: 0.48, damping: 0.86 }); }
+    stack.style.height = top + Math.max(0, k - 1) * BAND + (pastFrom >= 0 ? LBL : 0) + 76 + 'px';
     addBtn.classList.toggle('on', selIdx >= 0); addBtn.style.top = Hs + 12 + 'px';
   };
   return {
