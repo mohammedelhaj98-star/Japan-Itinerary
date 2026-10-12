@@ -10,6 +10,7 @@ import { SCENES, SPLASH, musicVolume } from './featurePlan.js';
 const k = (t, a, b, from = 0, to = 1, e = ease) => interpolate(t, [a, b], [from, to], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: e });
 const snapIn = Easing.bezier(0.2, 1.5, 0.4, 1);
 const wipe = Easing.bezier(0.7, 0, 0.3, 1);
+const SPLASH_IN = 0.26; // how long the red splash takes to cover the frame
 const PW = 560, PTOP = 440, PLEFT = W - PW - 56, S_ = PW / VIEW.w;
 const RAIL = { x: 92, top: 640, gap: 190 };
 const Glow = ({ o = 1 }) => <AbsoluteFill style={{ background: 'radial-gradient(80% 55% at 70% 45%, rgba(226,59,46,.2), transparent 70%)', opacity: o }} />;
@@ -93,8 +94,12 @@ function Scene({ sc, i, n }) {
     arrow = { path: `M ${sx} ${sy} C ${sx + d} ${sy}, ${ex - d} ${ey}, ${ex} ${ey}`, ex, ey, draw: sp.linkedPrev ? 1 : k(sp.age, 0.08, 0.45), o: sp.o };
   }
   const F = (s) => Math.round(s * fps);
+  // this scene starts on top of the previous one, so keep it out of sight until the red splash has fully covered the
+  // frame (its wipe-in takes 0.26 s); only the splash shows before that
+  const covered = u >= SPLASH_IN;
   return (
     <AbsoluteFill>
+     <AbsoluteFill style={{ opacity: covered ? 1 : 0 }}>
       <Glow o={0.8} />
       {/* header */}
       <div style={{ position: 'absolute', left: 56, right: 56, top: 92 }}>
@@ -163,6 +168,7 @@ function Scene({ sc, i, n }) {
           <g transform={`translate(${arrow.ex} ${arrow.ey}) scale(${k(arrow.draw, 0.8, 1)})`}><path d="M -20 -13 L 2 0 L -20 13" fill="none" stroke={C.red} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" /></g>
         </svg>
       )}
+     </AbsoluteFill>
       <Splash n={i + 1} title={sc.title} u={u} />
     </AbsoluteFill>
   );
@@ -171,7 +177,7 @@ function Scene({ sc, i, n }) {
 // "next stop": a red board wipes across, the number lands big, and it wipes off to reveal the feature
 function Splash({ n, title, u }) {
   if (u > SPLASH + 0.05) return null;
-  const x = (1 - k(u, 0, 0.26, 0, 1, wipe)) * W - k(u, SPLASH - 0.3, SPLASH, 0, 1, wipe) * W;
+  const x = (1 - k(u, 0, SPLASH_IN, 0, 1, wipe)) * W - k(u, SPLASH - 0.3, SPLASH, 0, 1, wipe) * W;
   return (
     <div style={{ position: 'absolute', left: x, top: 0, width: W, height: H, background: C.red, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', left: 80, top: 640, color: '#fff' }}>
