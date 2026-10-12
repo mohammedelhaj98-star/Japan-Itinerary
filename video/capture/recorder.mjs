@@ -21,6 +21,10 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
   const executablePath = process.env.CHROMIUM || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
   const browser = await chromium.launch({ executablePath, args: ['--no-sandbox', '--hide-scrollbars', '--font-render-hinting=none'] });
   const ctx = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: scale, serviceWorkers: 'block', locale: 'en-CA', timezoneId: 'Asia/Tokyo' });
+  // the trip page looks up the weather and exchange rates as it loads: answer both here, so no recording calls an
+  // outside service (a chapter's own routes, set later on the page, still win)
+  await ctx.route(/api\.open-meteo\.com/, (r) => r.fulfill({ json: { daily: { temperature_2m_max: [21.4], temperature_2m_min: [13.6], precipitation_probability_max: [10], weather_code: [1] } } }));
+  await ctx.route(/open\.er-api\.com/, (r) => r.fulfill({ json: { result: 'error' } })); // the app falls back to its built-in rates
   const pg = await ctx.newPage();
   const errors = []; pg.on('pageerror', (e) => errors.push(e.message));
   await pg.clock.install({ time: new Date(time) });

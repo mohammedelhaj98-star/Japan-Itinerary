@@ -7,8 +7,6 @@ export default {
   time: '2026-10-22T03:20:00Z', // Day 7, 12:20 pm in Osaka
   tourStep: 11, // the practice tour's + button step: it waits for a tap we never make, so nothing moves under us
   init: () => {
-    // keep one invisible pixel changing so the screencast always has a fresh frame: otherwise a still screen at the
-    // end sends no frames, and the encoder drops the last frame's time (the closing hold came out ~4 s short)
     // the weather and exchange-rate lookups would go to outside services as the page loads: answer them here instead
     const real = window.fetch;
     window.fetch = (u, o) => {

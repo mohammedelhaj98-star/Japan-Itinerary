@@ -6,8 +6,6 @@ export default {
   tourStep: 9, // the practice tour's "bigger map" steps (9 and 10), then 11, the + button, which waits for a tap we never make
   // the weather and exchange-rate lookups would go to outside services as the page loads: answer them here instead
   init: () => {
-    // keep one invisible pixel changing so the screencast always has a fresh frame: otherwise a still screen at the
-    // end sends no frames, and the encoder drops the last frame's time (the closing hold came out ~4 s short)
     const real = window.fetch;
     window.fetch = (u, o) => {
       const s = String((u && u.url) || u);
