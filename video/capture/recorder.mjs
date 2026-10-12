@@ -6,7 +6,14 @@
 //
 // Every tap is logged with where the button was, so the video project can zoom to it and draw the touch.
 import fs from 'fs'; import path from 'path'; import { execFileSync } from 'child_process';
-import { createRequire } from 'module';
+import { createRequire } from 'module'; import os from 'os';
+
+// ffmpeg: $FFMPEG, else the one bundled with Remotion (video/node_modules), else whatever is on the PATH
+function ffmpegBin(REPO) {
+  if (process.env.FFMPEG) return process.env.FFMPEG;
+  for (const p of ['compositor-win32-x64-msvc/ffmpeg.exe', 'compositor-linux-x64-gnu/ffmpeg', 'compositor-darwin-arm64/ffmpeg']) { const f = path.join(REPO, 'video/node_modules/@remotion', p); if (fs.existsSync(f)) return f; }
+  return 'ffmpeg';
+}
 
 export async function record(REPO, { name, url, out, slow = 5, viewport = { width: 390, height: 844 }, scale = 3, time, me = 'm', who = 'all', practice = true, tourStep = 0, sandboxState = null, script }) {
   const require = createRequire(REPO + '/package.json');
@@ -33,12 +40,14 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
     new MutationObserver(hidePractice).observe(document, { childList: true, subtree: true });
   }, [me, who, practice, tourStep, sandboxState]);
 
-  const dir = path.join(out, name); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir + '/frames', { recursive: true });
+  // frames go to a temp folder (outside OneDrive/the repo), only clip.mp4 and timeline.json land in out/<name>
+  const dir = path.join(out, name); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'rec-' + name + '-')); fs.mkdirSync(work + '/frames');
   const cdp = await ctx.newCDPSession(pg);
   await cdp.send('Animation.enable');
   const frames = [];
   cdp.on('Page.screencastFrame', (f) => {
-    const n = frames.length; fs.writeFileSync(`${dir}/frames/${String(n).padStart(6, '0')}.jpg`, Buffer.from(f.data, 'base64'));
+    const n = frames.length; fs.writeFileSync(`${work}/frames/${String(n).padStart(6, '0')}.jpg`, Buffer.from(f.data, 'base64'));
     frames.push(f.metadata.timestamp); cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
   });
 
@@ -91,10 +100,10 @@ export async function record(REPO, { name, url, out, slow = 5, viewport = { widt
   const startTs = frames.find((t) => t >= t0) ?? frames[0];
   let list = ''; const kept = frames.map((t, i) => [t, i]).filter(([t]) => t >= startTs - 0.2);
   kept.forEach(([t, i], k) => { const next = k + 1 < kept.length ? kept[k + 1][0] : t0 + tEnd * slow; list += `file 'frames/${String(i).padStart(6, '0')}.jpg'\nduration ${Math.max((next - t) / slow, 0.001).toFixed(5)}\n`; });
-  fs.writeFileSync(dir + '/frames.txt', list);
-  execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `fps=60,scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', 'clip.mp4'], { cwd: dir });
+  fs.writeFileSync(work + '/frames.txt', list);
+  execFileSync(ffmpegBin(REPO), ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'frames.txt', '-vf', `scale=${viewport.width * scale}:${viewport.height * scale},format=yuv420p`, '-r', '60', '-fps_mode', 'cfr', '-c:v', 'libx264', '-crf', '14', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'clip.mp4')], { cwd: work });
   const meta = { name, duration: tEnd, viewport, scale, events, errors, frames: kept.length, fpsCaptured: kept.length / tEnd };
   fs.writeFileSync(dir + '/timeline.json', JSON.stringify(meta, null, 2));
-  fs.rmSync(dir + '/frames', { recursive: true, force: true }); fs.rmSync(dir + '/frames.txt');
+  fs.rmSync(work, { recursive: true, force: true });
   return meta;
 }

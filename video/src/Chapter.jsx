@@ -131,7 +131,7 @@ function Rail(P) {
       <div style={{ position: 'absolute', left: railX - 5, top: railTop, width: 10, borderRadius: 5, background: C.red,
         height: Math.max(0, Math.min(stepsList.length, curStep - 1 + (curStep > 0 ? 0.0 : 0)) ) * gap }} />
       {stepsList.map((c, i) => {
-        const n = i + 1, done = curStep > n, on = Math.floor(curStep) === n && g < outro;
+        const n = i + 1, done = curStep > n, on = curStep === n && g < outro; // after the last step (curStep n+0.5) every station reads done
         const y = railTop + i * gap, a = 0.5 + i * 0.12;
         return (
           <div key={i} style={{ position: 'absolute', left: railX - 34, top: y - 34, display: 'flex', gap: 26, width: left - railX - 10, opacity: clampI(g, a, a + 0.3, 0, 1) }}>

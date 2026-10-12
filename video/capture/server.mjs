@@ -1,13 +1,13 @@
 // Serves the built site (dist/) with the real API on an in-memory store, like tests/tour.mjs does.
 // Recordings run against this, never against ourtrips.date.
-import http from 'http'; import fs from 'fs'; import path from 'path'; import { execSync } from 'child_process';
+import http from 'http'; import fs from 'fs'; import path from 'path'; import { execSync } from 'child_process'; import { pathToFileURL } from 'url';
 
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 
 export async function startServer(REPO, { port = 8797, seed = {} } = {}) {
-  execSync('BUILD_ONLY=1 bash scripts/deploy.sh', { cwd: REPO, stdio: 'ignore' });
+  execSync('bash scripts/deploy.sh', { cwd: REPO, stdio: 'ignore', env: { ...process.env, BUILD_ONLY: '1' } });
   const DIST = REPO + '/dist';
-  const { onRequest } = await import(REPO + '/functions/api/[[path]].js?' + Date.now());
+  const { onRequest } = await import(pathToFileURL(REPO + '/functions/api/[[path]].js').href + '?' + Date.now());
   const kv = new Map(Object.entries(seed).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)]));
   const KV = {
     async get(k, t) { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; },

@@ -1,5 +1,5 @@
 // node render.mjs ch11-paper [ch11-rail …] [--fps=30]  → out/<id>.mp4   (no ids: every composition; --fps=30 for a quicker preview)
-import path from 'path'; import fs from 'fs'; import { fileURLToPath } from 'url';
+import path from 'path'; import fs from 'fs'; import os from 'os'; import { fileURLToPath } from 'url';
 import { bundle } from '@remotion/bundler'; import { renderMedia, selectComposition, getCompositions } from '@remotion/renderer';
 import './prepare.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -13,7 +13,7 @@ for (const id of ids) {
   const composition = await selectComposition({ serveUrl, id, browserExecutable, inputProps });
   const outputLocation = path.join(HERE, 'out', id + '.mp4');
   let last = -1;
-  await renderMedia({ composition, serveUrl, inputProps, codec: 'h264', crf: 16, outputLocation, browserExecutable, concurrency: 4, chromiumOptions: { gl: 'swangle' },
+  await renderMedia({ composition, serveUrl, inputProps, codec: 'h264', crf: 16, outputLocation, browserExecutable, concurrency: Number(process.env.CONCURRENCY) || Math.max(4, Math.floor(os.cpus().length * 0.75)), chromiumOptions: { gl: process.env.GL || (process.platform === 'win32' ? 'angle' : 'swangle') },
     onProgress: ({ progress }) => { const p = Math.floor(progress * 10); if (p !== last) { last = p; process.stdout.write(`${id} ${p * 10}%\n`); } } });
   console.log('wrote', outputLocation);
 }
