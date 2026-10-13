@@ -5,6 +5,7 @@
 # visit every phone reads and writes the object, and KV's data is copied in on first contact (lib/state-store.js).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-npx -y wrangler@4 deploy --config workers/state/wrangler.toml "$@"
+# --keep-vars: keys added in the Cloudflare dashboard as plain variables (e.g. AIRLABS_KEY) survive a deploy
+npx -y wrangler@4 deploy --keep-vars --config workers/state/wrangler.toml "$@"
 echo
 echo "Deployed. Now uncomment the [[durable_objects.bindings]] block in wrangler.toml and deploy the site (push to main)."

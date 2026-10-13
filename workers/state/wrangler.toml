@@ -18,3 +18,7 @@ new_sqlite_classes = ["TripState"]
 # alerts, from scripts/vapid-keys.mjs). VAPID_PUBLIC is the matching public key.
 [triggers]
 crons = ["*/5 * * * *"]
+
+# The public half of the phone-alert key pair (made 2026-10-13). Changing it means every phone turns alerts on again.
+[vars]
+VAPID_PUBLIC = "BM9exv2KLjeW1-Ffg-FSVpG5mE91j3lLOq4TwfkJ1AbSXZQmkqPuHa_Se6vRcjpyxEeTOLNc1G1yckvxqHORIXM"
