@@ -1167,7 +1167,7 @@ function openForm(id, opts = {}) {
   else if (x) {
     const ccy = x.orig ? x.orig.ccy : 'JPY', even = splitShares(Math.abs(x.yen), Object.keys(x.shares), {}, x.payer).shares, fixed = {};
     for (const [k, v] of Object.entries(x.shares)) if (Math.abs(v) !== even[k]) fixed[k] = ccy === 'JPY' ? Math.abs(v) : Math.round(Math.abs(v) / RATE[ccy] * 100) / 100;
-    F = { id:x.id, amt:x.orig ? String(x.orig.amt) : String(Math.abs(x.yen)), ccy, refund:!!x.refund, payer:x.payer, pickPayer:false, with:x.with, set:Object.keys(x.shares), fixed, owes:{ ...x.owes }, cat:x.cat, catTouched:true, title:x.title, day:x.day, quick:false, draft:false, by:x.by, nights:x.nights || 1, taxfree:!!x.taxfree, receipt:typeof x.receipt === 'string' ? x.receipt : null, rstamp:typeof x.receipt === 'number' ? x.receipt : null };
+    F = { id:x.id, amt:x.orig ? String(x.orig.amt) : String(Math.abs(x.yen)), ccy, refund:!!x.refund, payer:x.payer, pickPayer:false, with:x.with, set:Object.keys(x.shares), fixed, owes:{ ...x.owes }, cat:x.cat, catTouched:true, title:x.title, day:x.day, src:x.src, quick:false, draft:false, by:x.by, nights:x.nights || 1, taxfree:!!x.taxfree, receipt:typeof x.receipt === 'string' ? x.receipt : null, rstamp:typeof x.receipt === 'number' ? x.receipt : null };
     // split by item when it was saved: the lines come back, marked, as long as the amount is still the receipt's
     if (x.byItem && x.byItem.total === Math.abs(x.yen) && !x.orig) { F.scan = { total:x.byItem.total, lines:x.byItem.lines, saved:true }; F.split = { table:x.byItem.table.filter((i) => P[i]), items:x.byItem.lines.map((l) => ({ ...l, who:l.who || [], n:l.n || {} })), edit:null }; F.byItem = itemSig(); }
   } else if (S.draft && Date.now() - S.draft.t < 15 * 60e3) { F = { ...S.draft.f, quick:opts.quick, draft:true }; }
@@ -1187,7 +1187,7 @@ function formExpense() {
   if (left && F.ccy !== 'JPY' && Math.abs(left) <= Math.ceil(RATE[F.ccy] * 0.01 * F.set.length) + 1) { const k = F.set.includes(F.payer) ? F.payer : F.set[0]; shares[k] += left; left = 0; }
   const signed = Object.fromEntries(Object.entries(shares).map(([k, v]) => [k, v * sgn]));
   const owes = {}; for (const k of Object.keys(F.owes)) if (F.owes[k] && F.set.includes(k) && P[F.payer].partner === k) owes[k] = true;
-  return { x:{ id:F.id || uid(), title:F.title.trim() || CATS[F.cat][0], yen:total * sgn, payer:F.payer, with:F.with, cat:F.cat, day:F.day, shares:signed, owes, refund:F.refund, ...(F.ccy !== 'JPY' ? { orig:{ ccy:F.ccy, amt:parseFloat(F.amt) } } : {}), ...(F.cat === 'hotel' && F.nights > 1 ? { nights:F.nights } : {}), ...(F.taxfree ? { taxfree:true } : {}), ...(F.receipt ? { receipt:F.receipt } : {}), ...(F.split && F.byItem && F.byItem === itemSig() ? { byItem:{ table:F.split.table, total:F.scan.total, lines:F.split.items.map(({ name, price, qty, who, n }) => ({ name, price, qty, who, n })) } } : {}) }, left, total };
+  return { x:{ id:F.id || uid(), ...(F.src ? { src:F.src } : {}), title:F.title.trim() || CATS[F.cat][0], yen:total * sgn, payer:F.payer, with:F.with, cat:F.cat, day:F.day, shares:signed, owes, refund:F.refund, ...(F.ccy !== 'JPY' ? { orig:{ ccy:F.ccy, amt:parseFloat(F.amt) } } : {}), ...(F.cat === 'hotel' && F.nights > 1 ? { nights:F.nights } : {}), ...(F.taxfree ? { taxfree:true } : {}), ...(F.receipt ? { receipt:F.receipt } : {}), ...(F.split && F.byItem && F.byItem === itemSig() ? { byItem:{ table:F.split.table, total:F.scan.total, lines:F.split.items.map(({ name, price, qty, who, n }) => ({ name, price, qty, who, n })) } } : {}) }, left, total };
 }
 function presetOf() {
   if (Object.keys(F.fixed).length) return null; const s = F.set.slice().sort().join(), pay = F.payer;
@@ -1683,8 +1683,8 @@ const icSheet = () => `<h3>${P[S.me].name} topped up an IC card<small>Paid from 
 app.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
   const v = t('[data-view]'); if (v) { S.view = v.dataset.view; S.mineDay = 'all'; S.mineCat = null; ls.set('money.view', S.view); return render(); }
-  const c = t('[data-cur]'); if (c) { S.cur = c.dataset.cur; ls.set('money.cur', S.cur); return render(); }
-  const m = t('[data-mode]'); if (m) { S.mode = m.dataset.mode; ls.set('money.mode', S.mode); return render(); }
+  const c = t('[data-cur]'); if (c) { S.cur = c.dataset.cur; ls.set('money.cur', S.cur); savePrefs({ cur:S.cur }); return render(); }
+  const m = t('[data-mode]'); if (m) { S.mode = m.dataset.mode; ls.set('money.mode', S.mode); savePrefs({ mode:S.mode }); return render(); }
   const keep = (fn) => { const y = scrollY; fn(); render(); scrollTo(0, y); };
   const um = t('[data-unmerge]'); if (um) return keep(() => { const k = um.dataset.unmerge; S.unmerged[k] = !S.unmerged[k]; S.openRow[k] = false; });
   const orow = t('[data-openrow]'); if (orow) { const k = orow.dataset.openrow; keep(() => { S.openRow[k] = !S.openRow[k]; }); if (S.openRow[k]) unfold(document.querySelectorAll(`.tr[data-mkey="${CSS.escape(k)}"] .parts`)); return; }
@@ -1736,7 +1736,7 @@ function fromStore(id, r) {
   }
   const shares = r.shares && Object.keys(r.shares).length ? r.shares : evenShares(r.yen, (r.split || [r.payer]).filter((k) => P[k]), r.payer);
   return { id, title:r.title, yen:r.yen, payer:r.payer, with:WITH[r.with] ? r.with : 'card', cat:CATS[r.cat] ? r.cat : 'other', day:DAY[r.day] ? r.day : 'pre', shares, owes:r.owes || {},
-    ...(r.refund ? { refund:true } : {}), ...(r.taxfree ? { taxfree:true } : {}), ...(r.orig ? { orig:r.orig } : {}), ...(r.nights > 1 ? { nights:r.nights } : {}), ...(r.by ? { by:r.by } : {}), ...(r.editedBy ? { editedBy:r.editedBy } : {}),
+    ...(r.refund ? { refund:true } : {}), ...(r.taxfree ? { taxfree:true } : {}), ...(r.orig ? { orig:r.orig } : {}), ...(r.nights > 1 ? { nights:r.nights } : {}), ...(r.by ? { by:r.by } : {}), ...(r.src ? { src:r.src } : {}), ...(r.editedBy ? { editedBy:r.editedBy } : {}),
     at:r.at || Date.parse(r.ts) || 0, ...(r.receipt ? { receipt:r.receipt } : {}), ...(r.byItem ? { byItem:r.byItem } : {}) };
 }
 const SETTINGS = [['s', 'senders'], ['r', 'recv'], ['by', 'setBy'], ['u', 'unmerged'], ['b', 'budgets'], ['bc', 'usBudget'], ['seen', 'seen']];
@@ -1809,6 +1809,8 @@ document.querySelectorAll('[data-home]').forEach((a) => a.addEventListener('clic
 const addfab = document.getElementById('addfab');
 addfab.addEventListener('click', () => openForm(null, { day:TODAY }));
 
+const MINE = P[ME] && !SANDBOX ? ME : null;
+const savePrefs = (p) => { if (MINE) store.setProfile(MINE, p); }; // see store.watchPrefs
 // another phone changed something: show it, unless the form or a sheet is open (then on the next draw)
 let sig = '';
 store.subscribe(() => {
@@ -1827,10 +1829,33 @@ store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) locatio
 load();
 if (WHO && !S.seen[S.me]) S.seen[S.me] = Date.now(); // first visit: nothing is "new" yet
 render();
+// your currency and settle-up choice, from your profile (another phone, or Settings)
+store.watchPrefs(MINE, (p) => {
+  let ch = false;
+  if (p.cur && RATE[p.cur] && p.cur !== S.cur) { S.cur = p.cur; ls.set('money.cur', S.cur); ch = true; }
+  if ((p.mode === 'couple' || p.mode === 'each') && p.mode !== S.mode) { S.mode = p.mode; ls.set('money.mode', S.mode); ch = true; }
+  if (ch && !F && !sheet.classList.contains('on') && !settling) render();
+});
 store.start();
+// Coming back to a page the browser kept (Back from Settings): pick up a currency or settle-up choice made there.
+addEventListener('pageshow', (e) => { if (!e.persisted) return; const c = ls.get('money.cur', S.cur), m = ls.get('money.mode', S.mode); if (c !== S.cur || m !== S.mode) { S.cur = c; S.mode = m; render(); } });
 // The ¥+ button on the trip lands here with ?add=1&d=<day>: straight into a new expense for that day.
+// A booking's "Add to expenses" adds what it knows: src (the stop's id), t (title), y (yen), c (category), p (who paid), s (split).
 { const q = new URLSearchParams(location.search);
-  if (q.get('add') && WHO) { const u = new URL(location); u.searchParams.delete('add'); u.searchParams.delete('d'); history.replaceState(null, '', u); openForm(null, { day:DAY[q.get('d')] ? q.get('d') : TODAY, quick:true }); } }
+  if (q.get('add') && WHO) {
+    const u = new URL(location); for (const k of ['add', 'd', 'src', 't', 'y', 'c', 'p', 's']) u.searchParams.delete(k); history.replaceState(null, '', u);
+    const src = /^[a-z0-9_-]{1,80}$/i.test(q.get('src') || '') ? q.get('src') : null;
+    const had = src && S.ex.find((x) => x.src === src); // already added from this stop, maybe on another phone: open that one
+    if (had) openForm(had.id);
+    else {
+      openForm(null, { day:DAY[q.get('d')] ? q.get('d') : TODAY, quick:true });
+      if (src && F) {
+        const set = (q.get('s') || '').split(',').filter((p) => P[p]), y = parseInt(q.get('y'), 10);
+        Object.assign(F, { src, draft:false, title:(q.get('t') || '').slice(0, 90), ...(y > 0 ? { amt:String(y) } : {}), ccy:'JPY', ...(CATS[q.get('c')] ? { cat:q.get('c'), catTouched:true } : {}), ...(P[q.get('p')] ? { payer:q.get('p') } : {}), ...(set.length ? { set, fixed:{} } : {}) });
+        renderForm();
+      }
+    }
+  } }
 window.__tourEnv = { page:'money', store, formOpen:() => !!F, exCount:() => S.ex.length, closeForm:() => { if (F) closeForm(); } };
 if (SANDBOX) { document.body.classList.add('practice'); setTimeout(runTour, 60); }
 

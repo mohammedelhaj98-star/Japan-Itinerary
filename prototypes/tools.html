@@ -7,6 +7,10 @@
 <link rel="icon" href="data:,">
 <title>Trip tools</title>
 <meta name="color-scheme" content="light">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Japan 2026">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
 <link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
 <style>
 @font-face { font-family:'Zen Kaku'; font-weight:400; font-display:swap; src:url(../vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'); }
@@ -133,6 +137,31 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .setrow .okc { color:#1f7a45; font-weight:700; }
 .setrow small .warn { display:block; color:#7a5a00; font-weight:700; }
 .setb { flex:none; min-height:44px; margin:-10px 0; font-weight:700; color:var(--blue); }
+/* Add to Home Screen, and flight alerts: whose flights this phone hears about, for which changes */
+.homec { margin:0 12px; padding:16px; border-radius:22px; background:var(--ink); color:#fff; display:flex; flex-direction:column; gap:12px; }
+.homec h3 { font-size:16.5px; letter-spacing:-.015em; line-height:1.25; }
+.homec p { font-size:14px; color:rgba(255,255,255,.78); }
+.homec .hsteps { display:flex; flex-direction:column; gap:8px; }
+.homec .hstep { display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.1); border-radius:14px; padding:10px 12px; font-size:14.5px; }
+.homec .hstep i { font-family:var(--serif); font-size:24px; width:18px; line-height:1; }
+.homec .hstep span:last-child { width:34px; height:34px; border-radius:9px; background:#fff; color:#1858d6; display:grid; place-items:center; margin-left:auto; }
+.homec .hbig { height:50px; border-radius:14px; background:#fff; color:var(--ink); font-weight:700; font-size:15px; }
+.homec .hlink { align-self:flex-start; font-size:13.5px; font-weight:700; color:rgba(255,255,255,.85); text-decoration:underline; text-underline-offset:3px; min-height:32px; }
+.alon { flex:none; min-height:36px; padding:0 14px; border-radius:999px; background:var(--ink); color:#fff; font-size:13.5px; font-weight:700; }
+.alon.is { background:#e6f4ea; color:#1f7a45; }
+.alon:disabled { opacity:.4; }
+.agrid { display:grid; grid-template-columns:1fr repeat(2, 64px); margin-top:4px; }
+.agrid .h { font-size:12.5px; font-weight:700; text-align:center; padding-bottom:6px; align-self:end; }
+.agrid .k { display:flex; flex-direction:column; justify-content:center; padding:10px 0; border-top:1px solid var(--line); font-size:14.5px; line-height:1.3; }
+.agrid .k small { font-size:12px; color:var(--ink3); }
+.agrid .c { display:grid; place-items:center; padding:10px 0; border-top:1px solid var(--line); }
+.asw { width:40px; height:24px; border-radius:999px; background:rgba(0,0,0,.14); position:relative; transition:background 200ms; }
+.asw::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform 240ms var(--ease); }
+.asw[aria-checked="true"] { background:var(--p); }
+.asw[aria-checked="true"]::after { transform:translateX(16px); }
+.alsub { font-size:13px; color:var(--ink3); margin-top:10px; }
+.almsg { font-size:13px; color:#7a5a00; font-weight:700; margin-top:8px; }
+@media (prefers-reduced-motion: reduce) { .asw, .asw::after { transition:none; } }
 .setb:disabled { opacity:.4; }
 .demo { margin:0 12px 6px; padding:10px 14px; border-radius:14px; background:#fff6dd; color:#7a5a00; font-size:13px; display:flex; gap:10px; align-items:center; justify-content:space-between; }
 .demo button { font-weight:700; color:#7a5a00; text-decoration:underline; }
@@ -259,6 +288,10 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 .driver .en { font-size:15px; color:var(--ink2); margin-top:16px; }
 .driver .warn { margin-top:14px; font-size:13.5px; color:#7a5a00; background:#fff6dd; border-radius:12px; padding:10px 12px; }
 .driver .warn input { width:100%; margin-top:8px; font:500 16px var(--sans); border:1px solid rgba(0,0,0,.1); border-radius:10px; padding:10px 12px; }
+.driver dl { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; margin:18px 0 0; font-size:14.5px; }
+.driver dt { color:var(--ink3); font-weight:700; } .driver dd { margin:0; min-width:0; }
+.hcard .htag { align-self:flex-start; display:inline-block; margin-top:6px; font-size:12.5px; font-weight:700; color:#7a5a00; background:#fff6dd; padding:3px 9px; border-radius:999px; }
+.hcard .hwho { position:absolute; top:12px; right:12px; z-index:2; font-size:11px; font-weight:700; letter-spacing:.04em; padding:4px 9px; border-radius:999px; background:rgba(255,255,255,.92); color:#c25350; }
 .driver .acts { display:flex; gap:8px; margin-top:auto; padding-top:24px; }
 .driver .acts a, .driver .acts button { flex:1; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:700; text-decoration:none; background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08); }
 .driver .acts a.pri { background:var(--ink); color:#fff; }
@@ -332,7 +365,7 @@ import { buildTripDocx } from '../js/export-docx.js?v=9';
 import { PLACES } from '../data/places.js?v=9';
 import { DIET } from '../data/diet.js?v=9';
 import { HOTEL_JA } from '../data/hotels-ja.js?v=9';
-import { store, SANDBOX, GUEST } from '../js/store.js?v=9';
+import { store, SANDBOX, GUEST, deviceId } from '../js/store.js?v=9';
 import { runTour } from '../js/tour.js?v=9';
 import { CAT, MODE, PROFILE_COLORS } from '../js/colors.js?v=9';
 import { offline } from '../js/offline.js?v=9';
@@ -370,7 +403,9 @@ const ME = (() => { try { return JSON.parse(localStorage.getItem('trips.me')); }
 const VIEW = GUEST && !SANDBOX;
 // "Just me" expenses (own) are someone's personal spending: only on their own Mine page, never in who-owes-whom.
 const allEx = () => Object.entries(store.getExpenses()).map(([id, x]) => ({ id, ...x })).filter((x) => P[x.payer] && x.split && x.split.every((id) => P[id]) && CATS[x.cat]);
-const ex = { get list() { return allEx().filter((x) => !x.own); }, get own() { return allEx().filter((x) => x.own && x.payer === ME); }, cur: ls.get('proto.excur', 'USD'), mode: ls.get('proto.exmode2', 'couples'), view: P[ME] ? ls.get('proto.exview', 'group') : 'group' };
+const MINE = P[ME] && !SANDBOX ? ME : null;
+const savePrefs = (p) => { if (MINE) store.setProfile(MINE, p); }; // see store.watchPrefs
+const ex = { get list() { return allEx().filter((x) => !x.own); }, get own() { return allEx().filter((x) => x.own && x.payer === ME); }, cur: ls.get('money.cur', 'CAD'), mode: ls.get('money.mode', 'couple'), view: P[ME] ? ls.get('proto.exview', 'group') : 'group' };
 const saveExpense = (id, rec) => store.setExpense(id, rec ? { title: rec.title, yen: rec.yen, payer: rec.payer, split: rec.split, cat: rec.cat, day: rec.day || null, ...(ME && P[ME] ? { by: ME } : {}), ...(rec.own ? { own: true } : {}) } : null);
 const syncLine = () => store.mode === 'locked' ? '<span class="sync off">Locked: <a href="/?next=japan">enter the PIN</a> to save changes</span>' : store.mode === 'sandbox' ? '<span class="sync off">Practice mode: nothing here is saved</span>' : store.pending() ? `<span class="sync off">${store.mode === 'online' ? 'Syncing' : 'Offline'}: ${store.pending()} change${store.pending() === 1 ? '' : 's'} saved on this phone, will sync when back online</span>` : store.mode === 'online' ? '<span class="sync on">Shared with all four phones</span>' : store.mode === 'local' ? '<span class="sync off">Offline: showing what this phone last saw</span>' : '<span class="sync">Connecting…</span>';
 
@@ -381,7 +416,7 @@ function balances() {
   return b;
 }
 function transfers(b) {
-  let parties = ex.mode === 'couples' ? Object.entries(COUPLES).map(([k, c]) => ({ id: k, name: c.name, ini: c.ini, c: c.c, v: c.ids.reduce((s, id) => s + b[id], 0) })) : PEOPLE.map((p) => ({ id: p.id, name: p.name, ini: p.ini, c: p.c, photo: p.photo, v: b[p.id] }));
+  let parties = ex.mode === 'couple' ? Object.entries(COUPLES).map(([k, c]) => ({ id: k, name: c.name, ini: c.ini, c: c.c, v: c.ids.reduce((s, id) => s + b[id], 0) })) : PEOPLE.map((p) => ({ id: p.id, name: p.name, ini: p.ini, c: p.c, photo: p.photo, v: b[p.id] }));
   const cr = parties.filter((p) => p.v > 0.5).map((p) => ({ ...p })).sort((a, z) => z.v - a.v), db = parties.filter((p) => p.v < -0.5).map((p) => ({ ...p, v: -p.v })).sort((a, z) => z.v - a.v);
   const out = [];
   while (cr.length && db.length) { const a = db[0], c = cr[0], amt = Math.min(a.v, c.v); out.push({ from: a, to: c, yen: amt }); a.v -= amt; c.v -= amt; if (a.v < 0.5) db.shift(); if (c.v < 0.5) cr.shift(); db.sort((x, y) => y.v - x.v); cr.sort((x, y) => y.v - x.v); }
@@ -395,9 +430,9 @@ function renderExpenses() {
   const b = balances(), t = transfers(b), total = ex.list.filter((x) => x.cat !== 'settle').reduce((s, x) => s + x.yen, 0);
   const byCat = {}; ex.list.filter((x) => x.cat !== 'settle').forEach((x) => (byCat[x.cat] = (byCat[x.cat] || 0) + x.yen));
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
-  const modeSeg = [['couples', 'Couples'], ['people', 'People']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
+  const modeSeg = [['couple', 'By couple'], ['each', 'Person to person']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
   const groups = {}; [...ex.list].sort((a, z) => (z.day || '').localeCompare(a.day || '') || String(z.id).localeCompare(String(a.id))).forEach((x) => (groups[x.day] = groups[x.day] || []).push(x));
-  const balCards = ex.mode === 'couples'
+  const balCards = ex.mode === 'couple'
     ? Object.entries(COUPLES).map(([k, c]) => { const v = c.ids.reduce((s, id) => s + b[id], 0); return `<div class="card"><span class="av" style="--c:${c.c};font-size:11px">${esc(c.ini)}</span><span><b>${esc(c.name)}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('')
     : PEOPLE.map((p) => { const v = b[p.id]; return `<div class="card"><span class="av ${p.photo ? 'ph' : ''}" style="${avStyle(p)}">${p.ini}</span><span><b>${p.name}</b><small class="${v > 0.5 ? 'pos' : v < -0.5 ? 'neg' : 'zero'}">${v > 0.5 ? 'gets back ' + fmtC(v, ex.cur) : v < -0.5 ? 'owes ' + fmtC(-v, ex.cur) : 'all square'}</small></span></div>`; }).join('');
   return `<header class="ph">${viewSeg()}<small>Shared expenses</small><h1>Who owes whom</h1><p>Log anything someone paid for the group. It splits it and works out the fewest payments to settle up.</p>${syncLine()}</header>
@@ -534,11 +569,14 @@ document.getElementById('page').addEventListener('click', (e) => { if (swallowCl
 /* ═══════════ 2 · TAXI CARDS ═══════════ */
 /* Japanese names and districts confirmed against OpenStreetMap; full addresses for Kyoto and Hakone still need the booking confirmation. */
 const HJA = Object.fromEntries(Object.entries(HOTEL_JA).map(([k, v]) => [k, { ja: v.ja, addr: v.addr_ja, zip: v.zip, en: v.addr_en, phone: v.phone }]));
-function tonightHotel() { const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); const d = DAYS.find((x) => x.date === t) || DAYS[0]; return d.hotel; }
+// tonight's hotel for this phone's couple: M&M have two nights away (a day's mmHotel)
+function tonightHotel() { const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); const d = DAYS.find((x) => x.date === t) || DAYS[0]; return d.mmHotel && P[ME] && P[ME].couple === 'mm' ? d.mmHotel : d.hotel; }
+// a hotel still waiting on the room (HOTELS[].pending is its Bookings id): "Mark as booked" on the Bookings page or its stop clears it
+const hotelPending = (h) => !!h.pending && store.getChoice(h.pending, '') !== 'booked';
 function renderTaxi() {
   const tn = tonightHotel();
   return `<header class="ph"><small>Taxi cards</small><h1>Take me to the hotel</h1><p>Tap a hotel and show the screen to the driver. It says, in Japanese, "Please take me to this hotel".</p></header>
-    <div class="hlist">${HOTELS.map((h) => { const pi = PLACES[h.name] || {}; const j = HJA[h.id] || {}; return `<button class="hcard press" data-hotel="${h.id}" style="background-image:url('../img/places/${esc(pi.img || '')}')">${h.id === tn ? '<span class="tonight">Tonight</span>' : ''}<div><small>${esc(h.city)} · ${esc(h.dates)} · ${h.nights} night${h.nights > 1 ? 's' : ''}</small><b>${esc(h.name)}</b>${j.ja ? `<span class="jp">${esc(j.ja)}</span>` : ''}</div></button>`; }).join('')}</div>`;
+    <div class="hlist">${HOTELS.map((h) => { const pi = PLACES[h.name] || {}; const j = HJA[h.id] || {}; return `<button class="hcard press" data-hotel="${h.id}" style="${pi.img ? `background-image:url('../img/places/${esc(pi.img)}')` : 'background-color:#55702f'}">${h.id === tn ? '<span class="tonight">Tonight</span>' : ''}${h.who === 'mm' ? '<span class="hwho">M&amp;M</span>' : ''}<div><small>${esc(h.city)} · ${esc(h.dates)} · ${h.nights} night${h.nights > 1 ? 's' : ''}</small><b>${esc(h.name)}</b>${j.ja ? `<span class="jp">${esc(j.ja)}</span>` : ''}${hotelPending(h) ? '<span class="htag">Room not confirmed yet</span>' : ''}</div></button>`; }).join('')}</div>`;
 }
 const driver = document.getElementById('driver');
 function openDriver(id) {
@@ -549,6 +587,8 @@ function openDriver(id) {
     <p class="addr">${esc([j.zip, j.addr].filter(Boolean).join(' '))}</p>
     ${j.phone ? `<p class="addr" style="font-family:var(--sans);font-size:24px;font-weight:700;letter-spacing:.02em">☎ ${esc(j.phone)}</p><p class="sayr">Drivers can type the phone number into their navigation.</p>` : ''}
     <p class="en">${esc(h.name)} · ${esc(j.en || h.city)}</p>
+    ${hotelPending(h) ? '<p class="warn"><b>Room not confirmed yet.</b> The price and arrival time are agreed. Mark it booked on its stop or on the Bookings page once they confirm.</p>' : ''}
+    ${h.info ? `<dl>${h.info.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
     <div class="acts"><a class="pri" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.addr || h.q || h.name)}" target="_blank" rel="noopener">Open in Maps</a>${j.phone ? `<a href="tel:${esc('+81' + j.phone.replace(/^0/, '').replace(/-/g, ''))}">Call hotel</a>` : ''}<button data-copy="${esc((j.ja || h.name) + ' ' + (j.addr || ''))}">Copy</button></div>`;
   driver.classList.add('on'); driver.dataset.h = id;
 }
@@ -632,7 +672,7 @@ const deviceOf = () => { try { return JSON.parse(localStorage.getItem('japan2026
 
 /* ═══════════ BOOKINGS ═══════════ */
 // Everything booked, and everything still to book. Marking a pending one as booked is shared with all four phones.
-const bkId = (b) => 'bk-' + b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+const bkId = (b) => b.id || 'bk-' + b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 const bk = { who: ls.get('proto.bkwho', 'all') };
 const dayN = (id) => { const d = dayOf(id); return d ? d.n : 99; };
 function bkCard(b, state) {
@@ -676,15 +716,76 @@ function renderSettings() {
       <p class="sub" style="margin:14px 0 8px">Route lines on the map</p><div class="key">${lines.map(([k, t, dash]) => `<div><i class="ln ${dash ? 'dash' : ''}" style="--c:${MODE[k][0]}"></i><span>${t}</span></div>`).join('')}</div>
       <p class="sub" style="margin-top:12px">A faded card is stamped as done. Dashed outline means optional. NASA or M&amp;M on a card means it's only for that couple.</p></div>`;
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
-  const modeSeg = [['couples', 'Couples'], ['people', 'People']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
+  const modeSeg = [['couple', 'By couple'], ['each', 'Person to person']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
   const prefs = VIEW ? '' : `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div>${backupRow()}</div>`;
   if (sub === 'stamps') return renderStamps();
+  const alertsSec = GUEST || VIEW ? '' : `<p class="sec">Flight alerts</p>${alertsCard()}`;
   const nSt = Object.keys(store.state.checks || {}).length;
   const stamps = `<button class="card scard navrow" data-sub="stamps"><span><b>Stamped stops</b><small>${nSt ? `${nSt} stamped · see and unstamp them` : 'Nothing stamped yet'}</small></span><span class="cnt">${nSt || ''}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>`;
   const exp = `<div class="card scard"><p class="sub" style="margin-bottom:12px">A Word file laid out like the original itinerary, with everything as it is now: edited and added stops, choices made, bookings marked, stamps${VIEW ? '' : ' and expenses'}.</p><button class="bigb" data-export>Download Word file (.docx)</button><p class="sub" id="ex-msg" style="margin-top:10px"></p></div>`;
   return `<header class="ph"><small>Settings</small><h1>You &amp; the trip</h1><p>Your profile, what the colours mean, and how money is shown.</p></header>
-    ${mine}<p class="sec">Offline</p>${offlineRow()}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}${VIEW ? '' : `<p class="sec">Expenses</p>${prefs}`}<p class="sec">Export the trip</p>${exp}`;
+    ${homeCard()}${mine}${alertsSec}<p class="sec">Offline</p>${offlineRow()}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}${VIEW ? '' : `<p class="sec">Expenses</p>${prefs}`}<p class="sec">Export the trip</p>${exp}`;
 }
+// Add to Home Screen: an iPhone only shows alerts for a site on the Home Screen (iOS 16.4+), and can't be asked from a
+// page, so it gets the two taps; Android Chrome offers its own install prompt, which the button opens.
+const AL_KINDS = [['delay', 'Delays', '15 min or more'], ['gate', 'Gate or terminal', ''], ['cancel', 'Cancelled or diverted', ''], ['landed', 'Landed + belt', '']];
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const al = { install: null, home: ls.get('japan2026.homeDone', false), on: ls.get('japan2026.alertsOn', false), busy: false, msg: '', key: undefined, tracking: false,
+  // chosen by couple (Mo's call: the tickets name each person, Settings goes by couple); the server keeps it per person
+  prefs: (() => { const p = ls.get('japan2026.alertsByCouple', {}); return Object.fromEntries(Object.keys(COUPLES).map((c) => [c, Object.fromEntries(AL_KINDS.map(([k]) => [k, !(p[c] && p[c][k] === false)]))])); })() };
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); al.install = e; if (tab === 4 && !sub) render(); });
+addEventListener('appinstalled', () => { al.home = true; ls.set('japan2026.homeDone', true); if (tab === 4 && !sub) render(); });
+const PUSH_OK = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const SHARE_I = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4M6 11H5v10h14V11h-1"/></svg>';
+const ADD_I = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+function homeCard() {
+  if (STANDALONE || al.home) return '';
+  if (IOS) return `<div class="homec"><h3>Add the trip to your Home Screen</h3><p>iPhones only show flight alerts for sites on the Home Screen. Two taps in Safari:</p>
+    <div class="hsteps"><div class="hstep"><i>1</i><span>Tap Share at the bottom</span><span>${SHARE_I}</span></div><div class="hstep"><i>2</i><span>Tap Add to Home Screen</span><span>${ADD_I}</span></div></div>
+    <button class="hlink" data-homedone>I've done it</button></div><div style="height:14px"></div>`;
+  return `<div class="homec"><h3>Add the trip to your Home Screen</h3><p>It opens like an app, works offline, and can show flight alerts.</p>
+    ${al.install ? '<button class="hbig press" data-install>Install Japan 2026</button>' : '<p>In Chrome: tap ⋮, then Add to Home screen.</p>'}<button class="hlink" data-homedone>I've done it</button></div><div style="height:14px"></div>`;
+}
+function alertsCard() {
+  // "On" is what this phone remembers; check it against the browser's subscription once (it can expire or be dropped),
+  // and send it to the server again so both agree
+  if (al.on && PUSH_OK && !al.synced && !SANDBOX) { al.synced = true; navigator.serviceWorker.getRegistration('../').then((r) => (r ? r.pushManager.getSubscription() : null)).then((s0) => {
+    if (s0) return sendPrefs(s0.toJSON()).catch(() => {});
+    al.on = false; ls.set('japan2026.alertsOn', false); if (tab === 4 && !sub) render();
+  }, () => {}); }
+  if (al.key === undefined && !SANDBOX) { al.key = null; store.api('push').then((r) => { al.key = r.key; al.tracking = r.tracking; }, () => {}).finally(() => { if (tab === 4 && !sub) render(); }); }
+  let btn, line;
+  if (!PUSH_OK) { btn = ''; line = IOS && !STANDALONE ? 'Add the trip to your Home Screen first, then open it from there.' : "This browser can't show alerts."; }
+  else if (!al.key) { btn = '<button class="alon" disabled>Turn on</button>'; line = 'Alerts switch on once the flight service is connected.'; }
+  else { btn = `<button class="alon ${al.on ? 'is' : ''} press" data-alerts ${al.busy ? 'disabled' : ''}>${al.busy ? '…' : al.on ? 'On' : 'Turn on'}</button>`; line = al.on ? `On for ${P[ME] ? P[ME].name : 'this phone'}. Tap to turn off.` : 'Off until you allow them.'; if (!al.tracking) line += ' Alerts start once the flight service is connected.'; }
+  const grid = AL_KINDS.map(([k, t, sm]) => `<div class="k">${t}${sm ? `<small>${sm}</small>` : ''}</div>${Object.entries(COUPLES).map(([id, c]) => `<div class="c"><button class="asw" style="--p:${c.c}" role="switch" aria-checked="${al.prefs[id][k]}" aria-label="${t} for ${esc(c.name)}" data-alpref="${id}:${k}"></button></div>`).join('')}`).join('');
+  return `<div class="card scard"><div class="setrow"><span>Alerts on this phone<small>${line}</small></span>${btn}</div>
+    <p class="alsub">Alerts for whose flights:</p><div class="agrid"><span></span>${Object.values(COUPLES).map((c) => `<span class="h" style="color:${c.c}">${esc(c.name)}</span>`).join('')}${grid}</div>
+    ${al.msg ? `<p class="almsg">${esc(al.msg)}</p>` : ''}<p class="alsub">Each phone picks its own. A flight with people from both couples sends one alert.</p></div>`;
+}
+const urlKey = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+async function pushReg() { const r = await navigator.serviceWorker.register('../sw.js', { scope: '../' }); await navigator.serviceWorker.ready; return r; }
+async function sendPrefs(subJson) { const prefs = {}; for (const [c, x] of Object.entries(COUPLES)) for (const id of x.ids) prefs[id] = al.prefs[c]; await store.api('push', { id: deviceId(), sub: subJson, prefs }); }
+async function toggleAlerts() {
+  al.busy = true; al.msg = ''; render();
+  try {
+    const reg = await pushReg();
+    if (al.on) { const s0 = await reg.pushManager.getSubscription(); if (s0) await s0.unsubscribe(); await sendPrefs(null); al.on = false; }
+    else {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') al.msg = 'Alerts are blocked for this site. Allow notifications in the phone\'s settings, then try again.';
+      else { const s0 = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlKey(al.key) })); await sendPrefs(s0.toJSON()); al.on = true; }
+    }
+  } catch (err) { al.msg = err && err.pin ? 'Alerts need the PIN.' : navigator.onLine === false ? 'Alerts need a connection.' : "Couldn't change alerts. Try again."; }
+  ls.set('japan2026.alertsOn', al.on); al.busy = false; render();
+}
+async function setAlertPref(pid, k) {
+  al.prefs[pid][k] = !al.prefs[pid][k]; ls.set('japan2026.alertsByCouple', al.prefs); render();
+  if (!al.on || !PUSH_OK) return;
+  try { const reg = await pushReg(); const s0 = await reg.pushManager.getSubscription(); if (s0) await sendPrefs(s0.toJSON()); } catch { al.msg = "Couldn't save that change. Try again with signal."; render(); }
+}
+
 // Stamped stops by day, using each stop's current (edited) title. Stamps on stops that no longer exist are listed under Other so they can still be cleared.
 // Ready for offline: today and the next 2 days (saved by the trip page), or the whole trip (saved from here)
 const OFF = offline({ DAYS, HOTELS, PLACES });
@@ -855,12 +956,16 @@ page.addEventListener('click', (e) => {
   if (t('[data-export]')) { exportDocx(); return; }
   if (t('[data-backup]')) { backupNow(); return; }
   if (t('[data-saveall]')) { saveAll(); return; }
+  if (t('[data-homedone]')) { al.home = true; ls.set('japan2026.homeDone', true); return render(); }
+  if (t('[data-install]') && al.install) { const ev = al.install; al.install = null; ev.prompt(); ev.userChoice.then((c) => { if (c && c.outcome === 'accepted') { al.home = true; ls.set('japan2026.homeDone', true); } render(); }); return; }
+  if (t('[data-alerts]')) { toggleAlerts(); return; }
+  const ap = t('[data-alpref]'); if (ap) { const [pid, k] = ap.dataset.alpref.split(':'); setAlertPref(pid, k); return; }
   const pc = t('[data-pcolor]'); if (pc && P[ME]) { store.setProfile(ME, { color: pc.dataset.pcolor }); return render(); }
   if (t('[data-rmphoto]') && P[ME]) { store.setProfile(ME, { photo: null }); return render(); }
-  const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('proto.excur', ex.cur); return render(); }
-  const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('proto.exmode2', ex.mode); return render(); }
+  const cu = t('[data-cur]'); if (cu) { ex.cur = cu.dataset.cur; ls.set('money.cur', ex.cur); savePrefs({ cur: ex.cur }); return render(); }
+  const mo = t('[data-mode]'); if (mo) { ex.mode = mo.dataset.mode; ls.set('money.mode', ex.mode); savePrefs({ mode: ex.mode }); return render(); }
   const ev = t('[data-exview]'); if (ev) { ex.view = ev.dataset.exview; ls.set('proto.exview', ex.view); return render(); }
-  const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couples' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couples' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
+  const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couple' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couple' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
     const sid = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); saveExpense(sid, { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); render(); return undoable(`Marked ${tr.from.name} → ${tr.to.name} paid`, () => saveExpense(sid, null)); }
   const xr = t('[data-ex]'); if (xr) return openEx(xr.dataset.ex);
   const h = t('[data-hotel]'); if (h) return openDriver(h.dataset.hotel);
@@ -889,7 +994,16 @@ store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode +
 let ckSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.checks || {}); if (sig === ckSig) return; ckSig = sig; if (tab === 4 && !cfmBg.classList.contains('on')) render(); });
 let sgSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.suggestions || []); if (sig === sgSig) return; sgSig = sig; if (tab === 3 && foodView !== 'nearby' && document.activeElement?.id !== 'sg-text') render(); });
 let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });
+// your currency and settle-up choice, from your profile (another phone, or the money page)
+store.watchPrefs(MINE, (p) => {
+  let ch = false;
+  if (RATE[p.cur] && p.cur !== ex.cur) { ex.cur = p.cur; ls.set('money.cur', ex.cur); ch = true; }
+  if ((p.mode === 'couple' || p.mode === 'each') && p.mode !== ex.mode) { ex.mode = p.mode; ls.set('money.mode', ex.mode); ch = true; }
+  if (ch && !sheet.classList.contains('on')) render();
+});
 store.start();
+// Coming back to a page the browser kept (Back from the money page): pick up a currency or settle-up choice made there.
+addEventListener('pageshow', (e) => { if (!e.persisted) return; const c = ls.get('money.cur', ex.cur), m = ls.get('money.mode', ex.mode); if (c !== ex.cur || m !== ex.mode) { ex.cur = c; ex.mode = m; render(); } });
 // The PIN was refused (it changed, or this phone lost it): enter it again on the trips page, then come back to the trip.
 store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) location.replace('/?next=japan'); });
 window.__tourEnv = {

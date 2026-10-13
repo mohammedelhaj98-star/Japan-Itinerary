@@ -6,7 +6,8 @@
 //   GET  /api/version                 → { updatedAt, live }  (one read: phones poll this, and fetch /api/state only when it changes)
 //   GET  /api/live                    a WebSocket: the phone is told { updatedAt } the moment the shared state changes
 //                                     (only with the Durable Object; live:false in /api/version means keep polling)
-//   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, money, profiles, covers, updatedAt }
+//   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, money, profiles, covers, flights, updatedAt }
+//                                       (flights: what the flight checks found, per stop; see lib/flights.js)
 //                                       (expenses and money only with the PIN in x-trip-pin)
 //   POST /api/checks                  { id, value:boolean }
 //   POST /api/choices                 { id, value:string }
@@ -18,12 +19,16 @@
 //   POST /api/scan                    { photo:dataURL, model? }  → what a receipt says: total, shop, date, type (Workers AI)
 //   POST /api/fill                    { name, city?, date?, near? }  → a new stop filled in from its name: Japanese name,
 //                                       type, notes, cost, time there, background, and what to search for its place and photo
-//   POST /api/profile                 { id, color?, photo?:dataURL|null }  (a person's colour and photo)
+//   POST /api/profile                 { id, color?, photo?:dataURL|null, cur?, mode? }  (a person's colour, photo,
+//                                       and how they like money shown: CAD/QAR/USD, settle up by couple/each)
 //   GET  /api/photo/:id               → the person's photo (image bytes)
 //   POST /api/unlock                  { pin }  → { ok } when the PIN is right (the hub asks for it once per phone)
 //   POST /api/suggestions             { text, name, day, author, kind? }  (kind: food | shop | place)
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
+//   GET  /api/push                    → { key, tracking }: the public key a phone subscribes to flight alerts with
+//   POST /api/push                    { id, sub:PushSubscription|null, prefs:{ person: { delay, gate, cancel, landed } } }
+//                                       (this phone's alert choices; null sub turns its alerts off)
 //   POST /api/log                     { errors:[…] }  problem reports from the phones (no PIN; a few a day at most; each carries v, the deploy it came from)
 //   GET  /api/log                     → the problem reports (with the PIN)
 //   GET  /api/backup                  → when the money was last backed up to Google Drive (with the PIN)
@@ -57,7 +62,7 @@ const MAX_MONEY = 3000;
 const MAX_RECEIPT = 700000; // a data URL; the app sends ~1200px JPEGs
 const CCYS = ['CAD', 'QAR', 'USD'];
 
-const STATE = { checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {} };
+const STATE = { checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, flights: {} };
 async function readState(store) {
   const got = await store.readMany([...Object.keys(STATE), 'updatedAt']);
   const out = {}; for (const k of Object.keys(STATE)) out[k] = got[k] ?? STATE[k];
@@ -91,6 +96,7 @@ function cleanCustom(v) {
   }
   if (v.info === null) out.info = null;
   else if (v.info && typeof v.info === 'object') { const info = cleanInfo(v.info); if (info) out.info = info; }
+  if (v.flight && typeof v.flight === 'object') { const no = String(v.flight.no || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); out.flight = { no }; }
   if (typeof v.ts === 'string') out.ts = clean(v.ts, 40);
   return Object.keys(out).length ? out : null;
 }
@@ -136,6 +142,7 @@ function cleanExpense(v) {
   const nights = int(v.nights, 1, 30); if (nights > 1) out.nights = nights;
   if (isP(v.by)) out.by = v.by;
   if (isP(v.editedBy)) out.editedBy = v.editedBy;
+  if (isId(v.src || '')) out.src = v.src; // added from a booking on a stop ("Add to expenses"): that stop's id
   if (stamp(v.at) != null) out.at = v.at;
   if (stamp(v.receipt) != null) out.receipt = v.receipt;
   // split by item: the receipt's lines and who had each (kept so the split can be changed later)
@@ -310,12 +317,30 @@ export async function onRequest(ctx) {
       if (request.method === 'POST') await backupMoney(env, kv, loadMoney);
       return json(await backupStatus(kv));
     }
+    if (path === 'push' && request.method === 'GET') return json(await store.pushKey());
     // after a money change, the day's backup (if it hasn't run yet) carries on once the answer has gone back
     const afterMoney = () => { const p = autoBackup(env, kv, loadMoney).catch(() => {}); if (ctx.waitUntil) ctx.waitUntil(p); };
 
     if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405);
     let body = {};
     try { body = await request.json(); } catch { return json({ error: 'invalid JSON' }, 400); }
+
+    // a phone's flight alerts: its push subscription and whose flights it follows for which changes (the four of us only)
+    if (path === 'push') {
+      if (!member) return json({ error: 'pin required', pin: true }, 403);
+      if (!isId(body.id)) return json({ error: 'bad id' }, 400);
+      const sub = body.sub, ok = sub && typeof sub.endpoint === 'string' && /^https:\/\/[^\s]{10,600}$/.test(sub.endpoint) && sub.keys && typeof sub.keys.p256dh === 'string' && typeof sub.keys.auth === 'string';
+      if (sub && !ok) return json({ error: 'bad subscription' }, 400);
+      const prefs = {};
+      for (const p of PEOPLE) { const x = (body.prefs || {})[p] || {}; prefs[p] = { delay: x.delay !== false, gate: x.gate !== false, cancel: x.cancel !== false, landed: x.landed !== false }; }
+      const r = await change(store, 'push', (cur) => {
+        const next = { ...cur }; if (!sub) delete next[body.id];
+        else { next[body.id] = { sub: { endpoint: sub.endpoint, keys: { p256dh: clean(sub.keys.p256dh, 200), auth: clean(sub.keys.auth, 60) } }, prefs, at: Date.now() }; if (Object.keys(next).length > 40) return refuse('too many phones', 400); }
+        return { value: next };
+      });
+      if (r.error) return json({ error: r.error }, r.status || 400);
+      return json({ ok: true });
+    }
 
     // reading a receipt (the four of us only)
     if (path === 'scan') {
@@ -421,6 +446,8 @@ export async function onRequest(ctx) {
       if (!PEOPLE.includes(body.id)) return json({ error: 'bad person' }, 400);
       const color = body.color !== undefined ? String(body.color || '').toLowerCase() : undefined;
       if (color !== undefined && !/^#[0-9a-f]{6}$/.test(color)) return json({ error: 'bad colour' }, 400);
+      if (body.cur !== undefined && !['CAD', 'QAR', 'USD'].includes(body.cur)) return json({ error: 'bad currency' }, 400);
+      if (body.mode !== undefined && !['couple', 'each'].includes(body.mode)) return json({ error: 'bad settle-up mode' }, 400);
       let photo; // the photo itself stays in KV (one key per person); the profile carries when it changed
       if (body.photo === null) { await kv.delete('ph:' + body.id); photo = null; }
       else if (body.photo !== undefined) {
@@ -431,6 +458,8 @@ export async function onRequest(ctx) {
       const r = await change(store, 'profiles', (map) => {
         const rec = { ...(map[body.id] || {}) };
         if (color !== undefined) rec.color = color;
+        if (body.cur !== undefined) rec.cur = body.cur;
+        if (body.mode !== undefined) rec.mode = body.mode;
         if (photo === null) delete rec.photo; else if (photo !== undefined) rec.photo = photo;
         rec.ts = new Date().toISOString();
         map[body.id] = rec;

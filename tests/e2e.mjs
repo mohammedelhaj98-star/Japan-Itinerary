@@ -25,8 +25,10 @@ const objects = new Map(); let doCalls = 0; const liveSockets = new Map(); let w
 // a phone's live connection: the fake namespace turns the upgrade request into a stand-in socket the object sends to
 // (the real object makes a WebSocketPair); the test server below finishes the handshake and writes its frames
 const fakeCtx = () => ({ storage: { sql: fakeSql() }, sockets: new Set(), acceptWebSocket(ws) { this.sockets.add(ws); }, getWebSockets() { return [...this.sockets]; } });
+// the object's own settings (secrets on the real Worker): the flight tests below fill them in
+const DO_ENV = {};
 const DO = { idFromName: (n) => n, get: (id) => {
-  if (!objects.has(id)) { const ctx = fakeCtx(); objects.set(id, { o: new TripState(ctx), ctx }); }
+  if (!objects.has(id)) { const ctx = fakeCtx(); objects.set(id, { o: new TripState(ctx, DO_ENV), ctx }); }
   const { o, ctx } = objects.get(id);
   return { fetch: (url, init) => {
     const req = url instanceof Request ? url : new Request(url, init);
@@ -381,6 +383,38 @@ await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
 ok("Naf's colour/photo used in expenses", await A.page.evaluate(() => [...document.querySelectorAll('.av')].some((e) => e.classList.contains('ph'))) || true);
 await A.page.goto(B + '/?switch=1'); await A.page.waitForTimeout(1500);
 ok("hub shows Naf's photo", await A.page.$eval('[data-me="naf"] .av', (e) => e.classList.contains('ph')));
+// 3c · settings: "Show money in" and "Settle up by" are the same choices as on the money page, both ways
+await A.page.goto(B + '/japan/prototypes/tools?v=5'); await A.page.waitForTimeout(1500);
+await A.page.tap('[data-cur="QAR"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="each"]'); await A.page.waitForTimeout(300);
+await A.page.screenshot({ path: SH + 'settings-money.png' });
+ok('the choice is saved on your profile', pfOf('m').cur === 'QAR' && pfOf('m').mode === 'each', JSON.stringify(pfOf('m')));
+await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
+ok('money page shows the currency picked in Settings', await A.page.$eval('[data-cur="QAR"]', (e) => e.classList.contains('on')) && /QAR \d/.test(await A.page.textContent('.app')));
+ok('money page settles up the way Settings says', await A.page.$eval('[data-mode="each"]', (e) => e.classList.contains('on')));
+await A.page.screenshot({ path: SH + 'money-after-settings.png' });
+await A.page.tap('[data-cur="CAD"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="couple"]'); await A.page.waitForTimeout(300);
+await A.page.goto(B + '/japan/prototypes/tools?v=5'); await A.page.waitForTimeout(1500);
+ok('Settings shows what was picked on the money page', await A.page.$eval('[data-cur="CAD"]', (e) => e.classList.contains('on')) && await A.page.$eval('[data-mode="couple"]', (e) => e.classList.contains('on')));
+// Back restores a page the browser kept: it re-reads the choice made on the other page
+const backShows = async (pg, cur) => { await pg.evaluate((c) => { localStorage.setItem('money.cur', JSON.stringify(c)); dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })); }, cur); await pg.waitForTimeout(300); return pg.$eval(`[data-cur="${cur}"]`, (e) => e.classList.contains('on')); };
+ok('Settings picks up a change when you come Back to it', await backShows(A.page, 'USD'));
+await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
+ok('the money page picks up a change when you come Back to it', await backShows(A.page, 'CAD'));
+// …and it follows you to another phone, and back again while the money page is open
+await A.page.tap('[data-cur="USD"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="each"]'); await A.page.waitForTimeout(600);
+const A2 = await phone();
+await A2.page.goto(B + '/'); await A2.page.evaluate((pin) => { localStorage.setItem('trips.me', '"m"'); localStorage.setItem('trips.pin', pin); }, PIN);
+await A2.page.goto(B + '/japan/money'); await A2.page.waitForTimeout(1800);
+ok("Mo's other phone shows money the way he picked", await A2.page.$eval('[data-cur="USD"]', (e) => e.classList.contains('on')) && await A2.page.$eval('[data-mode="each"]', (e) => e.classList.contains('on')));
+await A2.page.goto(B + '/japan/prototypes/tools?v=5'); await A2.page.waitForTimeout(1500);
+ok('…and so does Settings there', await A2.page.$eval('[data-cur="USD"]', (e) => e.classList.contains('on')));
+await A2.page.tap('[data-cur="QAR"]'); await A2.page.waitForTimeout(2500);
+ok('a change on the other phone reaches the open money page', await A.page.$eval('[data-cur="QAR"]', (e) => e.classList.contains('on')) && await A.page.evaluate(() => JSON.parse(localStorage.getItem('money.cur'))) === 'QAR');
+ok('no page errors on the other phone', !A2.errs.length, A2.errs.join(' | '));
+await A2.ctx.close();
+const badPf = await fetch(B + '/api/profile', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ id: 'm', cur: 'EUR', mode: 'nobody' }) });
+ok('the server only keeps a known currency and settle-up choice', badPf.status === 400 && pfOf('m').cur === 'QAR');
+await A.page.tap('[data-cur="CAD"]'); await A.page.waitForTimeout(300); await A.page.tap('[data-mode="couple"]'); await A.page.waitForTimeout(600);
 // 3d · settings: unstamp + export
 const api = (path, body, pin = PIN) => fetch(B + '/api/' + path, { method: 'POST', headers: { 'content-type': 'application/json', ...(pin ? { 'x-trip-pin': pin } : {}) }, body: JSON.stringify(body) });
 ok('a change without the PIN is refused', (await api('checks', { id: 'd03-omakase', value: true }, null)).status === 403 && (await api('checks', { id: 'd03-omakase', value: true }, '0000')).status === 403 && !/omakase/.test(store.get('checks') || ''));
@@ -765,6 +799,161 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const v3 = await (await onRequest({ request: new Request(B + '/api/version'), env: { TRIP_KV: KV3, TRIP_PIN: PIN } })).json();
   ok('with KV alone there is no live channel and the version answer says so', r426.status === 426 && v3.live === false, JSON.stringify([r426.status, v3]));
   for (const x of [P, Q]) { ok('no page errors on the live phones', !x.errs.length, x.errs.join(' | ')); await x.ctx.close(); }
+}
+// flights: the object's 5-minute check asks the flight service about the flights that are due, keeps what it says under
+// 'flights' for every phone, and sends phone alerts (encrypted Web Push) to the phones that follow those people
+{
+  const F = await import(REPO + '/lib/flights.js'); const W = await import(REPO + '/lib/webpush.js');
+  const H = 3600e3, mo = F.tripFlights({}).find((f) => f.id === 'd06-mo-land');
+  ok('the trip knows its flights: Mo\'s QR 808 and Mariam\'s three legs, each with who is on it', mo && mo.no === 'QR808' && mo.people.join() === 'm' && ['d06-mariam-land', 'd17-mo', 'd17-mariam', 'd17-mariam-yvr'].every((id) => F.tripFlights({}).some((f) => f.id === id)), JSON.stringify(F.tripFlights({}).map((f) => f.id + ':' + f.no)));
+  const typed = F.tripFlights({ 'd01-land': { flight: { no: 'ac 1' } }, x1: { added: true, day: 'd03', who: 'nasa', flight: { no: 'NH 10' } } });
+  ok('a flight number typed into a stop is tracked, on the trip\'s stops and on added ones', typed.some((f) => f.id === 'd01-land' && f.no === 'AC1' && f.people.join() === 'naf,sara' && f.to === 'NRT' && f.arr === '2026-10-16T16:10+09:00') && typed.some((f) => f.id === 'x1' && f.no === 'NH10'));
+  const nasa = typed.find((f) => f.id === 'd01-land'), urls = [], grab = async (u) => { urls.push(u); return new Response('[]', { status: 200 }); };
+  await F.fetchAeroDataBox(nasa, 'k', grab); await F.fetchFlightAware(nasa, 'k', async (u) => { urls.push(u); return new Response('{"flights":[]}', { status: 200 }); });
+  ok('a flight that only knows when it lands is looked up by its landing (it left the day before)', /\/AC1\/2026-10-16\?.*dateLocalRole=Arrival/.test(urls[0]) && /start=2026-10-15T01:10:00Z&end=2026-10-17T13:10:00Z/.test(urls[1]), urls.join(' | '));
+  const dep = Date.parse(mo.dep);
+  ok('checks: none until a day before, hourly until 3 h before, then every 5 minutes, and done once landed with the belt',
+    F.nextCheck(mo, null, dep - 30 * H) === dep - 24 * H && F.nextCheck(mo, { dep: {}, arr: {}, checkedAt: new Date(dep - 10 * H).toISOString() }, dep - 10 * H + 1) === dep - 9 * H
+    && F.nextCheck(mo, { dep: {}, arr: {}, checkedAt: new Date(dep - H).toISOString() }, dep - H + 1) <= dep - H + 5 * 60e3
+    && F.nextCheck(mo, { st: 'landed', belt: '7', dep: {}, arr: { act: mo.arr }, checkedAt: mo.arr }, Date.parse(mo.arr) + 60e3) === null);
+  // a fake FlightAware: answers what the test says QR808 is doing right now
+  let fa = null; const asked = [];
+  DO_ENV.FLIGHT_FETCH = async (url, init) => { asked.push({ url, key: init.headers['x-apikey'] }); const m = /flights\/([A-Z0-9]+)\?/.exec(url); return new Response(JSON.stringify({ flights: m[1] === 'QR808' && fa ? [fa] : [] }), { status: 200 }); };
+  const qr = (extra = {}) => ({ ident: 'QAT808', status: 'Scheduled', scheduled_out: '2026-10-20T17:35:00Z', scheduled_in: '2026-10-21T03:55:00Z', estimated_out: '2026-10-20T17:35:00Z', estimated_in: '2026-10-21T03:55:00Z', origin: { code_iata: 'DOH', timezone: 'Asia/Qatar', city: 'Doha' }, destination: { code_iata: 'NRT', timezone: 'Asia/Tokyo', city: 'Tokyo' }, terminal_destination: '2', departure_delay: 0, arrival_delay: 0, gate_origin: 'C12', ...extra });
+  const tick = async (now) => (await DO.get('trip').fetch('https://state/', { method: 'POST', body: JSON.stringify({ op: 'tick', now }) })).json();
+  ok('with no flight service key the check does nothing', (await tick('2026-10-20T15:00:00Z')).off === true);
+  // the key pair for alerts (scripts/vapid-keys.mjs makes the real one), and two phones that turn alerts on
+  const vp = await crypto.webcrypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  DO_ENV.VAPID_PUBLIC = W.b64u(await crypto.webcrypto.subtle.exportKey('raw', vp.publicKey)); DO_ENV.VAPID_PRIVATE = JSON.stringify(await crypto.webcrypto.subtle.exportKey('jwk', vp.privateKey));
+  const k0 = await (await onRequest({ request: new Request(B + '/api/push'), env: ENV })).json();
+  ok('/api/push gives phones the public key, and says flights aren\'t checked yet', k0.key === DO_ENV.VAPID_PUBLIC && k0.tracking === false, JSON.stringify(k0));
+  DO_ENV.FLIGHTAWARE_KEY = 'fa-test';
+  const handset = async () => { const kp = await crypto.webcrypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']); const auth = crypto.randomBytes(16); return { kp, auth, keys: { p256dh: W.b64u(await crypto.webcrypto.subtle.exportKey('raw', kp.publicKey)), auth: W.b64u(auth) } }; };
+  const h1 = await handset(), h2 = await handset();
+  const sub = (i, h) => ({ endpoint: `https://push.example.com/send/phone${i}-${'x'.repeat(20)}`, keys: h.keys });
+  const post = (body, pin = PIN) => onRequest({ request: new Request(B + '/api/push', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': pin }, body: JSON.stringify(body) }), env: ENV });
+  ok('turning alerts on needs the PIN', (await post({ id: 'phone-one', sub: sub(1, h1), prefs: {} }, '0000')).status === 403);
+  ok('a bad subscription is refused', (await post({ id: 'phone-one', sub: { endpoint: 'http://evil', keys: {} }, prefs: {} })).status === 400);
+  const r1 = await post({ id: 'phone-one', sub: sub(1, h1), prefs: {} }), r2 = await post({ id: 'phone-two', sub: sub(2, h2), prefs: { m: { delay: false } } });
+  const k1 = await (await onRequest({ request: new Request(B + '/api/push'), env: ENV })).json();
+  const st0 = await (await onRequest({ request: new Request(B + '/api/state', { headers: { 'x-trip-pin': PIN } }), env: ENV })).json();
+  ok('two phones turn alerts on (phone two skips Mo\'s delays); subscriptions are never sent to phones', r1.status === 200 && r2.status === 200 && k1.tracking === true && !('push' in st0) && !JSON.stringify(st0).includes('push.example.com'));
+  // the push service: records what it was sent, and says phone one has unsubscribed when told to
+  const sent = []; let gone1 = false, busy = 1; DO_ENV.PUSH_RETRY_MS = 10;
+  DO_ENV.PUSH_FETCH = async (url, init) => { if (busy && url.includes('phone2')) { busy--; return new Response('', { status: 503 }); } sent.push({ url, init }); return new Response('', { status: gone1 && url.includes('phone1') ? 410 : 201 }); };
+  const open = async (h, init) => { // what the phone itself does with an alert: decrypt it (RFC 8291)
+    const b = new Uint8Array(init.body), salt = b.slice(0, 16), asPub = b.slice(21, 21 + b[20]), sealed = b.slice(21 + b[20]), S = crypto.webcrypto.subtle;
+    const asKey = await S.importKey('raw', asPub, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    const shared = new Uint8Array(await S.deriveBits({ name: 'ECDH', public: asKey }, h.kp.privateKey, 256));
+    const kdf = async (salt0, ikm, info, n) => new Uint8Array(await S.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: salt0, info }, await S.importKey('raw', ikm, 'HKDF', false, ['deriveBits']), n * 8));
+    const ua = W.unb64u(h.keys.p256dh), te = new TextEncoder();
+    const ikm = await kdf(h.auth, shared, Buffer.concat([te.encode('WebPush: info\0'), ua, asPub]), 32);
+    const cek = await kdf(salt, ikm, te.encode('Content-Encoding: aes128gcm\0'), 16), nonce = await kdf(salt, ikm, te.encode('Content-Encoding: nonce\0'), 12);
+    const plain = new Uint8Array(await S.decrypt({ name: 'AES-GCM', iv: nonce }, await S.importKey('raw', cek, 'AES-GCM', false, ['decrypt']), sealed));
+    return JSON.parse(new TextDecoder().decode(plain.slice(0, plain.lastIndexOf(2))));
+  };
+  // a day before: the first look sets the baseline, nothing to alert about
+  const t1 = await tick('2026-10-19T18:00:00Z'); fa = qr(); const t1b = await tick('2026-10-19T19:01:00Z');
+  let fl = (await (await onRequest({ request: new Request(B + '/api/state'), env: ENV })).json()).flights || {};
+  ok('a day before takeoff the check asks FlightAware with the key, and every phone gets what it said', asked.length >= 1 && asked.every((a) => a.key === 'fa-test') && fl['d06-mo-land'] && fl['d06-mo-land'].st === 'ontime' && fl['d06-mo-land'].gate === 'C12' && t1b.alerts === 0 && !sent.length, JSON.stringify([t1, t1b, fl['d06-mo-land'] && fl['d06-mo-land'].st]));
+  const n1 = asked.length; await tick('2026-10-19T19:20:00Z');
+  ok('the next check waits its turn (hourly until 3 hours before)', asked.length === n1, `${asked.length - n1} extra calls`);
+  // 2½ hours before: 50 minutes late, new gate
+  fa = qr({ estimated_out: '2026-10-20T18:25:00Z', estimated_in: '2026-10-21T04:40:00Z', departure_delay: 3000, arrival_delay: 2700, gate_origin: 'C20' });
+  const t2 = await tick('2026-10-20T15:00:00Z');
+  fl = (await (await onRequest({ request: new Request(B + '/api/state'), env: ENV })).json()).flights;
+  const rec = fl['d06-mo-land'], kinds = rec.changes.map((c) => c.kind + ':' + (c.field || ''));
+  ok('a delay and a gate change are kept with what they were before, for the stop to show', rec.st === 'delayed' && rec.delay === 50 && kinds.includes('delay:arr') && kinds.includes('gate:gate') && rec.changes.find((c) => c.field === 'gate').from === 'C12', JSON.stringify(kinds));
+  const to1 = sent.filter((x) => x.url.includes('phone1')), to2 = sent.filter((x) => x.url.includes('phone2'));
+  const m1 = await Promise.all(to1.map((x) => open(h1, x.init))), m2 = await Promise.all(to2.map((x) => open(h2, x.init)));
+  ok('phone one gets both alerts; phone two (no delays for Mo) only the gate, sent again after the push service was busy', t2.alerts === 2 && m1.length === 2 && m2.length === 1 && m1.some((m) => /Mo's flight QR 808 is running late\. Now lands 1:40 PM Narita time/.test(m.body)) && /gate C20 \(was C12\)/.test(m2[0].body), JSON.stringify([t2, m1.map((m) => m.body), m2.map((m) => m.body)]));
+  const auth = to1[0].init.headers.authorization, [, jwt, pk] = /^vapid t=([^,]+), k=(.+)$/.exec(auth) || [];
+  const [hd, bd, sg] = (jwt || '..').split('.');
+  const good = jwt && await crypto.webcrypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, vp.publicKey, W.unb64u(sg), new TextEncoder().encode(hd + '.' + bd));
+  ok('each alert is signed with the trip\'s key, for the push service it goes to, and opens that day', good && pk === DO_ENV.VAPID_PUBLIC && JSON.parse(Buffer.from(bd, 'base64url')).aud === 'https://push.example.com' && to1[0].init.headers['content-encoding'] === 'aes128gcm' && m1[0].url === '/japan/?d=d06' && m1[0].tag === 'fl-d06-mo-land', auth.slice(0, 40));
+  // a small wobble stays quiet; a phone that unsubscribed is forgotten
+  sent.length = 0; gone1 = true; fa = qr({ estimated_out: '2026-10-20T18:30:00Z', estimated_in: '2026-10-21T04:45:00Z', departure_delay: 3300, arrival_delay: 3000, gate_origin: 'C20', status: 'Landed', actual_in: '2026-10-21T04:44:00Z', actual_out: '2026-10-20T18:31:00Z', baggage_claim: '7' });
+  const t3 = await tick('2026-10-21T04:50:00Z');
+  const subsLeft = Object.keys([...objects.values()][0].o.get('push').value || {});
+  ok('landing with the belt alerts, and a phone the push service says is gone is forgotten', t3.alerts === 1 && sent.length === 2 && subsLeft.join() === 'phone-two', JSON.stringify([t3, subsLeft]));
+  fl = (await (await onRequest({ request: new Request(B + '/api/state'), env: ENV })).json()).flights;
+  ok('after landing with the belt known, Mo\'s flight is not checked again', fl['d06-mo-land'].st === 'landed' && fl['d06-mo-land'].belt === '7' && fl['d06-mo-land'].nextAt === null);
+  const first = F.changesOf(mo, { st: 'ontime', gate: '', term: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, { st: 'ontime', gate: 'A4', term: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, Date.now());
+  const firstT = F.changesOf(mo, { st: 'ontime', arrTerm: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, { st: 'ontime', arrTerm: '2', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, Date.now());
+  ok('so is a landing terminal given for the first time', firstT.length === 1 && firstT[0].field === 'arrTerm' && /lands at terminal 2\./.test(firstT[0].text), JSON.stringify(firstT));
+  ok('a gate given for the first time is a gate alert too', first.length === 1 && first[0].kind === 'gate' && /leaves from gate A4\./.test(first[0].text), JSON.stringify(first));
+  const arrLate = F.fromFlightAware(qr({ estimated_in: '2026-10-21T04:40:00Z', arrival_delay: 2700 }), mo);
+  ok('a flight late only on arrival says by how much', arrLate.st === 'delayed' && arrLate.delay === 45, JSON.stringify([arrLate.st, arrLate.delay]));
+  // AeroDataBox reads into the same shape, should FlightAware not be there
+  const adb = F.fromAeroDataBox({ status: 'EnRoute', departure: { airport: { iata: 'YYZ', timeZone: 'America/Toronto' }, scheduledTime: { utc: '2026-10-20 17:25Z' }, revisedTime: { utc: '2026-10-20 17:40Z' }, runwayTime: { utc: '2026-10-20 17:52Z' }, terminal: '1', gate: 'E75' }, arrival: { airport: { iata: 'NRT', timeZone: 'Asia/Tokyo', municipalityName: 'Tokyo' }, scheduledTime: { utc: '2026-10-21 06:50Z' }, predictedTime: { utc: '2026-10-21 06:58Z' }, terminal: '1' } }, { to: 'NRT' });
+  ok('AeroDataBox answers read the same way (the stand-in service)', adb.st === 'air' && adb.gate === 'E75' && adb.dep.act === '2026-10-20T17:52:00.000Z' && adb.arr.est === '2026-10-21T06:58:00.000Z' && adb.toTz === 'Asia/Tokyo', JSON.stringify(adb));
+  // what a phone sees: put Mo's flight back to the late, re-gated look and open day 6
+  const o = [...objects.values()][0].o, cur = o.get('flights'), late = { ...cur.value };
+  late['d06-mo-land'] = { ...rec, st: 'delayed', checkedAt: new Date().toISOString() }; o.set('flights', late, cur.rev + 1); o.stamp();
+  const P = await phone(); await P.page.goto(B + '/japan/'); await P.page.waitForURL(/\/\?next=japan/); await P.page.tap('[data-me="m"]'); await enterPin(P.page); await P.page.waitForURL(/\/japan\//);
+  await P.page.goto(B + '/japan/?d=d06'); await P.page.waitForTimeout(2500);
+  const seen = await P.page.evaluate(() => { const p = document.getElementById('p-d06-mo-land'), b = document.querySelector('.flban'); return { fl: !!p && p.classList.contains('fl'), band: p ? p.querySelector('.band').innerText : '', pills: p ? [...p.querySelectorAll('.np')].map((x) => x.textContent) : [], banner: b ? b.innerText : '' }; });
+  ok('day 6 shows Mo\'s flight as its own ticket: late, with his name pill, and a banner for what changed', seen.fl && /Delayed 50 min/.test(seen.band) && /Lands 1:40 PM/i.test(seen.band) && seen.pills.join() === 'Mo' && /Flight update/.test(seen.banner), JSON.stringify(seen));
+  await P.page.screenshot({ path: SH + 'flights-day6.png' });
+  ok('no page errors on the flight phone', !P.errs.length, P.errs.join(' | '));
+  await P.ctx.close();
+  for (const k of ['FLIGHT_FETCH', 'FLIGHTAWARE_KEY', 'PUSH_FETCH', 'PUSH_RETRY_MS', 'VAPID_PUBLIC', 'VAPID_PRIVATE']) delete DO_ENV[k];
+}
+// 16 · trains and M&M's nights away: tickets with car, seats and reservation; a booking waiting on its confirmation
+// gets "Mark as booked" (the Bookings page's own shared choice); a price goes to the Money page with "Add to expenses"
+{
+  const { DAYS: D, HOTELS: H } = await import(REPO + '/data/itinerary.js?' + Date.now());
+  const ev = (d, id) => D.find((x) => x.id === d).items.find((i) => i.id === id);
+  const nex = ev('d06', 'd06-nex'), noz = ev('d06', 'd06-nozomi'), n24 = ev('d12', 'd12-shinkansen'), pa = ev('d12', 'd12-mm');
+  ok('the Oct 21 trains are M&M\'s tickets, with car, seats, reservation and price', nex.who === 'mm' && nex.ticket.ref === 'E04742' && nex.ticket.yen === 6660 && noz.ticket.ref === '2000' && noz.ticket.facts.some(([k, v]) => k === 'Seats' && v === '17A, 17B') && nex.ticket.people.join() === 'mariam,m');
+  ok('the Oct 27 Nozomi is all four, booked, with Fuji on the D side', n24.who === 'all' && n24.confirmed && n24.ticket.people.length === 4 && /D side/.test(n24.ticket.board) && !/A\/B/.test(n24.desc));
+  ok('M&M sleep at Hotel in the Green on Oct 23 and the Pasha on Oct 27, waiting on its room', D.find((x) => x.id === 'd08').mmHotel === 'green' && D.find((x) => x.id === 'd12').mmHotel === 'pasha' && H.find((h) => h.id === 'pasha').pending === pa.ticket.pending.id);
+  const P = await phone(); await P.page.goto(B + '/japan/'); await P.page.waitForURL(/\/\?next=japan/); await P.page.tap('[data-me="m"]'); await enterPin(P.page); await P.page.waitForURL(/\/japan\//);
+  const view = async (who, d) => { await P.page.evaluate((w) => localStorage.setItem('japan2026.whoMix', JSON.stringify(w)), who); await P.page.goto(B + '/japan/?d=' + d); await P.page.waitForTimeout(2200); };
+  const open = (id) => P.page.evaluate((x) => { const c = document.getElementById('p-' + x); if (c && !c.classList.contains('open')) c.querySelector('[data-pick]').click(); }, id).then(() => P.page.waitForTimeout(700));
+  await view('mm', 'd06'); await open('d06-nex');
+  const t1 = await P.page.evaluate(() => { const c = document.getElementById('p-d06-nex'); return { txt: c.textContent, pills: [...c.querySelectorAll('.band .np')].map((x) => x.textContent), href: (c.querySelector('[data-addx]') || {}).href || '' }; });
+  ok('the Narita Express ticket shows times, car 4, seats 7A 7B, the reservation and the paper-ticket reminder', /6:19 PM/.test(t1.txt) && /7:28 PM/.test(t1.txt) && /7A, 7B/.test(t1.txt) && /E04742/.test(t1.txt) && /paper tickets/.test(t1.txt) && /39 min to change at Shinagawa/.test(t1.txt) && t1.pills.join() === 'Mariam,Mo', t1.pills.join());
+  const order = await P.page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((x) => x.id.slice(2)));
+  ok('Oct 21 runs land, land, meet, Narita Express, Nozomi, check in', ['d06-mo-land', 'd06-mariam-land', 'd06-mm-meet', 'd06-nex', 'd06-nozomi', 'd06-mm-checkin'].every((id, i, a) => i === 0 || order.indexOf(id) > order.indexOf(a[i - 1])), order.join());
+  await P.page.screenshot({ path: SH + 'trains-day6.png' });
+  // Add to expenses: the Money page's own form, filled in; saved, the ticket says so, and a second tap opens the same expense
+  const n0 = exN();
+  await P.page.evaluate(() => document.querySelector('#p-d06-nex [data-addx]').click()); await P.page.waitForURL(/\/japan\/money/); await P.page.waitForTimeout(1500);
+  const form = await P.page.evaluate(() => ({ amt: document.getElementById('famt').value }));
+  ok('Add to expenses opens the Money form with the yen filled in', form.amt === '6660' && /src=d06-nex/.test(t1.href), JSON.stringify(form));
+  await P.page.tap('#fsave'); await P.page.waitForURL(/\/japan\/\?d=d06|\/japan\/$/).catch(() => {}); await P.page.waitForTimeout(1800);
+  const saved = Object.values(exMap()).find((x) => x.src === 'd06-nex');
+  ok('the expense is saved paid by Mo, split between M&M, and remembers its ticket', exN() === n0 + 1 && saved && saved.yen === 6660 && saved.payer === 'm' && Object.keys(saved.shares).sort().join() === 'm,mariam' && saved.cat === 'transport', JSON.stringify(saved));
+  await view('mm', 'd06'); await open('d06-nex');
+  ok('the ticket now says it is in expenses', /In expenses/.test(await P.page.textContent('#p-d06-nex .tkp')));
+  await P.page.goto(B + '/japan/money?add=1&d=d06&src=d06-nex&t=x&y=6660&c=transport&s=mariam,m&p=m'); await P.page.waitForTimeout(1500);
+  const again = await P.page.evaluate(() => ({ on: !!document.querySelector('#fpage.on'), title: (document.getElementById('ftitle') || {}).value }));
+  ok('adding the same ticket again, after the page reloads, opens the expense already saved', exN() === n0 + 1 && again.on && again.title === saved.title, JSON.stringify(again));
+  // the Pasha: pending until someone marks it booked, on every phone and on the Bookings page; undo puts it back
+  await view('mm', 'd12'); await open('d12-mm');
+  const p0 = await P.page.evaluate(() => { const c = document.getElementById('p-d12-mm'); return { band: c.textContent, mark: !!c.querySelector('[data-book]'), spot: !!c.querySelector('.ykan.spot'), tonight: document.querySelector('.stays').textContent }; });
+  ok('the Pasha stop says the room is not confirmed yet, with Mark as booked, and Tonight says so too', /Room not confirmed yet/.test(p0.band) && p0.mark && p0.spot && /Hotel Pasha Gran/.test(p0.tonight) && /Room not confirmed yet/.test(p0.tonight), JSON.stringify(p0));
+  await P.page.screenshot({ path: SH + 'pasha-pending.png' });
+  await P.page.evaluate(() => document.querySelector('#p-d12-mm [data-book]').click()); await P.page.waitForTimeout(1200);
+  const p1 = await P.page.evaluate(() => { const c = document.getElementById('p-d12-mm'); return { txt: c.textContent, stamp: !!c.querySelector('button.ykan'), mark: !!c.querySelector('[data-book]') }; });
+  ok('Mark as booked thumps down 予約済, clears the amber line and is shared', p1.stamp && !p1.mark && !/Room not confirmed yet/.test(p1.txt) && JSON.parse(store.get('choices') || '{}')['bk-pasha'] === 'booked', JSON.stringify(p1));
+  await P.page.screenshot({ path: SH + 'pasha-booked.png' });
+  await P.page.goto(B + '/japan/prototypes/tools?v=2'); await P.page.waitForTimeout(1500);
+  ok('the Bookings page lists the Pasha as booked', /Marked booked[\s\S]*Hotel Pasha Gran/.test(await P.page.textContent('#page')));
+  await view('mm', 'd12'); await open('d12-mm');
+  await P.page.evaluate(() => document.querySelector('#p-d12-mm button.ykan').click()); await P.page.waitForTimeout(500);
+  await P.page.evaluate(() => document.querySelector('#p-d12-mm [data-unbook]').click()); await P.page.waitForTimeout(1200);
+  ok('tapping 予約済 and Undo puts it back to waiting', /Room not confirmed yet/.test(await P.page.textContent('#p-d12-mm')) && !JSON.parse(store.get('choices') || '{}')['bk-pasha']);
+  // whose hotel tonight: M&M see theirs, NASA theirs, Everyone both
+  const tonight = async (who) => { await view(who, 'd08'); return P.page.textContent('.stays'); };
+  const [tm, tn, ta] = [await tonight('mm'), await tonight('nasa'), await tonight('all')];
+  ok('Oct 23 Tonight: M&M see Hotel in the Green, NASA the Granbell, Everyone both', /Hotel in the Green/.test(tm) && !/Granbell/.test(tm) && /Granbell/.test(tn) && !/Green/.test(tn) && /Granbell/.test(ta) && /Hotel in the Green/.test(ta));
+  await view('mm', 'd09');
+  const d9 = await P.page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((x) => x.id.slice(2)));
+  ok('Oct 24: M&M check out of the Green and meet NASA at Fushimi Inari, not the Granbell start', d9.includes('d09-mm-out') && d9.includes('d09-fushimi') && !d9.includes('d09-leave'), d9.join());
+  ok('no page errors on the trains phone', !P.errs.length, P.errs.join(' | '));
+  await P.ctx.close();
 }
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));
 console.log(`\n${pass} passed, ${fail} failed`);
