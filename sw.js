@@ -3,7 +3,8 @@
 // - Day assets (today + next 2 days): the page sends the list of photos; they're saved ahead of time in 'days'.
 // - Map tiles (MapTiler, OpenStreetMap fallback): saved as you view them; no bulk pre-downloading.
 // - /api: always network; the app keeps its own offline copy of shared state.
-const VERSION = 'japan2026-v20';
+// - Flight alerts: the trip's server sends a push { title, body, tag, url }; tapping it opens that day.
+const VERSION = 'japan2026-v21';
 const KEEP = [VERSION, 'tiles', 'days'];
 const SHELL = [
   './', './index.html', './money.html', './prototypes/tools.html', './js/store.js', './js/colors.js', './js/export-docx.js', './js/tour.js', './js/offline.js', './js/report.js',
@@ -89,5 +90,25 @@ self.addEventListener('fetch', (e) => {
     } catch {
       return (await fromCache(e.request)) || Response.error();
     }
+  })());
+});
+
+// Flight alerts (turned on in Settings). One alert per flight stays on the lock screen: a newer one replaces it.
+self.addEventListener('push', (e) => {
+  let m = {}; try { m = e.data ? e.data.json() : {}; } catch { m = { body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(m.title || 'Japan 2026', {
+    body: m.body || 'A flight changed.', tag: m.tag || 'flight', renotify: true,
+    icon: new URL('./icons/icon-192.png', self.registration.scope).href, badge: new URL('./icons/icon-192.png', self.registration.scope).href,
+    data: { url: m.url || self.registration.scope },
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil((async () => {
+    const open = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const page = open.find((c) => c.url.startsWith(self.registration.scope));
+    if (page) { await page.focus(); return page.navigate ? page.navigate(url).catch(() => {}) : null; }
+    return self.clients.openWindow(url);
   })());
 });

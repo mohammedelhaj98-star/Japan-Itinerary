@@ -42,7 +42,7 @@ export function getDisplayName() { return lsGet(LS_NAME, ''); }
 export function setDisplayName(name) { lsSet(LS_NAME, String(name || '').slice(0, 40)); }
 
 export const store = {
-  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {})),
+  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, flights: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {})),
   mode: SANDBOX ? 'sandbox' : 'connecting', // connecting | online | local | sandbox | locked (the PIN was refused)
   lastError: null,
   listeners: new Set(),
@@ -176,7 +176,7 @@ export const store = {
     try {
       const remote = await this.api('state');
       if (remote.live) this._liveOk = true;
-      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), money: remote.money || {}, profiles: { ...(remote.profiles || {}), ...this._pfRecent(remote.profiles) }, covers: remote.covers || {}, updatedAt: remote.updatedAt || null };
+      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), money: remote.money || {}, profiles: { ...(remote.profiles || {}), ...this._pfRecent(remote.profiles) }, covers: remote.covers || {}, flights: remote.flights || {}, updatedAt: remote.updatedAt || null };
       this._replay(this.state); // anything changed while the copy was downloading
       this.persist();
       this.setMode(this.mode === 'locked' && !pinOf() ? 'locked' : 'online');
