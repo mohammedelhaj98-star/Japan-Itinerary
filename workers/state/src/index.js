@@ -13,7 +13,7 @@
 //                                               run every 5 minutes by the cron trigger below → { checked, alerts }
 //   { op: 'pushkey' }                         → { key, tracking }: the public key phones subscribe to alerts with
 // Flight results live under 'flights' (phones read them with the rest of the state); the phones' alert subscriptions
-// under 'push' (written by the Pages Function, never sent to phones). FLIGHTAWARE_KEY (or AERODATABOX_KEY) and
+// under 'push' (written by the Pages Function, never sent to phones). FLIGHTAWARE_KEY (or AERODATABOX_KEY, or AIRLABS_KEY) and
 // VAPID_PRIVATE are secrets on this Worker, VAPID_PUBLIC a plain variable; without a flight key the tick does nothing.
 // A GET with Upgrade: websocket is a phone asking to be told of changes: it gets { updatedAt } the moment any write
 // lands (hibernating sockets: no cost while quiet; 'ping' is answered 'pong' without waking the object).
@@ -70,7 +70,7 @@ export class TripState {
       this.set('_seeded', true, 1); if (n) this.tell(this.meta('updatedAt'));
       return json({ ok: true, seeded: n });
     }
-    if (b.op === 'pushkey') return json({ key: this.env.VAPID_PUBLIC || null, tracking: !!(this.env.FLIGHTAWARE_KEY || this.env.AERODATABOX_KEY) });
+    if (b.op === 'pushkey') return json({ key: this.env.VAPID_PUBLIC || null, tracking: !!(this.env.FLIGHTAWARE_KEY || this.env.AERODATABOX_KEY || this.env.AIRLABS_KEY) });
     if (b.op === 'tick') return json(await this.tick(b.now ? Date.parse(b.now) : Date.now()));
     return json({ error: 'unknown op' }, 400);
   }
@@ -79,7 +79,7 @@ export class TripState {
   async tick(now) {
     const env = this.env, svc = lookupFor(env, env.FLIGHT_FETCH || fetch); if (!svc) return { checked: 0, alerts: 0, off: true };
     let checked = 0; const cur = this.get('flights');
-    const r = await checkFlights({ custom: this.get('custom').value || {}, flights: cur.value || {}, now, airEvery: svc.airEvery, look: (f) => { checked++; return svc.look(f); } });
+    const r = await checkFlights({ custom: this.get('custom').value || {}, flights: cur.value || {}, now, airEvery: svc.airEvery, lead: svc.lead, look: (f) => { checked++; return svc.look(f); } });
     if (r.changed) { this.set('flights', r.flights, cur.rev + 1); this.tell(this.stamp()); }
     if (r.alerts.length) await this.alert(r.alerts);
     return { checked, alerts: r.alerts.length };
