@@ -23,7 +23,7 @@ export function offline({ DAYS, HOTELS, PLACES }) {
     const out = new Set(); const add = (name) => photo(PLACES[name]).forEach((u) => out.add(u));
     const walk = (items) => { for (const it of items || []) { if (it.place) add(it.place.name); if (custom[it.id] && custom[it.id].place) add(custom[it.id].place.name); if (it.type === 'choice') for (const o of it.options || []) walk(o.items); } };
     walk(d.items);
-    const h = HOTELS.find((x) => x.id === d.hotel); if (h) add(h.name);
+    for (const id of [d.hotel, d.mmHotel]) { const h = HOTELS.find((x) => x.id === id); if (h) add(h.name); }
     for (const c of Object.values(custom)) if (c && c.day === d.id && c.place) add(c.place.name);
     for (const c of Object.values(custom)) if (c && c.day === d.id) ownPhotos(c).forEach((u) => out.add(u));
     return out;

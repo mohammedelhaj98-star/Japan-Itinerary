@@ -883,6 +883,61 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await P.ctx.close();
   for (const k of ['FLIGHT_FETCH', 'FLIGHTAWARE_KEY', 'PUSH_FETCH', 'VAPID_PUBLIC', 'VAPID_PRIVATE']) delete DO_ENV[k];
 }
+// 16 · trains and M&M's nights away: tickets with car, seats and reservation; a booking waiting on its confirmation
+// gets "Mark as booked" (the Bookings page's own shared choice); a price goes to the Money page with "Add to expenses"
+{
+  const { DAYS: D, HOTELS: H } = await import(REPO + '/data/itinerary.js?' + Date.now());
+  const ev = (d, id) => D.find((x) => x.id === d).items.find((i) => i.id === id);
+  const nex = ev('d06', 'd06-nex'), noz = ev('d06', 'd06-nozomi'), n24 = ev('d12', 'd12-shinkansen'), pa = ev('d12', 'd12-mm');
+  ok('the Oct 21 trains are M&M\'s tickets, with car, seats, reservation and price', nex.who === 'mm' && nex.ticket.ref === 'E04742' && nex.ticket.yen === 6660 && noz.ticket.ref === '2000' && noz.ticket.facts.some(([k, v]) => k === 'Seats' && v === '17A, 17B') && nex.ticket.people.join() === 'mariam,m');
+  ok('the Oct 27 Nozomi is all four, booked, with Fuji on the D side', n24.who === 'all' && n24.confirmed && n24.ticket.people.length === 4 && /D side/.test(n24.ticket.board) && !/A\/B/.test(n24.desc));
+  ok('M&M sleep at Hotel in the Green on Oct 23 and the Pasha on Oct 27, waiting on its room', D.find((x) => x.id === 'd08').mmHotel === 'green' && D.find((x) => x.id === 'd12').mmHotel === 'pasha' && H.find((h) => h.id === 'pasha').pending === pa.ticket.pending.id);
+  const P = await phone(); await P.page.goto(B + '/japan/'); await P.page.waitForURL(/\/\?next=japan/); await P.page.tap('[data-me="m"]'); await enterPin(P.page); await P.page.waitForURL(/\/japan\//);
+  const view = async (who, d) => { await P.page.evaluate((w) => localStorage.setItem('japan2026.whoMix', JSON.stringify(w)), who); await P.page.goto(B + '/japan/?d=' + d); await P.page.waitForTimeout(2200); };
+  const open = (id) => P.page.evaluate((x) => { const c = document.getElementById('p-' + x); if (c && !c.classList.contains('open')) c.querySelector('[data-pick]').click(); }, id).then(() => P.page.waitForTimeout(700));
+  await view('mm', 'd06'); await open('d06-nex');
+  const t1 = await P.page.evaluate(() => { const c = document.getElementById('p-d06-nex'); return { txt: c.textContent, pills: [...c.querySelectorAll('.band .np')].map((x) => x.textContent), href: (c.querySelector('[data-addx]') || {}).href || '' }; });
+  ok('the Narita Express ticket shows times, car 4, seats 7A 7B, the reservation and the paper-ticket reminder', /6:19 PM/.test(t1.txt) && /7:28 PM/.test(t1.txt) && /7A, 7B/.test(t1.txt) && /E04742/.test(t1.txt) && /paper tickets/.test(t1.txt) && /39 min to change at Shinagawa/.test(t1.txt) && t1.pills.join() === 'Mariam,Mo', t1.pills.join());
+  const order = await P.page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((x) => x.id.slice(2)));
+  ok('Oct 21 runs land, land, meet, Narita Express, Nozomi, check in', ['d06-mo-land', 'd06-mariam-land', 'd06-mm-meet', 'd06-nex', 'd06-nozomi', 'd06-mm-checkin'].every((id, i, a) => i === 0 || order.indexOf(id) > order.indexOf(a[i - 1])), order.join());
+  await P.page.screenshot({ path: SH + 'trains-day6.png' });
+  // Add to expenses: the Money page's own form, filled in; saved, the ticket says so, and a second tap opens the same expense
+  const n0 = exN();
+  await P.page.evaluate(() => document.querySelector('#p-d06-nex [data-addx]').click()); await P.page.waitForURL(/\/japan\/money/); await P.page.waitForTimeout(1500);
+  const form = await P.page.evaluate(() => ({ amt: document.getElementById('famt').value }));
+  ok('Add to expenses opens the Money form with the yen filled in', form.amt === '6660' && /src=d06-nex/.test(t1.href), JSON.stringify(form));
+  await P.page.tap('#fsave'); await P.page.waitForURL(/\/japan\/\?d=d06|\/japan\/$/).catch(() => {}); await P.page.waitForTimeout(1800);
+  const saved = Object.values(exMap()).find((x) => x.src === 'd06-nex');
+  ok('the expense is saved paid by Mo, split between M&M, and remembers its ticket', exN() === n0 + 1 && saved && saved.yen === 6660 && saved.payer === 'm' && Object.keys(saved.shares).sort().join() === 'm,mariam' && saved.cat === 'transport', JSON.stringify(saved));
+  await view('mm', 'd06'); await open('d06-nex');
+  ok('the ticket now says it is in expenses', /In expenses/.test(await P.page.textContent('#p-d06-nex .tkp')));
+  await P.page.goto(B + '/japan/money?add=1&d=d06&src=d06-nex&t=x&y=6660&c=transport&s=mariam,m&p=m'); await P.page.waitForTimeout(1500);
+  ok('adding the same ticket again opens the expense already saved', exN() === n0 + 1 && await P.page.evaluate(() => !!document.querySelector('#fpage.on')));
+  // the Pasha: pending until someone marks it booked, on every phone and on the Bookings page; undo puts it back
+  await view('mm', 'd12'); await open('d12-mm');
+  const p0 = await P.page.evaluate(() => { const c = document.getElementById('p-d12-mm'); return { band: c.textContent, mark: !!c.querySelector('[data-book]'), spot: !!c.querySelector('.ykan.spot'), tonight: document.querySelector('.stays').textContent }; });
+  ok('the Pasha stop says the room is not confirmed yet, with Mark as booked, and Tonight says so too', /Room not confirmed yet/.test(p0.band) && p0.mark && p0.spot && /Hotel Pasha Gran/.test(p0.tonight) && /Room not confirmed yet/.test(p0.tonight), JSON.stringify(p0));
+  await P.page.screenshot({ path: SH + 'pasha-pending.png' });
+  await P.page.evaluate(() => document.querySelector('#p-d12-mm [data-book]').click()); await P.page.waitForTimeout(1200);
+  const p1 = await P.page.evaluate(() => { const c = document.getElementById('p-d12-mm'); return { txt: c.textContent, stamp: !!c.querySelector('button.ykan'), mark: !!c.querySelector('[data-book]') }; });
+  ok('Mark as booked thumps down 予約済, clears the amber line and is shared', p1.stamp && !p1.mark && !/Room not confirmed yet/.test(p1.txt) && JSON.parse(store.get('choices') || '{}')['bk-pasha'] === 'booked', JSON.stringify(p1));
+  await P.page.screenshot({ path: SH + 'pasha-booked.png' });
+  await P.page.goto(B + '/japan/prototypes/tools?v=2'); await P.page.waitForTimeout(1500);
+  ok('the Bookings page lists the Pasha as booked', /Marked booked[\s\S]*Hotel Pasha Gran/.test(await P.page.textContent('#page')));
+  await view('mm', 'd12'); await open('d12-mm');
+  await P.page.evaluate(() => document.querySelector('#p-d12-mm button.ykan').click()); await P.page.waitForTimeout(500);
+  await P.page.evaluate(() => document.querySelector('#p-d12-mm [data-unbook]').click()); await P.page.waitForTimeout(1200);
+  ok('tapping 予約済 and Undo puts it back to waiting', /Room not confirmed yet/.test(await P.page.textContent('#p-d12-mm')) && !JSON.parse(store.get('choices') || '{}')['bk-pasha']);
+  // whose hotel tonight: M&M see theirs, NASA theirs, Everyone both
+  const tonight = async (who) => { await view(who, 'd08'); return P.page.textContent('.stays'); };
+  const [tm, tn, ta] = [await tonight('mm'), await tonight('nasa'), await tonight('all')];
+  ok('Oct 23 Tonight: M&M see Hotel in the Green, NASA the Granbell, Everyone both', /Hotel in the Green/.test(tm) && !/Granbell/.test(tm) && /Granbell/.test(tn) && !/Green/.test(tn) && /Granbell/.test(ta) && /Hotel in the Green/.test(ta));
+  await view('mm', 'd09');
+  const d9 = await P.page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((x) => x.id.slice(2)));
+  ok('Oct 24: M&M check out of the Green and meet NASA at Fushimi Inari, not the Granbell start', d9.includes('d09-mm-out') && d9.includes('d09-fushimi') && !d9.includes('d09-leave'), d9.join());
+  ok('no page errors on the trains phone', !P.errs.length, P.errs.join(' | '));
+  await P.ctx.close();
+}
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

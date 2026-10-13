@@ -288,6 +288,10 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 .driver .en { font-size:15px; color:var(--ink2); margin-top:16px; }
 .driver .warn { margin-top:14px; font-size:13.5px; color:#7a5a00; background:#fff6dd; border-radius:12px; padding:10px 12px; }
 .driver .warn input { width:100%; margin-top:8px; font:500 16px var(--sans); border:1px solid rgba(0,0,0,.1); border-radius:10px; padding:10px 12px; }
+.driver dl { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; margin:18px 0 0; font-size:14.5px; }
+.driver dt { color:var(--ink3); font-weight:700; } .driver dd { margin:0; min-width:0; }
+.hcard .htag { align-self:flex-start; display:inline-block; margin-top:6px; font-size:12.5px; font-weight:700; color:#7a5a00; background:#fff6dd; padding:3px 9px; border-radius:999px; }
+.hcard .hwho { position:absolute; top:12px; right:12px; z-index:2; font-size:11px; font-weight:700; letter-spacing:.04em; padding:4px 9px; border-radius:999px; background:rgba(255,255,255,.92); color:#c25350; }
 .driver .acts { display:flex; gap:8px; margin-top:auto; padding-top:24px; }
 .driver .acts a, .driver .acts button { flex:1; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:700; text-decoration:none; background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08); }
 .driver .acts a.pri { background:var(--ink); color:#fff; }
@@ -565,11 +569,14 @@ document.getElementById('page').addEventListener('click', (e) => { if (swallowCl
 /* ═══════════ 2 · TAXI CARDS ═══════════ */
 /* Japanese names and districts confirmed against OpenStreetMap; full addresses for Kyoto and Hakone still need the booking confirmation. */
 const HJA = Object.fromEntries(Object.entries(HOTEL_JA).map(([k, v]) => [k, { ja: v.ja, addr: v.addr_ja, zip: v.zip, en: v.addr_en, phone: v.phone }]));
-function tonightHotel() { const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); const d = DAYS.find((x) => x.date === t) || DAYS[0]; return d.hotel; }
+// tonight's hotel for this phone's couple: M&M have two nights away (a day's mmHotel)
+function tonightHotel() { const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); const d = DAYS.find((x) => x.date === t) || DAYS[0]; return d.mmHotel && P[ME] && P[ME].couple === 'mm' ? d.mmHotel : d.hotel; }
+// a hotel still waiting on the room (HOTELS[].pending is its Bookings id): "Mark as booked" on the Bookings page or its stop clears it
+const hotelPending = (h) => !!h.pending && store.getChoice(h.pending, '') !== 'booked';
 function renderTaxi() {
   const tn = tonightHotel();
   return `<header class="ph"><small>Taxi cards</small><h1>Take me to the hotel</h1><p>Tap a hotel and show the screen to the driver. It says, in Japanese, "Please take me to this hotel".</p></header>
-    <div class="hlist">${HOTELS.map((h) => { const pi = PLACES[h.name] || {}; const j = HJA[h.id] || {}; return `<button class="hcard press" data-hotel="${h.id}" style="background-image:url('../img/places/${esc(pi.img || '')}')">${h.id === tn ? '<span class="tonight">Tonight</span>' : ''}<div><small>${esc(h.city)} · ${esc(h.dates)} · ${h.nights} night${h.nights > 1 ? 's' : ''}</small><b>${esc(h.name)}</b>${j.ja ? `<span class="jp">${esc(j.ja)}</span>` : ''}</div></button>`; }).join('')}</div>`;
+    <div class="hlist">${HOTELS.map((h) => { const pi = PLACES[h.name] || {}; const j = HJA[h.id] || {}; return `<button class="hcard press" data-hotel="${h.id}" style="${pi.img ? `background-image:url('../img/places/${esc(pi.img)}')` : 'background-color:#55702f'}">${h.id === tn ? '<span class="tonight">Tonight</span>' : ''}${h.who === 'mm' ? '<span class="hwho">M&amp;M</span>' : ''}<div><small>${esc(h.city)} · ${esc(h.dates)} · ${h.nights} night${h.nights > 1 ? 's' : ''}</small><b>${esc(h.name)}</b>${j.ja ? `<span class="jp">${esc(j.ja)}</span>` : ''}${hotelPending(h) ? '<span class="htag">Room not confirmed yet</span>' : ''}</div></button>`; }).join('')}</div>`;
 }
 const driver = document.getElementById('driver');
 function openDriver(id) {
@@ -580,6 +587,8 @@ function openDriver(id) {
     <p class="addr">${esc([j.zip, j.addr].filter(Boolean).join(' '))}</p>
     ${j.phone ? `<p class="addr" style="font-family:var(--sans);font-size:24px;font-weight:700;letter-spacing:.02em">☎ ${esc(j.phone)}</p><p class="sayr">Drivers can type the phone number into their navigation.</p>` : ''}
     <p class="en">${esc(h.name)} · ${esc(j.en || h.city)}</p>
+    ${hotelPending(h) ? '<p class="warn"><b>Room not confirmed yet.</b> The price and arrival time are agreed. Mark it booked on its stop or on the Bookings page once they confirm.</p>' : ''}
+    ${h.info ? `<dl>${h.info.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
     <div class="acts"><a class="pri" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.addr || h.q || h.name)}" target="_blank" rel="noopener">Open in Maps</a>${j.phone ? `<a href="tel:${esc('+81' + j.phone.replace(/^0/, '').replace(/-/g, ''))}">Call hotel</a>` : ''}<button data-copy="${esc((j.ja || h.name) + ' ' + (j.addr || ''))}">Copy</button></div>`;
   driver.classList.add('on'); driver.dataset.h = id;
 }
@@ -663,7 +672,7 @@ const deviceOf = () => { try { return JSON.parse(localStorage.getItem('japan2026
 
 /* ═══════════ BOOKINGS ═══════════ */
 // Everything booked, and everything still to book. Marking a pending one as booked is shared with all four phones.
-const bkId = (b) => 'bk-' + b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+const bkId = (b) => b.id || 'bk-' + b.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 const bk = { who: ls.get('proto.bkwho', 'all') };
 const dayN = (id) => { const d = dayOf(id); return d ? d.n : 99; };
 function bkCard(b, state) {
