@@ -805,10 +805,10 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
 {
   const F = await import(REPO + '/lib/flights.js'); const W = await import(REPO + '/lib/webpush.js');
   const H = 3600e3, mo = F.tripFlights({}).find((f) => f.id === 'd06-mo-land');
-  ok('the trip knows its flights: Mo\'s QR 808 and Mariam\'s three legs, each with who is on it', mo && mo.no === 'QR808' && mo.people.join() === 'm' && ['d06-mariam-land', 'd17-mo', 'd17-mariam', 'd17-mariam-yvr'].every((id) => F.tripFlights({}).some((f) => f.id === id)), JSON.stringify(F.tripFlights({}).map((f) => f.id + ':' + f.no)));
-  const typed = F.tripFlights({ 'd01-land': { flight: { no: 'ac 1' } }, x1: { added: true, day: 'd03', who: 'nasa', flight: { no: 'NH 10' } } });
-  ok('a flight number typed into a stop is tracked, on the trip\'s stops and on added ones', typed.some((f) => f.id === 'd01-land' && f.no === 'AC1' && f.people.join() === 'naf,sara' && f.to === 'NRT' && f.arr === '2026-10-16T16:10+09:00') && typed.some((f) => f.id === 'x1' && f.no === 'NH10'));
-  const nasa = typed.find((f) => f.id === 'd01-land'), urls = [], grab = async (u) => { urls.push(u); return new Response('[]', { status: 200 }); };
+  ok('the trip knows its flights: Mo\'s QR 808, Mariam\'s legs and NASA\'s, each with who is on it (the flights home shared by three)', mo && mo.no === 'QR808' && mo.people.join() === 'm' && ['d01-land', 'd06-mariam-land', 'd17-mo', 'd17-mariam', 'd17-mariam-yvr'].every((id) => F.tripFlights({}).some((f) => f.id === id && f.no)) && F.tripFlights({}).find((f) => f.id === 'd17-mariam').people.join() === 'naf,sara,mariam', JSON.stringify(F.tripFlights({}).map((f) => f.id + ':' + f.no)));
+  const typed = F.tripFlights({ 'd01-land': { flight: { no: 'ac 9' } }, x1: { added: true, day: 'd03', who: 'nasa', flight: { no: 'NH 10' } } });
+  ok('a flight number typed into a stop is tracked, on the trip\'s stops and on added ones', typed.some((f) => f.id === 'd01-land' && f.no === 'AC9' && f.people.join() === 'naf,sara' && f.to === 'NRT' && f.arr === '2026-10-16T16:10+09:00') && typed.some((f) => f.id === 'x1' && f.no === 'NH10'));
+  const nasa = { ...typed.find((f) => f.id === 'd01-land'), no: 'AC1', dep: '' }, urls = [], grab = async (u) => { urls.push(u); return new Response('[]', { status: 200 }); };
   await F.fetchAeroDataBox(nasa, 'k', grab); await F.fetchFlightAware(nasa, 'k', async (u) => { urls.push(u); return new Response('{"flights":[]}', { status: 200 }); });
   ok('a flight that only knows when it lands is looked up by its landing (it left the day before)', /\/AC1\/2026-10-16\?.*dateLocalRole=Arrival/.test(urls[0]) && /start=2026-10-15T01:10:00Z&end=2026-10-17T13:10:00Z/.test(urls[1]), urls.join(' | '));
   const dep = Date.parse(mo.dep);
@@ -887,6 +887,29 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   // AeroDataBox reads into the same shape, should FlightAware not be there
   const adb = F.fromAeroDataBox({ status: 'EnRoute', departure: { airport: { iata: 'YYZ', timeZone: 'America/Toronto' }, scheduledTime: { utc: '2026-10-20 17:25Z' }, revisedTime: { utc: '2026-10-20 17:40Z' }, runwayTime: { utc: '2026-10-20 17:52Z' }, terminal: '1', gate: 'E75' }, arrival: { airport: { iata: 'NRT', timeZone: 'Asia/Tokyo', municipalityName: 'Tokyo' }, scheduledTime: { utc: '2026-10-21 06:50Z' }, predictedTime: { utc: '2026-10-21 06:58Z' }, terminal: '1' } }, { to: 'NRT' });
   ok('AeroDataBox answers read the same way (the stand-in service)', adb.st === 'air' && adb.gate === 'E75' && adb.dep.act === '2026-10-20T17:52:00.000Z' && adb.arr.est === '2026-10-21T06:58:00.000Z' && adb.toTz === 'Asia/Tokyo', JSON.stringify(adb));
+  // AirLabs, the free stop-gap: the same shape; another day's flight with the same number is not ours
+  const utc = (t) => new Date(t).toISOString().slice(0, 16).replace('T', ' ');
+  const al = (o = {}) => ({ flight_iata: 'QR808', status: 'landed', dep_iata: 'DOH', arr_iata: 'NRT', arr_city: 'Tokyo', dep_terminal: null, dep_gate: 'C12', arr_terminal: '2', arr_gate: '96', arr_baggage: '7', dep_time_utc: utc(mo.dep), dep_estimated_utc: utc(Date.parse(mo.dep) + 20 * 60e3), dep_actual_utc: utc(Date.parse(mo.dep) + 20 * 60e3), arr_time_utc: utc(mo.arr), arr_estimated_utc: utc(Date.parse(mo.arr) + 25 * 60e3), arr_actual_utc: utc(Date.parse(mo.arr) + 25 * 60e3), dep_delayed: 20, arr_delayed: 25, ...o });
+  const alr = F.fromAirLabs(al(), mo);
+  ok('AirLabs answers read the same way (the free stop-gap)', alr.st === 'landed' && alr.delay === 25 && alr.gate === 'C12' && alr.term === '' && alr.arrTerm === '2' && alr.belt === '7' && alr.toName === 'Tokyo' && alr.toTz === 'Asia/Tokyo' && alr.fromTz === 'Asia/Qatar' && alr.arr.act === new Date(Date.parse(mo.arr) + 25 * 60e3).toISOString(), JSON.stringify(alr));
+  const alAir = F.fromAirLabs(al({ status: 'en-route', arr_actual_utc: null, arr_baggage: null }), mo), alLate = F.fromAirLabs(al({ status: 'scheduled', dep_actual_utc: null, arr_actual_utc: null, dep_delayed: 40, arr_delayed: 35 }), mo);
+  ok('…in the air, and late before takeoff', alAir.st === 'air' && alLate.st === 'delayed' && alLate.delay === 40, JSON.stringify([alAir.st, alLate.st, alLate.delay]));
+  const alUrls = [], alAns = [{ response: al({ dep_time_utc: utc(Date.parse(mo.dep) - 24 * 3600e3), arr_time_utc: utc(Date.parse(mo.arr) - 24 * 3600e3) }) }, { error: { code: 'not_found' } }, { response: al() }, { error: { code: 'month_limit_exceeded' } }];
+  const alFetch = async (u) => { alUrls.push(u); return new Response(JSON.stringify(alAns.shift())); };
+  const alSvc = F.lookupFor({ AIRLABS_KEY: 'test-key' }, alFetch);
+  const alGot = [await alSvc.look(mo), await alSvc.look(mo), await alSvc.look(mo)];
+  const alErr = await alSvc.look(mo).then(() => '', (e) => e.message);
+  ok('AirLabs: yesterday\'s flight and "not found" mean not yet; ours is read; a used-up plan is an error', alGot[0] === null && alGot[1] === null && alGot[2] && alGot[2].st === 'landed' && /AirLabs month_limit_exceeded/.test(alErr) && /flight_iata=QR808&api_key=test-key$/.test(alUrls[0]), JSON.stringify([alGot.map((x) => x && x.st), alErr, alUrls[0]]));
+  // a flight number typed into a stop has no times: only a flight on that stop's day counts; airports we don't list get their offset
+  const noTimes = { ...mo, dep: '', arr: '' }, alDay = (d) => ({ response: al({ dep_time: d + ' 20:35', arr_time: d + ' 12:55' }) });
+  alAns.push(alDay('2026-10-19'), alDay(mo.date));
+  const typedGot = [await alSvc.look(noTimes), await alSvc.look(noTimes)];
+  const away = F.fromAirLabs(al({ dep_iata: 'ICN', dep_time: '2026-10-21 09:00', dep_time_utc: '2026-10-21 00:00', arr_iata: 'BOM', arr_time: '2026-10-21 14:30', arr_time_utc: '2026-10-21 09:00' }), {});
+  ok('AirLabs: a typed-in flight number only takes that day\'s flight; other airports get their time zone from AirLabs\' times', typedGot[0] === null && typedGot[1] && away.fromTz === 'Etc/GMT-9' && away.toTz === '', JSON.stringify([typedGot.map((x) => x && x.st), away.fromTz, away.toTz]));
+  const sparse = F.fromAirLabs(al({ arr_actual_utc: null, arr_estimated_utc: null, arr_baggage: null }), mo), sparseCh = F.changesOf(mo, { st: 'air', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, sparse, Date.now());
+  ok('a landing with no landing time says the scheduled one, not a made-up clock', sparse.st === 'landed' && /landed at Narita, 12:55 PM\./.test(sparseCh.map((c) => c.text).join()), JSON.stringify(sparseCh));
+  const dep0 = Date.parse(mo.dep);
+  ok('with AirLabs, checks start 3 hours before takeoff, every 15 minutes in the air; FlightAware still wins when both are set', alSvc.lead === 3 && alSvc.airEvery === 15 && F.nextCheck(mo, null, dep0 - 10 * 3600e3, 15, 3) === dep0 - 3 * 3600e3 && F.nextCheck(mo, null, dep0 - 30 * 3600e3) === dep0 - 24 * 3600e3 && F.lookupFor({ AIRLABS_KEY: 'a', FLIGHTAWARE_KEY: 'b' }).lead === 24);
   // what a phone sees: put Mo's flight back to the late, re-gated look and open day 6
   const o = [...objects.values()][0].o, cur = o.get('flights'), late = { ...cur.value };
   late['d06-mo-land'] = { ...rec, st: 'delayed', checkedAt: new Date().toISOString() }; o.set('flights', late, cur.rev + 1); o.stamp();

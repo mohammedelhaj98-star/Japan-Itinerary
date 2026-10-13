@@ -874,7 +874,7 @@ function flView(e) {
   else {
     st = r.st;
     const toCity = ta[1] || to;
-    label = { ontime: 'On time', delayed: `Delayed ${r.delay || ''} min`.replace('  ', ' '), air: 'In the air', landed: `Landed ${flTime(r.arr.act || r.arr.est, toTz)}`, cancelled: 'Cancelled', diverted: `Diverted to ${toCity}` }[r.st] || 'Checking';
+    label = { ontime: 'On time', delayed: `Delayed ${r.delay || ''} min`.replace('  ', ' '), air: 'In the air', landed: `Landed ${flTime(r.arr.act || r.arr.est || r.arr.sch, toTz)}`, cancelled: 'Cancelled', diverted: `Diverted to ${toCity}` }[r.st] || 'Checking';
     if (r.st === 'air' && arr) { const m = Math.round((Date.parse(arr) - Date.now()) / 6e4); if (m > 0) label += ` · lands in ${m >= 60 ? Math.floor(m / 60) + ' h ' : ''}${m % 60} min`; }
   }
   const cls = { ontime: 'ok', landed: 'ok', delayed: 'late', air: 'air', cancelled: 'bad', diverted: 'bad' }[st] || 'wait';

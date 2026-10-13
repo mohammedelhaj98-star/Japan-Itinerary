@@ -14,7 +14,7 @@ tag = "v1"
 new_sqlite_classes = ["TripState"]
 
 # Flight tracking: the object checks the flights that are due every 5 minutes (lib/flights.js). Secrets, set once with
-# `npx wrangler secret put … --config workers/state/wrangler.toml`: FLIGHTAWARE_KEY (AeroAPI; or AERODATABOX_KEY, a RapidAPI key) and VAPID_PRIVATE (phone
+# `npx wrangler secret put … --config workers/state/wrangler.toml`: FLIGHTAWARE_KEY (AeroAPI; or AERODATABOX_KEY, a RapidAPI key; or AIRLABS_KEY) and VAPID_PRIVATE (phone
 # alerts, from scripts/vapid-keys.mjs). VAPID_PUBLIC is the matching public key.
 [triggers]
 crons = ["*/5 * * * *"]
