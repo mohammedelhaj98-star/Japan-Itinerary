@@ -921,7 +921,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await view('mm', 'd06'); await open('d06-nex');
   ok('the ticket now says it is in expenses', /In expenses/.test(await P.page.textContent('#p-d06-nex .tkp')));
   await P.page.goto(B + '/japan/money?add=1&d=d06&src=d06-nex&t=x&y=6660&c=transport&s=mariam,m&p=m'); await P.page.waitForTimeout(1500);
-  ok('adding the same ticket again opens the expense already saved', exN() === n0 + 1 && await P.page.evaluate(() => !!document.querySelector('#fpage.on')));
+  const again = await P.page.evaluate(() => ({ on: !!document.querySelector('#fpage.on'), title: (document.getElementById('ftitle') || {}).value }));
+  ok('adding the same ticket again, after the page reloads, opens the expense already saved', exN() === n0 + 1 && again.on && again.title === saved.title, JSON.stringify(again));
   // the Pasha: pending until someone marks it booked, on every phone and on the Bookings page; undo puts it back
   await view('mm', 'd12'); await open('d12-mm');
   const p0 = await P.page.evaluate(() => { const c = document.getElementById('p-d12-mm'); return { band: c.textContent, mark: !!c.querySelector('[data-book]'), spot: !!c.querySelector('.ykan.spot'), tonight: document.querySelector('.stays').textContent }; });

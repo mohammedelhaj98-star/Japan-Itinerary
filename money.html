@@ -1736,7 +1736,7 @@ function fromStore(id, r) {
   }
   const shares = r.shares && Object.keys(r.shares).length ? r.shares : evenShares(r.yen, (r.split || [r.payer]).filter((k) => P[k]), r.payer);
   return { id, title:r.title, yen:r.yen, payer:r.payer, with:WITH[r.with] ? r.with : 'card', cat:CATS[r.cat] ? r.cat : 'other', day:DAY[r.day] ? r.day : 'pre', shares, owes:r.owes || {},
-    ...(r.refund ? { refund:true } : {}), ...(r.taxfree ? { taxfree:true } : {}), ...(r.orig ? { orig:r.orig } : {}), ...(r.nights > 1 ? { nights:r.nights } : {}), ...(r.by ? { by:r.by } : {}), ...(r.editedBy ? { editedBy:r.editedBy } : {}),
+    ...(r.refund ? { refund:true } : {}), ...(r.taxfree ? { taxfree:true } : {}), ...(r.orig ? { orig:r.orig } : {}), ...(r.nights > 1 ? { nights:r.nights } : {}), ...(r.by ? { by:r.by } : {}), ...(r.src ? { src:r.src } : {}), ...(r.editedBy ? { editedBy:r.editedBy } : {}),
     at:r.at || Date.parse(r.ts) || 0, ...(r.receipt ? { receipt:r.receipt } : {}), ...(r.byItem ? { byItem:r.byItem } : {}) };
 }
 const SETTINGS = [['s', 'senders'], ['r', 'recv'], ['by', 'setBy'], ['u', 'unmerged'], ['b', 'budgets'], ['bc', 'usBudget'], ['seen', 'seen']];
