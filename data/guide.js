@@ -3,7 +3,7 @@
 export const BOOKINGS = {
   confirmed: [
     { title: 'NASA flight in, Narita T1', when: 'Oct 16, D1, lands 4:10 PM', detail: 'Naf + Sara on Air Canada AC 9, leaving Toronto Thu Oct 15 at 1:40 PM. Then Skyliner to Nippori and Yamanote to Takadanobaba.', day: 'd01', who: 'nasa' },
-    { title: 'M&M flights in, Narita', when: 'Oct 21, D6, 12:55 PM + 3:50 PM', detail: 'Mo on QR 808 from Doha into T2 at 12:55 PM, Mariam on AC 9 from Toronto into T1 at 3:50 PM. They meet at the T2·3 JR station.', day: 'd06', who: 'mm' },
+    { title: 'M&M flights in, Narita', when: 'Oct 21, D6, 12:55 PM + 4:10 PM', detail: 'Mo on QR 808 from Doha into T2 at 12:55 PM, Mariam on AC 9 from Toronto into T1 at 4:10 PM. They meet at the T2·3 JR station.', day: 'd06', who: 'mm' },
     { title: 'Narita Express 44, Narita → Shinagawa', when: 'Oct 21, D6, 6:19 PM', detail: 'Narita Airport T2·3 6:19 PM → Shinagawa 7:28 PM. Car 4, seats 7A + 7B. Reservation E04742, ¥6,660 paid. Collect the paper tickets with the collection QR code before boarding.', day: 'd06', who: 'mm' },
     { title: 'Nozomi 89, Shinagawa → Kyoto', when: 'Oct 21, D6, 8:07 PM', detail: 'Shinagawa 8:07 PM → Kyoto 10:13 PM, 39 min after the Narita Express. Green Car 8, seats 17A + 17B, big-bag space behind them. Reservation 2000, ¥37,680 paid. Board with the Smart EX QR or linked IC card.', day: 'd06', who: 'mm' },
     { title: 'M&M flights out, Narita', when: 'Nov 1, D17, 4:55 PM + 6:15 PM', detail: 'Mo on QR 809 to Doha from T2 at 4:55 PM, Mariam on AC 4 to Vancouver from T1 at 6:15 PM (with Naf + Sara), then AC 114 to Toronto. Both couples ride the Skyliner together from Ueno ~1:45 PM.', day: 'd17', who: 'mm' },

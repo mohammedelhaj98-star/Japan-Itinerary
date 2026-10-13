@@ -293,9 +293,9 @@ export const DAYS = [
         id: 'd06-mo-land', who: 'mm', place: P('Narita Airport Terminal 2', 35.7727, 140.3873, 'Narita Airport Terminal 2'), travel: { mode: 'flight', label: 'QR 808 from Doha' }, tags: ['flight'],
         flight: { no: 'QR808', people: ['m'], from: 'DOH', to: 'NRT', dep: '2026-10-20T20:35+03:00', arr: '2026-10-21T12:55+09:00' },
       }),
-      E('3:50 PM', 'Mariam lands at Narita', 'Air Canada AC 9 from Toronto, into Narita Terminal 1.', {
+      E('4:10 PM', 'Mariam lands at Narita', 'Air Canada AC 9 from Toronto, into Narita Terminal 1.', {
         id: 'd06-mariam-land', who: 'mm', place: P('Narita Airport Terminal 1', 35.7654, 140.3860, 'Narita Airport Terminal 1'), travel: { mode: 'flight', label: 'AC 9 from Toronto' }, tags: ['flight'],
-        flight: { no: 'AC9', people: ['mariam'], from: 'YYZ', to: 'NRT', dep: '2026-10-20T13:25-04:00', arr: '2026-10-21T15:50+09:00' },
+        flight: { no: 'AC9', people: ['mariam'], from: 'YYZ', to: 'NRT', dep: '2026-10-20T13:40-04:00', arr: '2026-10-21T16:10+09:00' },
       }),
       E('By 5:45 PM', 'Meet at the Terminal 2·3 JR station', 'Mo waits by the JR ticket gates under Terminal 2. Mariam: after bags, the free shuttle bus from Terminal 1 to Terminal 2 takes about 10 min.', {
         id: 'd06-mm-meet', who: 'mm', place: P('Narita Airport Terminal 2·3 Station', 35.7727, 140.3873, 'Airport Terminal 2 Station Narita'), travel: { mode: 'walk', label: 'Shuttle bus from T1, ~10 min' }, tags: ['logistics'],
