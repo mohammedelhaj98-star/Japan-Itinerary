@@ -971,7 +971,7 @@ function passHTML(e, i) {
   const nav = `<div class="pnav"><button class="st" data-step="-1" ${events.length < 2 ? 'disabled' : ''} aria-label="Previous stop">${I.chevL}</button><div class="mid">${pi && pi.key ? `<button class="keyp" data-story="${e.id}"><span>${esc(pi.key)}</span>${pi.story ? '<i>Read the story</i>' : ''}</button>` : `<span class="cnt">${i + 1} of ${events.length}</span>`}</div><button class="st" data-step="1" ${events.length < 2 ? 'disabled' : ''} aria-label="Next stop">${I.chevR}</button></div>`;
   if (e.flight) {
     const v = flView(e);
-    const fbody = `<div class="body">${flightStrip(e)}${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
+    const fbody = `<div class="body">${story}${flightStrip(e)}${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
       <div class="acts"><button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div></div>`;
     return `<article class="pass tk fl ${d ? 'done' : ''} ${v.past ? 'flpast' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${legHex(e)}">${nav}${flightBand(e, n)}${fbody}<div class="hanko" aria-hidden="true">済</div></article>`;
   }

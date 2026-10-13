@@ -921,7 +921,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   late['d06-mo-land'] = { ...rec, st: 'delayed', checkedAt: new Date().toISOString() }; o.set('flights', late, cur.rev + 1); o.stamp();
   const P = await phone(); await P.page.goto(B + '/japan/'); await P.page.waitForURL(/\/\?next=japan/); await P.page.tap('[data-me="m"]'); await enterPin(P.page); await P.page.waitForURL(/\/japan\//);
   await P.page.goto(B + '/japan/?d=d06'); await P.page.waitForTimeout(2500);
-  const seen = await P.page.evaluate(() => { const p = document.getElementById('p-d06-mo-land'), b = document.querySelector('.flban'); return { fl: !!p && p.classList.contains('fl'), band: p ? p.querySelector('.band').innerText : '', pills: p ? [...p.querySelectorAll('.np')].map((x) => x.textContent) : [], banner: b ? b.innerText : '' }; });
+  const seen = await P.page.evaluate(() => { const p = document.getElementById('p-d06-mo-land'), b = document.querySelector('.flban'); return { fl: !!p && p.classList.contains('fl'), band: p ? p.querySelector('.band').innerText : '', pills: p ? [...p.querySelectorAll('.np')].map((x) => x.textContent) : [], banner: b ? b.innerText : '', story: !!(p && p.querySelector('[data-story]') && p.querySelector('.storyx .dykx')) }; });
+  ok('the flight\'s airport story and "did you know?" are on its ticket, behind Read the story', seen.story, JSON.stringify(seen));
   ok('day 6 shows Mo\'s flight as its own ticket: late, with his name pill, and a banner for what changed', seen.fl && /Delayed 50 min/.test(seen.band) && /Lands 1:40 PM/i.test(seen.band) && seen.pills.join() === 'Mo' && /Flight update/.test(seen.banner), JSON.stringify(seen));
   await P.page.screenshot({ path: SH + 'flights-day6.png' });
   ok('no page errors on the flight phone', !P.errs.length, P.errs.join(' | '));
