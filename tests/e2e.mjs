@@ -893,6 +893,12 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const alGot = [await alSvc.look(mo), await alSvc.look(mo), await alSvc.look(mo)];
   const alErr = await alSvc.look(mo).then(() => '', (e) => e.message);
   ok('AirLabs: yesterday\'s flight and "not found" mean not yet; ours is read; a used-up plan is an error', alGot[0] === null && alGot[1] === null && alGot[2] && alGot[2].st === 'landed' && /AirLabs month_limit_exceeded/.test(alErr) && /flight_iata=QR808&api_key=test-key$/.test(alUrls[0]), JSON.stringify([alGot.map((x) => x && x.st), alErr, alUrls[0]]));
+  // a flight number typed into a stop has no times: only a flight on that stop's day counts; airports we don't list get their offset
+  const noTimes = { ...mo, dep: '', arr: '' }, alDay = (d) => ({ response: al({ dep_time: d + ' 20:35', arr_time: d + ' 12:55' }) });
+  alAns.push(alDay('2026-10-19'), alDay(mo.date));
+  const typedGot = [await alSvc.look(noTimes), await alSvc.look(noTimes)];
+  const away = F.fromAirLabs(al({ dep_iata: 'ICN', dep_time: '2026-10-21 09:00', dep_time_utc: '2026-10-21 00:00', arr_iata: 'BOM', arr_time: '2026-10-21 14:30', arr_time_utc: '2026-10-21 09:00' }), {});
+  ok('AirLabs: a typed-in flight number only takes that day\'s flight; other airports get their time zone from AirLabs\' times', typedGot[0] === null && typedGot[1] && away.fromTz === 'Etc/GMT-9' && away.toTz === '', JSON.stringify([typedGot.map((x) => x && x.st), away.fromTz, away.toTz]));
   const dep0 = Date.parse(mo.dep);
   ok('with AirLabs, checks start 3 hours before takeoff, every 15 minutes in the air; FlightAware still wins when both are set', alSvc.lead === 3 && alSvc.airEvery === 15 && F.nextCheck(mo, null, dep0 - 10 * 3600e3, 15, 3) === dep0 - 3 * 3600e3 && F.nextCheck(mo, null, dep0 - 30 * 3600e3) === dep0 - 24 * 3600e3 && F.lookupFor({ AIRLABS_KEY: 'a', FLIGHTAWARE_KEY: 'b' }).lead === 24);
   // what a phone sees: put Mo's flight back to the late, re-gated look and open day 6
