@@ -267,8 +267,6 @@ body.mapmax .mapmax-hint { display:block; }
 .desc { font-size:15px; line-height:1.5; margin-top:12px; white-space:pre-line; opacity:.95; }
 .cv-in { font:inherit; font-size:.82em; font-weight:700; padding:0 5px; border-radius:6px; background:rgba(255,255,255,.18); white-space:nowrap; color:inherit; transition:background 160ms; }
 .cv-in:active { background:rgba(255,255,255,.32); }
-.dyk { margin-top:14px; padding:12px 14px; border-radius:14px; background:rgba(0,0,0,.16); font-size:14px; line-height:1.45; }
-.dyk b { display:block; font-family:var(--serif); font-style:italic; font-size:18px; font-weight:400; margin-bottom:2px; }
 .acts { display:flex; gap:8px; margin-top:14px; }
 .acts > * { flex:1; min-height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:700; font-size:14.5px; text-decoration:none; }
 .a-dir { background:#fff; color:var(--c); }
@@ -453,6 +451,10 @@ button.ykan { pointer-events:auto; cursor:pointer; }
 .storyx b { display:block; font-family:var(--serif); font-style:italic; font-size:19px; font-weight:400; margin-bottom:2px; }
 .pass.storyon .storyx { display:block; animation:fadeup 300ms var(--ease) both; }
 .pass.tk .storyx { background:rgba(0,0,0,.05); }
+/* the "Did you know?" waits under the story, a small reward for opening it */
+.dykx { margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,.22); }
+.dykx b { display:block; font-family:var(--serif); font-style:italic; font-size:17px; font-weight:400; margin-bottom:1px; }
+.pass.tk .dykx { border-top-color:rgba(0,0,0,.1); }
 /* the saying: Japanese name + romaji, opens phrase cards */
 .say { display:flex; align-items:center; gap:12px; width:100%; margin-top:14px; padding:12px 14px; border-radius:14px; background:rgba(0,0,0,.16); text-align:left; color:inherit; }
 .pass.tk .say { background:rgba(0,0,0,.05); }
@@ -957,7 +959,7 @@ function passHTML(e, i) {
   if (e.who && e.who !== 'all') chips.push(`<span class="chip">${e.who === 'nasa' ? 'NASA' : 'M&amp;M'} only</span>`);
   if (FILLING.has(e.id)) chips.push(`<span class="chip">${I.spark}Filling in…</span>`);
   if (e._added) chips.push('<span class="chip">Added</span>'); else if (e._edited) chips.push('<span class="chip">Edited</span>');
-  const story = pi && pi.story ? `<div class="storyx"><b>${e.place || own ? 'The story' : 'About ' + esc(host.name)}</b>${esc(pi.story)}</div>` : '';
+  const story = pi && pi.story ? `<div class="storyx"><b>${e.place || own ? 'The story' : 'About ' + esc(host.name)}</b>${esc(pi.story)}${pi.dyk ? `<div class="dykx"><b>Did you know?</b>${esc(pi.dyk)}</div>` : ''}</div>` : '';
   const tkt = e.ticket ? ticketHTML(e) : '';
   const body = `<div class="body">${story}${e.ticket && e.ticket.from ? '' : tk && routeOf(e, i) ? `<div class="route"><div><small>From</small><b>${esc(routeOf(e, i)[0])}</b></div><span class="arr">${I.arrow}</span><div><small>To</small><b>${esc(routeOf(e, i)[1])}</b></div></div>` : ''}
     ${e.ticket && e.ticket.from ? tkt : ''}<div class="chips">${chips.join('')}</div>
@@ -1414,7 +1416,7 @@ function applyFill(s, r, found) {
   if (!String(s.desc || '').trim() && r.notes) { set.desc = r.notes; got.push('notes'); }
   if (!String(s.cost || '').trim() && r.cost) { set.cost = r.cost; got.push('cost'); }
   if (s.start != null && s.end == null && r.minutes) { set.end = Math.min(s.start + Math.max(15, Math.round(r.minutes / 15) * 15), 1439); got.push('end time'); }
-  const info = { ...(r.ja ? { ja: r.ja, ro: r.ro } : {}), kind: r.kind, ...(r.story ? { story: r.story, ...(r.key ? { key: r.key } : {}) } : {}), ...(found.photo || {}) };
+  const info = { ...(r.ja ? { ja: r.ja, ro: r.ro } : {}), kind: r.kind, ...(r.story ? { story: r.story, ...(r.dyk ? { dyk: r.dyk } : {}), ...(r.key ? { key: r.key } : {}) } : {}), ...(found.photo || {}) };
   if (found.photo) got.push('photo'); if (r.ja) got.push('Japanese name');
   set.info = r.ja || r.story || found.photo ? info : s.info; set.more = true;
   Object.assign(s, set);

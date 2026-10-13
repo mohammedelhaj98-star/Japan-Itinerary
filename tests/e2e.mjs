@@ -44,7 +44,7 @@ const DO = { idFromName: (n) => n, get: (id) => {
 store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store.set('updatedAt', '2026-10-01T00:00:00.000Z');
 // Workers AI stand-in for /api/scan: it "reads" a ramen receipt where the total was mistaken for the cash handed over
 // …and for /api/fill (a question in words rather than a photo): it knows Yanaka Ginza
-const FILL_SAID = { known: true, name: 'Yanaka Ginza shopping street', ja: '谷中銀座商店街', ro: 'Yanaka Ginza Shōtengai', cat: 'shop', kind: 'shop', notes: 'Old-Tokyo shopping street. The menchi-katsu is usually pork and beef: ask for beef only.', cost: '¥500–1,500 per person', minutes: 60, key: 'Since the 1940s · About 60 shops', story: 'It survived the 1923 earthquake and the war, so it still looks like 1950s Tokyo.', wikipedia: 'Yanaka Ginza', search: 'Yanaka Ginza', lat: 35.7277, lng: 139.766 };
+const FILL_SAID = { known: true, name: 'Yanaka Ginza shopping street', ja: '谷中銀座商店街', ro: 'Yanaka Ginza Shōtengai', cat: 'shop', kind: 'shop', notes: 'Old-Tokyo shopping street. The menchi-katsu is usually pork and beef: ask for beef only.', cost: '¥500–1,500 per person', minutes: 60, key: 'Since the 1940s · About 60 shops', story: 'It survived the 1923 earthquake and the war, so it still looks like 1950s Tokyo.', dyk: 'Seven wooden cats hide along the street.', wikipedia: 'Yanaka Ginza', search: 'Yanaka Ginza', lat: 35.7277, lng: 139.766 };
 const FAKE_AI = { run: async (m, inp) => typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
@@ -118,13 +118,19 @@ const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.
     const r2 = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
     ok('/api/scan falls back to Workers AI when Claude is down', r2.total === 2380 && r2.model !== CLAUDE_MODEL, JSON.stringify(r2).slice(0, 120));
   } finally { globalThis.fetch = realFetch; }
+  // every place on the trip has a story and a "did you know?", short enough for a phone card
+  const { PLACES } = await import(REPO + '/data/places.js');
+  const thin = Object.entries(PLACES).filter(([, p]) => !p.story || !p.dyk || p.story.length > 400 || p.dyk.length > 200).map(([n]) => n);
+  ok('every place has a story and a "did you know?"', Object.keys(PLACES).length > 100 && !thin.length, thin.join(', '));
   // filling in a new stop from its name
+  const t1dyk = () => !tidyFill({ known: false, name: 'Laundry', dyk: 'x' }, 'x').dyk;
   const { fillRequest, fillStop, tidyFill } = await import(REPO + '/lib/fill-claude.js');
   const fq = fillRequest('sk-test', { name: 'Yanaka Ginza', city: 'Tokyo', date: '2026-10-17', near: 'Nezu Shrine' }), fb = JSON.parse(fq.body);
   ok('fill-in: one Claude request asking for the stop as JSON', fq.url === 'https://api.anthropic.com/v1/messages?beta=true' && fq.headers['x-api-key'] === 'sk-test' && fb.model === CLAUDE_MODEL && fb.output_config.format.schema.required.includes('wikipedia') && /"Yanaka Ginza"/.test(fb.messages[0].content) && /Nezu Shrine/.test(fb.messages[0].content) && /no pork/.test(fb.messages[0].content));
   const saidFill = { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ ...FILL_SAID, lat: 48.85, lng: 2.35, minutes: 9999 }) }] };
   const f1 = await fillStop({ ANTHROPIC_API_KEY: 'k' }, { name: 'Yanaka Ginza' }, { fetchFn: answer(200, saidFill) });
   ok('fill-in: Claude\'s answer comes back checked (a position outside Japan and a silly length dropped)', f1.model === CLAUDE_MODEL && f1.ja === '谷中銀座商店街' && f1.cat === 'shop' && f1.lat === null && f1.minutes === null && f1.wikipedia === 'Yanaka Ginza', JSON.stringify(f1).slice(0, 200));
+  ok('fill-in: the stop comes back with a "did you know?" as well as its story', fb.output_config.format.schema.required.includes('dyk') && f1.dyk === 'Seven wooden cats hide along the street.' && t1dyk(), f1.dyk);
   const f2 = await fillStop({ ANTHROPIC_API_KEY: 'k', AI: FAKE_AI }, { name: 'Yanaka Ginza' }, { fetchFn: answer(500, 'down') });
   ok('fill-in: Workers AI answers when Claude is down', f2.model !== CLAUDE_MODEL && f2.ja === '谷中銀座商店街' && f2.lat === 35.7277, JSON.stringify(f2).slice(0, 120));
   const t1 = tidyFill({ known: false, name: 'Laundry', ja: '洗濯', cat: 'plan', notes: 'Coin laundry near the hotel.', wikipedia: 'Laundry', lat: 35.7, lng: 139.7 }, 'x');
@@ -725,8 +731,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await pg.fill('#f-cost', '¥800'); await pg.tap('[data-fsave]'); await pg.waitForTimeout(1500);
   const saved = addedIds().find(([, c]) => c.title === 'Yanaka Ginza');
   ok('fill-in: saved with its photo, credit and Japanese name, and the cost typed over it', saved && saved[1].info && saved[1].info.img === 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Yanaka_Ginza.jpg/960px-Yanaka_Ginza.jpg' && saved[1].info.thumb.includes('/330px-') && saved[1].info.ja === '谷中銀座商店街' && saved[1].cost === '¥800' && saved[1].place.lat === 35.72766, JSON.stringify(saved && saved[1]).slice(0, 300));
-  const pass = await pg.evaluate((id) => { const p = document.getElementById('p-' + id); return p && { hero: p.querySelector('.hero').style.backgroundImage, say: (p.querySelector('.say') || {}).textContent, key: (p.querySelector('.keyp') || {}).textContent, credit: (p.querySelector('.credit') || {}).textContent }; }, saved && saved[0]);
-  ok('fill-in: the stop shows its photo, Japanese name, phrases and story', pass && pass.hero.includes('960px-Yanaka_Ginza') && /谷中銀座商店街/.test(pass.say) && /Since the 1940s/.test(pass.key) && /Some One, CC BY-SA 4.0/.test(pass.credit), JSON.stringify(pass));
+  const pass = await pg.evaluate((id) => { const p = document.getElementById('p-' + id); return p && { hero: p.querySelector('.hero').style.backgroundImage, say: (p.querySelector('.say') || {}).textContent, key: (p.querySelector('.keyp') || {}).textContent, credit: (p.querySelector('.credit') || {}).textContent, dyk: (p.querySelector('.storyx .dykx') || {}).textContent }; }, saved && saved[0]);
+  ok('fill-in: the stop shows its photo, Japanese name, phrases and story', pass && pass.hero.includes('960px-Yanaka_Ginza') && /谷中銀座商店街/.test(pass.say) && /Since the 1940s/.test(pass.key) && /Some One, CC BY-SA 4.0/.test(pass.credit) && pass.dyk === 'Did you know?Seven wooden cats hide along the street.', JSON.stringify(pass));
   await pg.evaluate((id) => document.querySelector(`#p-${id} .say`).click(), saved[0]); await pg.waitForTimeout(400);
   ok('fill-in: its phrases use the Japanese name', /谷中銀座商店街/.test(await pg.textContent('#jpcard').catch(() => '')));
   await pg.evaluate(() => document.querySelector('#jpcard [data-jpx]').click()); await pg.waitForTimeout(400);
@@ -757,11 +763,11 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
 // the API keeps only Wikimedia photos on a stop
 {
   const put = (value) => onRequest({ request: new Request(B + '/api/custom', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ id: 'u-photo-test', value }) }), env: ENV }).then((r) => r.json());
-  const a = await put({ added: true, day: 'd03', title: 'X', info: { ja: 'エックス', img: 'https://evil.example/x.jpg', credit: 'Me', story: 'S' } });
+  const a = await put({ added: true, day: 'd03', title: 'X', info: { ja: 'エックス', img: 'https://evil.example/x.jpg', credit: 'Me', story: 'S', dyk: 'D' } });
   const b = await put({ added: true, day: 'd03', title: 'X', info: { img: "https://upload.wikimedia.org/a.jpg') ; background:url('x", kind: 'nope' } });
   const c = await put({ added: true, day: 'd03', title: 'X', info: { img: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/X.jpg', file: 'https://commons.wikimedia.org/wiki/File:X.jpg', credit: 'Someone, CC BY 4.0', kind: 'shop' } });
   const ia = a.custom['u-photo-test'] && a.custom['u-photo-test'].info, ib = b.custom['u-photo-test'].info, ic = c.custom['u-photo-test'].info;
-  ok('a stop\'s photo must be a Wikimedia address (anything else is dropped, with its credit)', ia && !ia.img && !ia.credit && ia.ja === 'エックス' && !ib && ic.img.endsWith('/X.jpg') && ic.thumb === ic.img && ic.credit && ic.kind === 'shop', JSON.stringify([ia, ib, ic]));
+  ok('a stop\'s photo must be a Wikimedia address (anything else is dropped, with its credit)', ia && !ia.img && !ia.credit && ia.ja === 'エックス' && ia.dyk === 'D' && !ib && ic.img.endsWith('/X.jpg') && ic.thumb === ic.img && ic.credit && ic.kind === 'shop', JSON.stringify([ia, ib, ic]));
   await put(null);
 }
 // problem reports: an error on a phone reaches the server once (the same one isn't sent again), and the health check counts it
