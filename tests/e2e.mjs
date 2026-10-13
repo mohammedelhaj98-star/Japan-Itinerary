@@ -800,7 +800,10 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const H = 3600e3, mo = F.tripFlights({}).find((f) => f.id === 'd06-mo-land');
   ok('the trip knows its flights: Mo\'s QR 808 and Mariam\'s three legs, each with who is on it', mo && mo.no === 'QR808' && mo.people.join() === 'm' && ['d06-mariam-land', 'd17-mo', 'd17-mariam', 'd17-mariam-yvr'].every((id) => F.tripFlights({}).some((f) => f.id === id)), JSON.stringify(F.tripFlights({}).map((f) => f.id + ':' + f.no)));
   const typed = F.tripFlights({ 'd01-land': { flight: { no: 'ac 1' } }, x1: { added: true, day: 'd03', who: 'nasa', flight: { no: 'NH 10' } } });
-  ok('a flight number typed into a stop is tracked, on the trip\'s stops and on added ones', typed.some((f) => f.id === 'd01-land' && f.no === 'AC1' && f.people.join() === 'naf,sara') && typed.some((f) => f.id === 'x1' && f.no === 'NH10'));
+  ok('a flight number typed into a stop is tracked, on the trip\'s stops and on added ones', typed.some((f) => f.id === 'd01-land' && f.no === 'AC1' && f.people.join() === 'naf,sara' && f.to === 'NRT' && f.arr === '2026-10-16T16:10+09:00') && typed.some((f) => f.id === 'x1' && f.no === 'NH10'));
+  const nasa = typed.find((f) => f.id === 'd01-land'), urls = [], grab = async (u) => { urls.push(u); return new Response('[]', { status: 200 }); };
+  await F.fetchAeroDataBox(nasa, 'k', grab); await F.fetchFlightAware(nasa, 'k', async (u) => { urls.push(u); return new Response('{"flights":[]}', { status: 200 }); });
+  ok('a flight that only knows when it lands is looked up by its landing (it left the day before)', /\/AC1\/2026-10-16\?.*dateLocalRole=Arrival/.test(urls[0]) && /start=2026-10-15T01:10:00Z&end=2026-10-17T13:10:00Z/.test(urls[1]), urls.join(' | '));
   const dep = Date.parse(mo.dep);
   ok('checks: none until a day before, hourly until 3 h before, then every 5 minutes, and done once landed with the belt',
     F.nextCheck(mo, null, dep - 30 * H) === dep - 24 * H && F.nextCheck(mo, { dep: {}, arr: {}, checkedAt: new Date(dep - 10 * H).toISOString() }, dep - 10 * H + 1) === dep - 9 * H

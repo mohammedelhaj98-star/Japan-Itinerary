@@ -738,6 +738,12 @@ function homeCard() {
     ${al.install ? '<button class="hbig press" data-install>Install Japan 2026</button>' : '<p>In Chrome: tap ⋮, then Add to Home screen.</p>'}<button class="hlink" data-homedone>I've done it</button></div><div style="height:14px"></div>`;
 }
 function alertsCard() {
+  // "On" is what this phone remembers; check it against the browser's subscription once (it can expire or be dropped),
+  // and send it to the server again so both agree
+  if (al.on && PUSH_OK && !al.synced && !SANDBOX) { al.synced = true; navigator.serviceWorker.getRegistration('../').then((r) => (r ? r.pushManager.getSubscription() : null)).then((s0) => {
+    if (s0) return sendPrefs(s0.toJSON()).catch(() => {});
+    al.on = false; ls.set('japan2026.alertsOn', false); if (tab === 4 && !sub) render();
+  }, () => {}); }
   if (al.key === undefined && !SANDBOX) { al.key = null; store.api('push').then((r) => { al.key = r.key; al.tracking = r.tracking; }, () => {}).finally(() => { if (tab === 4 && !sub) render(); }); }
   let btn, line;
   if (!PUSH_OK) { btn = ''; line = IOS && !STANDALONE ? 'Add the trip to your Home Screen first, then open it from there.' : "This browser can't show alerts."; }
