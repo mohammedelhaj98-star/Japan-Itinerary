@@ -25,8 +25,10 @@ const objects = new Map(); let doCalls = 0; const liveSockets = new Map(); let w
 // a phone's live connection: the fake namespace turns the upgrade request into a stand-in socket the object sends to
 // (the real object makes a WebSocketPair); the test server below finishes the handshake and writes its frames
 const fakeCtx = () => ({ storage: { sql: fakeSql() }, sockets: new Set(), acceptWebSocket(ws) { this.sockets.add(ws); }, getWebSockets() { return [...this.sockets]; } });
+// the object's own settings (secrets on the real Worker): the flight tests below fill them in
+const DO_ENV = {};
 const DO = { idFromName: (n) => n, get: (id) => {
-  if (!objects.has(id)) { const ctx = fakeCtx(); objects.set(id, { o: new TripState(ctx), ctx }); }
+  if (!objects.has(id)) { const ctx = fakeCtx(); objects.set(id, { o: new TripState(ctx, DO_ENV), ctx }); }
   const { o, ctx } = objects.get(id);
   return { fetch: (url, init) => {
     const req = url instanceof Request ? url : new Request(url, init);
@@ -790,6 +792,96 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const v3 = await (await onRequest({ request: new Request(B + '/api/version'), env: { TRIP_KV: KV3, TRIP_PIN: PIN } })).json();
   ok('with KV alone there is no live channel and the version answer says so', r426.status === 426 && v3.live === false, JSON.stringify([r426.status, v3]));
   for (const x of [P, Q]) { ok('no page errors on the live phones', !x.errs.length, x.errs.join(' | ')); await x.ctx.close(); }
+}
+// flights: the object's 5-minute check asks the flight service about the flights that are due, keeps what it says under
+// 'flights' for every phone, and sends phone alerts (encrypted Web Push) to the phones that follow those people
+{
+  const F = await import(REPO + '/lib/flights.js'); const W = await import(REPO + '/lib/webpush.js');
+  const H = 3600e3, mo = F.tripFlights({}).find((f) => f.id === 'd06-mo-land');
+  ok('the trip knows its flights: Mo\'s QR 808 and Mariam\'s three legs, each with who is on it', mo && mo.no === 'QR808' && mo.people.join() === 'm' && ['d06-mariam-land', 'd17-mo', 'd17-mariam', 'd17-mariam-yvr'].every((id) => F.tripFlights({}).some((f) => f.id === id)), JSON.stringify(F.tripFlights({}).map((f) => f.id + ':' + f.no)));
+  const typed = F.tripFlights({ 'd01-land': { flight: { no: 'ac 1' } }, x1: { added: true, day: 'd03', who: 'nasa', flight: { no: 'NH 10' } } });
+  ok('a flight number typed into a stop is tracked, on the trip\'s stops and on added ones', typed.some((f) => f.id === 'd01-land' && f.no === 'AC1' && f.people.join() === 'naf,sara') && typed.some((f) => f.id === 'x1' && f.no === 'NH10'));
+  const dep = Date.parse(mo.dep);
+  ok('checks: none until a day before, hourly until 3 h before, then every 5 minutes, and done once landed with the belt',
+    F.nextCheck(mo, null, dep - 30 * H) === dep - 24 * H && F.nextCheck(mo, { dep: {}, arr: {}, checkedAt: new Date(dep - 10 * H).toISOString() }, dep - 10 * H + 1) === dep - 9 * H
+    && F.nextCheck(mo, { dep: {}, arr: {}, checkedAt: new Date(dep - H).toISOString() }, dep - H + 1) <= dep - H + 5 * 60e3
+    && F.nextCheck(mo, { st: 'landed', belt: '7', dep: {}, arr: { act: mo.arr }, checkedAt: mo.arr }, Date.parse(mo.arr) + 60e3) === null);
+  // a fake FlightAware: answers what the test says QR808 is doing right now
+  let fa = null; const asked = [];
+  DO_ENV.FLIGHT_FETCH = async (url, init) => { asked.push({ url, key: init.headers['x-apikey'] }); const m = /flights\/([A-Z0-9]+)\?/.exec(url); return new Response(JSON.stringify({ flights: m[1] === 'QR808' && fa ? [fa] : [] }), { status: 200 }); };
+  const qr = (extra = {}) => ({ ident: 'QAT808', status: 'Scheduled', scheduled_out: '2026-10-20T17:35:00Z', scheduled_in: '2026-10-21T03:55:00Z', estimated_out: '2026-10-20T17:35:00Z', estimated_in: '2026-10-21T03:55:00Z', origin: { code_iata: 'DOH', timezone: 'Asia/Qatar', city: 'Doha' }, destination: { code_iata: 'NRT', timezone: 'Asia/Tokyo', city: 'Tokyo' }, terminal_destination: '2', departure_delay: 0, arrival_delay: 0, gate_origin: 'C12', ...extra });
+  const tick = async (now) => (await DO.get('trip').fetch('https://state/', { method: 'POST', body: JSON.stringify({ op: 'tick', now }) })).json();
+  ok('with no flight service key the check does nothing', (await tick('2026-10-20T15:00:00Z')).off === true);
+  // the key pair for alerts (scripts/vapid-keys.mjs makes the real one), and two phones that turn alerts on
+  const vp = await crypto.webcrypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  DO_ENV.VAPID_PUBLIC = W.b64u(await crypto.webcrypto.subtle.exportKey('raw', vp.publicKey)); DO_ENV.VAPID_PRIVATE = JSON.stringify(await crypto.webcrypto.subtle.exportKey('jwk', vp.privateKey));
+  const k0 = await (await onRequest({ request: new Request(B + '/api/push'), env: ENV })).json();
+  ok('/api/push gives phones the public key, and says flights aren\'t checked yet', k0.key === DO_ENV.VAPID_PUBLIC && k0.tracking === false, JSON.stringify(k0));
+  DO_ENV.FLIGHTAWARE_KEY = 'fa-test';
+  const handset = async () => { const kp = await crypto.webcrypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']); const auth = crypto.randomBytes(16); return { kp, auth, keys: { p256dh: W.b64u(await crypto.webcrypto.subtle.exportKey('raw', kp.publicKey)), auth: W.b64u(auth) } }; };
+  const h1 = await handset(), h2 = await handset();
+  const sub = (i, h) => ({ endpoint: `https://push.example.com/send/phone${i}-${'x'.repeat(20)}`, keys: h.keys });
+  const post = (body, pin = PIN) => onRequest({ request: new Request(B + '/api/push', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': pin }, body: JSON.stringify(body) }), env: ENV });
+  ok('turning alerts on needs the PIN', (await post({ id: 'phone-one', sub: sub(1, h1), prefs: {} }, '0000')).status === 403);
+  ok('a bad subscription is refused', (await post({ id: 'phone-one', sub: { endpoint: 'http://evil', keys: {} }, prefs: {} })).status === 400);
+  const r1 = await post({ id: 'phone-one', sub: sub(1, h1), prefs: {} }), r2 = await post({ id: 'phone-two', sub: sub(2, h2), prefs: { m: { delay: false } } });
+  const k1 = await (await onRequest({ request: new Request(B + '/api/push'), env: ENV })).json();
+  const st0 = await (await onRequest({ request: new Request(B + '/api/state', { headers: { 'x-trip-pin': PIN } }), env: ENV })).json();
+  ok('two phones turn alerts on (phone two skips Mo\'s delays); subscriptions are never sent to phones', r1.status === 200 && r2.status === 200 && k1.tracking === true && !('push' in st0) && !JSON.stringify(st0).includes('push.example.com'));
+  // the push service: records what it was sent, and says phone one has unsubscribed when told to
+  const sent = []; let gone1 = false;
+  DO_ENV.PUSH_FETCH = async (url, init) => { sent.push({ url, init }); return new Response('', { status: gone1 && url.includes('phone1') ? 410 : 201 }); };
+  const open = async (h, init) => { // what the phone itself does with an alert: decrypt it (RFC 8291)
+    const b = new Uint8Array(init.body), salt = b.slice(0, 16), asPub = b.slice(21, 21 + b[20]), sealed = b.slice(21 + b[20]), S = crypto.webcrypto.subtle;
+    const asKey = await S.importKey('raw', asPub, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    const shared = new Uint8Array(await S.deriveBits({ name: 'ECDH', public: asKey }, h.kp.privateKey, 256));
+    const kdf = async (salt0, ikm, info, n) => new Uint8Array(await S.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: salt0, info }, await S.importKey('raw', ikm, 'HKDF', false, ['deriveBits']), n * 8));
+    const ua = W.unb64u(h.keys.p256dh), te = new TextEncoder();
+    const ikm = await kdf(h.auth, shared, Buffer.concat([te.encode('WebPush: info\0'), ua, asPub]), 32);
+    const cek = await kdf(salt, ikm, te.encode('Content-Encoding: aes128gcm\0'), 16), nonce = await kdf(salt, ikm, te.encode('Content-Encoding: nonce\0'), 12);
+    const plain = new Uint8Array(await S.decrypt({ name: 'AES-GCM', iv: nonce }, await S.importKey('raw', cek, 'AES-GCM', false, ['decrypt']), sealed));
+    return JSON.parse(new TextDecoder().decode(plain.slice(0, plain.lastIndexOf(2))));
+  };
+  // a day before: the first look sets the baseline, nothing to alert about
+  const t1 = await tick('2026-10-19T18:00:00Z'); fa = qr(); const t1b = await tick('2026-10-19T19:01:00Z');
+  let fl = (await (await onRequest({ request: new Request(B + '/api/state'), env: ENV })).json()).flights || {};
+  ok('a day before takeoff the check asks FlightAware with the key, and every phone gets what it said', asked.length >= 1 && asked.every((a) => a.key === 'fa-test') && fl['d06-mo-land'] && fl['d06-mo-land'].st === 'ontime' && fl['d06-mo-land'].gate === 'C12' && t1b.alerts === 0 && !sent.length, JSON.stringify([t1, t1b, fl['d06-mo-land'] && fl['d06-mo-land'].st]));
+  const n1 = asked.length; await tick('2026-10-19T19:20:00Z');
+  ok('the next check waits its turn (hourly until 3 hours before)', asked.length === n1, `${asked.length - n1} extra calls`);
+  // 2½ hours before: 50 minutes late, new gate
+  fa = qr({ estimated_out: '2026-10-20T18:25:00Z', estimated_in: '2026-10-21T04:40:00Z', departure_delay: 3000, arrival_delay: 2700, gate_origin: 'C20' });
+  const t2 = await tick('2026-10-20T15:00:00Z');
+  fl = (await (await onRequest({ request: new Request(B + '/api/state'), env: ENV })).json()).flights;
+  const rec = fl['d06-mo-land'], kinds = rec.changes.map((c) => c.kind + ':' + (c.field || ''));
+  ok('a delay and a gate change are kept with what they were before, for the stop to show', rec.st === 'delayed' && rec.delay === 50 && kinds.includes('delay:arr') && kinds.includes('gate:gate') && rec.changes.find((c) => c.field === 'gate').from === 'C12', JSON.stringify(kinds));
+  const to1 = sent.filter((x) => x.url.includes('phone1')), to2 = sent.filter((x) => x.url.includes('phone2'));
+  const m1 = await Promise.all(to1.map((x) => open(h1, x.init))), m2 = await Promise.all(to2.map((x) => open(h2, x.init)));
+  ok('phone one gets both alerts; phone two (no delays for Mo) only the gate', t2.alerts === 2 && m1.length === 2 && m2.length === 1 && m1.some((m) => /Mo's flight QR 808 is running late\. Now lands 1:40 PM Narita time/.test(m.body)) && /gate C20 \(was C12\)/.test(m2[0].body), JSON.stringify([t2, m1.map((m) => m.body), m2.map((m) => m.body)]));
+  const auth = to1[0].init.headers.authorization, [, jwt, pk] = /^vapid t=([^,]+), k=(.+)$/.exec(auth) || [];
+  const [hd, bd, sg] = (jwt || '..').split('.');
+  const good = jwt && await crypto.webcrypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, vp.publicKey, W.unb64u(sg), new TextEncoder().encode(hd + '.' + bd));
+  ok('each alert is signed with the trip\'s key, for the push service it goes to, and opens that day', good && pk === DO_ENV.VAPID_PUBLIC && JSON.parse(Buffer.from(bd, 'base64url')).aud === 'https://push.example.com' && to1[0].init.headers['content-encoding'] === 'aes128gcm' && m1[0].url === '/japan/?d=d06' && m1[0].tag === 'fl-d06-mo-land', auth.slice(0, 40));
+  // a small wobble stays quiet; a phone that unsubscribed is forgotten
+  sent.length = 0; gone1 = true; fa = qr({ estimated_out: '2026-10-20T18:30:00Z', estimated_in: '2026-10-21T04:45:00Z', departure_delay: 3300, arrival_delay: 3000, gate_origin: 'C20', status: 'Landed', actual_in: '2026-10-21T04:44:00Z', actual_out: '2026-10-20T18:31:00Z', baggage_claim: '7' });
+  const t3 = await tick('2026-10-21T04:50:00Z');
+  const subsLeft = Object.keys([...objects.values()][0].o.get('push').value || {});
+  ok('landing with the belt alerts, and a phone the push service says is gone is forgotten', t3.alerts === 1 && sent.length === 2 && subsLeft.join() === 'phone-two', JSON.stringify([t3, subsLeft]));
+  fl = (await (await onRequest({ request: new Request(B + '/api/state'), env: ENV })).json()).flights;
+  ok('after landing with the belt known, Mo\'s flight is not checked again', fl['d06-mo-land'].st === 'landed' && fl['d06-mo-land'].belt === '7' && fl['d06-mo-land'].nextAt === null);
+  // AeroDataBox reads into the same shape, should FlightAware not be there
+  const adb = F.fromAeroDataBox({ status: 'EnRoute', departure: { airport: { iata: 'YYZ', timeZone: 'America/Toronto' }, scheduledTime: { utc: '2026-10-20 17:25Z' }, revisedTime: { utc: '2026-10-20 17:40Z' }, runwayTime: { utc: '2026-10-20 17:52Z' }, terminal: '1', gate: 'E75' }, arrival: { airport: { iata: 'NRT', timeZone: 'Asia/Tokyo', municipalityName: 'Tokyo' }, scheduledTime: { utc: '2026-10-21 06:50Z' }, predictedTime: { utc: '2026-10-21 06:58Z' }, terminal: '1' } }, { to: 'NRT' });
+  ok('AeroDataBox answers read the same way (the stand-in service)', adb.st === 'air' && adb.gate === 'E75' && adb.dep.act === '2026-10-20T17:52:00.000Z' && adb.arr.est === '2026-10-21T06:58:00.000Z' && adb.toTz === 'Asia/Tokyo', JSON.stringify(adb));
+  // what a phone sees: put Mo's flight back to the late, re-gated look and open day 6
+  const o = [...objects.values()][0].o, cur = o.get('flights'), late = { ...cur.value };
+  late['d06-mo-land'] = { ...rec, st: 'delayed', checkedAt: new Date().toISOString() }; o.set('flights', late, cur.rev + 1); o.stamp();
+  const P = await phone(); await P.page.goto(B + '/japan/'); await P.page.waitForURL(/\/\?next=japan/); await P.page.tap('[data-me="m"]'); await enterPin(P.page); await P.page.waitForURL(/\/japan\//);
+  await P.page.goto(B + '/japan/?d=d06'); await P.page.waitForTimeout(2500);
+  const seen = await P.page.evaluate(() => { const p = document.getElementById('p-d06-mo-land'), b = document.querySelector('.flban'); return { fl: !!p && p.classList.contains('fl'), band: p ? p.querySelector('.band').innerText : '', pills: p ? [...p.querySelectorAll('.np')].map((x) => x.textContent) : [], banner: b ? b.innerText : '' }; });
+  ok('day 6 shows Mo\'s flight as its own ticket: late, with his name pill, and a banner for what changed', seen.fl && /Delayed 50 min/.test(seen.band) && /Lands 1:40 PM/i.test(seen.band) && seen.pills.join() === 'Mo' && /Flight update/.test(seen.banner), JSON.stringify(seen));
+  await P.page.screenshot({ path: SH + 'flights-day6.png' });
+  ok('no page errors on the flight phone', !P.errs.length, P.errs.join(' | '));
+  await P.ctx.close();
+  for (const k of ['FLIGHT_FETCH', 'FLIGHTAWARE_KEY', 'PUSH_FETCH', 'VAPID_PUBLIC', 'VAPID_PRIVATE']) delete DO_ENV[k];
 }
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));
 console.log(`\n${pass} passed, ${fail} failed`);

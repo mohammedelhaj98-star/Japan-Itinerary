@@ -283,6 +283,44 @@ body.mapmax .mapmax-hint { display:block; }
 .route small { display:block; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700; }
 .route b { display:block; font-size:16px; letter-spacing:-.015em; line-height:1.2; }
 .route .arr { color:var(--c); flex:none; }
+/* flights: name pills, the status under the title, and the live strip (lib/flights.js keeps it current) */
+.nps { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; max-width:112px; flex:none; }
+.np { font-size:12px; font-weight:700; color:#fff; padding:3px 8px; border-radius:999px; background:var(--p); line-height:1.25; }
+.flst { display:flex; align-items:center; gap:5px; margin-top:2px; font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--ink3); }
+.flst i, .flpill i { width:7px; height:7px; border-radius:50%; background:currentColor; flex:none; }
+.flst.ok { color:var(--ok-ink, #1f7a45); } .flst.late { color:#7a5a00; } .flst.bad { color:#c62d22; } .flst.air { color:var(--ink); }
+.pass.fl.flpast:not(.open) { opacity:.55; }
+.flto { text-align:right; }
+.flc { display:block; font-family:var(--serif); font-size:30px; line-height:1; letter-spacing:.01em; }
+.flive { background:#fff; border-radius:16px; padding:12px; display:flex; flex-direction:column; gap:10px; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:12px; }
+.flh { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.flpill { display:inline-flex; align-items:center; gap:6px; min-height:28px; padding:3px 11px; border-radius:999px; font-size:13.5px; font-weight:700; background:rgba(0,0,0,.06); color:var(--ink2); }
+.flpill.ok { background:#e6f4ea; color:#1f7a45; } .flpill.late { background:#fff6dd; color:#7a5a00; } .flpill.bad { background:#fdecea; color:#c62d22; } .flpill.air { background:var(--ink); color:#fff; }
+.flpill.air i { animation:flblink 1.6s ease-in-out infinite; }
+@keyframes flblink { 50% { opacity:.25; } }
+.flno { font-size:14px; }
+.flck { margin-left:auto; font-size:12px; color:var(--ink3); }
+.fltimes { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.fltimes > div { min-width:0; }
+.fll { display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700; }
+.flt { display:block; font-family:var(--serif); font-size:28px; line-height:1.05; }
+.flt .chg { display:inline-block; padding:1px 6px; margin:2px -6px 0; border-radius:10px; background:#fff6dd; color:#7a5a00; }
+.was { display:block; font-family:var(--sans); font-size:12.5px; font-weight:700; color:var(--ink3); line-height:1.2; margin-top:2px; }
+.flz { display:block; font-size:12px; color:var(--ink2); margin-top:2px; }
+.flfacts { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
+.flf { background:var(--paper); border-radius:12px; padding:7px 9px; min-width:0; }
+.flf b { display:block; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.flf s { color:var(--ink3); font-weight:500; font-size:13px; margin-right:3px; }
+.flf.chg { background:#fff6dd; color:#7a5a00; }
+.flnote { font-size:13px; color:var(--ink2); } .flnote.bad { color:#c62d22; font-weight:700; }
+.flban { margin:0 10px 10px; background:#fff6dd; color:#7a5a00; border-radius:18px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start; }
+.flban.bad { background:#fdecea; color:#c62d22; } .flban.good { background:#e6f4ea; color:#1f7a45; }
+.flban svg { flex:none; margin-top:2px; }
+.flban > div { flex:1; min-width:0; font-size:14px; line-height:1.4; }
+.flban b { display:block; font-size:14.5px; }
+.flban button { flex:none; height:32px; padding:0 12px; border-radius:999px; background:rgba(0,0,0,.07); font-size:13px; font-weight:700; }
+.fhint { display:block; font-size:12.5px; color:var(--ink3); margin-top:4px; }
+@media (prefers-reduced-motion: reduce) { .flpill.air i { animation:none; } }
 
 /* ── after the wallet ── */
 .sec { padding:26px 20px 8px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700; }
@@ -682,18 +720,18 @@ const fmtRange = (a, b) => { if (a == null) return ''; const [ta, pa] = fmt(a); 
 /* All stops for a day: originals with edits applied, hidden ones dropped (unless asked), added ones slotted in. */
 function dayItems(d, { who = ui.who, withHidden = false } = {}) {
   const C = CUSTOM();
-  const allowed = (it) => { const w = it.who || 'all'; return who === 'all' || w === 'all' || w === who; };
+  const allowed = (it) => { const w = it.who || 'all'; return who === 'all' || w === 'all' || w === who || !!it.flight; }; // everyone sees every flight
   const patch = (it) => { const c = C[it.id]; if (it.type !== 'event' || !c || c.added) return it; const o = { ...it, _orig: it, _edited: Object.keys(c).some((k) => k !== 'hidden' && k !== 'ts') };
     for (const k of ['title', 'time', 'desc', 'cost', 'who']) if (c[k] != null) o[k] = c[k];
     if ('place' in c) o.place = c.place ? { ...c.place, q: c.place.name } : null;
-    if (c.cat) o.tags = [c.cat]; if (c.hidden) o.hidden = true; return o; };
+    if (c.cat) o.tags = [c.cat]; if (c.hidden) o.hidden = true; if (c.flight) o.flight = { ...(it.flight || {}), ...c.flight }; return o; };
   const items = [];
   for (const raw of d.items) {
     if (raw.type === 'choice') { if (!allowed(raw)) continue; const id = store.getChoice(raw.id, raw.default); const o = raw.options.find((x) => x.id === id) || raw.options[0]; items.push(raw); (o.items || []).map(patch).filter(allowed).forEach((x) => items.push(x)); }
     else { const it = patch(raw); if (allowed(it)) items.push(it); }
   }
   const added = Object.entries(C).filter(([, c]) => c.added && c.day === d.id).sort((x, y) => String(x[1].ts).localeCompare(String(y[1].ts)))
-    .map(([id, c]) => ({ type: 'event', id, title: c.title || 'New stop', time: c.time || '', desc: c.desc || '', cost: c.cost || '', who: c.who || 'all', place: c.place ? { ...c.place, q: c.place.name } : null, tags: c.cat ? [c.cat] : [], hidden: !!c.hidden, _added: true, _after: c.after, _info: c.info || null }))
+    .map(([id, c]) => ({ type: 'event', id, title: c.title || 'New stop', time: c.time || '', desc: c.desc || '', cost: c.cost || '', who: c.who || 'all', place: c.place ? { ...c.place, q: c.place.name } : null, tags: c.cat ? [c.cat] : [], hidden: !!c.hidden, _added: true, _after: c.after, _info: c.info || null, ...(c.flight && c.flight.no ? { flight: { ...c.flight } } : {}) }))
     .filter(allowed);
   for (const a of added) {
     const s0 = span(a);
@@ -736,7 +774,8 @@ const toName = (i) => { for (let j = i + 1; j < events.length; j++) if (events[j
 
 /* ═══ render: top chrome ═══ */
 // A couple's own days: M&M's plan starts on Oct 21, so their view skips the days before.
-const hasEvents = (d, who = ui.who) => who === 'all' || dayItems(d, { who }).some((x) => x.type === 'event');
+// the other couple's flights show on every view, but don't make a day yours (M&M's trip still starts on Day 6)
+const hasEvents = (d, who = ui.who) => who === 'all' || dayItems(d, { who }).some((x) => x.type === 'event' && (!x.flight || [undefined, 'all', who].includes(x.who)));
 function renderTop(enter) {
   const i = DAYS.indexOf(day);
   document.getElementById('prev').innerHTML = I.chevL; document.getElementById('next').innerHTML = I.chevR;
@@ -746,6 +785,66 @@ function renderTop(enter) {
   document.getElementById('dayp-b').textContent = day.title;
   // the day bar's title slides the same way as the day below it
   if (!RM && (enter === 'fwd' || enter === 'back')) { const dx = enter === 'fwd' ? 12 : -12; ['dayp-s', 'dayp-b'].forEach((id, k) => document.getElementById(id).animate([{ opacity: 0, transform: `translateX(${dx}px)` }, { opacity: 1, transform: 'none' }], { duration: 260, delay: k * 20, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' })); }
+}
+
+/* ═══ flights: what the server's checks found (store.state.flights, see lib/flights.js) ═══ */
+const AIRPORT = { NRT: ['Tokyo Narita', 'Narita', 'Asia/Tokyo', 'Tokyo'], HND: ['Tokyo Haneda', 'Haneda', 'Asia/Tokyo', 'Tokyo'], KIX: ['Osaka Kansai', 'Kansai', 'Asia/Tokyo', 'Osaka'],
+  DOH: ['Doha', 'Doha', 'Asia/Qatar', 'Doha'], YVR: ['Vancouver', 'Vancouver', 'America/Vancouver', 'Vancouver'], YYZ: ['Toronto', 'Toronto', 'America/Toronto', 'Toronto'] };
+const PNAME = { naf: 'Naf', sara: 'Sara', mariam: 'Mariam', m: 'Mo' };
+const PCOLOR = { naf: '#2c4f86', sara: '#6f4f98', mariam: '#cc5a26', m: '#b94b74' };
+const personColor = (p) => ((store.state.profiles || {})[p] || {}).color || PCOLOR[p];
+const flNo = (no) => String(no || '').replace(/^([A-Z0-9]{2})(\d)/, '$1 $2');
+const flRec = (e) => { const r = (store.state.flights || {})[e.id]; return r && e.flight && r.no === String(e.flight.no || '').toUpperCase().replace(/[^A-Z0-9]/g, '') ? r : null; };
+// "8:35 PM" in that airport's own time: from the server (an ISO time + the airport's zone), or the trip's own "…T20:35+03:00"
+const flTime = (t, tz) => { if (!t) return ''; if (!tz) { const m = /T(\d\d):(\d\d)/.exec(t); if (!m) return ''; const h = +m[1]; return `${h % 12 || 12}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`; }
+  try { return new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz }); } catch { return ''; } };
+const flDay = (t, tz) => { if (!t) return ''; try { return new Date(t).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: tz || 'Asia/Tokyo' }); } catch { return ''; } };
+const flSeen = () => ls.get('japan2026.flightSeen', {});
+const flUnseen = (e) => { const r = flRec(e); if (!r || !r.changes) return []; const seen = flSeen()[e.id] || ''; return r.changes.filter((c) => c.at > seen); };
+function flView(e) {
+  const f = e.flight || {}, r = flRec(e), from = (r && r.from) || f.from || '', to = (r && r.to) || f.to || '';
+  const fa = AIRPORT[from] || [from, from, '', from], ta = AIRPORT[to] || [(r && r.toName) || to, (r && r.toName) || to, '', to];
+  const fromTz = (r && r.fromTz) || fa[2], toTz = (r && r.toTz) || ta[2];
+  const dep = r ? r.dep.act || r.dep.est || r.dep.sch : f.dep, arr = r ? r.arr.act || r.arr.est || r.arr.sch : f.arr;
+  const tzOf = (x, tz) => (r ? tz : ''); // the trip's own times carry their offset: read them as written
+  let st = 'none', label = '';
+  if (!f.no) label = 'Add the flight number to track it';
+  else if (!r) { const d0 = Date.parse(f.dep || ''); label = d0 && Date.now() < d0 - 864e5 ? 'Tracking starts a day before' : 'Waiting for the first check'; st = 'wait'; }
+  else if (r.missing) { label = 'Not found yet: check the flight number'; st = 'wait'; }
+  else {
+    st = r.st;
+    const toCity = ta[1] || to;
+    label = { ontime: 'On time', delayed: `Delayed ${r.delay || ''} min`.replace('  ', ' '), air: 'In the air', landed: `Landed ${flTime(r.arr.act || r.arr.est, toTz)}`, cancelled: 'Cancelled', diverted: `Diverted to ${toCity}` }[r.st] || 'Checking';
+    if (r.st === 'air' && arr) { const m = Math.round((Date.parse(arr) - Date.now()) / 6e4); if (m > 0) label += ` · lands in ${m >= 60 ? Math.floor(m / 60) + ' h ' : ''}${m % 60} min`; }
+  }
+  const cls = { ontime: 'ok', landed: 'ok', delayed: 'late', air: 'air', cancelled: 'bad', diverted: 'bad' }[st] || 'wait';
+  const past = r && (r.st === 'landed' || r.st === 'diverted') && !r.nextAt && arr && Date.now() > Date.parse(arr) + 3 * 3600e3;
+  return { f, r, from, to, fa, ta, fromTz, toTz, dep, arr, depT: flTime(dep, tzOf(dep, fromTz)), arrT: flTime(arr, tzOf(arr, toTz)), depD: flDay(dep, fromTz), arrD: flDay(arr, toTz), st, cls, label, past };
+}
+const pills = (people) => `<span class="nps">${(people || []).map((p) => `<span class="np" style="--p:${personColor(p)}">${esc(PNAME[p] || p)}</span>`).join('')}</span>`;
+const JP = ['NRT', 'HND', 'KIX', 'ITM', 'NGO', 'CTS', 'FUK', 'OKA'];
+function flightBand(e, n) {
+  const v = flView(e), landing = JP.includes(v.to) && !JP.includes(v.from); // into Japan: the landing time is the one that matters
+  return `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${landing ? `Lands ${esc(v.arrT || startTime(e.time) || '—')}` : `Flight · ${esc(v.depT || startTime(e.time) || '—')}`}${v.f.no ? ' · ' + esc(flNo(v.f.no)) : ''}</small><b>${esc(e.title)}</b><span class="flst ${v.cls}"><i></i>${esc(v.label)}</span></div>${pills(v.f.people)}<span class="tkic">${I.plane}</span></div>`;
+}
+function flightStrip(e) {
+  const v = flView(e), r = v.r; const un = flUnseen(e), was = (field) => un.filter((c) => c.field === field).pop();
+  const t = (field, val, tz) => { const c = was(field); return `<span class="${c ? 'chg' : ''}">${esc(val || '—')}</span>${c && c.from ? `<span class="was">Was ${esc(field === 'dep' || field === 'arr' ? flTime(c.from, tz) : c.from)}</span>` : ''}`; };
+  const fact = (lbl, field, val) => { const c = field && was(field); return `<div class="flf ${c ? 'chg' : ''}"><span class="fll">${lbl}</span><b>${c && c.from ? `<s>${esc(c.from)}</s>` : ''}${esc(val || '—')}</b></div>`; };
+  const route = v.from && v.to ? `<div class="route"><div><small>From</small><span class="flc">${esc(v.from)}</span><b>${esc(v.fa[0])}</b></div><span class="arr">${I.arrow}</span><div class="flto"><small>To</small><span class="flc">${esc(v.to)}</span><b>${esc(v.ta[0])}</b></div></div>` : '';
+  const checked = r && r.checkedAt ? (() => { const m = Math.max(0, Math.round((Date.now() - Date.parse(r.checkedAt)) / 6e4)); return `Checked ${m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago'}`; })() : '';
+  return `${route}<div class="flive"><div class="flh"><span class="flpill ${v.cls}"><i></i>${esc(v.label)}</span>${v.f.no ? `<b class="flno">${esc(flNo(v.f.no))}</b>` : ''}<span class="flck">${checked}</span></div>
+    ${v.dep || v.arr ? `<div class="fltimes"><div><span class="fll">Takes off</span><span class="flt">${t('dep', v.depT, v.fromTz)}</span><span class="flz">${esc(v.fa[3] || v.from)} time${v.depD ? ' · ' + esc(v.depD) : ''}</span></div>
+      <div><span class="fll">Lands</span><span class="flt">${t('arr', v.arrT, v.toTz)}</span><span class="flz">${esc(v.ta[3] || v.to)} time${v.arrD ? ' · ' + esc(v.arrD) : ''}</span></div></div>` : ''}
+    ${r && !r.missing ? `<div class="flfacts">${fact('Gate', 'gate', r.gate)}${fact('Lands at', 'arrTerm', r.arrTerm ? 'T' + String(r.arrTerm).replace(/^T/i, '') : '')}${fact('Bags', 'belt', r.belt ? 'Belt ' + r.belt : '')}</div>` : ''}
+    ${r && r.st === 'cancelled' ? '<p class="flnote bad">Cancelled by the airline. Check their app or email for the new booking.</p>' : ''}${r && r.st === 'diverted' ? `<p class="flnote bad">Now landing at ${esc(v.ta[0])}.</p>` : ''}</div>`;
+}
+// the newest change nobody on this phone has seen yet, on any of the day's flights
+function flightBanner() {
+  const un = events.filter((e) => e.flight).flatMap((e) => flUnseen(e).map((c) => ({ ...c, id: e.id }))).sort((a, b) => (a.at < b.at ? 1 : -1));
+  if (!un.length) return '';
+  const c = un[0], tone = c.kind === 'cancel' ? 'bad' : c.kind === 'landed' ? 'good' : '';
+  return `<div class="flban ${tone}" role="status">${I.plane}<div><b>Flight update${un.length > 1 ? `s · ${un.length}` : ''}</b>${esc(c.text)}</div><button class="press" data-flseen>Got it</button></div>`;
 }
 
 /* ═══ render: sheet ═══ */
@@ -774,6 +873,12 @@ function passHTML(e, i) {
     <div class="acts">${e.place ? `<a class="a-dir press" href="${gmDir(e.place, e.travel && e.travel.mode)}" target="_blank" rel="noopener">${I.dir}Directions</a>` : ''}<button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>
     ${pi && pi.credit && !tk && !cover ? `<p class="credit">Photo${pi.area ? ` (${esc(pi.area)})` : ''}: <a href="${esc(pi.file)}" target="_blank" rel="noopener">${esc(pi.credit)}</a></p>` : ''}</div>`;
   const nav = `<div class="pnav"><button class="st" data-step="-1" ${events.length < 2 ? 'disabled' : ''} aria-label="Previous stop">${I.chevL}</button><div class="mid">${pi && pi.key ? `<button class="keyp" data-story="${e.id}"><span>${esc(pi.key)}</span>${pi.story ? '<i>Read the story</i>' : ''}</button>` : `<span class="cnt">${i + 1} of ${events.length}</span>`}</div><button class="st" data-step="1" ${events.length < 2 ? 'disabled' : ''} aria-label="Next stop">${I.chevR}</button></div>`;
+  if (e.flight) {
+    const v = flView(e);
+    const fbody = `<div class="body">${flightStrip(e)}${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
+      <div class="acts"><button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div></div>`;
+    return `<article class="pass tk fl ${d ? 'done' : ''} ${v.past ? 'flpast' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${legHex(e)}">${nav}${flightBand(e, n)}${fbody}<div class="hanko" aria-hidden="true">済</div></article>`;
+  }
   const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}</small><b>${esc(e.title)}</b></div>${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
   const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}</small><b>${esc(e.title)}</b></div></div></div>`;
   return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}<div class="hanko" aria-hidden="true">済</div></article>`;
@@ -793,7 +898,7 @@ function renderSheet(enter) {
   const know = (KNOW[day.city] || []).map(([t, x]) => `<div class="card"><small>${esc(day.city)}</small><h3>${esc(t)}</h3><p>${withFx(x)}</p></div>`).join('');
   const hpi = PLACES[h0.name] || {};
   sh.innerHTML = `<div class="${enter === 'rise' ? 'fadein' : enter ? 'dayin ' + enter : ''}"><div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
-    <div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
+    ${flightBanner()}<div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
     <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
     ${know ? `<p class="sec">Good to know in ${esc(day.city)}</p><div class="know">${know}</div>` : ''}
@@ -1110,7 +1215,7 @@ function openEditor(opts) {
   const sp0 = it ? span(it) : null;
   const refPlace = (() => { const d = f.d || DAYS.find((x) => x.id === opts.dayId); const evs = dayItems(d, { who: 'all' }).filter((x) => x.type === 'event'); const k = evs.findIndex((x) => x.id === opts.after); for (let j = k; j >= 0; j--) if (evs[j] && evs[j].place) return evs[j].place; const h = HOTELS.find((x) => x.id === d.hotel); return h; })();
   edState = { ...opts, dayId: (f.d && f.d.id) || opts.dayId, it, orig, title: it ? it.title : '', start: sp0 ? sp0[0] : null, end: sp0 && it && /[–-]/.test(it.time || '') ? sp0[1] : null,
-    who: it ? it.who || 'all' : ui.who, cat: it ? catOf(it).key : null, place: it ? it.place || null : null, desc: it ? it.desc || '' : '', cost: it ? it.cost || '' : '', more: opts.mode === 'edit', results: null, ref: refPlace, msg: '', info: it ? it._info || null : null, fill: null, filledFor: '', catSet: false };
+    who: it ? it.who || 'all' : ui.who, cat: it ? catOf(it).key : null, flightNo: it && it.flight ? it.flight.no || '' : '', isFlight: !!(it && it.flight), place: it ? it.place || null : null, desc: it ? it.desc || '' : '', cost: it ? it.cost || '' : '', more: opts.mode === 'edit', results: null, ref: refPlace, msg: '', info: it ? it._info || null : null, fill: null, filledFor: '', catSet: false };
   edState.t0 = { start: edState.start, end: edState.end };
   renderEditor(); scrim.style.zIndex = 970; scrim.classList.add('on'); EY.set(innerHeight); EY.to(0, { response: 0.42, damping: 0.88 });
 }
@@ -1227,6 +1332,7 @@ function renderEditor() {
   b.innerHTML = `<div class="ed-h"><b>${adding ? 'Add a stop' : 'Edit stop'}</b><button data-edx>Cancel</button></div>
     <label class="fld"><span>Name</span><input id="f-title" value="${esc(s0.title)}" placeholder="e.g. Coffee at % Arabica" autocomplete="off"></label>${fillRow(s0)}
     <div class="row2"><label class="fld"><span>Start</span><input id="f-start" type="time" value="${toHM(s0.start)}"></label><label class="fld"><span>End (optional)</span><input id="f-end" type="time" value="${toHM(s0.end)}"></label></div>
+    ${s0.isFlight || s0.more ? `<label class="fld"><span>Flight number${s0.isFlight ? '' : ' (optional)'}</span><input id="f-flight" value="${esc(flNo(s0.flightNo))}" placeholder="e.g. QR 808" autocomplete="off" autocapitalize="characters"><small class="fhint">Typed in, the flight is tracked: delays, gate, landing and bags show on this stop.</small></label>` : ''}
     <div class="fld"><span>Who's going</span><div class="seg" id="f-who">${whoB}<i></i></div></div>
     <div class="fld"><span>Place (optional)</span>${s0.place ? `<div class="pcur">${I.pin2}<span>${esc(s0.place.name)}</span><button data-fclear>Remove</button></div>` : ''}
       <input id="f-q" placeholder="${s0.place ? 'Search to change the place' : 'Search a place, shop or address'}" autocomplete="off"><div class="pres">${res}</div><button class="here" data-fhere>${I.pin2}Use where I am now</button></div>
@@ -1240,7 +1346,7 @@ function renderEditor() {
     <p class="edmsg">${esc(s0.msg || 'Changes are shared with all four of you.')}</p><div style="height:8px"></div>`;
   moveSeg(b.querySelector('#f-who'));
 }
-function readForm() { const g = (id) => document.getElementById(id); edState.title = g('f-title').value.trim(); edState.start = fromHM(g('f-start').value); edState.end = fromHM(g('f-end').value); if (g('f-desc')) edState.desc = g('f-desc').value; if (g('f-cost')) edState.cost = g('f-cost').value; }
+function readForm() { const g = (id) => document.getElementById(id); edState.title = g('f-title').value.trim(); edState.start = fromHM(g('f-start').value); edState.end = fromHM(g('f-end').value); if (g('f-desc')) edState.desc = g('f-desc').value; if (g('f-cost')) edState.cost = g('f-cost').value; if (g('f-flight')) edState.flightNo = g('f-flight').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); }
 async function searchPlaces(q) {
   edState.results = 'loading'; renderEditor(); const keep = document.getElementById('f-q'); keep.value = q; keep.focus();
   const r0 = edState.ref || {}; const vb = r0.lat ? `&viewbox=${r0.lng - 0.25},${r0.lat + 0.2},${r0.lng + 0.25},${r0.lat - 0.2}` : '';
@@ -1256,7 +1362,7 @@ function saveEditor() {
   if (s0.mode === 'add' || (s0.it && s0.it._added)) {
     const id = s0.mode === 'add' ? 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : s0.it.id;
     const prev = s0.mode === 'add' ? {} : CUSTOM()[id] || {};
-    store.setCustom(id, { ...prev, added: true, day: s0.dayId, after: s0.mode === 'add' ? s0.after || null : prev.after ?? null, title: s0.title, time: fmtRange(s0.start, s0.end), who: s0.who, cat: s0.cat || (s0.place ? 'sight' : 'plan'), place: s0.place, desc: s0.desc || '', cost: s0.cost || '', info: s0.info || null });
+    store.setCustom(id, { ...prev, added: true, day: s0.dayId, after: s0.mode === 'add' ? s0.after || null : prev.after ?? null, title: s0.title, time: fmtRange(s0.start, s0.end), who: s0.who, cat: s0.cat || (s0.place ? 'sight' : 'plan'), place: s0.place, desc: s0.desc || '', cost: s0.cost || '', info: s0.info || null, ...(s0.flightNo ? { flight: { no: s0.flightNo } } : { flight: undefined }) });
     // "type the name, tap Add stop": the rest fills in on the saved stop when it arrives
     s0.savedId = id; s0.savedTime = fmtRange(s0.start, s0.end); s0.savedCat = s0.cat || (s0.place ? 'sight' : 'plan');
     if (s0.fill && s0.fill.busy) FILLING.add(id); else if (s0.mode === 'add' && canAutoFill(s0)) { FILLING.add(id); runFill(s0, true); }
@@ -1266,6 +1372,8 @@ function saveEditor() {
   const set = (k, v, ov) => { if (v === ov || (v === '' && ov == null)) delete patch[k]; else patch[k] = v; };
   set('title', s0.title, o.title); set('desc', s0.desc, o.desc || ''); set('cost', s0.cost, o.cost || ''); set('who', s0.who, o.who || 'all');
   if (timeChanged) patch.time = fmtRange(s0.start, s0.end); 
+  const origNo = ((o.flight || {}).no || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if ((s0.flightNo || '') !== origNo && (s0.isFlight || s0.flightNo)) patch.flight = { no: s0.flightNo || '' }; else delete patch.flight;
   if (s0.cat !== catOf(o).key) patch.cat = s0.cat; else delete patch.cat;
   const samePlace = (a, b) => (!a && !b) || (a && b && a.name === b.name && a.lat === b.lat && a.lng === b.lng);
   if (samePlace(s0.place, o.place)) delete patch.place; else patch.place = s0.place ? { name: s0.place.name, lat: s0.place.lat, lng: s0.place.lng } : null;
@@ -1381,6 +1489,7 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   const j = e.target.closest('[data-jp]'); if (j) { showPhrases(j.dataset.jp); return; }
   const sy = e.target.closest('[data-story]'); if (sy) { const card = document.getElementById('p-' + sy.dataset.story); card.classList.toggle('storyon'); stackApi.layout(false); return; }
   const ed = e.target.closest('[data-edit]'); if (ed) { openEditor({ mode: 'edit', id: ed.dataset.edit }); return; }
+  if (e.target.closest('[data-flseen]')) { const seen = flSeen(); for (const x of events) { const r = flRec(x); if (r && r.changes && r.changes[0]) seen[x.id] = r.changes[0].at; } ls.set('japan2026.flightSeen', seen); renderDay({ keepScroll: true, keepSel: true }); return; }
   if (e.target.closest('#addgap')) { openEditor({ mode: 'add', dayId: day.id, after: ui.sel }); return; }
   if (e.target.closest('[data-addend]')) { openEditor({ mode: 'add', dayId: day.id, after: events.length ? events[events.length - 1].id : null }); return; }
   if (e.target.closest('#gear')) { openSettings(); return; }
@@ -1394,7 +1503,7 @@ let swiped = false;
   document.getElementById('sheet').addEventListener('pointerdown', (e) => { const card = e.target.closest('.pass.open'); if (!card || e.target.closest('a,button')) return; sw = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; });
   const end = (e) => { if (!sw || e.pointerId !== sw.id) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y, v = Math.abs(dx) / Math.max(1, performance.now() - sw.t); sw = null; if (Math.abs(dx) > Math.abs(dy) * 1.6 && (Math.abs(dx) > 60 || (Math.abs(dx) > 25 && v > 0.5))) { swiped = true; setTimeout(() => (swiped = false), 80); step(dx < 0 ? 1 : -1); } };
   window.addEventListener('pointerup', end); window.addEventListener('pointercancel', () => (sw = null)); }
-const customSig = () => JSON.stringify([Object.entries(CUSTOM()).map(([k, v]) => [k, { ...v, ts: undefined }]).sort(), store.state.covers || {}]);
+const customSig = () => JSON.stringify([Object.entries(CUSTOM()).map(([k, v]) => [k, { ...v, ts: undefined }]).sort(), store.state.covers || {}, store.state.flights || {}]); // new flight news redraws the stops too
 let lastSig = customSig();
 store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig !== lastSig) { lastSig = sig; renderDay({ keepScroll: true, keepSel: true }); if (setp.classList.contains('on')) renderSettings(); return; } stackApi.refresh(); dialApi.refresh(); syncPins(); });
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });
