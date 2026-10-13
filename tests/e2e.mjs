@@ -872,6 +872,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   fl = (await (await onRequest({ request: new Request(B + '/api/state'), env: ENV })).json()).flights;
   ok('after landing with the belt known, Mo\'s flight is not checked again', fl['d06-mo-land'].st === 'landed' && fl['d06-mo-land'].belt === '7' && fl['d06-mo-land'].nextAt === null);
   const first = F.changesOf(mo, { st: 'ontime', gate: '', term: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, { st: 'ontime', gate: 'A4', term: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, Date.now());
+  const firstT = F.changesOf(mo, { st: 'ontime', arrTerm: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, { st: 'ontime', arrTerm: '2', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, Date.now());
+  ok('so is a landing terminal given for the first time', firstT.length === 1 && firstT[0].field === 'arrTerm' && /lands at terminal 2\./.test(firstT[0].text), JSON.stringify(firstT));
   ok('a gate given for the first time is a gate alert too', first.length === 1 && first[0].kind === 'gate' && /leaves from gate A4\./.test(first[0].text), JSON.stringify(first));
   const arrLate = F.fromFlightAware(qr({ estimated_in: '2026-10-21T04:40:00Z', arrival_delay: 2700 }), mo);
   ok('a flight late only on arrival says by how much', arrLate.st === 'delayed' && arrLate.delay === 45, JSON.stringify([arrLate.st, arrLate.delay]));

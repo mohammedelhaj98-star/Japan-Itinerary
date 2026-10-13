@@ -150,7 +150,7 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .alon { flex:none; min-height:36px; padding:0 14px; border-radius:999px; background:var(--ink); color:#fff; font-size:13.5px; font-weight:700; }
 .alon.is { background:#e6f4ea; color:#1f7a45; }
 .alon:disabled { opacity:.4; }
-.agrid { display:grid; grid-template-columns:1fr repeat(4, 48px); margin-top:4px; }
+.agrid { display:grid; grid-template-columns:1fr repeat(2, 64px); margin-top:4px; }
 .agrid .h { font-size:12.5px; font-weight:700; text-align:center; padding-bottom:6px; align-self:end; }
 .agrid .k { display:flex; flex-direction:column; justify-content:center; padding:10px 0; border-top:1px solid var(--line); font-size:14.5px; line-height:1.3; }
 .agrid .k small { font-size:12px; color:var(--ink3); }
@@ -723,7 +723,8 @@ const AL_KINDS = [['delay', 'Delays', '15 min or more'], ['gate', 'Gate or termi
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const al = { install: null, home: ls.get('japan2026.homeDone', false), on: ls.get('japan2026.alertsOn', false), busy: false, msg: '', key: undefined, tracking: false,
-  prefs: (() => { const p = ls.get('japan2026.alerts', {}); return Object.fromEntries(PEOPLE.map((x) => [x.id, Object.fromEntries(AL_KINDS.map(([k]) => [k, !(p[x.id] && p[x.id][k] === false)]))])); })() };
+  // chosen by couple (Mo's call: the tickets name each person, Settings goes by couple); the server keeps it per person
+  prefs: (() => { const p = ls.get('japan2026.alertsByCouple', {}); return Object.fromEntries(Object.keys(COUPLES).map((c) => [c, Object.fromEntries(AL_KINDS.map(([k]) => [k, !(p[c] && p[c][k] === false)]))])); })() };
 addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); al.install = e; if (tab === 4 && !sub) render(); });
 addEventListener('appinstalled', () => { al.home = true; ls.set('japan2026.homeDone', true); if (tab === 4 && !sub) render(); });
 const PUSH_OK = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -749,14 +750,14 @@ function alertsCard() {
   if (!PUSH_OK) { btn = ''; line = IOS && !STANDALONE ? 'Add the trip to your Home Screen first, then open it from there.' : "This browser can't show alerts."; }
   else if (!al.key) { btn = '<button class="alon" disabled>Turn on</button>'; line = 'Alerts switch on once the flight service is connected.'; }
   else { btn = `<button class="alon ${al.on ? 'is' : ''} press" data-alerts ${al.busy ? 'disabled' : ''}>${al.busy ? '…' : al.on ? 'On' : 'Turn on'}</button>`; line = al.on ? `On for ${P[ME] ? P[ME].name : 'this phone'}. Tap to turn off.` : 'Off until you allow them.'; }
-  const grid = AL_KINDS.map(([k, t, sm]) => `<div class="k">${t}${sm ? `<small>${sm}</small>` : ''}</div>${PEOPLE.map((p) => `<div class="c"><button class="asw" style="--p:${p.c}" role="switch" aria-checked="${al.prefs[p.id][k]}" aria-label="${t} for ${p.name}" data-alpref="${p.id}:${k}"></button></div>`).join('')}`).join('');
+  const grid = AL_KINDS.map(([k, t, sm]) => `<div class="k">${t}${sm ? `<small>${sm}</small>` : ''}</div>${Object.entries(COUPLES).map(([id, c]) => `<div class="c"><button class="asw" style="--p:${c.c}" role="switch" aria-checked="${al.prefs[id][k]}" aria-label="${t} for ${esc(c.name)}" data-alpref="${id}:${k}"></button></div>`).join('')}`).join('');
   return `<div class="card scard"><div class="setrow"><span>Alerts on this phone<small>${line}</small></span>${btn}</div>
-    <p class="alsub">Alerts for whose flights:</p><div class="agrid"><span></span>${PEOPLE.map((p) => `<span class="h" style="color:${p.c}">${p.name}</span>`).join('')}${grid}</div>
-    ${al.msg ? `<p class="almsg">${esc(al.msg)}</p>` : ''}<p class="alsub">Each phone picks its own. A flight with two people you follow sends one alert.</p></div>`;
+    <p class="alsub">Alerts for whose flights:</p><div class="agrid"><span></span>${Object.values(COUPLES).map((c) => `<span class="h" style="color:${c.c}">${esc(c.name)}</span>`).join('')}${grid}</div>
+    ${al.msg ? `<p class="almsg">${esc(al.msg)}</p>` : ''}<p class="alsub">Each phone picks its own. A flight with people from both couples sends one alert.</p></div>`;
 }
 const urlKey = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
 async function pushReg() { const r = await navigator.serviceWorker.register('../sw.js', { scope: '../' }); await navigator.serviceWorker.ready; return r; }
-async function sendPrefs(subJson) { await store.api('push', { id: deviceId(), sub: subJson, prefs: al.prefs }); }
+async function sendPrefs(subJson) { const prefs = {}; for (const [c, x] of Object.entries(COUPLES)) for (const id of x.ids) prefs[id] = al.prefs[c]; await store.api('push', { id: deviceId(), sub: subJson, prefs }); }
 async function toggleAlerts() {
   al.busy = true; al.msg = ''; render();
   try {
@@ -771,7 +772,7 @@ async function toggleAlerts() {
   ls.set('japan2026.alertsOn', al.on); al.busy = false; render();
 }
 async function setAlertPref(pid, k) {
-  al.prefs[pid][k] = !al.prefs[pid][k]; ls.set('japan2026.alerts', al.prefs); render();
+  al.prefs[pid][k] = !al.prefs[pid][k]; ls.set('japan2026.alertsByCouple', al.prefs); render();
   if (!al.on || !PUSH_OK) return;
   try { const reg = await pushReg(); const s0 = await reg.pushManager.getSubscription(); if (s0) await sendPrefs(s0.toJSON()); } catch { al.msg = "Couldn't save that change. Try again with signal."; render(); }
 }

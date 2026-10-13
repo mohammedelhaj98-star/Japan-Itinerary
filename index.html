@@ -724,7 +724,7 @@ function dayItems(d, { who = ui.who, withHidden = false } = {}) {
   const patch = (it) => { const c = C[it.id]; if (it.type !== 'event' || !c || c.added) return it; const o = { ...it, _orig: it, _edited: Object.keys(c).some((k) => k !== 'hidden' && k !== 'ts') };
     for (const k of ['title', 'time', 'desc', 'cost', 'who']) if (c[k] != null) o[k] = c[k];
     if ('place' in c) o.place = c.place ? { ...c.place, q: c.place.name } : null;
-    if (c.cat) o.tags = [c.cat]; if (c.hidden) o.hidden = true; if (c.flight) o.flight = { ...(it.flight || {}), ...c.flight }; return o; };
+    if (c.cat) o.tags = [c.cat]; if (c.hidden) o.hidden = true; if (c.flight) { const n0 = (x) => String((x && x.no) || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); o.flight = it.flight && n0(it.flight) && n0(c.flight) !== n0(it.flight) ? { people: it.flight.people, ...c.flight } : { ...(it.flight || {}), ...c.flight }; } /* a different number: the old flight's airports and times don't apply (as on the server) */ return o; };
   const items = [];
   for (const raw of d.items) {
     if (raw.type === 'choice') { if (!allowed(raw)) continue; const id = store.getChoice(raw.id, raw.default); const o = raw.options.find((x) => x.id === id) || raw.options[0]; items.push(raw); (o.items || []).map(patch).filter(allowed).forEach((x) => items.push(x)); }
