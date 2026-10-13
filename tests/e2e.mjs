@@ -800,7 +800,10 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const H = 3600e3, mo = F.tripFlights({}).find((f) => f.id === 'd06-mo-land');
   ok('the trip knows its flights: Mo\'s QR 808 and Mariam\'s three legs, each with who is on it', mo && mo.no === 'QR808' && mo.people.join() === 'm' && ['d06-mariam-land', 'd17-mo', 'd17-mariam', 'd17-mariam-yvr'].every((id) => F.tripFlights({}).some((f) => f.id === id)), JSON.stringify(F.tripFlights({}).map((f) => f.id + ':' + f.no)));
   const typed = F.tripFlights({ 'd01-land': { flight: { no: 'ac 1' } }, x1: { added: true, day: 'd03', who: 'nasa', flight: { no: 'NH 10' } } });
-  ok('a flight number typed into a stop is tracked, on the trip\'s stops and on added ones', typed.some((f) => f.id === 'd01-land' && f.no === 'AC1' && f.people.join() === 'naf,sara') && typed.some((f) => f.id === 'x1' && f.no === 'NH10'));
+  ok('a flight number typed into a stop is tracked, on the trip\'s stops and on added ones', typed.some((f) => f.id === 'd01-land' && f.no === 'AC1' && f.people.join() === 'naf,sara' && f.to === 'NRT' && f.arr === '2026-10-16T16:10+09:00') && typed.some((f) => f.id === 'x1' && f.no === 'NH10'));
+  const nasa = typed.find((f) => f.id === 'd01-land'), urls = [], grab = async (u) => { urls.push(u); return new Response('[]', { status: 200 }); };
+  await F.fetchAeroDataBox(nasa, 'k', grab); await F.fetchFlightAware(nasa, 'k', async (u) => { urls.push(u); return new Response('{"flights":[]}', { status: 200 }); });
+  ok('a flight that only knows when it lands is looked up by its landing (it left the day before)', /\/AC1\/2026-10-16\?.*dateLocalRole=Arrival/.test(urls[0]) && /start=2026-10-15T01:10:00Z&end=2026-10-17T13:10:00Z/.test(urls[1]), urls.join(' | '));
   const dep = Date.parse(mo.dep);
   ok('checks: none until a day before, hourly until 3 h before, then every 5 minutes, and done once landed with the belt',
     F.nextCheck(mo, null, dep - 30 * H) === dep - 24 * H && F.nextCheck(mo, { dep: {}, arr: {}, checkedAt: new Date(dep - 10 * H).toISOString() }, dep - 10 * H + 1) === dep - 9 * H
@@ -829,8 +832,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const st0 = await (await onRequest({ request: new Request(B + '/api/state', { headers: { 'x-trip-pin': PIN } }), env: ENV })).json();
   ok('two phones turn alerts on (phone two skips Mo\'s delays); subscriptions are never sent to phones', r1.status === 200 && r2.status === 200 && k1.tracking === true && !('push' in st0) && !JSON.stringify(st0).includes('push.example.com'));
   // the push service: records what it was sent, and says phone one has unsubscribed when told to
-  const sent = []; let gone1 = false;
-  DO_ENV.PUSH_FETCH = async (url, init) => { sent.push({ url, init }); return new Response('', { status: gone1 && url.includes('phone1') ? 410 : 201 }); };
+  const sent = []; let gone1 = false, busy = 1; DO_ENV.PUSH_RETRY_MS = 10;
+  DO_ENV.PUSH_FETCH = async (url, init) => { if (busy && url.includes('phone2')) { busy--; return new Response('', { status: 503 }); } sent.push({ url, init }); return new Response('', { status: gone1 && url.includes('phone1') ? 410 : 201 }); };
   const open = async (h, init) => { // what the phone itself does with an alert: decrypt it (RFC 8291)
     const b = new Uint8Array(init.body), salt = b.slice(0, 16), asPub = b.slice(21, 21 + b[20]), sealed = b.slice(21 + b[20]), S = crypto.webcrypto.subtle;
     const asKey = await S.importKey('raw', asPub, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
@@ -856,7 +859,7 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('a delay and a gate change are kept with what they were before, for the stop to show', rec.st === 'delayed' && rec.delay === 50 && kinds.includes('delay:arr') && kinds.includes('gate:gate') && rec.changes.find((c) => c.field === 'gate').from === 'C12', JSON.stringify(kinds));
   const to1 = sent.filter((x) => x.url.includes('phone1')), to2 = sent.filter((x) => x.url.includes('phone2'));
   const m1 = await Promise.all(to1.map((x) => open(h1, x.init))), m2 = await Promise.all(to2.map((x) => open(h2, x.init)));
-  ok('phone one gets both alerts; phone two (no delays for Mo) only the gate', t2.alerts === 2 && m1.length === 2 && m2.length === 1 && m1.some((m) => /Mo's flight QR 808 is running late\. Now lands 1:40 PM Narita time/.test(m.body)) && /gate C20 \(was C12\)/.test(m2[0].body), JSON.stringify([t2, m1.map((m) => m.body), m2.map((m) => m.body)]));
+  ok('phone one gets both alerts; phone two (no delays for Mo) only the gate, sent again after the push service was busy', t2.alerts === 2 && m1.length === 2 && m2.length === 1 && m1.some((m) => /Mo's flight QR 808 is running late\. Now lands 1:40 PM Narita time/.test(m.body)) && /gate C20 \(was C12\)/.test(m2[0].body), JSON.stringify([t2, m1.map((m) => m.body), m2.map((m) => m.body)]));
   const auth = to1[0].init.headers.authorization, [, jwt, pk] = /^vapid t=([^,]+), k=(.+)$/.exec(auth) || [];
   const [hd, bd, sg] = (jwt || '..').split('.');
   const good = jwt && await crypto.webcrypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, vp.publicKey, W.unb64u(sg), new TextEncoder().encode(hd + '.' + bd));
@@ -868,6 +871,12 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('landing with the belt alerts, and a phone the push service says is gone is forgotten', t3.alerts === 1 && sent.length === 2 && subsLeft.join() === 'phone-two', JSON.stringify([t3, subsLeft]));
   fl = (await (await onRequest({ request: new Request(B + '/api/state'), env: ENV })).json()).flights;
   ok('after landing with the belt known, Mo\'s flight is not checked again', fl['d06-mo-land'].st === 'landed' && fl['d06-mo-land'].belt === '7' && fl['d06-mo-land'].nextAt === null);
+  const first = F.changesOf(mo, { st: 'ontime', gate: '', term: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, { st: 'ontime', gate: 'A4', term: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, Date.now());
+  const firstT = F.changesOf(mo, { st: 'ontime', arrTerm: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, { st: 'ontime', arrTerm: '2', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, Date.now());
+  ok('so is a landing terminal given for the first time', firstT.length === 1 && firstT[0].field === 'arrTerm' && /lands at terminal 2\./.test(firstT[0].text), JSON.stringify(firstT));
+  ok('a gate given for the first time is a gate alert too', first.length === 1 && first[0].kind === 'gate' && /leaves from gate A4\./.test(first[0].text), JSON.stringify(first));
+  const arrLate = F.fromFlightAware(qr({ estimated_in: '2026-10-21T04:40:00Z', arrival_delay: 2700 }), mo);
+  ok('a flight late only on arrival says by how much', arrLate.st === 'delayed' && arrLate.delay === 45, JSON.stringify([arrLate.st, arrLate.delay]));
   // AeroDataBox reads into the same shape, should FlightAware not be there
   const adb = F.fromAeroDataBox({ status: 'EnRoute', departure: { airport: { iata: 'YYZ', timeZone: 'America/Toronto' }, scheduledTime: { utc: '2026-10-20 17:25Z' }, revisedTime: { utc: '2026-10-20 17:40Z' }, runwayTime: { utc: '2026-10-20 17:52Z' }, terminal: '1', gate: 'E75' }, arrival: { airport: { iata: 'NRT', timeZone: 'Asia/Tokyo', municipalityName: 'Tokyo' }, scheduledTime: { utc: '2026-10-21 06:50Z' }, predictedTime: { utc: '2026-10-21 06:58Z' }, terminal: '1' } }, { to: 'NRT' });
   ok('AeroDataBox answers read the same way (the stand-in service)', adb.st === 'air' && adb.gate === 'E75' && adb.dep.act === '2026-10-20T17:52:00.000Z' && adb.arr.est === '2026-10-21T06:58:00.000Z' && adb.toTz === 'Asia/Tokyo', JSON.stringify(adb));
@@ -881,7 +890,7 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await P.page.screenshot({ path: SH + 'flights-day6.png' });
   ok('no page errors on the flight phone', !P.errs.length, P.errs.join(' | '));
   await P.ctx.close();
-  for (const k of ['FLIGHT_FETCH', 'FLIGHTAWARE_KEY', 'PUSH_FETCH', 'VAPID_PUBLIC', 'VAPID_PRIVATE']) delete DO_ENV[k];
+  for (const k of ['FLIGHT_FETCH', 'FLIGHTAWARE_KEY', 'PUSH_FETCH', 'PUSH_RETRY_MS', 'VAPID_PUBLIC', 'VAPID_PRIVATE']) delete DO_ENV[k];
 }
 // 16 · trains and M&M's nights away: tickets with car, seats and reservation; a booking waiting on its confirmation
 // gets "Mark as booked" (the Bookings page's own shared choice); a price goes to the Money page with "Add to expenses"
