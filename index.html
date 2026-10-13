@@ -836,7 +836,7 @@ function flightStrip(e) {
   return `${route}<div class="flive"><div class="flh"><span class="flpill ${v.cls}"><i></i>${esc(v.label)}</span>${v.f.no ? `<b class="flno">${esc(flNo(v.f.no))}</b>` : ''}<span class="flck">${checked}</span></div>
     ${v.dep || v.arr ? `<div class="fltimes"><div><span class="fll">Takes off</span><span class="flt">${t('dep', v.depT, v.fromTz)}</span><span class="flz">${esc(v.fa[3] || v.from)} time${v.depD ? ' · ' + esc(v.depD) : ''}</span></div>
       <div><span class="fll">Lands</span><span class="flt">${t('arr', v.arrT, v.toTz)}</span><span class="flz">${esc(v.ta[3] || v.to)} time${v.arrD ? ' · ' + esc(v.arrD) : ''}</span></div></div>` : ''}
-    ${r && !r.missing ? `<div class="flfacts">${fact('Gate', 'gate', r.gate)}${fact('Lands at', 'arrTerm', r.arrTerm ? 'T' + String(r.arrTerm).replace(/^T/i, '') : '')}${fact('Bags', 'belt', r.belt ? 'Belt ' + r.belt : '')}</div>` : ''}
+    ${r && !r.missing ? `<div class="flfacts">${fact(r.term ? 'Term · gate' : 'Gate', was('term') && !was('gate') ? 'term' : 'gate', [r.term ? 'T' + String(r.term).replace(/^T/i, '') : '', r.gate].filter(Boolean).join(' · '))}${fact('Lands at', 'arrTerm', r.arrTerm ? 'T' + String(r.arrTerm).replace(/^T/i, '') : '')}${fact('Bags', 'belt', r.belt ? 'Belt ' + r.belt : '')}</div>` : ''}
     ${r && r.st === 'cancelled' ? '<p class="flnote bad">Cancelled by the airline. Check their app or email for the new booking.</p>' : ''}${r && r.st === 'diverted' ? `<p class="flnote bad">Now landing at ${esc(v.ta[0])}.</p>` : ''}</div>`;
 }
 // the newest change nobody on this phone has seen yet, on any of the day's flights

@@ -749,7 +749,7 @@ function alertsCard() {
   let btn, line;
   if (!PUSH_OK) { btn = ''; line = IOS && !STANDALONE ? 'Add the trip to your Home Screen first, then open it from there.' : "This browser can't show alerts."; }
   else if (!al.key) { btn = '<button class="alon" disabled>Turn on</button>'; line = 'Alerts switch on once the flight service is connected.'; }
-  else { btn = `<button class="alon ${al.on ? 'is' : ''} press" data-alerts ${al.busy ? 'disabled' : ''}>${al.busy ? '…' : al.on ? 'On' : 'Turn on'}</button>`; line = al.on ? `On for ${P[ME] ? P[ME].name : 'this phone'}. Tap to turn off.` : 'Off until you allow them.'; }
+  else { btn = `<button class="alon ${al.on ? 'is' : ''} press" data-alerts ${al.busy ? 'disabled' : ''}>${al.busy ? '…' : al.on ? 'On' : 'Turn on'}</button>`; line = al.on ? `On for ${P[ME] ? P[ME].name : 'this phone'}. Tap to turn off.` : 'Off until you allow them.'; if (!al.tracking) line += ' Alerts start once the flight service is connected.'; }
   const grid = AL_KINDS.map(([k, t, sm]) => `<div class="k">${t}${sm ? `<small>${sm}</small>` : ''}</div>${Object.entries(COUPLES).map(([id, c]) => `<div class="c"><button class="asw" style="--p:${c.c}" role="switch" aria-checked="${al.prefs[id][k]}" aria-label="${t} for ${esc(c.name)}" data-alpref="${id}:${k}"></button></div>`).join('')}`).join('');
   return `<div class="card scard"><div class="setrow"><span>Alerts on this phone<small>${line}</small></span>${btn}</div>
     <p class="alsub">Alerts for whose flights:</p><div class="agrid"><span></span>${Object.values(COUPLES).map((c) => `<span class="h" style="color:${c.c}">${esc(c.name)}</span>`).join('')}${grid}</div>
