@@ -128,7 +128,7 @@ export function buildTripDocx({ TRIP, DAYS, HOTELS, BOOKINGS, FOOD, TIPS, state,
     const head = table([
       cell(p(r(`D${String(d.n).padStart(2, '0')}`, { b: true, c: 'F2C14E', sz: 30 }), { after: 0 }), NAVY, { w: 1600, pad: 140 }) +
       cell(p(r(dateHead, { b: true, c: 'FFFFFF', sz: 22 }), { after: 30 }) + (d.tagline ? p(r(`✦  ${d.tagline}`, { i: true, c: 'C8D3EA', sz: 16 }), { after: 0 }) : ''), NAVY, { w: FULL - 1600, pad: 140 }),
-      cell(p(r('Energy: ', { c: GREY, sz: 15 }) + r(d.energy || '', { b: true, c: RED, sz: 15 }) + r('   ·   Dinner: ', { c: GREY, sz: 15 }) + r(d.dinner || '', { sz: 15 }) + r('   ·   Hotel: ', { c: GREY, sz: 15 }) + r(h.name || '', { sz: 15 }) + (dayWho ? r(`   ·   ${whoTag(dayWho)}`, { b: true, c: dayWho === 'nasa' ? NAVY : RED, sz: 15 }) : ''), { after: 0 }), 'D9E2F3', { span: 2, pad: 60 }),
+      cell(p(r('Energy: ', { c: GREY, sz: 15 }) + r(d.energy || '', { b: true, c: RED, sz: 15 }) + r('   ·   Dinner: ', { c: GREY, sz: 15 }) + r(d.dinner || '', { sz: 15 }) + r('   ·   Hotel: ', { c: GREY, sz: 15 }) + r((h.name || '') + (d.mmHotel ? ` · M&M: ${hotelOf(d.mmHotel).name}` : ''), { sz: 15 }) + (dayWho ? r(`   ·   ${whoTag(dayWho)}`, { b: true, c: dayWho === 'nasa' ? NAVY : RED, sz: 15 }) : ''), { after: 0 }), 'D9E2F3', { span: 2, pad: 60 }),
     ], [1600, FULL - 1600]);
     b += gap(240) + head + gap(80);
     for (const it of items) {
@@ -140,9 +140,12 @@ export function buildTripDocx({ TRIP, DAYS, HOTELS, BOOKINGS, FOOD, TIPS, state,
         b += box(p(r(`${it.title.toUpperCase()}  `, { b: true, c: GOLD, sz: 16 }) + r(`Chosen: ${o.label}.`, { b: true, sz: 16 }) + (o.desc ? r(` ${o.desc}`, { i: true, sz: 16 }) : '') + (others.length ? r(`\nOther options: ${others.join(' · ')}`, { i: true, c: GREY, sz: 15 }) : ''), { after: 0 }), 'FFF8E1'); continue; }
       if (it.type !== 'event') continue;
       const w = it.who === dayWho ? '' : whoTag(it.who);
-      const flags = [it.confirmed ? r('  CONFIRMED', { b: true, c: GREEN, sz: 15 }) : '', it.tbd ? r('  TBD', { b: true, c: GOLD, sz: 15 }) : '', it.optional ? r('  (optional)', { i: true, c: GREY, sz: 15 }) : '', w ? r(`  [${w}]`, { b: true, c: it.who === 'nasa' ? NAVY : RED, sz: 15 }) : '',
+      const flags = [it.confirmed && !(it.ticket && it.ticket.pending && (st.choices || {})[it.ticket.pending.id] !== 'booked') ? r('  CONFIRMED', { b: true, c: GREEN, sz: 15 }) : '', it.tbd ? r('  TBD', { b: true, c: GOLD, sz: 15 }) : '', it.optional ? r('  (optional)', { i: true, c: GREY, sz: 15 }) : '', w ? r(`  [${w}]`, { b: true, c: it.who === 'nasa' ? NAVY : RED, sz: 15 }) : '',
         it._added ? r('  (added in the app)', { i: true, c: BLUE, sz: 15 }) : it._edited ? r('  (edited in the app)', { i: true, c: BLUE, sz: 15 }) : '', (st.checks || {})[it.id] ? r('  ✓ done', { b: true, c: GREEN, sz: 15 }) : ''].join('');
-      const desc = [it.desc, it.cost ? `Cost: ${it.cost}.` : '', it.travel && it.travel.label ? `Getting there: ${it.travel.label}.` : ''].filter(Boolean).join(' ');
+      // a booked train or hotel: the times, its car and seats, the reservation, the price, and whether it's still waiting
+      const t = it.ticket, pend = t && t.pending && (st.choices || {})[t.pending.id] !== 'booked';
+      const tkt = t ? [t.from && t.to ? `${t.from[1]} ${t.from[0]} → ${t.to[1]} ${t.to[0]}.` : '', ...(t.facts || []).map(([k, v]) => `${k}: ${v}.`), t.ref ? `Reservation: ${t.ref}.` : '', t.yen ? `¥${Number(t.yen).toLocaleString('en-US')}${t.yenNote ? ` (${t.yenNote})` : ''}.` : '', pend ? `${t.pending.label}.` : '', t.board && (!t.pending || pend) ? t.board : ''].filter(Boolean).join(' ') : '';
+      const desc = [it.desc, tkt, it.cost ? `Cost: ${it.cost}.` : '', it.travel && it.travel.label ? `Getting there: ${it.travel.label}.` : ''].filter(Boolean).join(' ');
       b += p(r(it.time || '', { b: true, c: BLUE }) + r(it.time ? '   ' : '') + r(it.title, { b: true }) + (desc ? r(`  —  ${desc}`) : '') + flags, { ind: 1300, hang: 1300, after: 70 });
     }
   }

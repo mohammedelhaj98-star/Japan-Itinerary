@@ -142,6 +142,7 @@ function cleanExpense(v) {
   const nights = int(v.nights, 1, 30); if (nights > 1) out.nights = nights;
   if (isP(v.by)) out.by = v.by;
   if (isP(v.editedBy)) out.editedBy = v.editedBy;
+  if (isId(v.src || '')) out.src = v.src; // added from a booking on a stop ("Add to expenses"): that stop's id
   if (stamp(v.at) != null) out.at = v.at;
   if (stamp(v.receipt) != null) out.receipt = v.receipt;
   // split by item: the receipt's lines and who had each (kept so the split can be changed later)

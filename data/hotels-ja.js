@@ -1,4 +1,5 @@
 // Official Japanese names, addresses and front-desk phones for the taxi cards (from each hotel's own site, Oct 2026).
+// M&M's two nights away: addresses from their bookings; Hotel in the Green's phone from its listings (Pasha Gran lists none).
 export const HOTEL_JA = {
  "sotetsu": {
   "ja": "相鉄グランドフレッサ 高田馬場",
@@ -27,5 +28,18 @@ export const HOTEL_JA = {
   "addr_ja": "東京都千代田区神田佐久間町1-8-3",
   "addr_en": "1-8-3 Kanda Sakuma-cho, Chiyoda-ku, Tokyo 101-0025",
   "phone": "03-3255-3311"
+ },
+ "green": {
+  "ja": "HOTEL in the Green",
+  "zip": "〒612-8449",
+  "addr_ja": "京都府京都市伏見区竹田西小屋ノ内町1",
+  "addr_en": "1 Takedanishi Koyanouchi-cho, Fushimi-ku, Kyoto 612-8449",
+  "phone": "075-621-1677"
+ },
+ "pasha": {
+  "ja": "HOTEL PASHA GRAN",
+  "zip": "〒110-0005",
+  "addr_ja": "東京都台東区上野2-12-14",
+  "addr_en": "2-12-14 Ueno, Taito-ku, Tokyo 110-0005"
  }
 };

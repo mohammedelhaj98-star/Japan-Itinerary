@@ -321,6 +321,50 @@ body.mapmax .mapmax-hint { display:block; }
 .flban button { flex:none; height:32px; padding:0 12px; border-radius:999px; background:rgba(0,0,0,.07); font-size:13px; font-weight:700; }
 .fhint { display:block; font-size:12.5px; color:var(--ink3); margin-top:4px; }
 @media (prefers-reduced-motion: reduce) { .flpill.air i { animation:none; } }
+/* bookings on a stop (trains and hotels): the times, car + seats + reservation, what to do first, the price */
+.nps.ini { gap:0; flex-wrap:nowrap; }
+.nps.ini .np { width:26px; height:26px; padding:0; display:grid; place-items:center; font-size:10.5px; box-shadow:0 0 0 2px #f3eee3; }
+.nps.ini .np + .np { margin-left:-4px; }
+.tkw { display:flex; flex-direction:column; gap:12px; margin:0 0 12px; }
+.desc + .tkw { margin:12px 0 0; }
+.route.tkr { padding:4px 0 0; }
+.tkr .tkt { display:block; font-family:var(--serif); font-size:30px; line-height:1; }
+.tkf { display:grid; gap:6px; }
+.tkf > div { background:#fff; border-radius:12px; padding:7px 9px; min-width:0; }
+.pass:not(.tk) .tkf > div { background:rgba(255,255,255,.14); }
+.tkf small, .tkb b { display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; color:var(--ink3); }
+.pass:not(.tk) .tkf small { color:rgba(255,255,255,.72); }
+.tkf b { display:block; font-size:16px; letter-spacing:-.01em; overflow-wrap:anywhere; line-height:1.25; }
+.tkf .res b { font-family:var(--serif); font-size:24px; font-weight:400; line-height:1.1; letter-spacing:.04em; }
+.tkb { background:#fff6dd; color:#7a5a00; border-radius:14px; padding:10px 12px; font-size:13.5px; line-height:1.4; }
+.tkb b { color:inherit; margin-bottom:2px; }
+.tkn { display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:700; color:var(--ink2); }
+.tkn::before, .tkn::after { content:''; flex:1; border-top:2px dotted rgba(0,0,0,.18); }
+.tkp { display:flex; align-items:center; gap:10px; background:#fff; border-radius:14px; padding:8px 8px 8px 12px; }
+.pass:not(.tk) .tkp { background:rgba(255,255,255,.14); }
+.tkp > div { flex:1; min-width:0; }
+.tkp .yen { display:block; font-family:var(--serif); font-size:26px; line-height:1; }
+.tkp small { display:block; font-size:12px; color:var(--ink3); margin-top:2px; }
+.pass:not(.tk) .tkp small { color:rgba(255,255,255,.75); }
+.tkx { flex:none; min-height:40px; padding:0 14px; border-radius:999px; background:var(--ink); color:#fff; font-size:13.5px; font-weight:700; display:inline-flex; align-items:center; gap:6px; text-decoration:none; }
+.pass:not(.tk) .tkx { background:#fff; color:var(--c); }
+.tkx.in { background:#e6f4ea; color:#1f7a45; }
+.pass:not(.tk) .flst.late { color:#ffe6a3; }
+.a-bk { background:var(--ink) !important; color:#fff !important; }
+.pass:not(.tk) .a-bk { background:#fff !important; color:var(--c) !important; }
+.bkundo { display:flex; align-items:center; gap:8px; background:#fff; color:var(--ink); border-radius:14px; padding:8px 8px 8px 12px; font-size:14px; font-weight:700; }
+.bkundo span { flex:1; } .bkundo button { min-height:36px; padding:0 12px; border-radius:999px; background:rgba(0,0,0,.07); font-size:13.5px; } .bkundo .yes { background:var(--red); color:#fff; }
+/* 予約済 "reserved": the booked stamp, thumped down by Mark as booked; a dashed spot shows where it goes until then */
+.ykan { display:none; position:absolute; top:72px; right:16px; padding:0; width:54px; height:54px; border-radius:50%; border:2.5px solid var(--red); color:var(--red); background:rgba(252,247,238,.95); place-items:center; font-family:var(--mincho); font-size:13px; line-height:1.05; writing-mode:vertical-rl; pointer-events:none; z-index:3; transform:rotate(-14deg); }
+button.ykan { pointer-events:auto; cursor:pointer; }
+.ykan.spot { pointer-events:none; border:2px dashed currentColor; color:#7a5a00; background:transparent; font-family:var(--sans); font-size:10px; font-weight:700; writing-mode:horizontal-tb; text-align:center; transform:none; opacity:.8; }
+.pass:not(.tk) .ykan.spot { color:#ffe6a3; }
+.pass.tk .ykan { top:128px; }
+.pass.open:not(.done) .ykan { display:grid; }
+.ykan.ykin { animation:stamp 380ms cubic-bezier(.2,1.3,.4,1); }
+.stay .htag { display:inline-block; margin-top:6px; font-size:12.5px; font-weight:700; color:#7a5a00; background:#fff6dd; padding:3px 9px; border-radius:999px; }
+.stay .swho { position:absolute; top:12px; right:12px; z-index:1; }
+.stays { display:grid; gap:10px; }
 
 /* ── after the wallet ── */
 .sec { padding:26px 20px 8px; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:700; }
@@ -625,6 +669,7 @@ const I = {
   pen: '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
   pin2: '<svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   x: '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  check: '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   sunrise: '<svg viewBox="0 0 24 24"><path d="M4 18h16M7 18a5 5 0 0110 0M12 4v4M5 9l1.5 1.5M19 9l-1.5 1.5M9.5 6.5L12 4l2.5 2.5" stroke="#e0a420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   sunset: '<svg viewBox="0 0 24 24"><path d="M4 18h16M7 18a5 5 0 0110 0M12 4v4M5 9l1.5 1.5M19 9l-1.5 1.5M9.5 5.5L12 8l2.5-2.5" stroke="#e0703a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
@@ -760,7 +805,9 @@ function nowEv() {
 }
 const isToday = () => !!tripDay && tripDay.id === day.id;
 const nextEv = () => events.find((e) => !done(e.id) && !e.optional) || events.find((e) => !done(e.id)) || null;
-const hotel = () => HOTELS.find((h) => h.id === day.hotel) || {};
+// tonight's hotel for this view: M&M's own on their two nights away (a day's mmHotel)
+const hotelIdFor = (d, who = ui.who) => (who === 'mm' && d.mmHotel ? d.mmHotel : d.hotel);
+const hotel = () => HOTELS.find((h) => h.id === hotelIdFor(day)) || {};
 const placeOfEvent = (i) => { for (let j = i; j >= 0; j--) if (events[j].place) return events[j].place; return null; };
 const fromName = (i) => { for (let j = i - 1; j >= 0; j--) if (events[j].place) return events[j].place.name; return hotel().name || 'Hotel'; };
 // From → To for a ticket, or null when it would be made up (a flight with no airport yet, or start and end the same place).
@@ -791,7 +838,7 @@ function renderTop(enter) {
 const AIRPORT = { NRT: ['Tokyo Narita', 'Narita', 'Asia/Tokyo', 'Tokyo'], HND: ['Tokyo Haneda', 'Haneda', 'Asia/Tokyo', 'Tokyo'], KIX: ['Osaka Kansai', 'Kansai', 'Asia/Tokyo', 'Osaka'],
   DOH: ['Doha', 'Doha', 'Asia/Qatar', 'Doha'], YVR: ['Vancouver', 'Vancouver', 'America/Vancouver', 'Vancouver'], YYZ: ['Toronto', 'Toronto', 'America/Toronto', 'Toronto'] };
 const PNAME = { naf: 'Naf', sara: 'Sara', mariam: 'Mariam', m: 'Mo' };
-const PCOLOR = { naf: '#2c4f86', sara: '#6f4f98', mariam: '#cc5a26', m: '#b94b74' };
+const PCOLOR = { naf: '#1f98b8', sara: '#d26b9c', mariam: '#2f9e57', m: '#6f4f98' }; // the Money page's colours, unless someone picked their own
 const personColor = (p) => ((store.state.profiles || {})[p] || {}).color || PCOLOR[p];
 const flNo = (no) => String(no || '').replace(/^([A-Z0-9]{2})(\d)/, '$1 $2');
 const flRec = (e) => { const r = (store.state.flights || {})[e.id]; return r && e.flight && r.no === String(e.flight.no || '').toUpperCase().replace(/[^A-Z0-9]/g, '') ? r : null; };
@@ -821,7 +868,9 @@ function flView(e) {
   const past = r && (r.st === 'landed' || r.st === 'diverted') && !r.nextAt && arr && Date.now() > Date.parse(arr) + 3 * 3600e3;
   return { f, r, from, to, fa, ta, fromTz, toTz, dep, arr, depT: flTime(dep, tzOf(dep, fromTz)), arrT: flTime(arr, tzOf(arr, toTz)), depD: flDay(dep, fromTz), arrD: flDay(arr, toTz), st, cls, label, past };
 }
-const pills = (people) => `<span class="nps">${(people || []).map((p) => `<span class="np" style="--p:${personColor(p)}">${esc(PNAME[p] || p)}</span>`).join('')}</span>`;
+// three or more names go to initials, so the stop's title keeps its room
+const PINI = { naf: 'N', sara: 'S', mariam: 'Ma', m: 'Mo' };
+const pills = (people) => { const ini = (people || []).length > 2; return `<span class="nps ${ini ? 'ini' : ''}">${(people || []).map((p) => `<span class="np" style="--p:${personColor(p)}" ${ini ? `title="${esc(PNAME[p] || p)}"` : ''}>${esc(ini ? PINI[p] || p : PNAME[p] || p)}</span>`).join('')}</span>`; };
 const JP = ['NRT', 'HND', 'KIX', 'ITM', 'NGO', 'CTS', 'FUK', 'OKA'];
 function flightBand(e, n) {
   const v = flView(e), landing = JP.includes(v.to) && !JP.includes(v.from); // into Japan: the landing time is the one that matters
@@ -847,6 +896,37 @@ function flightBanner() {
   return `<div class="flban ${tone}" role="status">${I.plane}<div><b>Flight update${un.length > 1 ? `s · ${un.length}` : ''}</b>${esc(c.text)}</div><button class="press" data-flseen>Got it</button></div>`;
 }
 
+/* ═══ bookings on a stop: trains and hotels (a stop's `ticket`, see data/itinerary.js) ═══ */
+// a booking still waiting on its confirmation; "Mark as booked" is the Bookings page's own shared choice
+const bkPending = (e) => { const p = e.ticket && e.ticket.pending; return p && store.getChoice(p.id, '') !== 'booked' ? p : null; };
+const bkBooked = (e) => !!(e.ticket && e.ticket.pending && !bkPending(e));
+// an expense saved from this stop's "Add to expenses" carries the stop's id
+const inExpenses = (id) => Object.values(store.getExpenses()).some((x) => x && x.src === id);
+let bkUndo = null, bkThump = null;
+function addExpenseHref(e) {
+  const t = e.ticket, x = t.expense || {};
+  const q = new URLSearchParams({ add: '1', d: day.id, src: e.id, t: x.title || e.title, y: String(t.yen), c: x.cat || 'other', s: (x.split || t.people || []).join(','), p: 'm' });
+  return 'money?' + q.toString();
+}
+function ticketHTML(e) {
+  const t = e.ticket, pend = bkPending(e), tk = isTicket(e);
+  const route = t.from && t.to ? `<div class="route tkr"><div><small>Leaves</small><span class="tkt">${esc(t.from[0])}</span><b>${esc(t.from[1])}</b></div><span class="arr">${I.arrow}</span><div class="flto"><small>Arrives</small><span class="tkt">${esc(t.to[0])}</span><b>${esc(t.to[1])}</b></div></div>` : '';
+  const facts = [...(t.facts || []), ...(t.ref ? [['Reservation', t.ref, 'res']] : [])];
+  const grid = facts.length ? `<div class="tkf" style="grid-template-columns:repeat(${facts.length}, minmax(0, 1fr))">${facts.map(([k, v, cls]) => `<div class="${cls || ''}"><small>${esc(k)}</small><b>${esc(v)}</b></div>`).join('')}</div>` : '';
+  const board = t.board && (!t.pending || pend) ? `<div class="tkb"><b>${tk ? 'Before you board' : 'Before you go'}</b>${esc(t.board)}</div>` : '';
+  const inx = inExpenses(e.id);
+  const money = t.yen ? `<div class="tkp"><div><span class="yen">¥${Number(t.yen).toLocaleString('en-US')}</span>${t.yenNote ? `<small>${esc(t.yenNote)}</small>` : ''}</div>${GUEST && !SANDBOX ? '' : inx ? `<a class="tkx in" href="money">${I.check}In expenses</a>` : `<a class="tkx press" href="${esc(addExpenseHref(e))}" data-addx>¥ Add to expenses</a>`}</div>` : '';
+  const conn = t.next || t.prev ? `<p class="tkn">${esc(t.next || t.prev)}</p>` : '';
+  const undo = bkUndo === e.id ? `<div class="bkundo"><span>Undo "booked"?</span><button class="press" data-bkkeep>Keep it</button><button class="yes press" data-unbook="${esc(t.pending.id)}">Undo</button></div>` : '';
+  return `<div class="tkw">${route + grid + board + money + conn + undo}</div>`;
+}
+// the act that takes the stamp's place while a booking waits: Mark as booked
+function bookAct(e, d) {
+  const p = e.ticket && e.ticket.pending; if (!p) return null;
+  if (bkPending(e)) return GUEST && !SANDBOX ? '' : `<button class="a-st a-bk press" data-book="${esc(p.id)}" data-bkstop="${e.id}">Mark as booked</button>`;
+  return null; // booked: the stamp is back, and the 予約済 on the card undoes it
+}
+
 /* ═══ render: sheet ═══ */
 function passHTML(e, i) {
   const c = catOf(e), n = numOf(e.id), tk = isTicket(e), d = done(e.id);
@@ -865,12 +945,13 @@ function passHTML(e, i) {
   if (FILLING.has(e.id)) chips.push(`<span class="chip">${I.spark}Filling in…</span>`);
   if (e._added) chips.push('<span class="chip">Added</span>'); else if (e._edited) chips.push('<span class="chip">Edited</span>');
   const story = pi && pi.story ? `<div class="storyx"><b>${e.place || own ? 'The story' : 'About ' + esc(host.name)}</b>${esc(pi.story)}</div>` : '';
-  const body = `<div class="body">${story}${tk && routeOf(e, i) ? `<div class="route"><div><small>From</small><b>${esc(routeOf(e, i)[0])}</b></div><span class="arr">${I.arrow}</span><div><small>To</small><b>${esc(routeOf(e, i)[1])}</b></div></div>` : ''}
-    <div class="chips">${chips.join('')}</div>
-    ${e.travel && tk ? `<p class="desc"><b>${esc(e.travel.label || '')}</b></p>` : ''}
-    ${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
+  const tkt = e.ticket ? ticketHTML(e) : '';
+  const body = `<div class="body">${story}${e.ticket && e.ticket.from ? '' : tk && routeOf(e, i) ? `<div class="route"><div><small>From</small><b>${esc(routeOf(e, i)[0])}</b></div><span class="arr">${I.arrow}</span><div><small>To</small><b>${esc(routeOf(e, i)[1])}</b></div></div>` : ''}
+    ${e.ticket && e.ticket.from ? tkt : ''}<div class="chips">${chips.join('')}</div>
+    ${e.travel && tk && !e.ticket ? `<p class="desc"><b>${esc(e.travel.label || '')}</b></p>` : ''}
+    ${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}${e.ticket && !e.ticket.from ? tkt : ''}
     ${pi && pi.ja && host ? `<button class="say press" data-jp="${esc(own ? (e.place ? e.place.name : e.title) : host.name)}"><span class="say-l"><b>${esc(pi.ja)}</b>${pi.ro ? `<small>${esc(pi.ro)}</small>` : ''}</span><span class="say-r">Phrases<br>for here${I.chevR}</span></button>` : ''}
-    <div class="acts">${e.place ? `<a class="a-dir press" href="${gmDir(e.place, e.travel && e.travel.mode)}" target="_blank" rel="noopener">${I.dir}Directions</a>` : ''}<button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>
+    <div class="acts">${e.place ? `<a class="a-dir press" href="${gmDir(e.place, e.travel && e.travel.mode)}" target="_blank" rel="noopener">${I.dir}Directions</a>` : ''}<button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button>${bookAct(e, d) ?? `<button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button>`}</div>
     ${pi && pi.credit && !tk && !cover ? `<p class="credit">Photo${pi.area ? ` (${esc(pi.area)})` : ''}: <a href="${esc(pi.file)}" target="_blank" rel="noopener">${esc(pi.credit)}</a></p>` : ''}</div>`;
   const nav = `<div class="pnav"><button class="st" data-step="-1" ${events.length < 2 ? 'disabled' : ''} aria-label="Previous stop">${I.chevL}</button><div class="mid">${pi && pi.key ? `<button class="keyp" data-story="${e.id}"><span>${esc(pi.key)}</span>${pi.story ? '<i>Read the story</i>' : ''}</button>` : `<span class="cnt">${i + 1} of ${events.length}</span>`}</div><button class="st" data-step="1" ${events.length < 2 ? 'disabled' : ''} aria-label="Next stop">${I.chevR}</button></div>`;
   if (e.flight) {
@@ -879,9 +960,11 @@ function passHTML(e, i) {
       <div class="acts"><button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div></div>`;
     return `<article class="pass tk fl ${d ? 'done' : ''} ${v.past ? 'flpast' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${legHex(e)}">${nav}${flightBand(e, n)}${fbody}<div class="hanko" aria-hidden="true">済</div></article>`;
   }
-  const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}</small><b>${esc(e.title)}</b></div>${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
-  const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}</small><b>${esc(e.title)}</b></div></div></div>`;
-  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}<div class="hanko" aria-hidden="true">済</div></article>`;
+  const pend = bkPending(e), pendL = pend ? `<span class="flst late"><i></i>${esc(pend.label)}</span>` : '';
+  const yk = e.ticket && e.ticket.pending ? (pend ? '<span class="ykan spot" aria-hidden="true">not<br>booked</span>' : `<button class="ykan ${bkThump === e.id ? 'ykin' : ''}" data-bkundo="${e.id}" aria-label="Booked. Tap to undo">予約済</button>`) : '';
+  const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}</small><b>${esc(e.title)}</b>${pendL}</div>${tk && e.ticket && e.ticket.people ? pills(e.ticket.people) : ''}${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
+  const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}</small><b>${esc(e.title)}</b>${pendL}</div></div></div>`;
+  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}${yk}<div class="hanko" aria-hidden="true">済</div></article>`;
 }
 
 function renderSheet(enter) {
@@ -896,13 +979,19 @@ function renderSheet(enter) {
     return `<div class="card ${a.kind === 'warn' ? 'warn' : ''}"><small>${a.kind === 'warn' ? 'Heads up' : a.kind === 'book' ? 'Book' : a.kind === 'decide' ? 'Decide' : 'Note'}</small><h3>${esc(a.title)}</h3><p>${withFx(a.text || '')}</p></div>`;
   }).join('');
   const know = (KNOW[day.city] || []).map(([t, x]) => `<div class="card"><small>${esc(day.city)}</small><h3>${esc(t)}</h3><p>${withFx(x)}</p></div>`).join('');
-  const hpi = PLACES[h0.name] || {};
+  // Tonight: Everyone sees both couples' hotels on the nights M&M are away
+  const stayIds = ui.who === 'all' && day.mmHotel ? [day.hotel, day.mmHotel] : [hotelIdFor(day)];
+  const stays = stayIds.map((id) => {
+    const h = HOTELS.find((x) => x.id === id) || {}, hpi = PLACES[h.name] || {}, who = stayIds.length > 1 ? (h.who === 'mm' ? ['mariam', 'm'] : ['naf', 'sara']) : null;
+    const pend = h.pending && store.getChoice(h.pending, '') !== 'booked';
+    return `<a class="stay press" href="${gmPlace(h)}" target="_blank" rel="noopener" style="${hpi.img ? `background-image:url('${imgUrl(hpi)}')` : 'background-color:#55702f'}">${who ? `<span class="swho">${pills(who)}</span>` : ''}<div><small>${esc(h.city || '')} · ${esc(h.dates || '')}</small><b>${esc(h.name || '')}</b>${pend ? '<span class="htag">Room not confirmed yet</span>' : ''}</div></a>`;
+  }).join('');
   sh.innerHTML = `<div class="${enter === 'rise' ? 'fadein' : enter ? 'dayin ' + enter : ''}"><div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
     ${flightBanner()}<div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
     <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
     ${know ? `<p class="sec">Good to know in ${esc(day.city)}</p><div class="know">${know}</div>` : ''}
-    <p class="sec">Tonight</p><a class="stay press" href="${gmPlace(h0)}" target="_blank" rel="noopener" style="${hpi.img ? `background-image:url('${imgUrl(hpi)}')` : ''}"><div><small>${esc(h0.city || '')} · ${esc(h0.dates || '')}</small><b>${esc(h0.name || '')}</b></div></a>
+    <p class="sec">Tonight</p><div class="stays">${stays}</div>
     <p class="foot">Photos from Wikimedia Commons, credited on each pass. Weather from Open-Meteo. Rates from ExchangeRate-API.</p></div>`;
   document.getElementById('ddin').innerHTML = `<header class="hd"><div class="hd-r"><p class="eb">Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p><div class="rr"><div class="seg" id="who">${whoBtns}<i></i></div><button class="gear press" id="gear" aria-label="Edit trip">${I.pen}</button></div></div>
 ${daysTo > 0 ? `<p class="cdx">${daysTo} day${daysTo > 1 ? 's' : ''} to go</p>` : tripDay ? `<p class="cdx">Day ${day.n} of ${DAYS.length}</p>` : ''}<h1>${esc(day.title)}</h1>${day.tagline ? `<p class="tg">${esc(day.tagline)}</p>` : ''}</header>
@@ -1460,7 +1549,7 @@ function renderCal() {
   for (let t = new Date(start); t <= end; t.setUTCDate(t.getUTCDate() + 1)) {
     const d = byDate[iso(t)];
     if (!d) { cells += `<span class="c out"><b>${t.getUTCDate()}</b></span>`; continue; }
-    const booked = dayItems(d, { who: ui.who }).some((x) => x.type === 'event' && x.confirmed);
+    const booked = dayItems(d, { who: ui.who }).some((x) => x.type === 'event' && x.confirmed && !bkPending(x));
     cells += `<button class="c ${d.id === day.id ? 'cur' : ''} ${tripDay && tripDay.id === d.id ? 'today' : ''} ${hasEvents(d) ? '' : 'off'}" data-cal="${d.id}" style="--cc:${CITY_C[d.city] || '#86847c'}" aria-label="Day ${d.n}, ${esc(d.title)}">${booked ? '<i class="bk"></i>' : ''}<b>${t.getUTCDate()}</b><small>D${d.n}</small></button>`;
   }
   const m0 = first.toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' }), m1 = last.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
@@ -1489,6 +1578,11 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   const j = e.target.closest('[data-jp]'); if (j) { showPhrases(j.dataset.jp); return; }
   const sy = e.target.closest('[data-story]'); if (sy) { const card = document.getElementById('p-' + sy.dataset.story); card.classList.toggle('storyon'); stackApi.layout(false); return; }
   const ed = e.target.closest('[data-edit]'); if (ed) { openEditor({ mode: 'edit', id: ed.dataset.edit }); return; }
+  // Mark as booked: the 予約済 stamp thumps down on all four phones; tapping 予約済 again offers to undo it
+  const bk = e.target.closest('[data-book]'); if (bk) { bkThump = bk.dataset.bkstop; bkUndo = null; store.setChoice(bk.dataset.book, 'booked'); buzz(12); setTimeout(() => { bkThump = null; }, 600); return; }
+  const bu = e.target.closest('[data-bkundo]'); if (bu) { bkUndo = bkUndo === bu.dataset.bkundo ? null : bu.dataset.bkundo; renderDay({ keepScroll: true, keepSel: true }); return; }
+  if (e.target.closest('[data-bkkeep]')) { bkUndo = null; renderDay({ keepScroll: true, keepSel: true }); return; }
+  const ub = e.target.closest('[data-unbook]'); if (ub) { bkUndo = null; store.setChoice(ub.dataset.unbook, ''); return; }
   if (e.target.closest('[data-flseen]')) { const seen = flSeen(); for (const x of events) { const r = flRec(x); if (r && r.changes && r.changes[0]) seen[x.id] = r.changes[0].at; } ls.set('japan2026.flightSeen', seen); renderDay({ keepScroll: true, keepSel: true }); return; }
   if (e.target.closest('#addgap')) { openEditor({ mode: 'add', dayId: day.id, after: ui.sel }); return; }
   if (e.target.closest('[data-addend]')) { openEditor({ mode: 'add', dayId: day.id, after: events.length ? events[events.length - 1].id : null }); return; }
@@ -1503,7 +1597,8 @@ let swiped = false;
   document.getElementById('sheet').addEventListener('pointerdown', (e) => { const card = e.target.closest('.pass.open'); if (!card || e.target.closest('a,button')) return; sw = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now() }; });
   const end = (e) => { if (!sw || e.pointerId !== sw.id) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y, v = Math.abs(dx) / Math.max(1, performance.now() - sw.t); sw = null; if (Math.abs(dx) > Math.abs(dy) * 1.6 && (Math.abs(dx) > 60 || (Math.abs(dx) > 25 && v > 0.5))) { swiped = true; setTimeout(() => (swiped = false), 80); step(dx < 0 ? 1 : -1); } };
   window.addEventListener('pointerup', end); window.addEventListener('pointercancel', () => (sw = null)); }
-const customSig = () => JSON.stringify([Object.entries(CUSTOM()).map(([k, v]) => [k, { ...v, ts: undefined }]).sort(), store.state.covers || {}, store.state.flights || {}]); // new flight news redraws the stops too
+const customSig = () => JSON.stringify([Object.entries(CUSTOM()).map(([k, v]) => [k, { ...v, ts: undefined }]).sort(), store.state.covers || {}, store.state.flights || {}, // new flight news redraws the stops too
+  Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-')).sort(), Object.values(store.getExpenses()).map((x) => x && x.src).filter(Boolean).sort()]); // and bookings marked booked or added to expenses
 let lastSig = customSig();
 store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig !== lastSig) { lastSig = sig; renderDay({ keepScroll: true, keepSel: true }); if (setp.classList.contains('on')) renderSettings(); return; } stackApi.refresh(); dialApi.refresh(); syncPins(); });
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });

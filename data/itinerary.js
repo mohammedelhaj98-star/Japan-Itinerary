@@ -9,6 +9,11 @@
 // A flight stop carries `flight`: { no, people, from, to, dep, arr } — who is on it (naf, sara, mariam, m), the airports,
 // and the scheduled times with their own UTC offsets. The server checks it on a timer (lib/flights.js) and every phone
 // shows what it finds on the stop. Flight stops show for everyone, whatever the stop's `who`.
+// A booked train or hotel carries `ticket`: { people, from/to: [time, station] (trains), facts: [[label, value]], ref (the
+// reservation number), board (what to do before boarding or arriving), yen, yenNote, expense: { title, cat, split } for the
+// Money page's "Add to expenses", pending: { id, label } while the booking isn't confirmed yet }. The pending id is the
+// Bookings page's own id, so "Mark as booked" on either one is the same shared choice.
+// A day where M&M sleep somewhere else names it in `mmHotel`; `hotel` stays where NASA (and everyone else) sleep.
 
 export const TRIP = {
   title: 'Japan 2026',
@@ -26,7 +31,12 @@ export const HOTELS = [
   { id: 'sotetsu', name: 'Sotetsu Grand Fresa Takadanobaba', city: 'Tokyo', dates: 'Oct 16–20', nights: 4, lat: 35.7127, lng: 139.7040, q: 'Sotetsu Grand Fresa Takadanobaba' },
   { id: 'mizunoto', name: 'Mizunoto Hakone', city: 'Hakone', dates: 'Oct 20–21', nights: 1, lat: 35.2405, lng: 139.0528, q: '箱根小涌谷温泉 水の音' },
   { id: 'granbell', name: 'Kyoto Granbell', city: 'Kyoto', dates: 'Oct 21–27', nights: 6, lat: 35.0036, lng: 135.7711, q: 'Kyoto Granbell Hotel' },
+  // green and pasha are M&M's two nights away: their Granbell and Washington rooms stay theirs, and the big bags wait there
+  { id: 'green', name: 'Hotel in the Green', city: 'Kyoto', dates: 'Oct 23–24', nights: 1, who: 'mm', lat: 34.9530, lng: 135.7470, q: 'Hotel in the Green Kyoto',
+    info: [['Room', 'Luxury Double Room'], ['Arrive', 'Oct 23, 6–7 PM'], ['Check out', 'Oct 24 by 12:00'], ['Price', '¥19,732 + city tax at the hotel'], ['Cancel', 'Free until Oct 21, 11:59 PM']] },
   { id: 'washington', name: 'Akihabara Washington Hotel', city: 'Tokyo', dates: 'Oct 27–Nov 1', nights: 5, lat: 35.6975, lng: 139.7745, q: 'Akihabara Washington Hotel' },
+  { id: 'pasha', name: 'Hotel Pasha Gran', city: 'Tokyo', dates: 'Oct 27–28', nights: 1, who: 'mm', lat: 35.7095, lng: 139.7716, q: '2-12-14 Ueno, Taito-ku, Tokyo', pending: 'bk-pasha',
+    info: [['Room', 'Type I, room 305 or 306, private open-air bath'], ['Arrive', 'Oct 27, 7–9 PM'], ['Leave', 'Oct 28, 7:50 AM for Senso-ji'], ['Price', '¥24,400 quoted'], ['Cancel', 'Terms still to come from the hotel']] },
 ];
 
 // Small helpers to keep the day definitions readable.
@@ -42,6 +52,9 @@ const only = (who, items) => items.map((it) => {
   return o;
 });
 // Shown to M&M on the days before they land.
+const MM = ['mariam', 'm'], ALL4 = ['naf', 'sara', 'mariam', 'm'];
+const GREEN = P('Hotel in the Green', 34.9530, 135.7470, 'Hotel in the Green Kyoto');
+const PASHA = P('Hotel Pasha Gran', 35.7095, 139.7716, '2-12-14 Ueno, Taito-ku, Tokyo');
 const MM_AWAY = N('M&M arrive Oct 21', 'Mariam + Mo land on Oct 21 and meet NASA in Kyoto that evening. Until then this day is NASA only.', 'note', { who: 'mm' });
 
 export const DAYS = [
@@ -245,7 +258,7 @@ export const DAYS = [
   {
     id: 'd06', n: 6, date: '2026-10-21', dow: 'Wed', city: 'Kyoto',
     title: 'Hakone → Kyoto', tagline: 'Shinkansen day — Hakone to Gion',
-    energy: 'LOW', dinner: 'NASA: Gion + date dinner (TBD) · M&M arrive evening', hotel: 'granbell',
+    energy: 'LOW', dinner: 'NASA: Gion + date dinner (TBD) · M&M arrive ~10:40 PM', hotel: 'granbell',
     items: [...only('nasa', [
       E('7:30–9:00 AM', 'Ryokan breakfast', '', { id: 'd06-bfast', place: P('Mizunoto Hakone', 35.2405, 139.0528, '箱根小涌谷温泉 水の音'), tags: ['food'] }),
       E('9:00–10:45 AM', 'Final onsen, packing', '', { id: 'd06-onsen', tags: ['hotel'] }),
@@ -273,7 +286,7 @@ export const DAYS = [
       E('7:00 PM', 'NASA date dinner — TBD', 'Gion/Pontocho: kaiseki, kappo, or izakaya. Book once decided. See Suggestions tab.', {
         id: 'd06-dinner', who: 'nasa', tbd: true, tags: ['food'],
       }),
-      N('M&M arrive tonight', 'They check in while NASA are at dinner; meet at the hotel after. Pontocho is a 5-min walk from the Granbell. Tomorrow is the first full day together.'),
+      N('M&M arrive tonight', 'Their Nozomi gets into Kyoto at 10:13 PM, so they reach the Granbell around 10:40 PM, after NASA\'s dinner. Tomorrow is the first full day together.'),
     ]),
       S('M&M — arrival'),
       E('12:55 PM', 'Mo lands at Narita', 'Qatar Airways QR 808 from Doha, into Narita Terminal 2.', {
@@ -284,9 +297,25 @@ export const DAYS = [
         id: 'd06-mariam-land', who: 'mm', place: P('Narita Airport Terminal 1', 35.7654, 140.3860, 'Narita Airport Terminal 1'), travel: { mode: 'flight', label: 'AC 9 from Toronto' }, tags: ['flight'],
         flight: { no: 'AC9', people: ['mariam'], from: 'YYZ', to: 'NRT', dep: '2026-10-20T13:25-04:00', arr: '2026-10-21T15:50+09:00' },
       }),
-      N('Narita to Kyoto', 'Both flights land at Narita, not Kansai. Narita to Kyoto is about 4 hours by train (Narita Express to Tokyo, then the Shinkansen), so check-in is late evening.', 'warn', { who: 'mm' }),
-      E('Late evening', 'M&M check in — Kyoto Granbell', 'Granbell is on Gion-Shijo Station (Keihan Line), 6 nights. NASA are at dinner nearby; meet at the hotel after. Pontocho 5 min on foot, Yasaka Shrine open 24 hrs.', {
-        id: 'd06-mm-checkin', who: 'mm', place: P('Kyoto Granbell Hotel', 35.0036, 135.7711), tags: ['hotel'],
+      E('By 5:45 PM', 'Meet at the Terminal 2·3 JR station', 'Mo waits by the JR ticket gates under Terminal 2. Mariam: after bags, the free shuttle bus from Terminal 1 to Terminal 2 takes about 10 min.', {
+        id: 'd06-mm-meet', who: 'mm', place: P('Narita Airport Terminal 2·3 Station', 35.7727, 140.3873, 'Airport Terminal 2 Station Narita'), travel: { mode: 'walk', label: 'Shuttle bus from T1, ~10 min' }, tags: ['logistics'],
+      }),
+      E('6:19–7:28 PM', 'Narita Express 44 → Shinagawa', '', {
+        id: 'd06-nex', who: 'mm', confirmed: true, place: P('Shinagawa Station', 35.6285, 139.7387), travel: { mode: 'train', label: 'Narita Express 44, 1 h 9 min' }, tags: ['transit', 'booking'],
+        ticket: { people: MM, from: ['6:19 PM', 'Narita Airport T2·3'], to: ['7:28 PM', 'Shinagawa'], facts: [['Car', '4'], ['Seats', '7A, 7B']], ref: 'E04742',
+          board: 'Collect the paper tickets at a JR ticket machine with the collection QR code first. The QR on its own won\'t open the gates.',
+          next: '39 min to change at Shinagawa for Nozomi 89',
+          yen: 6660, yenNote: '2 adults · paid', expense: { title: 'Narita Express 44, Narita → Shinagawa', cat: 'transport', split: MM } },
+      }),
+      E('8:07–10:13 PM', 'Nozomi 89 → Kyoto', '', {
+        id: 'd06-nozomi', who: 'mm', confirmed: true, place: P('Kyoto Station', 34.9858, 135.7588), travel: { mode: 'train', label: 'Nozomi 89, 2 h 6 min' }, tags: ['transit', 'booking'],
+        ticket: { people: MM, from: ['8:07 PM', 'Shinagawa'], to: ['10:13 PM', 'Kyoto'], facts: [['Car', '8 · Green'], ['Seats', '17A, 17B']], ref: '2000',
+          board: 'Board with your Smart EX QR ticket or the IC card you linked to the booking: check one of them is ready before you fly. Your big-bag space is right behind your seats.',
+          prev: '39 min to change after the Narita Express',
+          yen: 37680, yenNote: '2 adults · Green Car · paid', expense: { title: 'Nozomi 89, Shinagawa → Kyoto', cat: 'transport', split: MM } },
+      }),
+      E('~10:40 PM', 'M&M check in — Kyoto Granbell', 'Taxi from Kyoto Station, about 12 min, ¥700–1,000. Granbell is on Gion-Shijo Station (Keihan Line), 6 nights. Pontocho 5 min on foot, Yasaka Shrine open 24 hrs.', {
+        id: 'd06-mm-checkin', who: 'mm', place: P('Kyoto Granbell Hotel', 35.0036, 135.7711), travel: { mode: 'taxi', label: 'Taxi ~12 min, ¥700–1,000' }, tags: ['hotel'],
       }),
     ],
   },
@@ -356,7 +385,7 @@ export const DAYS = [
   {
     id: 'd08', n: 8, date: '2026-10-23', dow: 'Fri', city: 'Kyoto',
     title: 'Arashiyama + samurai', tagline: 'Bamboo grove · river · Gion samurai',
-    energy: 'HIGH', dinner: 'M&M: romantic evening · NASA: Osaka OR Kyoto date dinner', hotel: 'granbell',
+    energy: 'HIGH', dinner: 'M&M: night at Hotel in the Green · NASA: Osaka OR Kyoto date dinner', hotel: 'granbell', mmHotel: 'green',
     items: [
       N('Wagyu sukiyaki (optional, either couple)', 'Mishima-tei (Sanjo, since 1873). Pre-book for 2; confirm pork-free broth, no alcohol. ¥10,000–15,000/person. Book as a couple. Concierge can help.', 'book'),
       N('Taxis — GO app', 'Download GO (go.goinc.jp) before the trip — Kyoto incl. Arashiyama, card billed, no Japanese. Use for bamboo → Otagi, Otagi → boat. Backups: DiDi, Uber Taxi.', 'tip', { link: { label: 'GO app', url: 'https://go.goinc.jp' } }),
@@ -389,7 +418,13 @@ export const DAYS = [
         id: 'd08-hotel', place: P('Kyoto Granbell Hotel', 35.0036, 135.7711), travel: { mode: 'walk', label: '10-min walk' }, tags: ['hotel'],
       }),
       S('Evening — NASA + M&M split'),
-      E('4:15 PM onward', 'M&M romantic evening', 'M&M head off for their own evening.', { id: 'd08-mm', who: 'mm', tags: ['food'] }),
+      E('~5:30 PM', 'M&M leave for Hotel in the Green', 'Taxi from the Granbell to Takeda, Fushimi, about 25 min. Take an overnight bag; the big bags stay in your Granbell room.', { id: 'd08-mm', who: 'mm', tags: ['transit'] }),
+      E('6:00–7:00 PM', 'Check in · Hotel in the Green', 'Arriving 6–7 PM was approved at no extra charge. No meals included.', {
+        id: 'd08-mm-green', who: 'mm', confirmed: true, place: GREEN, travel: { mode: 'taxi', label: 'Taxi ~25 min' }, tags: ['hotel', 'booking'],
+        ticket: { people: MM, facts: [['Room', 'Luxury Double'], ['Check out', 'Oct 24, noon']],
+          board: 'Free cancellation ends Oct 21 at 11:59 PM; after that it costs the full ¥19,732. Accommodation tax is paid at the hotel.',
+          yen: 19732, yenNote: 'Booking.com charges the card · plus city tax', expense: { title: 'Hotel in the Green, 1 night', cat: 'hotel', split: MM } },
+      }),
       C('d08-night', 'NASA — dinner night: D8 or D9?', 'One night gets a booked dinner; the other stays open. D9 starts 6:30 AM — a late Osaka night on D8 will hurt at Fushimi.', [
         { id: 'dinner', label: 'A — dinner tonight (D9 open)', desc: 'Pontocho or Gion sit-down from ~7 PM. Book ahead.',
           items: [E('~7:00 PM', 'Booked dinner — Pontocho or Gion', 'Mishima-tei sukiyaki, Kikunoi Roan kaiseki, or a Pontocho pick. See Suggestions.', { id: 'd08-dinner', who: 'nasa', tbd: true, place: P('Pontocho Alley', 35.0067, 135.7707, 'Pontocho Kyoto'), travel: { mode: 'walk', label: 'Walk' }, tags: ['food'] })] },
@@ -407,9 +442,10 @@ export const DAYS = [
     energy: 'HIGH', dinner: 'M&M: GEAR show · NASA: Kyoto dinner OR Osaka — whichever you didn\'t do on D8', hotel: 'granbell',
     items: [
       N('Route logic', 'Fushimi dawn (south) → walk 2 km to Sanjusangen-do → taxi to Nanzen-ji (default) or Nijo → taxi to Nishiki for lunch → Orizuruya 1:30 PM → free from 3:30 PM.', 'tip'),
-      E('6:00 AM', 'Leave hotel', 'Bring a layer — cold at dawn.', { id: 'd09-leave', place: P('Kyoto Granbell Hotel', 35.0036, 135.7711), tags: ['hotel'] }),
-      E('6:10–6:25 AM', 'Keihan Gion-Shijo → Fushimi-Inari', '3 stops, ~12 min.', { id: 'd09-keihan', tags: ['transit'] }),
-      E('6:30–8:30 AM', 'Fushimi Inari', 'Go higher than you would at midday — emptier paths, city views. Base stalls sell coffee and bites from early. Open 24 hrs, free.', {
+      E('6:00 AM', 'Leave hotel', 'Bring a layer — cold at dawn.', { id: 'd09-leave', who: 'nasa', place: P('Kyoto Granbell Hotel', 35.0036, 135.7711), tags: ['hotel'] }),
+      E('6:10 AM', 'M&M check out · Hotel in the Green', 'Taxi to Fushimi Inari, about 10 min. Keep the overnight bag light, or try the coin lockers at JR Inari Station by the gate. Bring a layer — cold at dawn.', { id: 'd09-mm-out', who: 'mm', place: GREEN, tags: ['hotel'] }),
+      E('6:10–6:25 AM', 'Keihan Gion-Shijo → Fushimi-Inari', '3 stops, ~12 min.', { id: 'd09-keihan', who: 'nasa', tags: ['transit'] }),
+      E('6:30–8:30 AM', 'Fushimi Inari', 'All four meet at the main gate at 6:30. Go higher than you would at midday — emptier paths, city views. Base stalls sell coffee and bites from early. Open 24 hrs, free.', {
         id: 'd09-fushimi', place: P('Fushimi Inari Taisha', 34.9675, 135.7797), travel: { mode: 'train', label: 'Keihan Line, 3 stops, 12 min' }, tags: ['sight'],
       }),
       E('8:30–9:00 AM', 'Walk to Sanjusangen-do', '2 km flat, ~25 min. Breakfast from a stall or konbini on the way.', { id: 'd09-walk', tags: ['transit'] }),
@@ -514,7 +550,7 @@ export const DAYS = [
   {
     id: 'd12', n: 12, date: '2026-10-27', dow: 'Tue', city: 'Tokyo',
     title: 'Kyoto → Tokyo + Ginza', tagline: 'Squad reunites — Ginza · NASA Yoroniku · M&M evening',
-    energy: 'MEDIUM', dinner: 'Ginza together · NASA: Yoroniku Ebisu 9:30 PM · M&M romantic evening', hotel: 'washington',
+    energy: 'MEDIUM', dinner: 'Ginza together · NASA: Yoroniku Ebisu 9:30 PM · M&M: night at Hotel Pasha Gran', hotel: 'washington', mmHotel: 'pasha',
     items: [
       S('Flexible Kyoto morning'),
       E('9:00 AM–12:00 PM', 'Flexible morning', 'Sleep in, slow breakfast, wander Gion. Bags already shipped — check out at noon.', { id: 'd12-morning', place: P('Kyoto Granbell Hotel', 35.0036, 135.7711), tags: ['hotel'] }),
@@ -531,11 +567,14 @@ export const DAYS = [
         id: 'd12-checkout', place: P('Kyoto Station', 34.9858, 135.7588), travel: { mode: 'taxi', label: 'Taxi ~12 min, ¥700–1,000' }, tags: ['transit', 'hotel'],
       }),
       E('12:15–1:45 PM', 'Kyoto Station run', 'Porta mall, Isetan basement food hall, platform souvenir strip (10 AM–8 PM). Bento by ~1:30 PM — Kyoto makunouchi box, ~¥1,200–1,800 each.', { id: 'd12-station', tags: ['food', 'shop'] }),
-      E('2:01 PM', 'Shinkansen Kyoto → Tokyo', 'CONFIRMED 2:01 PM, arr Tokyo 4:15 PM. Left-side seats (A/B) for Fuji. Rear row, large-baggage car.', {
-        id: 'd12-shinkansen', confirmed: true, place: P('Tokyo Station', 35.6812, 139.7671), travel: { mode: 'train', label: 'Shinkansen, 2h14' }, tags: ['transit', 'booking'],
+      E('2:01–4:15 PM', 'Nozomi 24 → Tokyo', '', {
+        id: 'd12-shinkansen', confirmed: true, place: P('Tokyo Station', 35.6812, 139.7671), travel: { mode: 'train', label: 'Nozomi 24, 2 h 14 min' }, tags: ['transit', 'booking'],
+        ticket: { people: ALL4, from: ['2:01 PM', 'Kyoto'], to: ['4:15 PM', 'Tokyo'], facts: [['Car', '8 · Green'], ['Seats', '1A – 1D']],
+          board: 'Board with your Smart EX QR ticket or linked IC card. Fuji is on the D side, so 1D has the window view, around Shin-Fuji about 50 min before Tokyo. Big-bag space is booked.',
+          yen: 75360, yenNote: '4 adults · Green Car', expense: { title: 'Nozomi 24, Kyoto → Tokyo', cat: 'transport', split: ALL4 } },
       }),
       S('Tokyo arrival'),
-      E('4:20 PM', 'Keihin-Tohoku → Akihabara · check in', '5 min. Drop bags, freshen up.', {
+      E('4:20 PM', 'Keihin-Tohoku → Akihabara · check in', '5 min. Drop bags, freshen up. M&M: leave the big bags here and take an overnight bag to the Pasha tonight.', {
         id: 'd12-checkin', place: P('Akihabara Washington Hotel', 35.6975, 139.7745), travel: { mode: 'train', label: 'JR Keihin-Tohoku, 5 min' }, tags: ['hotel'],
       }),
       E('5:00 PM', 'JR Akihabara → Yurakucho', '~10 min — into Ginza.', { id: 'd12-to-ginza', tags: ['transit'] }),
@@ -544,7 +583,7 @@ export const DAYS = [
         id: 'd12-ginza', place: P('Ginza Chuo-dori', 35.6717, 139.7649, 'Ginza Chuo-dori'), travel: { mode: 'train', label: 'JR to Yurakucho, 10 min' }, tags: ['shop'],
         subplaces: [P('Komehyo Ginza', 35.6700, 139.7632, 'KOMEHYO Ginza'), P('Brand Off Ginza', 35.6703, 139.7636, 'Brand Off Ginza'), P('Casanova Vintage Ginza', 35.6708, 139.7625, 'Casanova Vintage Ginza')],
       }),
-      E('~7:30 PM', 'Split', 'M&M to their date night (hard 9 PM arrival cutoff, ~30–40 min by taxi). NASA toward Marunouchi before Yoroniku.', { id: 'd12-split', tags: ['logistics'] }),
+      E('~7:30 PM', 'Split', 'M&M to Hotel Pasha Gran in Ueno (arrive by 9 PM, ~15–20 min by taxi). NASA toward Marunouchi before Yoroniku.', { id: 'd12-split', tags: ['logistics'] }),
       S('NASA — evening after Ginza'),
       E('8:00–9:10 PM', 'Marunouchi wander', '10-min walk east. Imperial Palace moat, Naka-dori brick arcades, Tokyo Station red-brick facade lit.', {
         id: 'd12-marunouchi', who: 'nasa', place: P('Marunouchi Naka-dori', 35.6800, 139.7640, 'Marunouchi Naka-dori'), travel: { mode: 'walk', label: '10-min walk' }, tags: ['sight'],
@@ -556,8 +595,14 @@ export const DAYS = [
       E('~11:30 PM', 'Taxi back to Akihabara', '~25 min, ~¥2,500.', {
         id: 'd12-home', who: 'nasa', place: P('Akihabara Washington Hotel', 35.6975, 139.7745), travel: { mode: 'taxi', label: 'Taxi ~25 min, ~¥2,500' }, tags: ['hotel'],
       }),
-      S('M&M — romantic evening'),
-      E('~7:30–9:00 PM', 'M&M date night', 'Arrive by the 9 PM cutoff (~30–40 min by taxi from Ginza). Private evening from here, back to Akihabara on your own timeline.', { id: 'd12-mm', who: 'mm', travel: { mode: 'taxi', label: 'Taxi ~30–40 min' }, tags: ['food'] }),
+      S('M&M — a night at the Pasha'),
+      E('7:30–9:00 PM', 'Check in · Hotel Pasha Gran', 'Type I room (305 or 306) with its own open-air bath. Arrival 7–9 PM agreed by email. They\'ll hold your bags if you go out for dinner. No meals.', {
+        id: 'd12-mm', who: 'mm', confirmed: true, place: PASHA, travel: { mode: 'taxi', label: 'Taxi from Ginza ~15–20 min' }, tags: ['hotel', 'booking'],
+        ticket: { people: MM, facts: [['Room', 'Type I · 305/306'], ['Leave', 'Oct 28, 7:50 AM']],
+          board: 'They agreed the price and arrival time, but haven\'t yet said a Type I room is held for you. Payment and cancellation terms are still to come.',
+          pending: { id: 'bk-pasha', label: 'Room not confirmed yet' },
+          yen: 24400, yenNote: 'Quoted price', expense: { title: 'Hotel Pasha Gran, 1 night', cat: 'hotel', split: MM } },
+      }),
     ],
   },
 
@@ -567,8 +612,9 @@ export const DAYS = [
     title: 'Asakusa + Kappabashi + Okachimachi', tagline: 'Old Tokyo — temples, knives, chopsticks, gold',
     energy: 'HIGH', dinner: 'Nakamise + Ameyoko stalls + Akihabara night', hotel: 'washington',
     items: [
-      E('8:20 AM', 'Tsukuba Express → Asakusa', '8 min, ¥210. Walk 5 min southeast to Senso-ji. Pelikan Bakery (since 1942, opens 9 AM, sells out late morning) 5 min from Senso-ji.', { id: 'd13-depart', place: P('Akihabara Washington Hotel', 35.6975, 139.7745), tags: ['transit'] }),
-      E('8:30–10:00 AM', 'Senso-ji before crowds', 'Kaminarimon Gate, incense cauldron, main hall, omikuji ¥100. Asakusa Shrine next door — quieter. Tour groups from 10:30.', {
+      E('7:50 AM', 'M&M leave the Pasha for Senso-ji', 'Ginza Line from Ueno-hirokoji to Asakusa, or a taxi, about 10 min. Meet NASA at Kaminarimon Gate at 8:30.', { id: 'd13-mm-pasha', who: 'mm', place: PASHA, tags: ['hotel'] }),
+      E('8:20 AM', 'Tsukuba Express → Asakusa', '8 min, ¥210. Walk 5 min southeast to Senso-ji. Pelikan Bakery (since 1942, opens 9 AM, sells out late morning) 5 min from Senso-ji.', { id: 'd13-depart', who: 'nasa', place: P('Akihabara Washington Hotel', 35.6975, 139.7745), tags: ['transit'] }),
+      E('8:30–10:00 AM', 'Senso-ji before crowds', 'All four meet at Kaminarimon Gate at 8:30, then the incense cauldron, main hall, omikuji ¥100. Asakusa Shrine next door — quieter. Tour groups from 10:30.', {
         id: 'd13-sensoji', place: P('Senso-ji', 35.7148, 139.7967, 'Sensoji Temple'), travel: { mode: 'train', label: 'Tsukuba Express, 8 min, ¥210' }, tags: ['sight'], subplaces: [P('Asakusa Shrine', 35.7153, 139.7975)],
       }),
       E('10:00–11:00 AM', 'Nakamise-dori', 'Fans, lacquerware, ningyo-yaki (red-bean cakes), tenugui cloth. Also Denpoin Street (Edo facades), Shin-Nakamise arcade. Stalls 10 AM–6:30 PM.', {
