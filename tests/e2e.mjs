@@ -899,6 +899,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const typedGot = [await alSvc.look(noTimes), await alSvc.look(noTimes)];
   const away = F.fromAirLabs(al({ dep_iata: 'ICN', dep_time: '2026-10-21 09:00', dep_time_utc: '2026-10-21 00:00', arr_iata: 'BOM', arr_time: '2026-10-21 14:30', arr_time_utc: '2026-10-21 09:00' }), {});
   ok('AirLabs: a typed-in flight number only takes that day\'s flight; other airports get their time zone from AirLabs\' times', typedGot[0] === null && typedGot[1] && away.fromTz === 'Etc/GMT-9' && away.toTz === '', JSON.stringify([typedGot.map((x) => x && x.st), away.fromTz, away.toTz]));
+  const sparse = F.fromAirLabs(al({ arr_actual_utc: null, arr_estimated_utc: null, arr_baggage: null }), mo), sparseCh = F.changesOf(mo, { st: 'air', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, sparse, Date.now());
+  ok('a landing with no landing time says the scheduled one, not a made-up clock', sparse.st === 'landed' && /landed at Narita, 12:55 PM\./.test(sparseCh.map((c) => c.text).join()), JSON.stringify(sparseCh));
   const dep0 = Date.parse(mo.dep);
   ok('with AirLabs, checks start 3 hours before takeoff, every 15 minutes in the air; FlightAware still wins when both are set', alSvc.lead === 3 && alSvc.airEvery === 15 && F.nextCheck(mo, null, dep0 - 10 * 3600e3, 15, 3) === dep0 - 3 * 3600e3 && F.nextCheck(mo, null, dep0 - 30 * 3600e3) === dep0 - 24 * 3600e3 && F.lookupFor({ AIRLABS_KEY: 'a', FLIGHTAWARE_KEY: 'b' }).lead === 24);
   // what a phone sees: put Mo's flight back to the late, re-gated look and open day 6
