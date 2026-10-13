@@ -94,10 +94,11 @@ export class TripState {
     for (const [id, s] of Object.entries(subs)) {
       for (const a of alerts) {
         if (!ALERT_KINDS.includes(a.kind) || !a.people.some((p) => s.prefs && s.prefs[p] && s.prefs[p][a.kind] !== false)) continue;
-        try {
-          const st = await sendPush(s.sub, { title: 'Japan 2026', body: a.text, tag: 'fl-' + a.id, url: `/japan/?d=${a.day}` }, vapid, env.PUSH_FETCH || fetch);
-          if (st === 404 || st === 410) { gone.push(id); break; }
-        } catch { /* this phone misses this one; the stop still shows it */ }
+        // a busy or failing push service (429, 5xx, no answer) gets one more try a second later
+        const send = () => sendPush(s.sub, { title: 'Japan 2026', body: a.text, tag: 'fl-' + a.id, url: `/japan/?d=${a.day}` }, vapid, env.PUSH_FETCH || fetch).catch(() => 0);
+        let st = await send();
+        if (st === 0 || st === 429 || st >= 500) { await new Promise((r) => setTimeout(r, env.PUSH_RETRY_MS ?? 1000)); st = await send(); }
+        if (st === 404 || st === 410) { gone.push(id); break; } // anything else still failing: this phone misses it, the stop still shows it
       }
     }
     // read again: a phone may have turned alerts on while these were going out

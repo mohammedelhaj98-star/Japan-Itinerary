@@ -829,8 +829,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const st0 = await (await onRequest({ request: new Request(B + '/api/state', { headers: { 'x-trip-pin': PIN } }), env: ENV })).json();
   ok('two phones turn alerts on (phone two skips Mo\'s delays); subscriptions are never sent to phones', r1.status === 200 && r2.status === 200 && k1.tracking === true && !('push' in st0) && !JSON.stringify(st0).includes('push.example.com'));
   // the push service: records what it was sent, and says phone one has unsubscribed when told to
-  const sent = []; let gone1 = false;
-  DO_ENV.PUSH_FETCH = async (url, init) => { sent.push({ url, init }); return new Response('', { status: gone1 && url.includes('phone1') ? 410 : 201 }); };
+  const sent = []; let gone1 = false, busy = 1; DO_ENV.PUSH_RETRY_MS = 10;
+  DO_ENV.PUSH_FETCH = async (url, init) => { if (busy && url.includes('phone2')) { busy--; return new Response('', { status: 503 }); } sent.push({ url, init }); return new Response('', { status: gone1 && url.includes('phone1') ? 410 : 201 }); };
   const open = async (h, init) => { // what the phone itself does with an alert: decrypt it (RFC 8291)
     const b = new Uint8Array(init.body), salt = b.slice(0, 16), asPub = b.slice(21, 21 + b[20]), sealed = b.slice(21 + b[20]), S = crypto.webcrypto.subtle;
     const asKey = await S.importKey('raw', asPub, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
@@ -856,7 +856,7 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('a delay and a gate change are kept with what they were before, for the stop to show', rec.st === 'delayed' && rec.delay === 50 && kinds.includes('delay:arr') && kinds.includes('gate:gate') && rec.changes.find((c) => c.field === 'gate').from === 'C12', JSON.stringify(kinds));
   const to1 = sent.filter((x) => x.url.includes('phone1')), to2 = sent.filter((x) => x.url.includes('phone2'));
   const m1 = await Promise.all(to1.map((x) => open(h1, x.init))), m2 = await Promise.all(to2.map((x) => open(h2, x.init)));
-  ok('phone one gets both alerts; phone two (no delays for Mo) only the gate', t2.alerts === 2 && m1.length === 2 && m2.length === 1 && m1.some((m) => /Mo's flight QR 808 is running late\. Now lands 1:40 PM Narita time/.test(m.body)) && /gate C20 \(was C12\)/.test(m2[0].body), JSON.stringify([t2, m1.map((m) => m.body), m2.map((m) => m.body)]));
+  ok('phone one gets both alerts; phone two (no delays for Mo) only the gate, sent again after the push service was busy', t2.alerts === 2 && m1.length === 2 && m2.length === 1 && m1.some((m) => /Mo's flight QR 808 is running late\. Now lands 1:40 PM Narita time/.test(m.body)) && /gate C20 \(was C12\)/.test(m2[0].body), JSON.stringify([t2, m1.map((m) => m.body), m2.map((m) => m.body)]));
   const auth = to1[0].init.headers.authorization, [, jwt, pk] = /^vapid t=([^,]+), k=(.+)$/.exec(auth) || [];
   const [hd, bd, sg] = (jwt || '..').split('.');
   const good = jwt && await crypto.webcrypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, vp.publicKey, W.unb64u(sg), new TextEncoder().encode(hd + '.' + bd));
@@ -868,6 +868,10 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('landing with the belt alerts, and a phone the push service says is gone is forgotten', t3.alerts === 1 && sent.length === 2 && subsLeft.join() === 'phone-two', JSON.stringify([t3, subsLeft]));
   fl = (await (await onRequest({ request: new Request(B + '/api/state'), env: ENV })).json()).flights;
   ok('after landing with the belt known, Mo\'s flight is not checked again', fl['d06-mo-land'].st === 'landed' && fl['d06-mo-land'].belt === '7' && fl['d06-mo-land'].nextAt === null);
+  const first = F.changesOf(mo, { st: 'ontime', gate: '', term: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, { st: 'ontime', gate: 'A4', term: '', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, Date.now());
+  ok('a gate given for the first time is a gate alert too', first.length === 1 && first[0].kind === 'gate' && /leaves from gate A4\./.test(first[0].text), JSON.stringify(first));
+  const arrLate = F.fromFlightAware(qr({ estimated_in: '2026-10-21T04:40:00Z', arrival_delay: 2700 }), mo);
+  ok('a flight late only on arrival says by how much', arrLate.st === 'delayed' && arrLate.delay === 45, JSON.stringify([arrLate.st, arrLate.delay]));
   // AeroDataBox reads into the same shape, should FlightAware not be there
   const adb = F.fromAeroDataBox({ status: 'EnRoute', departure: { airport: { iata: 'YYZ', timeZone: 'America/Toronto' }, scheduledTime: { utc: '2026-10-20 17:25Z' }, revisedTime: { utc: '2026-10-20 17:40Z' }, runwayTime: { utc: '2026-10-20 17:52Z' }, terminal: '1', gate: 'E75' }, arrival: { airport: { iata: 'NRT', timeZone: 'Asia/Tokyo', municipalityName: 'Tokyo' }, scheduledTime: { utc: '2026-10-21 06:50Z' }, predictedTime: { utc: '2026-10-21 06:58Z' }, terminal: '1' } }, { to: 'NRT' });
   ok('AeroDataBox answers read the same way (the stand-in service)', adb.st === 'air' && adb.gate === 'E75' && adb.dep.act === '2026-10-20T17:52:00.000Z' && adb.arr.est === '2026-10-21T06:58:00.000Z' && adb.toTz === 'Asia/Tokyo', JSON.stringify(adb));
@@ -881,7 +885,7 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await P.page.screenshot({ path: SH + 'flights-day6.png' });
   ok('no page errors on the flight phone', !P.errs.length, P.errs.join(' | '));
   await P.ctx.close();
-  for (const k of ['FLIGHT_FETCH', 'FLIGHTAWARE_KEY', 'PUSH_FETCH', 'VAPID_PUBLIC', 'VAPID_PRIVATE']) delete DO_ENV[k];
+  for (const k of ['FLIGHT_FETCH', 'FLIGHTAWARE_KEY', 'PUSH_FETCH', 'PUSH_RETRY_MS', 'VAPID_PUBLIC', 'VAPID_PRIVATE']) delete DO_ENV[k];
 }
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));
 console.log(`\n${pass} passed, ${fail} failed`);
