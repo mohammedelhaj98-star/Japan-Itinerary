@@ -966,21 +966,23 @@ const SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 // what it was last time keeps its elements, so a tap re-makes only what it changed (the list, a card, two day bars) and
 // the rest isn't parsed, styled or painted again. The page comes out exactly as drawing it whole would make it: a part
 // that was decorated since (an animation class, a count) or that holds the focus is made again, as a whole redraw did.
-const mold = document.createElement('div'); // parsed in a div, as #app's whole HTML was
-const make = (h) => { mold.innerHTML = h; return [...mold.childNodes]; };
+// What's new at a level is parsed in one go (one parse costs far less than many), each part with all that's inside it
+// and a marker between parts, in a div as #app's whole HTML was; the markers come out as the nodes are shared out.
+// (Every part closes what it opens, so a marker always lands between parts.)
+const mold = document.createElement('div'), M = '<!--·-->', full = ([, h, kids, end]) => (kids ? h + kids.map(full).join(M) + end : h);
+function cut(ns) { const out = [[]]; for (const n of ns) if (n.nodeType === 8 && n.data === '·') { n.remove(); out.push([]); } else out[out.length - 1].push(n); return out; }
+function rec([k, h, kids, end], nodes) { if (!kids) return { k, h, nodes }; const g = cut([...nodes[0].childNodes]); return { k, h, end, nodes, kids:kids.map((p, i) => rec(p, g[i])) }; }
 function patch(box, parts, was = []) {
   const old = new Map(was.map((r) => [r.k, r]));
-  const now = parts.map(([k, h, kids, end]) => {
-    const o = old.get(k); old.delete(k);
-    if (!kids) return o && !o.kids && !o.dirty && o.h === h ? o : { k, h, nodes:make(h) };
-    const keep = o && o.kids && !o.dirty && o.h === h && o.end === end, el = keep ? o.nodes[0] : make(h + end)[0];
-    return { k, h, end, nodes:[el], kids:patch(el, kids, keep ? o.kids : []) };
-  });
-  const want = new Set(now.flatMap((r) => r.nodes));
+  const kept = parts.map(([k, h, kids, end]) => { const o = old.get(k); old.delete(k); return o && !o.dirty && o.h === h && o.end === end && !o.kids === !kids ? o : null; });
+  const fresh = parts.filter((p, i) => !kept[i]); let g = [], j = 0;
+  if (fresh.length) { mold.innerHTML = fresh.map(full).join(M); g = cut([...mold.childNodes]); }
+  const recs = parts.map((p, i) => { const o = kept[i]; if (!o) return rec(p, g[j++]); if (p[2]) o.kids = patch(o.nodes[0], p[2], o.kids); return o; });
+  const want = new Set(recs.flatMap((r) => r.nodes));
   for (let n = box.firstChild, nx; n; n = nx) { nx = n.nextSibling; if (!want.has(n)) n.remove(); }
   let at = box.firstChild;
-  for (const r of now) for (const n of r.nodes) { if (n === at) at = at.nextSibling; else box.insertBefore(n, at); }
-  return now;
+  for (const r of recs) for (const n of r.nodes) { if (n === at) at = at.nextSibling; else box.insertBefore(n, at); }
+  return recs;
 }
 // an element decorated after it was drawn: its part is made afresh next time
 function taint(el, recs = drawn) { for (const r of recs) if (r.nodes.some((n) => n.contains(el))) { if (r.kids && r.nodes[0] !== el) taint(el, r.kids); else r.dirty = true; return; } }
