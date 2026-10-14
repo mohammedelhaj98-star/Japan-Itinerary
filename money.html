@@ -1346,7 +1346,7 @@ function camRect(v) {
 const camC = document.createElement('canvas');
 function camCheck() {
   const v = cam.el && cam.el.querySelector('video'); if (!v || !v.videoWidth || cam.shot) return;
-  const r = camRect(v), w = 72, h = Math.round(w * r.h / r.w); camC.width = w; camC.height = h;
+  const r = camRect(v), w = 72, h = Math.round(w * r.h / r.w); if (camC.width !== w) camC.width = w; if (camC.height !== h) camC.height = h; // (setting a size clears and remakes the canvas)
   const g = camC.getContext('2d', { willReadFrequently:true }); g.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, w, h);
   const d = g.getImageData(0, 0, w, h).data, L = new Float32Array(w * h);
   let sum = 0; for (let i = 0; i < w * h; i++) { L[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]; sum += L[i]; }
@@ -1364,7 +1364,7 @@ function camCheck() {
   if (tb) tb.classList.toggle('nudge', mean < 70 && !cam.torch);
   cam.good = ok ? cam.good + 1 : 0;
   const ready = cam.good >= 2; // good on two checks in a row, so it doesn't flicker
-  hint.textContent = ok && !ready ? 'Hold still…' : msg;
+  const say = ok && !ready ? 'Hold still…' : msg; if (hint.textContent !== say) hint.textContent = say;
   cam.el.querySelector('.cam-frame').classList.toggle('ok', ready);
   cam.el.querySelector('.cam-shutter').classList.toggle('ready', ready);
 }
@@ -1473,6 +1473,7 @@ function useItems() {
 function closeItems() { F.view = null; if (F.split) F.split.edit = null; delete fsave.dataset.items; renderForm(); scrollTo(0, 0); }
 function fixPrice(el) { const it = F.split.items[F.split.edit], v = parseInt(el.value.replace(/[^\d]/g, ''), 10); if (it && v >= 0) it.price = v; F.split.edit = null; renderItems(); }
 
+let rimg = null, rsrc = null;
 function renderForm() {
   if (F.kind === 'cash' || F.kind === 'ic') return renderMove();
   if (F.view === 'items') return renderItems();
@@ -1490,6 +1491,7 @@ function renderForm() {
   const early = DAY[F.day] && DAY[F.day].n >= 1 && DAY[F.day].n <= 5 && F.set.some((i) => P[i].couple === 'mm');
   const nightsMax = Math.max(1, DAYS.length - DAYS.findIndex((d) => d.id === F.day));
   const d = DAY[F.day], dayLabel = d.id === 'pre' ? 'Before the trip' : `Day ${d.n} · ${d.dd}${d.id === TODAY ? ' · today' : ''}`;
+  const sp = fpage.querySelector('.spin'), turn = sp && sp.getAnimations()[0] ? sp.getAnimations()[0].currentTime : null;
   fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${F.id ? 'Edit expense' : 'New expense'}</b><button class="del" data-fdel style="${F.id ? '' : 'visibility:hidden'}">Delete</button></div>${F.id ? '' : kindTabs()}
     ${SANDBOX ? '<div class="draft"><span>Practice: type an amount (like 3000), check who paid, then tap Add expense. Nothing is saved.</span></div>' : ''}
     ${F.draft ? '<div class="draft"><span>Filled in from the expense that was undone.</span><button data-fblank>Start blank</button></div>' : ''}
@@ -1509,8 +1511,13 @@ function renderForm() {
       ${F.exp === 'cat' ? `<div class="cats">${Object.entries(CATS).map(([k, [l, , ic]]) => `<button class="pill ${F.cat === k ? 'on' : ''}" data-cat="${k}">${ic} ${l}</button>`).join('')}</div>` : ''}
       ${F.exp === 'day' ? `<div class="fstrip" id="fstrip">${DAYS.map((dd) => `<button data-fday="${dd.id}" class="${F.day === dd.id ? 'on' : ''}"><small>${dd.short}${dd.id === TODAY ? ' · today' : ''}</small><b>${dd.dd}</b></button>`).join('')}</div>` : ''}
       ${F.cat === 'hotel' && F.day !== 'pre' ? `<div class="nights"><span>Spread over</span><button class="pill" data-nights="-1" aria-label="One night fewer">−</button><b>${F.nights} night${F.nights === 1 ? '' : 's'}</b><button class="pill" data-nights="1" aria-label="One night more" ${F.nights >= nightsMax ? 'disabled' : ''}>+</button></div>` : ''}
-      ${F.receipt ? `<div class="rcpt"><img src="${F.receipt}" alt="Receipt photo"><button class="pill" data-rmreceipt>Remove receipt</button></div>` : ''}</div>
+      ${F.receipt ? `<div class="rcpt"><img alt="Receipt photo"><button class="pill" data-rmreceipt>Remove receipt</button></div>` : ''}</div>
     ${F.by ? `<p class="conv" style="padding:14px 16px 0">Added by ${P[F.by].name}</p>` : ''}</div>`;
+  // the receipt photo (a big data URL) is the same <img> each time: not parsed and decoded again on every tap
+  const ri = fpage.querySelector('.rcpt img');
+  if (!ri) rimg = null; else { if (!rimg || rsrc !== F.receipt) { rimg = new Image(); rimg.src = rsrc = F.receipt; rimg.alt = 'Receipt photo'; } ri.replaceWith(rimg); }
+  // a redraw while a receipt is being read: the spinner carries on turning rather than starting its turn again
+  const sp2 = turn != null && fpage.querySelector('.spin'); if (sp2 && sp2.getAnimations()[0]) sp2.getAnimations()[0].currentTime = turn;
   fsave.textContent = F.id ? 'Save' : 'Add expense';
   fsave.disabled = !(total && !left && F.set.length);
   const fs = document.getElementById('fstrip'), on = fs && fs.querySelector('.on'); if (on) fs.scrollLeft = on.offsetLeft - 12;
