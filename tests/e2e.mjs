@@ -992,6 +992,28 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('no page errors on the trains phone', !P.errs.length, P.errs.join(' | '));
   await P.ctx.close();
 }
+// Back to a page the browser kept: it lets go of its own recent expense changes, as a fresh page would. Laid over the
+// next download of the shared copy, they would undo a newer change made on another page meanwhile, and that copy is saved.
+{
+  const K = await phone();
+  await K.page.goto(B + '/'); await K.page.evaluate((pin) => { localStorage.setItem('trips.me', '"m"'); localStorage.setItem('trips.pin', pin); }, PIN);
+  await K.page.goto(B + '/japan/money'); await K.page.waitForTimeout(1500);
+  const ex = { title: 'Back test', yen: 1000, payer: 'm', split: ['m', 'mariam'], cat: 'food', day: 'd05' };
+  await K.page.evaluate((x) => window.__tourEnv.store.setExpense('bk-x', x), ex); await K.page.waitForTimeout(800); // this page's own change
+  // off to another page: the browser keeps this one, frozen
+  const cdp = await K.ctx.newCDPSession(K.page);
+  await K.page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))); await cdp.send('Page.setWebLifecycleState', { state: 'frozen' });
+  const K2 = await K.ctx.newPage(); await K2.goto(B + '/japan/money'); await K2.waitForTimeout(1500);
+  await K2.evaluate((x) => window.__tourEnv.store.setExpense('bk-x', x), { ...ex, yen: 2000 }); await K2.waitForTimeout(1200); await K2.close(); // changed on the other page
+  // Back, then the next download of the shared copy (anyone's change brings one)
+  await cdp.send('Page.setWebLifecycleState', { state: 'active' }); await K.page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))); await K.page.waitForTimeout(600);
+  await K.page.evaluate(() => window.__tourEnv.store.refresh()); await K.page.waitForTimeout(300);
+  const got = await K.page.evaluate(() => [window.__tourEnv.store.getExpenses()['bk-x'], JSON.parse(localStorage.getItem('japan2026.state.v1')).expenses['bk-x']].map((x) => x && x.yen));
+  ok('Back: an expense changed on another page meanwhile stays changed, after the next download too', got[0] === 2000 && got[1] === 2000 && exMap()['bk-x'].yen === 2000, JSON.stringify([...got, exMap()['bk-x'].yen]));
+  await K.page.evaluate(() => window.__tourEnv.store.setExpense('bk-x', null)); await K.page.waitForTimeout(800);
+  ok('no page errors on the Back phone', !K.errs.length, K.errs.join(' | '));
+  await K.ctx.close();
+}
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exitCode = fail ? 1 : 0;

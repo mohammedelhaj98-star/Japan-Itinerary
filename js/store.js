@@ -133,8 +133,10 @@ export const store = {
     // Back shows it at once; back on it, the connection reopens and anything missed is fetched.
     window.addEventListener('pagehide', () => { const ws = this._live; if (!ws) return; this._live = null; this._liveOn = false; clearInterval(this._ping); try { ws.close(); } catch { /* closing */ } });
     // Another page may have changed the trip meanwhile (an expense added with no signal still waits to be sent), so the
-    // page picks up the saved copy and the queue first: carrying on from its own older ones could lose that change.
-    window.addEventListener('pageshow', (e) => { if (!e.persisted) return; this.state = savedState(); if (!SANDBOX) this._outbox = lsGet(LS_OUTBOX, []); this.emit(); this.check(); this.live(); });
+    // page picks up the saved copy and the queue first: carrying on from its own older ones could lose that change. Its
+    // own recent changes are in that copy already, so it lets go of them, as a fresh page would: laid over the next
+    // download, they would undo a newer change made on the other page.
+    window.addEventListener('pageshow', (e) => { if (!e.persisted) return; this.state = savedState(); if (!SANDBOX) this._outbox = lsGet(LS_OUTBOX, []); this._exRecent.clear(); this._pf.clear(); this.emit(); this.check(); this.live(); });
     this.live();
   },
 
