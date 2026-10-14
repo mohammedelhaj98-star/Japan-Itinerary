@@ -765,15 +765,15 @@ export const DAYS = [
       E('9:30–11:00 AM', 'Free time — last shopping, packing', 'Checkout 11 AM. Nakano Broadway last call if watches are still on the list: 22 min by JR, opens 10 AM, back by 11.', { id: 'd17-free', tags: ['shop'] }),
       E('11:00 AM', 'Check out — bags with concierge', 'Lobby until 1:30 PM: last Akihabara wander, coffee, sort purchases into carry-ons.', { id: 'd17-checkout', tags: ['hotel'] }),
       E('~1:30 PM', 'Group assembles in lobby', 'Collect bags, final sort into carry-ons.', { id: 'd17-lobby', tags: ['logistics'] }),
-      E('~1:45 PM', 'Leave for Narita', 'JR Akihabara → Ueno (5 min), Keisei Skyliner → Narita T1 (36 min, ¥2,520). ~2.5 hrs before Mo\'s 4:55 PM flight (Terminal 2 is the stop before Terminal 1 on the Skyliner), 4 hrs before the 6:15 PM flights.', {
+      E('~1:45 PM', 'Leave for Narita', 'JR Akihabara → Ueno (5 min), Keisei Skyliner → Narita T1 (36 min, ¥2,520). ~3 hrs before Mo\'s 5:25 PM flight (Terminal 2 is the stop before Terminal 1 on the Skyliner), 4 hrs before the 6:15 PM flights.', {
         id: 'd17-ueno', place: P('Keisei Ueno Station', 35.7126, 139.7741, 'Keisei Ueno Station'), travel: { mode: 'train', label: 'JR, 5 min' }, tags: ['transit'],
       }),
       E('~2:25 PM', 'Arrive Narita Terminal 1', '', {
         id: 'd17-narita', place: P('Narita Airport Terminal 1', 35.7654, 140.3860, 'Narita Airport Terminal 1'), travel: { mode: 'train', label: 'Keisei Skyliner, 36 min, ¥2,520' }, tags: ['flight'],
       }),
       E('2:25–5:15 PM', 'Check in · security · immigration · lounge', 'Eat in the lounge. Duty Free: Royce chocolate, matcha Kit Kats, Japanese whisky. Keep ¥10,000 cash for Duty Free.', { id: 'd17-airport', tags: ['food', 'shop'] }),
-      E('4:55 PM', 'Mo flies home to Doha', 'Qatar Airways QR 809 from Narita Terminal 2. One last see-you-on-the-other-side before the gate.', {
-        id: 'd17-mo', who: 'mm', tags: ['flight'], flight: { no: 'QR809', people: ['m'], from: 'NRT', to: 'DOH', dep: '2026-11-01T16:55+09:00', arr: '2026-11-01T23:45+03:00' },
+      E('5:25 PM', 'Mo flies home to Doha', 'Qatar Airways QR 809 from Narita Terminal 2. One last see-you-on-the-other-side before the gate.', {
+        id: 'd17-mo', who: 'mm', tags: ['flight'], flight: { no: 'QR809', people: ['m'], from: 'NRT', to: 'DOH', dep: '2026-11-01T17:25+09:00', arr: '2026-11-01T23:05+03:00' },
       }),
       E('5:30–6:00 PM', 'NASA to the gate', 'Boarding call ~30 min before departure.', { id: 'd17-gate', who: 'nasa', tags: ['flight'] }),
       E('6:15 PM', 'Flight to Vancouver', 'Naf, Sara and Mariam together on Air Canada AC 4 from Narita Terminal 1. Sayonara.', {
