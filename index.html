@@ -23,6 +23,9 @@ try { var tq = new URLSearchParams(location.search); if (tq.get('tour') === '1')
 <meta name="color-scheme" content="light">
 <meta name="theme-color" content="#f6f4ef">
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
+<!-- the page's own code, fetched while the page is still arriving (the imports at the bottom are only found once it has) -->
+<link rel="modulepreload" href='./data/itinerary.js?v=9'><link rel="modulepreload" href='./data/places.js?v=9'><link rel="modulepreload" href='./js/store.js?v=9'>
+<link rel="modulepreload" href='./js/offline.js?v=9'><link rel="modulepreload" href='./js/tour.js?v=9'><link rel="modulepreload" href='./js/colors.js?v=9'>
 <style>
 @font-face { font-family:'Zen Kaku'; font-weight:400; font-display:swap; src:url(./vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku'; font-weight:500; font-display:swap; src:url(./vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
@@ -219,6 +222,8 @@ body.mapmax .mapmax-hint { display:block; }
 @keyframes knobspin { to { transform:rotate(360deg); } }
 @keyframes twinkle { 50% { opacity:.25; transform:scale(.55); } }
 @media (prefers-reduced-motion: reduce) { #knob .rays, #knob .star { animation:none; } }
+/* out of sight they rest, so the page isn't redrawn every frame for nothing: all of it while the drawer is shut, the rays after dark, the stars by day */
+.dd:not(.shown) #knob .rays, .dd:not(.shown) #knob .star, #knob.night .rays, #knob:not(.night) .star { animation-play-state:paused; }
 .dc { position:absolute; left:0; right:0; bottom:2px; text-align:center; pointer-events:none; }
 .dc-k { font-size:12px; font-weight:700; color:var(--kc,var(--ink3)); letter-spacing:.02em; transition:color 200ms; }
 .dc-t { font-family:var(--serif); font-size:42px; line-height:.9; letter-spacing:-.02em; }
@@ -625,7 +630,7 @@ body.guest .tt-quick { display:none; }
 <section class="kit ed" id="ed" aria-label="Edit stop"><div class="kit-h"><div class="grab" style="margin:0"></div></div><div class="kit-b" id="edb"></div></section>
 <section class="setp" id="setp" aria-label="Edit trip"></section>
 <div class="jpcard" id="jpcard" role="dialog" aria-label="Phrases in Japanese"></div>
-<script src="./vendor/leaflet/leaflet.js"></script>
+<script defer src="./vendor/leaflet/leaflet.js"></script>
 <script type="module">
 import { DAYS, HOTELS } from './data/itinerary.js?v=9';
 import { PLACES } from './data/places.js?v=9';
@@ -642,6 +647,8 @@ function recenterNow() {
   dialApi.toMin && dialApi.toMin(nowMin()); buzz(6);
 }
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// the screen's height, kept on resize: reading innerHeight while the page has changes not laid out yet forces a layout
+let VH = innerHeight; addEventListener('resize', () => { VH = innerHeight; });
 class Spring {
   constructor(x, apply, eps = 0.02) { this.x = x; this.v = 0; this.t = x; this.apply = apply; this.eps = eps; this.raf = 0; this.done = null; this.step = this.step.bind(this); }
   to(t, { response = 0.4, damping = 1, velocity } = {}) {
@@ -838,10 +845,10 @@ const toName = (i) => { for (let j = i + 1; j < events.length; j++) if (events[j
 // A couple's own days: M&M's plan starts on Oct 21, so their view skips the days before.
 // the other couple's flights show on every view, but don't make a day yours (M&M's trip still starts on Day 6)
 const hasEvents = (d, who = ui.who) => who === 'all' || dayItems(d, { who }).some((x) => x.type === 'event' && (!x.flight || [undefined, 'all', who].includes(x.who)));
+const setNav = () => { const i = DAYS.indexOf(day); document.getElementById('prev').disabled = !DAYS.slice(0, i).some((d) => hasEvents(d)); document.getElementById('next').disabled = !DAYS.slice(i + 1).some((d) => hasEvents(d)); };
 function renderTop(enter) {
-  const i = DAYS.indexOf(day);
   document.getElementById('prev').innerHTML = I.chevL; document.getElementById('next').innerHTML = I.chevR;
-  document.getElementById('prev').disabled = !DAYS.slice(0, i).some((d) => hasEvents(d)); document.getElementById('next').disabled = !DAYS.slice(i + 1).some((d) => hasEvents(d));
+  setNav();
   const dt = new Date(day.date + 'T00:00:00');
   document.getElementById('dayp-s').textContent = `Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
   document.getElementById('dayp-b').textContent = day.title;
@@ -982,8 +989,9 @@ function passHTML(e, i) {
   return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}${yk}<div class="hanko" aria-hidden="true">済</div></article>`;
 }
 
-function renderSheet(enter) {
-  const sh = document.getElementById('sheet');
+// The day's sheet and drawer, as HTML. A sync that would draw exactly the same HTML (a change to another day, a flight
+// check with nothing new for this one) leaves the page alone: see store.subscribe below.
+function sheetHTML() {
   const dt = new Date(day.date + 'T00:00:00');
   const h0 = hotel(); const ref = stops[0] ? stops[0].e.place : h0;
   const sun = sunTimes(day.date, ref.lat || 35.68, ref.lng || 139.76);
@@ -1001,19 +1009,25 @@ function renderSheet(enter) {
     const pend = h.pending && store.getChoice(h.pending, '') !== 'booked';
     return `<a class="stay press" href="${gmPlace(h)}" target="_blank" rel="noopener" style="${hpi.img ? `background-image:url('${imgUrl(hpi)}')` : 'background-color:#55702f'}">${who ? `<span class="swho">${pills(who)}</span>` : ''}<div><small>${esc(h.city || '')} · ${esc(h.dates || '')}</small><b>${esc(h.name || '')}</b>${pend ? '<span class="htag">Room not confirmed yet</span>' : ''}</div></a>`;
   }).join('');
-  sh.innerHTML = `<div class="${enter === 'rise' ? 'fadein' : enter ? 'dayin ' + enter : ''}"><div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
+  const sheet = `<div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
     ${flightBanner()}<div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
     <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
     ${know ? `<p class="sec">Good to know in ${esc(day.city)}</p><div class="know">${know}</div>` : ''}
     <p class="sec">Tonight</p><div class="stays">${stays}</div>
-    <p class="foot">Photos from Wikimedia Commons, credited on each pass. Weather from Open-Meteo. Rates from ExchangeRate-API.</p></div>`;
-  document.getElementById('ddin').innerHTML = `<header class="hd"><div class="hd-r"><p class="eb">Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p><div class="rr"><div class="seg" id="who">${whoBtns}<i></i></div><button class="gear press" id="gear" aria-label="Edit trip">${I.pen}</button></div></div>
+    <p class="foot">Photos from Wikimedia Commons, credited on each pass. Weather from Open-Meteo. Rates from ExchangeRate-API.</p>`;
+  const dd = `<header class="hd"><div class="hd-r"><p class="eb">Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</p><div class="rr"><div class="seg" id="who">${whoBtns}<i></i></div><button class="gear press" id="gear" aria-label="Edit trip">${I.pen}</button></div></div>
 ${daysTo > 0 ? `<p class="cdx">${daysTo} day${daysTo > 1 ? 's' : ''} to go</p>` : tripDay ? `<p class="cdx">Day ${day.n} of ${DAYS.length}</p>` : ''}<h1>${esc(day.title)}</h1>${day.tagline ? `<p class="tg">${esc(day.tagline)}</p>` : ''}</header>
 <div class="facts"><span class="fact" id="wx"><small>Weather…</small></span><span class="fact sun">${I.sunrise}${fmt(sun.rise)[0]}<i class="dot"></i>${I.sunset}${fmt(sun.set)[0]}</span><span class="fact dn"><small>Dinner</small><span>${esc(day.dinner)}</span></span></div>
     <div class="dial" id="dial"><svg id="arc" viewBox="0 0 360 196"></svg><div class="dc"><p class="dc-k" id="dck"></p><p class="dc-t" id="dct"></p><p class="dc-n" id="dcn"></p><p class="dc-s" id="dcs"></p></div>${tripDay ? `<button class="nowb press" id="nowb">${isToday() ? 'Now' : 'Today'}</button>` : ''}</div>
     <div class="dd-key" aria-label="Card colours">${keyItems(false)}</div>`;
-  moveSeg(document.getElementById('who'));
+  return { sun, ref, sheet, dd };
+}
+let shownView = '';
+function renderSheet(enter) {
+  const { sun, ref, sheet, dd } = sheetHTML(); shownView = sheet + dd;
+  document.getElementById('sheet').innerHTML = `<div class="${enter === 'rise' ? 'fadein' : enter ? 'dayin ' + enter : ''}">${sheet}</div>`;
+  document.getElementById('ddin').innerHTML = dd;
   weatherFor(day, ref.lat || 35.68, ref.lng || 139.76).then((w) => { const el = document.getElementById('wx'); if (!el) return; const [lbl, ic] = w.live ? WMO(w.code) : ['', '']; el.innerHTML = w.live ? `${ic} ${w.hi}° <small>/ ${w.lo}°</small><i class="dot"></i><svg class="um" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 0118 0z"/><path d="M12 12v6a2 2 0 004 0"/></svg><small>${w.rain ?? 0}%</small>` : `${w.hi}° <small>/ ${w.lo}°</small><i class="dot"></i><small>typical</small>`; el.title = w.live ? lbl : w.note; });
   dialApi = buildDial(sun);
   stackApi = buildStack();
@@ -1099,23 +1113,26 @@ function buildDial(sun) {
   const rk = rail.querySelector('.rk');
   let curId = null, flyT = 0;
   const at = (m) => { let best = null; for (const x of sp) if (x.s[0] <= m + 0.5) best = x; return best || sp[0]; };
+  // each frame of a scrub writes only what changed (rewriting the same time and label every frame re-laid out the drawer)
+  const dct = document.getElementById('dct'), dck = document.getElementById('dck'); const shown = {};
   const A = new Spring(A0, (a) => {
     const [x, y] = pt(a, R); knob.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`); rk.style.top = fr(minAt(a)).toFixed(2) + '%';
     const m = minAt(a); const night = m >= sun.set || m < sun.rise; knob.classList.toggle('night', night); rk.classList.toggle('night', night);
-    const [tm, ap] = fmt(Math.round(m / 5) * 5); document.getElementById('dct').innerHTML = `${tm}<small>${ap}</small>`;
+    const [tm, ap] = fmt(Math.round(m / 5) * 5); const t = `${tm}<small>${ap}</small>`; if (t !== shown.t) dct.innerHTML = shown.t = t;
     const x0 = at(m); const nx = nextEv();
-    wrap.style.setProperty('--kc', dialHex(x0.e));
+    const kc = dialHex(x0.e); if (kc !== shown.kc) wrap.style.setProperty('--kc', shown.kc = kc);
     const live = isToday() && Math.abs(m - nowMin()) < 8 && m >= x0.s[0] && m < x0.s[1];
-    document.getElementById('dck').textContent = live ? 'Right now' : nx && nx.id === x0.e.id ? 'Next up' : done(x0.e.id) ? 'Done' : m > x0.s[1] ? 'Then, free time' : 'Then';
+    const k = live ? 'Right now' : nx && nx.id === x0.e.id ? 'Next up' : done(x0.e.id) ? 'Done' : m > x0.s[1] ? 'Then, free time' : 'Then'; if (k !== shown.k) dck.textContent = shown.k = k;
     if (x0.e.id !== curId) { curId = x0.e.id; buzz(4); info(x0); const n = document.getElementById('dcn'); n.classList.add('swap'); setTimeout(() => { n.textContent = x0.e.title; n.classList.remove('swap'); }, 110);
       if (scrubbing) { clearTimeout(flyT); stackApi && stackApi.select(curId, { fromDial: true }); flyT = setTimeout(() => focusMap(curId), 120); } }
   }, 0.05);
   let scrubbing = false;
   const startOf = (id) => { const x = sp.find((y) => y.e.id === id); return x ? x.s[0] : null; };
   const T = tracker(); let drag = null;
-  const angleOf = (ev) => { const r = svg.getBoundingClientRect(); const sx = r.width / 360; const dx = ev.clientX - (r.left + CX * sx), dy = ev.clientY - (r.top + CY * sx); return (Math.atan2(dx, -dy) * 180) / Math.PI; };
-  wrap.addEventListener('pointerdown', (ev) => { if (ev.target.closest('#nowb')) return; const a0 = angleOf(ev); if (Math.abs(a0) > 120) return; scrubbing = true; drag = { id: ev.pointerId, last: a0 }; A.stop(); T.reset(); try { wrap.setPointerCapture(ev.pointerId); } catch {} const a = Math.max(A0, Math.min(A1, a0)); A.set(a); T.add(a); });
-  wrap.addEventListener('pointermove', (ev) => { if (!drag || ev.pointerId !== drag.id) return; let a = angleOf(ev); if (Math.abs(a - drag.last) > 180) return; drag.last = a; const over = a < A0 ? a - A0 : a > A1 ? a - A1 : 0; a = Math.max(A0, Math.min(A1, a)) + (over ? Math.sign(over) * rubber(Math.abs(over), 40) : 0); A.set(a); T.add(a); });
+  // where the dial is on screen: read once when the finger lands (read on every move, it forced a layout each time)
+  const angleOf = (ev, r) => { const sx = r.width / 360; const dx = ev.clientX - (r.left + CX * sx), dy = ev.clientY - (r.top + CY * sx); return (Math.atan2(dx, -dy) * 180) / Math.PI; };
+  wrap.addEventListener('pointerdown', (ev) => { if (ev.target.closest('#nowb')) return; const box = svg.getBoundingClientRect(); const a0 = angleOf(ev, box); if (Math.abs(a0) > 120) return; scrubbing = true; drag = { id: ev.pointerId, last: a0, box }; A.stop(); T.reset(); try { wrap.setPointerCapture(ev.pointerId); } catch {} const a = Math.max(A0, Math.min(A1, a0)); A.set(a); T.add(a); });
+  wrap.addEventListener('pointermove', (ev) => { if (!drag || ev.pointerId !== drag.id) return; let a = angleOf(ev, drag.box); if (Math.abs(a - drag.last) > 180) return; drag.last = a; const over = a < A0 ? a - A0 : a > A1 ? a - A1 : 0; a = Math.max(A0, Math.min(A1, a)) + (over ? Math.sign(over) * rubber(Math.abs(over), 40) : 0); A.set(a); T.add(a); });
   const end = (ev) => { if (!drag || ev.pointerId !== drag.id) return; drag = null; const v = T.vel(); const p = Math.max(A0, Math.min(A1, A.x + project(v, 0.995))); const m = minAt(p); let best = sp[0]; for (const x of sp) if (Math.abs(x.s[0] - m) < Math.abs(best.s[0] - m)) best = x; A.done = () => { scrubbing = false; A.done = null; }; A.to(ang(best.s[0]) + 0.01, { response: 0.5, damping: 0.86, velocity: v }); };
   wrap.addEventListener('pointerup', end); wrap.addEventListener('pointercancel', end);
   return {
@@ -1195,12 +1212,18 @@ async function drawnMap() {
     const logo = L.control({ position: 'topright' }); logo.onAdd = () => { const a = L.DomUtil.create('a', 'mt-logo'); a.href = 'https://www.maptiler.com'; a.target = '_blank'; a.rel = 'noopener'; a.innerHTML = '<img src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler">'; return a; }; logo.addTo(map);
   } catch (err) { console.warn('map: using OpenStreetMap tiles', err && err.message); osmTiles(); }
 }
-function mapPad() { return { paddingTopLeft: [30, 80], paddingBottomRight: [30, document.body.classList.contains('mapmax') ? 170 : Math.round(innerHeight * 0.6)] }; }
+function mapPad() { return { paddingTopLeft: [30, 80], paddingBottomRight: [30, document.body.classList.contains('mapmax') ? 170 : Math.round(VH * 0.6)] }; }
 let dayPts = [];
 const fitDay = (animate) => { if (dayPts.length) map.fitBounds(dayPts, { ...mapPad(), maxZoom: 15, animate: !!animate && !RM }); };
-function renderMap() {
+let mapView = '';
+// the pins and legs on show: redrawn in place with the same ones (another phone's change, a flight check), the map is
+// left exactly as it is, rather than jumping back to the whole day and drawing its legs in again
+const mapKey = () => { const h0 = hotel(); return JSON.stringify([h0.lat, h0.lng, stops.map((s) => [s.n, s.ids.join(), s.e.place.lat, s.e.place.lng, catOf(s.e).c, legHex(s.e), s.e.travel ? s.e.travel.mode : ''])]); };
+function renderMap(enter) {
+  const h0 = hotel(); const view = mapKey();
+  if (!enter && view === mapView) return;
+  mapView = view;
   layers.forEach((l) => l.remove()); layers = []; pinEls = {};
-  const h0 = hotel();
   if (h0.lat) { const m = L.marker([h0.lat, h0.lng], { icon: L.divIcon({ className: '', html: '<div class="pin hotel" style="--c:#141412">H</div>', iconSize: [30, 30], iconAnchor: [15, 15] }), zIndexOffset: -100 }).addTo(map); layers.push(m); }
   stops.forEach((s) => { const e = s.e; const m = L.marker([e.place.lat, e.place.lng], { icon: L.divIcon({ className: '', html: `<div class="pin" data-pin="${s.n}" style="--c:${catOf(e).c}">${s.n}</div>`, iconSize: [30, 30], iconAnchor: [15, 15] }) }).addTo(map); m.on('click', () => { stackApi.select(e.id, { scroll: true }); dialApi.focus(e.id); focusMap(e.id); }); layers.push(m); });
   const lines = [];
@@ -1209,7 +1232,12 @@ function renderMap() {
   dayPts = pts; if (pts.length) map.fitBounds(pts, { ...mapPad(), maxZoom: 15, animate: false });
   setTimeout(() => {
     stops.forEach((s) => (pinEls[s.n] = document.querySelector(`.pin[data-pin="${s.n}"]`))); syncPins(); declutter();
-    lines.forEach(({ pl, dashed }, i) => { const p = pl._path; if (!p) return; const len = p.getTotalLength(); if (RM) { p.style.strokeDasharray = dashed ? '2 10' : ''; return; } p.style.strokeDasharray = len; p.style.strokeDashoffset = len; p.getBoundingClientRect(); p.style.transition = `stroke-dashoffset 800ms cubic-bezier(.77,0,.175,1) ${200 + i * 120}ms`; p.style.strokeDashoffset = 0; setTimeout(() => { p.style.transition = ''; p.style.strokeDasharray = dashed ? '2 10' : ''; p.style.strokeDashoffset = ''; }, 1050 + i * 120); });
+    // the legs draw in one after another: every length read first, then every start, then one style flush for them all
+    const legs = lines.map(({ pl, dashed }, i) => ({ p: pl._path, dashed, i })).filter((x) => x.p); legs.forEach((x) => { x.len = x.p.getTotalLength(); });
+    if (RM) { legs.forEach(({ p, dashed }) => { p.style.strokeDasharray = dashed ? '2 10' : ''; }); return; }
+    legs.forEach(({ p, len }) => { p.style.strokeDasharray = len; p.style.strokeDashoffset = len; });
+    if (legs.length) legs[0].p.getBoundingClientRect();
+    legs.forEach(({ p, dashed, i }) => { p.style.transition = `stroke-dashoffset 800ms cubic-bezier(.77,0,.175,1) ${200 + i * 120}ms`; p.style.strokeDashoffset = 0; setTimeout(() => { p.style.transition = ''; p.style.strokeDasharray = dashed ? '2 10' : ''; p.style.strokeDashoffset = ''; }, 1050 + i * 120); });
   }, 60);
 }
 function declutter() {
@@ -1555,14 +1583,18 @@ function renderDay({ keepScroll, keepSel, selId } = {}) {
   // only a new day animates in: a filter, a choice or another phone's change re-draws the same day in place
   const enter = shownDay == null ? 'rise' : shownDay === day.id ? '' : DAYS.indexOf(day) > DAYS.findIndex((d) => d.id === shownDay) ? 'fwd' : 'back';
   shownDay = day.id;
-  renderTop(enter); renderSheet(enter); renderMap();
+  renderTop(enter); renderSheet(enter); renderMap(enter);
+  // Everything above only wrote to the page. Now one layout (the scroll), the measuring (the who switch, the open pass),
+  // then the writes: measuring between writes made the phone lay the whole day out again each time.
+  const keep = prevSel && events.some((e) => e.id === prevSel);
+  if (!keep && !keepScroll) window.scrollTo(0, 0);
+  moveSeg(document.getElementById('who'));
   // redrawn in place: the open stop stays put too, rather than fading its details in again
   const still = () => { if (!enter) document.querySelectorAll('.pass.open .body').forEach((b) => b.getAnimations().forEach((a) => a.finish())); };
-  if (prevSel && events.some((e) => e.id === prevSel)) { ui.sel = prevSel; stackApi.layout(true); syncPins(); dialApi.focus(prevSel, true); still(); const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url); return; }
+  if (keep) { ui.sel = prevSel; stackApi.layout(true); syncPins(); dialApi.focus(prevSel, true); still(); const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url); return; }
   const nx = nextEv(); const first = isToday() ? (nowEv() || nx) : nx;
   ui.sel = null; const target = (first || events[0] || {}).id;
   if (target) { ui.sel = target; stackApi.layout(true); syncPins(); const s = span(events.find((e) => e.id === target)); dialApi.initAt ? dialApi.initAt(tripDay && tripDay.id === day.id ? nowMin() : (s ? s[0] : 0)) : null; if (!(tripDay && tripDay.id === day.id)) setTimeout(() => dialApi.focus(target), 0); }
-  if (!keepScroll) window.scrollTo(0, 0);
   still(); const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url);
 }
 function go(delta) { let i = DAYS.indexOf(day) + delta; while (i >= 0 && i < DAYS.length && !hasEvents(DAYS[i])) i += delta; if (i < 0 || i >= DAYS.length) return; ui.dayId = DAYS[i].id; renderDay(); }
@@ -1632,10 +1664,14 @@ let swiped = false;
 const customSig = () => JSON.stringify([Object.entries(CUSTOM()).map(([k, v]) => [k, { ...v, ts: undefined }]).sort(), store.state.covers || {}, store.state.flights || {}, // new flight news redraws the stops too
   Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-')).sort(), Object.values(store.getExpenses()).map((x) => x && x.src).filter(Boolean).sort()]); // and bookings marked booked or added to expenses
 let lastSig = customSig();
-store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig !== lastSig) { lastSig = sig; renderDay({ keepScroll: true, keepSel: true }); if (setp.classList.contains('on')) renderSettings(); return; } stackApi.refresh(); dialApi.refresh(); syncPins(); });
+// Would a redraw in place show anything new? Only then is the day drawn again (a sync that changed another day, or a
+// flight check with nothing new for this one, used to rebuild the whole page and the map).
+const viewChanged = () => { prepare(); if (!hasEvents(day)) return true; const { sheet, dd } = sheetHTML(); return sheet + dd !== shownView || mapKey() !== mapView; };
+store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig !== lastSig) { lastSig = sig; const redraw = viewChanged(); if (redraw) renderDay({ keepScroll: true, keepSel: true }); if (setp.classList.contains('on')) renderSettings(); if (redraw) return; setNav(); } stackApi.refresh(); dialApi.refresh(); syncPins(); });
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });
 setInterval(() => { if (dialApi && dialApi.tickNow) dialApi.tickNow(); }, 60000);
-window.addEventListener('scroll', () => { const sh = document.getElementById('sheet'); document.body.classList.toggle('scrolled', sh.getBoundingClientRect().top < 70); }, { passive: true });
+// once a frame at most, when the page is laid out anyway (on every scroll event it could force a layout each time)
+{ const sh = document.getElementById('sheet'); let sq = 0; window.addEventListener('scroll', () => { if (!sq) sq = requestAnimationFrame(() => { sq = 0; document.body.classList.toggle('scrolled', sh.getBoundingClientRect().top < 70); }); }, { passive: true }); }
 /* ═══ dial drawer ═══ */
 // The day panel opens by itself the first time, then again on the first look after midnight, noon, 3, 6 and 9 PM (Japan time).
 const DD_SEEN = 'japan2026.ddSeen';
@@ -1646,9 +1682,11 @@ function lastCheckpoint(now = Date.now()) {
 function autoOpen() { if (SANDBOX) return; const seen = +ls.get(DD_SEEN, 0); if (seen >= lastCheckpoint()) return; ls.set(DD_SEEN, Date.now()); if (!drawer.isOpen()) setTimeout(() => drawer.open(), RM ? 0 : 380); }
 const drawer = (() => {
   const dd = document.getElementById('dd'), tab = document.getElementById('ddtab'), scrim = document.getElementById('ddscrim');
-  const W = () => dd.querySelector('.dd-in').offsetWidth;
-  let open = false, sinceScroll = 0;
-  const X = new Spring(0, (x) => { dd.style.transform = `translate3d(${x.toFixed(1)}px,0,0)`; scrim.style.opacity = Math.max(0, Math.min(1, 1 + x / W())).toFixed(3); }, 0.3);
+  // measured once (again after a resize): read on every frame of the slide, it forced a layout each time
+  let w0 = 0; const W = () => w0 || (w0 = dd.querySelector('.dd-in').offsetWidth);
+  let open = false, sinceScroll = 0, shown = null;
+  const X = new Spring(0, (x) => { dd.style.transform = `translate3d(${x.toFixed(1)}px,0,0)`; const w = W(); scrim.style.opacity = Math.max(0, Math.min(1, 1 + x / w)).toFixed(3);
+    const s = x > 1 - w; if (s !== shown) { shown = s; dd.classList.toggle('shown', s); } }, 0.3); // the knob's rays and stars turn only while the drawer shows
   const set = (on, { velocity, instant } = {}) => { open = on; if (on) dd.classList.remove('tuck'); else setTimeout(() => tuck(), 0); scrim.classList.toggle('on', on); tab.setAttribute('aria-expanded', String(on)); tab.setAttribute('aria-label', on ? 'Hide the day dial' : 'Show the day dial'); const t = on ? 0 : -W(); if (instant) X.set(t); else X.to(t, { response: 0.42, damping: on ? 0.82 : 0.95, velocity }); if (on) sinceScroll = scrollY; };
   // drag: from the tab (open or closed), from the left screen edge over the map (closed), or the drawer's own padding (open)
   const T = tracker(); let g = null;
@@ -1681,7 +1719,7 @@ const drawer = (() => {
   const sheetEl = document.getElementById('sheet'); let tq = 0;
   const tuck = () => { tq = 0; dd.classList.toggle('tuck', !open && sheetEl.getBoundingClientRect().top < tab.getBoundingClientRect().bottom + 8); };
   addEventListener('scroll', () => { if (!tq) tq = requestAnimationFrame(tuck); }, { passive: true });
-  addEventListener('resize', () => { set(open, { instant: true }); tuck(); });
+  addEventListener('resize', () => { w0 = 0; set(open, { instant: true }); tuck(); });
   return { open: () => { set(true); }, close: () => set(false), isOpen: () => open, init() { set(false, { instant: true }); autoOpen(); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') autoOpen(); }); } };
 })();
 /* ═══ swipe the stops down to give the map the whole screen ═══ */
