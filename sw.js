@@ -22,7 +22,9 @@ const SHELL = [
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
-    const c = await caches.open(VERSION); await c.addAll(SHELL);
+    // fresh from the server, not the browser's own cache: that may still hold an older deploy's code, and the code saved
+    // here is filed under the deploy address the pages name, where it's never checked again
+    const c = await caches.open(VERSION); await c.addAll(SHELL.map((u) => new Request(u, { cache: 'no-cache' })));
     // the code the saved pages name: the same files just saved (one deploy), filed under the addresses the pages use
     for (const p of ['./', './money.html', './prototypes/tools.html']) { const u = new URL(p, self.registration.scope).href; const r = await c.match(u); if (r) await warm(c, await r.text(), u, true); }
   })().then(() => self.skipWaiting()));
