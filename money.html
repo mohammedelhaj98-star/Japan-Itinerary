@@ -1858,14 +1858,19 @@ addfab.addEventListener('click', () => openForm(null, { day:TODAY }));
 const MINE = P[ME] && !SANDBOX ? ME : null;
 const savePrefs = (p) => { if (MINE) store.setProfile(MINE, p); }; // see store.watchPrefs
 // another phone changed something: show it, unless the form or a sheet is open (then on the next draw)
-let sig = '';
+// (the data and the sync status are compared apart: when only the status changed, like the first check on opening or
+// the signal going and coming back, just the sync line is redrawn; and a redraw leaves the scroll alone, so a fling carries on)
+let sig = '', sigS = '';
+const dataSig = () => JSON.stringify(store.getExpenses()) + JSON.stringify(store.getMoney()) + JSON.stringify(Object.values(store.getProfiles()).map((v) => [v.color, v.photo]));
 store.subscribe(() => {
   if (committing) return;
-  const pf = store.getProfiles(), s2 = store.mode + store.pending() + JSON.stringify(store.getExpenses()) + JSON.stringify(store.getMoney()) + JSON.stringify(Object.values(pf).map((v) => [v.color, v.photo]));
-  if (s2 === sig) return; sig = s2;
+  const s1 = dataSig(), s2 = store.mode + store.pending(), same = s1 === sig;
+  if (same && s2 === sigS) return; sig = s1; sigS = s2;
   if (F || sheet.classList.contains('on') || settling) { stale = true; return; }
-  load(); const y = scrollY; render(); scrollTo(0, y);
+  if (same && !stale && IDS.every((i) => P[i].photo === store.photoUrl(i))) return syncl();
+  load(); render();
 });
+function syncl() { const r = drawn.find((r) => r.k === 'syncl'), h = `<p class="syncl">${syncLine()}</p>`; if (r && r.h !== h) { r.nodes[0].innerHTML = syncLine(); r.h = h; } }
 // the form and sheets pick up what changed meanwhile once they close
 const render0 = render;
 render = function () { if (stale && !F && !sheet.classList.contains('on')) { commit(); load(); } render0(); };
@@ -1874,7 +1879,7 @@ store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) locatio
 
 load();
 if (WHO && !S.seen[S.me]) S.seen[S.me] = Date.now(); // first visit: nothing is "new" yet
-render();
+render(); sig = dataSig(); sigS = store.mode + store.pending(); // what's on screen now
 // your currency and settle-up choice, from your profile (another phone, or Settings)
 store.watchPrefs(MINE, (p) => {
   let ch = false;
