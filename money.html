@@ -698,8 +698,10 @@ const P = {
 };
 const IDS = ['naf', 'sara', 'mariam', 'm'];
 const COUPLE = { nasa:{ name:'NASA', ids:['naf','sara'] }, mm:{ name:'M&M', ids:['mariam','m'] } };
+// number and date formats, made once (toLocaleString builds a new formatter on every call)
+const DF = new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'short', timeZone:'UTC' }), NF = new Intl.NumberFormat('en-GB'), NF0 = new Intl.NumberFormat('en-GB', { minimumFractionDigits:0, maximumFractionDigits:0 }), NF2 = new Intl.NumberFormat('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
 const DAYS = [['pre',0,'','','Before the trip'],["d01",1,"2026-10-16","Fri","Arrival in Tokyo"],["d02",2,"2026-10-17","Sat","Harajuku + Kawagoe Matsuri"],["d03",3,"2026-10-18","Sun","Fuji or Nikko + omakase"],["d04",4,"2026-10-19","Mon","Tsukiji + Ginza + Shimokitazawa + Nakano"],["d05",5,"2026-10-20","Tue","Hakone"],["d06",6,"2026-10-21","Wed","Hakone → Kyoto"],["d07",7,"2026-10-22","Thu","Nara + Osaka"],["d08",8,"2026-10-23","Fri","Arashiyama + samurai"],["d09",9,"2026-10-24","Sat","Fushimi dawn + temples"],["d10",10,"2026-10-25","Sun","Kimono day in Higashiyama"],["d11",11,"2026-10-26","Mon","USJ Halloween"],["d12",12,"2026-10-27","Tue","Kyoto → Tokyo + Ginza"],["d13",13,"2026-10-28","Wed","Asakusa + Kappabashi"],["d14",14,"2026-10-29","Thu","Tokyo DisneySea"],["d15",15,"2026-10-30","Fri","Meiji + Shibuya + Shinjuku"],["d16",16,"2026-10-31","Sat","Ikebukuro Halloween night"],["d17",17,"2026-11-01","Sun","Final morning + flight"]]
-  .map(([id, n, date, dow, title]) => ({ id, n, date, dow, title, short: id === 'pre' ? 'Before' : `D${n}`, dd: date ? new Date(date + 'T00:00:00Z').toLocaleDateString('en-GB', { day:'numeric', month:'short', timeZone:'UTC' }) : 'the trip' }));
+  .map(([id, n, date, dow, title]) => ({ id, n, date, dow, title, short: id === 'pre' ? 'Before' : `D${n}`, dd: date ? DF.format(new Date(date + 'T00:00:00Z')) : 'the trip' }));
 const DAY = Object.fromEntries(DAYS.map((d) => [d.id, d]));
 // today in Japan: before the trip it's 'pre', after it the last day
 const TODAY = (() => { const d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); const day = DAYS.find((x) => x.date === d); return day ? day.id : d < DAYS[1].date ? 'pre' : DAYS[DAYS.length - 1].id; })();
@@ -728,8 +730,8 @@ const CASH_ICON = ico('<rect x="2.5" y="6" width="19" height="12" rx="2"/><circl
 const CLIP = ico('<path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.2-8.2a3.4 3.4 0 0 1 4.8 4.8l-8.2 8.2a1.7 1.7 0 0 1-2.4-2.4l7.5-7.5"/>');
 const TICK = ico('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
 const WITH = { cash:'Cash', card:'Card', ic:'IC card' };
-const fmtY = (v) => (v < 0 ? '−' : '') + '¥' + Math.abs(Math.round(v)).toLocaleString('en-GB');
-const fmtC = (v, c = S.cur) => { const x = Math.abs(v) / RATE[c]; const d = x >= 100 ? 0 : 2; return (v < 0 ? '−' : '') + SYM[c] + x.toLocaleString('en-GB', { minimumFractionDigits:d, maximumFractionDigits:d }); };
+const fmtY = (v) => (v < 0 ? '−' : '') + '¥' + NF.format(Math.abs(Math.round(v)));
+const fmtC = (v, c = S.cur) => { const x = Math.abs(v) / RATE[c]; const d = x >= 100 ? 0 : 2; return (v < 0 ? '−' : '') + SYM[c] + (d ? NF2 : NF0).format(x); };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const av = (id, cls = '') => `<span class="av ${cls} ${P[id].photo ? 'ph' : ''}" style="--c:${P[id].c}${P[id].photo ? `;background-image:url('${P[id].photo}')` : ''}" title="${P[id].name}">${P[id].ini}</span>`;
 const uid = () => 'x' + Math.random().toString(36).slice(2, 9);
@@ -1241,7 +1243,7 @@ function renderMove() {
   fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${cash ? `${P[me].name}'s cash` : `${P[me].name}'s IC card`}</b><button class="del" style="visibility:hidden">Delete</button></div>${kindTabs()}
     <div class="fsec">${cash ? `<div class="seg cxseg">${[['got','Got cash'],['gave','Gave cash']].map(([k, l]) => `<button data-fcxdir="${k}" class="${dir === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="pickrow"><small>${dir === 'got' ? 'From' : 'To'}</small><div class="lineopts">${chips}</div></div>` : ''}
-      <div class="amtin"><select disabled aria-hidden="true"><option>¥</option></select><input id="fmove" inputmode="numeric" enterkeyhint="done" placeholder="0" value="${F.mamt ? (+F.mamt).toLocaleString('en-GB') : ''}" aria-label="Amount"></div>
+      <div class="amtin"><select disabled aria-hidden="true"><option>¥</option></select><input id="fmove" inputmode="numeric" enterkeyhint="done" placeholder="0" value="${F.mamt ? NF.format(+F.mamt) : ''}" aria-label="Amount"></div>
       ${cash ? '' : `<div class="pickrow"><small>Paid with</small><div class="seg cxseg">${[['card','Card'],['cash','Cash']].map(([k, l]) => `<button data-ficwith="${k}" class="${(F.icwith || S.icWith) === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>`}</div>
     <div class="fsec"><div class="details"><button class="pill ${F.exp === 'day' ? 'on' : ''}" data-fexp="day" aria-expanded="${F.exp === 'day'}">${dayLabel} ▾</button></div>
       ${F.exp === 'day' ? `<div class="fstrip" id="fstrip">${DAYS.map((dd) => `<button data-fday="${dd.id}" class="${F.day === dd.id ? 'on' : ''}"><small>${dd.short}${dd.id === TODAY ? ' · today' : ''}</small><b>${dd.dd}</b></button>`).join('')}</div>` : ''}</div></div>`;
@@ -1473,7 +1475,7 @@ function renderForm() {
 }
 fpage.addEventListener('input', (e) => {
   if (!F) return;
-  if (e.target.id === 'fmove') { const dg = e.target.value.replace(/[^\d]/g, ''); e.target.value = dg ? (+dg).toLocaleString('en-GB') : ''; F.mamt = dg; fsave.disabled = !(+dg > 0); return; }
+  if (e.target.id === 'fmove') { const dg = e.target.value.replace(/[^\d]/g, ''); e.target.value = dg ? NF.format(+dg) : ''; F.mamt = dg; fsave.disabled = !(+dg > 0); return; }
   if (e.target.id === 'famt') { F.amt = e.target.value.replace(/[^\d.]/g, ''); return liveForm(); }
   if (e.target.id === 'ftitle') { // guess the type and offer earlier entries, in place so the keyboard stays up
     F.title = e.target.value;
@@ -1596,7 +1598,7 @@ function askDelete(id) {
 // whole-yen boxes in the sheets get commas as you type; the cash button waits for an amount
 sheet.addEventListener('input', (e) => {
   if (!['cashamt', 'icamt', 'budin', 'peamt', 'payamt'].includes(e.target.id)) return;
-  const el = e.target, digits = el.value.replace(/[^\d]/g, ''); el.value = digits ? (+digits).toLocaleString('en-GB') : '';
+  const el = e.target, digits = el.value.replace(/[^\d]/g, ''); el.value = digits ? NF.format(+digits) : '';
   const ok = sheet.querySelector('[data-cashok]'); if (ok) ok.disabled = !(+digits > 0);
 });
 sheet.addEventListener('input', (e) => { if (e.target.id === 'payamt' && PAY) { const v = +e.target.value.replace(/[^\d]/g, '') || 0; PAY.amt = String(v); document.getElementById('payconv').textContent = `${fmtC(v)} today. Change it if only part was paid.`; } });
