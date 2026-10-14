@@ -108,7 +108,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .pen { display:grid; flex:none; place-items:center; width:28px; height:28px; border-radius:50%; color:var(--blue-ink); background:color-mix(in srgb, var(--blue) 10%, var(--card)); }
 .pen svg { width:14px; height:14px; }
 .pen[aria-expanded="true"] { background:var(--ink); color:#fff; }
-.routeed { margin:2px 0 8px; padding:2px 6px 2px 12px; min-height:48px; border-radius:14px; background:var(--tint); display:flex; align-items:center; gap:2px; flex-wrap:nowrap; animation:reveal 220ms var(--ease); }
+.routeed { margin:2px 0 8px; padding:2px 6px 2px 12px; min-height:48px; border-radius:14px; background:var(--tint); display:flex; align-items:center; gap:2px; flex-wrap:nowrap; }
+/* the editor reveals when the pen opens it; a re-draw while it's open leaves it still */
+.routeed.rvl { animation:reveal 220ms var(--ease); }
 .routeed small { font-size:12.5px; font-weight:700; color:var(--ink3); margin-right:2px; white-space:nowrap; }
 .routeed .sep { width:1px; height:22px; background:var(--line); margin:0 8px; flex:none; }
 .who1 { width:40px; height:44px; display:grid; place-items:center; flex:none; }
@@ -617,6 +619,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 
 /* the real page: back to the trip, add an expense, sync status, and a note for guests */
 .app { padding-top:calc(52px + env(safe-area-inset-top,0px)); }
+/* a re-draw keeps the parts that didn't change: the page mustn't shift its scroll to follow them (a whole re-draw never did) */
+.app { overflow-anchor:none; }
 .tback { position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); left:max(12px, calc(50% - 218px)); z-index:60; display:flex; align-items:center; gap:4px; height:36px; padding:0 14px 0 9px; border-radius:999px; background:rgba(252,250,246,.9); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:var(--ink); font-size:14px; font-weight:700; text-decoration:none; box-shadow:0 6px 18px -8px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,10,.08); }
 .tback::after { content:''; position:absolute; inset:-4px; }
 .addfab[hidden] { display:none; }
@@ -953,30 +957,55 @@ const vibrate = () => { try { navigator.vibrate && navigator.vibrate(15); } catc
 /* ───────── rendering ───────── */
 const app = document.getElementById('app');
 const SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
+// The page is drawn from parts: [key, html], or [key, start tag, [the parts inside it], end tag]. A part whose HTML is
+// what it was last time keeps its elements, so a tap re-makes only what it changed (the list, a card, two day bars) and
+// the rest isn't parsed, styled or painted again. The page comes out exactly as drawing it whole would make it: a part
+// that was decorated since (an animation class, a count) or that holds the focus is made again, as a whole redraw did.
+const mold = document.createElement('div'); // parsed in a div, as #app's whole HTML was
+const make = (h) => { mold.innerHTML = h; return [...mold.childNodes]; };
+function patch(box, parts, was = []) {
+  const old = new Map(was.map((r) => [r.k, r]));
+  const now = parts.map(([k, h, kids, end]) => {
+    const o = old.get(k); old.delete(k);
+    if (!kids) return o && !o.kids && !o.dirty && o.h === h ? o : { k, h, nodes:make(h) };
+    const keep = o && o.kids && !o.dirty && o.h === h && o.end === end, el = keep ? o.nodes[0] : make(h + end)[0];
+    return { k, h, end, nodes:[el], kids:patch(el, kids, keep ? o.kids : []) };
+  });
+  const want = new Set(now.flatMap((r) => r.nodes));
+  for (let n = box.firstChild, nx; n; n = nx) { nx = n.nextSibling; if (!want.has(n)) n.remove(); }
+  let at = box.firstChild;
+  for (const r of now) for (const n of r.nodes) { if (n === at) at = at.nextSibling; else box.insertBefore(n, at); }
+  return now;
+}
+// an element decorated after it was drawn: its part is made afresh next time
+function taint(el, recs = drawn) { for (const r of recs) if (r.nodes.some((n) => n.contains(el))) { if (r.kids && r.nodes[0] !== el) taint(el, r.kids); else r.dirty = true; return; } }
+let drawn = []; const charts = new WeakSet();
 function render() {
   commit();
   if (!WHO) { app.innerHTML = `<div class="nomoney"><h1>Money</h1><p>The expenses are just for the four of us. Pick your name on the trips page to see them.</p><a class="pill" href="/?next=japan">Go to the trips page</a></div>`; addfab.hidden = true; return; }
-  people(); app.innerHTML = renderExpenses() + `<p class="syncl">${syncLine()}</p>`; addfab.hidden = !!F;
+  people(); const f = document.activeElement; if (f && f !== app && app.contains(f)) taint(f); // a whole redraw took the focus away, so this does too
+  drawn = patch(app, [...renderExpenses(), ['syncl', `<p class="syncl">${syncLine()}</p>`]], drawn); addfab.hidden = !!F;
   countUp(); squareIn();
   document.querySelectorAll('.dscroll').forEach((el) => {
-    const k = el.dataset.chart, t = el.querySelector('.today');
-    // opening a page: today is always in view, as the right-most bar once the trip is past its first week
-    el.scrollLeft = S.cscroll[k] != null ? S.cscroll[k] : t ? Math.max(0, t.offsetLeft + t.offsetWidth - el.clientWidth) : 0;
-    el.addEventListener('scroll', () => { S.cscroll[k] = el.scrollLeft; }, { passive:true });
+    const k = el.dataset.chart, t = el.querySelector('.today'), fresh = !charts.has(el);
+    // opening a page: today is always in view, as the right-most bar once the trip is past its first week; a chart
+    // kept from the last draw stays where it was swiped to (setting it again would snap a swipe in progress back)
+    if (fresh || S.cscroll[k] == null) el.scrollLeft = S.cscroll[k] != null ? S.cscroll[k] : t ? Math.max(0, t.offsetLeft + t.offsetWidth - el.clientWidth) : 0;
+    if (fresh) { charts.add(el); el.addEventListener('scroll', () => { S.cscroll[k] = el.scrollLeft; }, { passive:true }); }
   });
 }
 const keepTop = () => { const y = scrollY; render(); scrollTo(0, y); };
 // the big spend figures tick from what they showed to the new amount when it changes (an expense lands, one is
 // deleted, another phone adds one); the first time a figure is drawn it just shows
 const RM = matchMedia('(prefers-reduced-motion: reduce)');
-const unfold = (els) => { if (!RM.matches) [...els].slice(0, 8).forEach((el, i) => { el.style.animationDelay = `${i * 25}ms`; el.classList.add('unfold'); }); };
+const unfold = (els) => { if (!RM.matches) [...els].slice(0, 8).forEach((el, i) => { el.style.animationDelay = `${i * 25}ms`; el.classList.add('unfold'); taint(el); }); };
 // a settle-up row that has just been paid slides out and closes up before the card is redrawn; if that leaves
 // nobody owing anybody, the "square" line comes in with its tick
 // the chevron on a toggle is redrawn with the card, so it turns here rather than snapping
-const turnChev = (el, open) => { if (el && !RM.matches) el.animate([{ transform: `rotate(${open ? 0 : 90}deg)` }, { transform: `rotate(${open ? 90 : 0}deg)` }], { duration: 200, easing: 'cubic-bezier(.23,1,.32,1)' }); };
+const turnChev = (el, open) => { if (el && !RM.matches) { el.animate([{ transform: `rotate(${open ? 0 : 90}deg)` }, { transform: `rotate(${open ? 90 : 0}deg)` }], { duration: 200, easing: 'cubic-bezier(.23,1,.32,1)' }); taint(el); } };
 let sqAt = 0, settling = false;
 // the save that follows redraws the card again, so the square line carries on from where its animation got to
-function squareIn() { const t = performance.now() - sqAt, ev = sqAt && t < 600 && document.querySelector('.settle .even'); if (ev) { ev.style.setProperty('--sqt', `${-t}ms`); ev.classList.add('sq-in'); } }
+function squareIn() { const t = performance.now() - sqAt, ev = sqAt && t < 600 && document.querySelector('.settle .even'); if (ev) { ev.style.setProperty('--sqt', `${-t}ms`); ev.classList.add('sq-in'); taint(ev); } }
 // the payment is saved first (commit), so leaving the page mid-animation loses nothing; redraws from the save wait
 function settleAway(row) {
   commit(); settling = true;
@@ -988,36 +1017,39 @@ function settleAway(row) {
   };
   if (!row || !row.isConnected || RM.matches) return done();
   const h = row.offsetHeight, ease = 'cubic-bezier(.23,1,.32,1)';
-  row.style.overflow = 'hidden'; row.style.pointerEvents = 'none';
+  row.style.overflow = 'hidden'; row.style.pointerEvents = 'none'; taint(row);
   row.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(28px)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
   const a = row.animate([{ height: h + 'px' }, { height: '0px', paddingTop: '0px', paddingBottom: '0px' }], { duration: 200, delay: 140, easing: ease, fill: 'forwards' });
   a.finished.then(done, done); setTimeout(done, 900); // never hold the page's redraws for long
 }
-const shownFig = {}, figRaf = {};
+const shownFig = {}, figRaf = {}, figRun = {}, counted = new WeakSet();
 function countUp() {
   document.querySelectorAll('[data-count]').forEach((el) => {
-    const k = el.dataset.count, to = +el.dataset.v, from = shownFig[k];
-    shownFig[k] = to; cancelAnimationFrame(figRaf[k]);
+    if (counted.has(el)) return; counted.add(el); // kept from the last draw: left as it is
+    const k = el.dataset.count, to = +el.dataset.v, from = shownFig[k], run = figRun[k];
+    // drawn again mid-count, to the same amount: the count carries on in the new element instead of starting over
+    if (run && run.to === to && !RM.matches) { run.el = el; el.style.display = 'inline-block'; el.style.minWidth = run.w; el.textContent = fmtY(from); taint(el); return; }
+    shownFig[k] = to; cancelAnimationFrame(figRaf[k]); figRun[k] = null;
     if (from == null || from === to || RM.matches) return;
     // the serif's figures aren't all one width: hold the box at the wider of the two amounts so what follows stays put
-    el.style.display = 'inline-block'; const wTo = el.offsetWidth; el.textContent = fmtY(from); el.style.minWidth = Math.max(wTo, el.offsetWidth) + 'px';
-    const t0 = performance.now(), d = 420;
+    el.style.display = 'inline-block'; const wTo = el.offsetWidth; el.textContent = fmtY(from); el.style.minWidth = Math.max(wTo, el.offsetWidth) + 'px'; taint(el);
+    const t0 = performance.now(), d = 420, r = figRun[k] = { to, el, w:el.style.minWidth };
     const tick = (now) => {
       const p = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - p, 3), v = Math.round(from + (to - from) * e);
-      el.textContent = fmtY(v); shownFig[k] = p < 1 ? v : to;
-      if (p < 1) figRaf[k] = requestAnimationFrame(tick); else el.style.minWidth = '';
+      r.el.textContent = fmtY(v); shownFig[k] = p < 1 ? v : to;
+      if (p < 1) figRaf[k] = requestAnimationFrame(tick); else { r.el.style.minWidth = ''; if (figRun[k] === r) figRun[k] = null; }
     };
     figRaf[k] = requestAnimationFrame(tick);
   });
 }
 const fmtK = (v) => (v >= 1000 ? `¥${(v / 1000).toFixed(v >= 100000 ? 0 : 1).replace(/\.0$/, '')}k` : fmtY(v));
-// the day chart, swiped sideways; tap a day to filter the list below
+// the day chart, swiped sideways; tap a day to filter the list below (a part per bar: a tap re-makes just the two that change)
 function dayChart(id, byDay, byDayCat, sel, attr) {
   // before the trip gets its own bar first; it's scaled to the trip days and capped, so a big deposit doesn't flatten them
   const tripDays = DAYS.filter((d) => d.n), max = Math.max(1, ...tripDays.map((d) => byDay[d.id] || 0)), pre = byDay.pre ? [DAY.pre] : [];
-  return `<div class="dscroll" data-chart="${id}" role="group" aria-label="Spend by day, swipe for more days">${[...pre, ...tripDays].map((d) => {
+  return ['chart', `<div class="dscroll" data-chart="${id}" role="group" aria-label="Spend by day, swipe for more days">`, [...pre, ...tripDays].map((d) => {
     const v = byDay[d.id] || 0, parts = Object.entries(byDayCat[d.id] || {}).filter(([, x]) => x > 0), fut = d.n > DAY[TODAY].n, isPre = d.id === 'pre', capped = v > max;
-    return `<button class="dbar ${isPre ? 'pre' : ''} ${capped ? 'capped' : ''} ${d.id === TODAY ? 'today' : ''} ${sel === d.id ? 'on' : ''} ${fut ? 'future' : ''}" data-${attr}="${d.id}" aria-pressed="${sel === d.id}" aria-label="${isPre ? 'Before the trip' : `Day ${d.n}, ${d.dow} ${d.dd}`}, ${fmtY(v)}"><span class="dcol">${v ? `<span class="dv">${fmtK(v)}</span><span class="stack" style="height:${Math.min(100, Math.max(5, v / max * 100))}%">${parts.map(([k, x]) => `<i style="--c:${CATS[k][1]};flex:${x}"></i>`).join('')}</span>` : ''}</span><span class="dl"><b>${isPre ? 'Before' : d.id === TODAY ? 'Today' : `D${d.n}`}</b>${isPre ? 'trip' : d.dow}</span></button>`; }).join('')}</div>`;
+    return [d.id, `<button class="dbar ${isPre ? 'pre' : ''} ${capped ? 'capped' : ''} ${d.id === TODAY ? 'today' : ''} ${sel === d.id ? 'on' : ''} ${fut ? 'future' : ''}" data-${attr}="${d.id}" aria-pressed="${sel === d.id}" aria-label="${isPre ? 'Before the trip' : `Day ${d.n}, ${d.dow} ${d.dd}`}, ${fmtY(v)}"><span class="dcol">${v ? `<span class="dv">${fmtK(v)}</span><span class="stack" style="height:${Math.min(100, Math.max(5, v / max * 100))}%">${parts.map(([k, x]) => `<i style="--c:${CATS[k][1]};flex:${x}"></i>`).join('')}</span>` : ''}</span><span class="dl"><b>${isPre ? 'Before' : d.id === TODAY ? 'Today' : `D${d.n}`}</b>${isPre ? 'trip' : d.dow}</span></button>`]; }), '</div>'];
 }
 const curSeg = () => `<div class="seg sm" role="group" aria-label="Show money in">${['CAD','QAR','USD'].map((c) => `<button data-cur="${c}" class="${S.cur === c ? 'on' : ''}">${c}</button>`).join('')}</div>`;
 const viewSeg = () => `<div class="seg vseg">${[['group','Group'],['mine',P[S.me].name],['us',COUPLE[P[S.me].couple].name]].map(([k,l]) => `<button data-view="${k}" class="${S.view === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
@@ -1038,20 +1070,19 @@ function renderExpenses() {
   const byDay = {}, byDayCat = {};
   group.forEach((x) => { for (const [d, f] of spread(x)) { byDay[d] = (byDay[d] || 0) + x.yen * f; (byDayCat[d] = byDayCat[d] || {})[x.cat] = (byDayCat[d][x.cat] || 0) + x.yen * f; } });
   const cats = Object.entries(byCat).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const gpass = `<div class="gpass ticket">
-    <div class="gp-top"><span>Group spend</span>${news.length ? `<button class="gp-news hit" data-shownews aria-expanded="${!!S.showNews}"><i class="dot"></i>${news.length} new</button>` : ''}</div>
-    <span class="seal" aria-hidden="true"><span>Day<b>${DAY[TODAY].n}</b>of 17</span></span>
-    <div class="gp-big"><span data-count="group" data-v="${total}">${fmtY(total)}</span><em>${fmtC(total)}</em></div>
-    ${dayChart('group', byDay, byDayCat, S.gday, 'gday')}
-    <button class="gp-cats" data-legend aria-expanded="${!!S.legend}" aria-label="Spend by type">${cats.slice(0, S.legend ? 9 : 3).map(([k, v]) => `<span style="--c:${CATS[k][1]}"><i></i>${CATS[k][0]} <b>${Math.round(v / total * 100)}%</b>${S.legend ? ` <em class="lg-y">${fmtY(v)}</em>` : ''}</span>`).join('')}${!S.legend && cats.length > 3 ? `<span><b>+${cats.length - 3}</b></span>` : ''}</button>
-  </div>`;
+  const gpass = ['gpass', '<div class="gpass ticket">', [
+    ['top', `\n    <div class="gp-top"><span>Group spend</span>${news.length ? `<button class="gp-news hit" data-shownews aria-expanded="${!!S.showNews}"><i class="dot"></i>${news.length} new</button>` : ''}</div>`],
+    ['seal', `\n    <span class="seal" aria-hidden="true"><span>Day<b>${DAY[TODAY].n}</b>of 17</span></span>`],
+    ['big', `\n    <div class="gp-big"><span data-count="group" data-v="${total}">${fmtY(total)}</span><em>${fmtC(total)}</em></div>\n    `],
+    dayChart('group', byDay, byDayCat, S.gday, 'gday'),
+    ['cats', `\n    <button class="gp-cats" data-legend aria-expanded="${!!S.legend}" aria-label="Spend by type">${cats.slice(0, S.legend ? 9 : 3).map(([k, v]) => `<span style="--c:${CATS[k][1]}"><i></i>${CATS[k][0]} <b>${Math.round(v / total * 100)}%</b>${S.legend ? ` <em class="lg-y">${fmtY(v)}</em>` : ''}</span>`).join('')}${!S.legend && cats.length > 3 ? `<span><b>+${cats.length - 3}</b></span>` : ''}</button>\n  `]], '</div>'];
 
   const dayChip = S.gday ? `<button class="pill on" data-gday="${S.gday}">${DAY[S.gday].n ? `Day ${DAY[S.gday].n}` : 'Before the trip'} ✕</button>` : '';
-  return `<div class="top">${viewSeg()}${curSeg()}</div>${gpass}${newsDrop}
-    <p class="sec">Settle up ${modeSeg()}</p>${settleCard()}
-    <p class="sec">All expenses <span class="fppl">${dayChip}${S.searchOpen ? '' : `<button class="iconb" data-searchopen aria-label="Search expenses">${SEARCH}</button>`}${IDS.map((i) => `<button data-fperson="${i}" class="${S.fperson === i ? 'on' : ''}" aria-pressed="${S.fperson === i}" aria-label="Only ${P[i].name}'s">${av(i, 'sm')}</button>`).join('')}</span></p>
-    ${S.searchOpen ? `<div class="searchrow"><input class="tin" id="gq" type="search" placeholder="Search expenses" value="${esc(S.q || '')}" autocomplete="off"><button class="linkb hit" data-searchclose>Done</button></div>` : ''}
-    <div id="glist">${listGroup(groupShown())}</div>`;
+  return [['top', `<div class="top">${viewSeg()}${curSeg()}</div>`], gpass, ['news', newsDrop],
+    ['settle', `\n    <p class="sec">Settle up ${modeSeg()}</p>${settleCard()}`],
+    ['lhead', `\n    <p class="sec">All expenses <span class="fppl">${dayChip}${S.searchOpen ? '' : `<button class="iconb" data-searchopen aria-label="Search expenses">${SEARCH}</button>`}${IDS.map((i) => `<button data-fperson="${i}" class="${S.fperson === i ? 'on' : ''}" aria-pressed="${S.fperson === i}" aria-label="Only ${P[i].name}'s">${av(i, 'sm')}</button>`).join('')}</span></p>
+    ${S.searchOpen ? `<div class="searchrow"><input class="tin" id="gq" type="search" placeholder="Search expenses" value="${esc(S.q || '')}" autocomplete="off"><button class="linkb hit" data-searchclose>Done</button></div>` : ''}\n    `],
+    ['glist', '<div id="glist">', [listGroup(groupShown())], '</div>']];
 }
 function groupShown() {
   const q = (S.q || '').trim().toLowerCase();
@@ -1060,7 +1091,8 @@ function groupShown() {
     .filter((x) => !S.gday || spread(x).some(([d]) => d === S.gday))
     .filter((x) => !q || `${x.title} ${CATS[x.cat][0]} ${P[x.payer].name}`.toLowerCase().includes(q));
 }
-function renderGlist() { const g = document.getElementById('glist'); if (g) g.innerHTML = listGroup(groupShown()); document.querySelectorAll('[data-fperson]').forEach((b) => { b.classList.toggle('on', b.dataset.fperson === S.fperson); b.setAttribute('aria-pressed', b.dataset.fperson === S.fperson); }); }
+// the list alone, while typing a search (the rows it keeps aren't made again)
+function renderGlist() { const g = drawn.find((r) => r.k === 'glist'); if (g) g.kids = patch(g.nodes[0], [listGroup(groupShown())], g.kids); }
 const splitName = (x) => { const k = Object.keys(x.shares); if (Object.values(x.owes).some(Boolean)) return 'Split unevenly'; if (k.length === 4) return 'All four'; if (k.length === 2 && P[k[0]].partner === k[1]) return `${P[k[0]].name} + ${P[k[1]].name}`; if (isOwn(x)) return `Only ${P[x.payer].name}`; return 'Split unevenly'; };
 // what an expense means for whoever this phone belongs to, in one line
 function meLine(x) {
@@ -1087,14 +1119,15 @@ function groupByDay(list) {
 const dayName = (d) => (d.id === 'pre' ? 'Before the trip' : `Day ${d.n} · ${esc(d.title)}`);
 // the titles others added or changed since this phone last looked (the blue dot)
 const newTitles = () => new Set(S.log.filter((l) => l.who !== S.me && l.at > (S.seen[S.me] || 0)).map((l) => l.title));
+// the list: a part per day heading and per row, so a filter or a new expense keeps the rows that stay
 function listGroup(list) {
-  if (!list.length) return `<div class="card"><p class="even">${S.q || S.fperson ? 'Nothing matches.' : 'No expenses yet.'}</p></div>`;
+  if (!list.length) return ['none', `<div class="card"><p class="even">${S.q || S.fperson ? 'Nothing matches.' : 'No expenses yet.'}</p></div>`];
   const tot = dayTotals(list.filter((x) => !isOwn(x)), (x) => x.yen), fresh = newTitles();
-  return `<div class="card xlist">${groupByDay(list).map(([d, xs]) => `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>${xs.map((x) => {
+  return ['card', '<div class="card xlist">', groupByDay(list).flatMap(([d, xs]) => [['h:' + d.id, `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>`], ...xs.map((x) => {
     const ml = meLine(x);
-    return `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span>
+    return [x.id, `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span>
     <span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}${x.receipt ? `<span class="clip" aria-label="has a receipt">${CLIP}</span>` : ''}${fresh.has(x.title) ? '<i class="new" aria-label="new"></i>' : ''}</b><small>${P[x.payer].name} paid · ${ml || `${splitName(x)}${isOwn(x) ? ' · not shared' : ''}`}${x.nights > 1 ? ` · ${x.nights} nights` : ''}</small></span>
-    <span class="r"><b>${fmtY(x.yen)}</b>${x.orig ? `<small>${SYM[x.orig.ccy]}${x.orig.amt}</small>` : ''}</span></button>`; }).join('')}`).join('')}</div>`;
+    <span class="r"><b>${fmtY(x.yen)}</b>${x.orig ? `<small>${SYM[x.orig.ccy]}${x.orig.amt}</small>` : ''}</span></button>`]; })]), '</div>'];
 }
 
 /* A person's page and a couple's page. The top is a pass in their colour (spent of budget, pace, today);
@@ -1153,13 +1186,14 @@ function renderMine(ids, kind) {
   const shown = lines.filter((x) => (S.mineDay === 'all' || spread(x).some(([d]) => d === S.mineDay)) && (!S.mineCat || x.cat === S.mineCat));
   const filters = (S.mineDay !== 'all' || S.mineCat) ? `<div class="filt">${S.mineDay !== 'all' ? `<button class="pill on" data-mday="all">${DAY[S.mineDay].n ? `Day ${DAY[S.mineDay].n}` : 'Before the trip'} ✕</button>` : ''}${S.mineCat ? `<button class="pill on" data-mcat="${S.mineCat}">${CATS[S.mineCat][0]} ✕</button>` : ''}</div>` : '';
   const tot = dayTotals(shown, (x) => x.mine);
-  const rowsHtml = groupByDay(shown).map(([d, xs]) => `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>${xs.map((x) => {
+  const list = groupByDay(shown).flatMap(([d, xs]) => [['h:' + d.id, `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>`], ...xs.map((x) => {
     const own = isOwn(x);
-    return `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}</b><small>${own ? `Only ${P[x.payer].name}` : `${P[x.payer].name} paid · ${splitName(x)}`} · ${WITH[x.with]}</small></span>
-      <span class="share"><b>${fmtY(x.mine)}</b>${own ? '' : `<small>${x.yen < 0 ? `of ${fmtY(-x.yen)} back` : `of ${fmtY(x.yen)}`}</small>`}</span></button>`; }).join('')}`).join('');
+    return [x.id, `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}</b><small>${own ? `Only ${P[x.payer].name}` : `${P[x.payer].name} paid · ${splitName(x)}`} · ${WITH[x.with]}</small></span>
+      <span class="share"><b>${fmtY(x.mine)}</b>${own ? '' : `<small>${x.yen < 0 ? `of ${fmtY(-x.yen)} back` : `of ${fmtY(x.yen)}`}</small>`}</span></button>`]; })]);
 
-  return `<div class="top">${viewSeg()}${curSeg()}</div>${hero}${wallet}${payments}<p class="sec">Where it went</p><div class="chart">${chart}${types}</div>${filters}
-    <div class="card xlist" style="margin-top:8px">${rowsHtml || '<p class="even">Nothing here.</p>'}</div>`;
+  return [['top', `<div class="top">${viewSeg()}${curSeg()}</div>`], ['hero', hero], ['wallet', wallet], ['pay', `${payments}<p class="sec">Where it went</p>`],
+    ['where', '<div class="chart">', [chart, ['types', types]], '</div>'], ['filt', `${filters}\n    `],
+    ['list', '<div class="card xlist" style="margin-top:8px">', list.length ? list : [['none', '<p class="even">Nothing here.</p>']], '</div>']];
 }
 
 /* ───────── the expense form page ───────── */
@@ -1662,7 +1696,7 @@ function applyRoute(isR, keys, who) {
   S.editRow = still ? [...still.sendKeys, '|', ...still.recvKeys].join(',') : null; closeSheet(); const y = scrollY; render(); scrollTo(0, y);
   if (after.length < before) {
     const m = after.find((r) => r.parts && r.parts.length > 1 && keys.some((k) => (isR ? r.recvKeys : r.sendKeys).includes(k)));
-    if (m) { const el = document.querySelector(`.tr[data-mkey="${m.mkey}"]`); if (el) el.classList.add('flash'); }
+    if (m) { const el = document.querySelector(`.tr[data-mkey="${m.mkey}"]`); if (el) { el.classList.add('flash'); taint(el); } }
     toast(m ? `Combined into one: ${P[m.from].name} pays ${P[m.to].name} ${fmtY(m.yen)}` : 'Payments combined', () => {
       for (const [k, v, b] of prev) { if (v == null) delete store[k]; else store[k] = v; if (b == null) delete S.setBy[(isR ? 'r:' : 's:') + k]; else S.setBy[(isR ? 'r:' : 's:') + k] = b; }
       render(); scrollTo(0, y);
@@ -1710,7 +1744,7 @@ app.addEventListener('click', (e) => {
   const mc = t('[data-mcat]'); if (mc) return keep(() => { S.mineCat = S.mineCat === mc.dataset.mcat ? null : mc.dataset.mcat; });
   if (t('[data-gotcash]')) { closeSheet(); return openForm(null, { day:TODAY, kind:'cash' }); }
   if (t('[data-ictop]')) { closeSheet(); return openForm(null, { day:TODAY, kind:'ic' }); }
-  const er = t('[data-editrow]'); if (er) return keep(() => { S.editRow = S.editRow === er.dataset.editrow ? null : er.dataset.editrow; });
+  const er = t('[data-editrow]'); if (er) { keep(() => { S.editRow = S.editRow === er.dataset.editrow ? null : er.dataset.editrow; }); if (!RM.matches) document.querySelectorAll('.routeed').forEach((el) => { el.classList.add('rvl'); taint(el); }); return; }
   const rs = t('[data-rsend]') || t('[data-rrecv]'); if (rs) { const isR = !!rs.dataset.rrecv, [ks, who] = (isR ? rs.dataset.rrecv : rs.dataset.rsend).split(':'); return applyRoute(isR, ks.split(','), who); }
   const rc = t('[data-rcopy]'); if (rc) { const r = window.__tr[+rc.dataset.rcopy], msg = `Japan trip: ${fmtC(r.yen, 'CAD')} (${fmtY(r.yen)}) from ${P[r.from].name} to ${P[r.to].name}`; try { navigator.clipboard.writeText(msg).then(() => toast('Copied: ' + msg), () => toast(msg)); } catch { toast(msg); } return; }
   if (t('[data-payin]')) return openPay(window.__trIn);
