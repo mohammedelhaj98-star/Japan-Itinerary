@@ -41,8 +41,11 @@ export function deviceId() {
 export function getDisplayName() { return lsGet(LS_NAME, ''); }
 export function setDisplayName(name) { lsSet(LS_NAME, String(name || '').slice(0, 40)); }
 
+// this phone's saved copy of the trip (in practice mode, the practice copy)
+const savedState = () => Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, flights: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {}));
+
 export const store = {
-  state: Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, flights: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {})),
+  state: savedState(),
   mode: SANDBOX ? 'sandbox' : 'connecting', // connecting | online | local | sandbox | locked (the PIN was refused)
   lastError: null,
   listeners: new Set(),
@@ -126,6 +129,12 @@ export const store = {
     this._timer = setInterval(() => { if (document.visibilityState === 'hidden') return; if (this._liveOn && ++this._tick % LIVE_EVERY) return; this.check(); }, POLL_MS);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { this.check(); this.live(); } });
     window.addEventListener('online', () => { this.refresh(); this.live(); });
+    // Off to another page (Expenses, Settings…): the live connection closes, so the browser can keep this page whole and
+    // Back shows it at once; back on it, the connection reopens and anything missed is fetched.
+    window.addEventListener('pagehide', () => { const ws = this._live; if (!ws) return; this._live = null; this._liveOn = false; clearInterval(this._ping); try { ws.close(); } catch { /* closing */ } });
+    // Another page may have changed the trip meanwhile (an expense added with no signal still waits to be sent), so the
+    // page picks up the saved copy and the queue first: carrying on from its own older ones could lose that change.
+    window.addEventListener('pageshow', (e) => { if (!e.persisted) return; this.state = savedState(); if (!SANDBOX) this._outbox = lsGet(LS_OUTBOX, []); this.emit(); this.check(); this.live(); });
     this.live();
   },
 
