@@ -43,6 +43,8 @@ cat > dist/_headers <<'EOF'
   Cache-Control: public, max-age=604800
 /japan/vendor/fonts/*
   Cache-Control: public, max-age=604800
+/img/*
+  Cache-Control: public, max-age=604800
 EOF
 [ "${BUILD_ONLY:-}" = 1 ] && exit 0
 npx -y wrangler@4 pages deploy --branch main "$@"
