@@ -32,14 +32,22 @@ export function offline({ DAYS, HOTELS, PLACES }) {
   const allPhotos = (custom = {}) => new Set([...Object.values(PLACES).flatMap(photo), ...Object.values(custom).flatMap(ownPhotos)]);
 
   const saved = async (url) => !!(await caches.match(url, { ignoreSearch: true }));
-  const countSaved = async (urls) => (await Promise.all([...urls].map(saved))).filter(Boolean).length;
+  // Every saved address in one read, without its ?query (as caches.match(u, { ignoreSearch: true }) compares them), so a check
+  // doesn't load each photo. The map tiles ('tiles') are never one of these.
+  const bare = (u) => u.replace(/[?#].*/, '');
+  async function savedSet() {
+    const s = new Set();
+    for (const k of await caches.keys()) if (k !== 'tiles') for (const r of await (await caches.open(k)).keys()) s.add(bare(r.url));
+    return s;
+  }
 
   // { ready, app, days: { n, saved, total }, whole: { saved, total } }
   async function offlineStatus(custom = {}) {
     if (!('caches' in window) || !('serviceWorker' in navigator)) return { ready: false, app: false };
-    const app = !!navigator.serviceWorker.controller && (await countSaved(SHELL)) === SHELL.length;
+    const has = await savedSet(), countSaved = (urls) => [...urls].filter((u) => has.has(bare(new Request(u).url))).length;
+    const app = !!navigator.serviceWorker.controller && countSaved(SHELL) === SHELL.length;
     const days = nextDays(), du = new Set(days.flatMap((d) => [...dayPhotos(d, custom)])), all = allPhotos(custom);
-    const ds = await countSaved(du), ws = await countSaved(all);
+    const ds = countSaved(du), ws = countSaved(all);
     return { ready: app && ds === du.size, app, days: { n: days.length, saved: ds, total: du.size }, whole: { saved: ws, total: all.size } };
   }
 

@@ -11,7 +11,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Japan 2026">
 <link rel="apple-touch-icon" href="../icons/icon-192.png">
-<link rel="stylesheet" href="../vendor/leaflet/leaflet.css">
 <style>
 @font-face { font-family:'Zen Kaku'; font-weight:400; font-display:swap; src:url(../vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku'; font-weight:500; font-display:swap; src:url(../vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
@@ -357,16 +356,13 @@ body.has-fab .homefab { transform:translate3d(0,-68px,0); }
   <button class="proto-picker-item">Ideas</button>
   <button class="proto-picker-item">Settings</button>
 </nav>
-<script src="../vendor/leaflet/leaflet.js"></script>
 <script type="module">
 import { TRIP, DAYS, HOTELS } from '../data/itinerary.js?v=9';
 import { FOOD, BOOKINGS, TIPS, SUGGESTIONS } from '../data/guide.js?v=9';
-import { buildTripDocx } from '../js/export-docx.js?v=9';
 import { PLACES } from '../data/places.js?v=9';
 import { DIET } from '../data/diet.js?v=9';
 import { HOTEL_JA } from '../data/hotels-ja.js?v=9';
 import { store, SANDBOX, GUEST, deviceId } from '../js/store.js?v=9';
-import { runTour } from '../js/tour.js?v=9';
 import { CAT, MODE, PROFILE_COLORS } from '../js/colors.js?v=9';
 import { offline } from '../js/offline.js?v=9';
 
@@ -375,7 +371,12 @@ const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == nu
 const X = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 const ARROW = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 12h15M14 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const LOC = '<svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-function moveSeg(seg) { if (!seg) return; const on = seg.querySelector('button.on'), i = seg.querySelector('i'); if (!on || !i) return; i.style.width = on.offsetWidth + 'px'; i.style.transform = `translateX(${on.offsetLeft}px)`; }
+// the sliding highlight under each segmented control's chosen button: every size is read before any is set (the page lays
+// out once, not twice a control)
+function moveSeg(...segs) {
+  const at = segs.map((seg) => { const on = seg && seg.querySelector('button.on'), i = seg && seg.querySelector('i'); return on && i ? [i, on.offsetWidth, on.offsetLeft] : null; });
+  for (const a of at) if (a) { a[0].style.width = a[1] + 'px'; a[0].style.transform = `translateX(${a[2]}px)`; }
+}
 
 /* currency: same rates as the main app (8 Oct 2026, yen per unit) */
 const RATE = { JPY: 1, CAD: 110.94, QAR: 43.44, USD: 158.1 };
@@ -717,14 +718,14 @@ function renderSettings() {
       <p class="sub" style="margin-top:12px">A faded card is stamped as done. Dashed outline means optional. NASA or M&amp;M on a card means it's only for that couple.</p></div>`;
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
   const modeSeg = [['couple', 'By couple'], ['each', 'Person to person']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
-  const prefs = VIEW ? '' : `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div>${backupRow()}</div>`;
+  const prefs = VIEW ? '' : `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div>${part('bk', backupRow())}</div>`;
   if (sub === 'stamps') return renderStamps();
-  const alertsSec = GUEST || VIEW ? '' : `<p class="sec">Flight alerts</p>${alertsCard()}`;
+  const alertsSec = GUEST || VIEW ? '' : `<p class="sec">Flight alerts</p>${part('al', alertsCard())}`;
   const nSt = Object.keys(store.state.checks || {}).length;
   const stamps = `<button class="card scard navrow" data-sub="stamps"><span><b>Stamped stops</b><small>${nSt ? `${nSt} stamped · see and unstamp them` : 'Nothing stamped yet'}</small></span><span class="cnt">${nSt || ''}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>`;
   const exp = `<div class="card scard"><p class="sub" style="margin-bottom:12px">A Word file laid out like the original itinerary, with everything as it is now: edited and added stops, choices made, bookings marked, stamps${VIEW ? '' : ' and expenses'}.</p><button class="bigb" data-export>Download Word file (.docx)</button><p class="sub" id="ex-msg" style="margin-top:10px"></p></div>`;
   return `<header class="ph"><small>Settings</small><h1>You &amp; the trip</h1><p>Your profile, what the colours mean, and how money is shown.</p></header>
-    ${homeCard()}${mine}${alertsSec}<p class="sec">Offline</p>${offlineRow()}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}${VIEW ? '' : `<p class="sec">Expenses</p>${prefs}`}<p class="sec">Export the trip</p>${exp}`;
+    ${homeCard()}${mine}${alertsSec}<p class="sec">Offline</p>${part('off', offlineRow())}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}${VIEW ? '' : `<p class="sec">Expenses</p>${prefs}`}<p class="sec">Export the trip</p>${exp}`;
 }
 // Add to Home Screen: an iPhone only shows alerts for a site on the Home Screen (iOS 16.4+), and can't be asked from a
 // page, so it gets the two taps; Android Chrome offers its own install prompt, which the button opens.
@@ -868,12 +869,14 @@ function askConfirm(title, text, yes, fn) {
   cfmYes = fn; cfmBg.classList.add('on'); setTimeout(() => cfmBg.querySelector('[data-cno]').focus(), 50);
 }
 async function exportDocx() {
-  const msg = document.getElementById('ex-msg'); if (msg) msg.textContent = 'Getting the latest from everyone…';
+  const msg = document.getElementById('ex-msg'); if (msg) say(msg, 'Getting the latest from everyone…');
+  const docx = import('../js/export-docx.js?v=9'); docx.catch(() => {}); // only needed here: fetched alongside the latest changes
   await store.refresh();
+  const { buildTripDocx } = await docx;
   const blob = buildTripDocx({ TRIP, DAYS, HOTELS, BOOKINGS, FOOD, TIPS, state: VIEW ? { ...store.state, expenses: {} } : store.state, people: PEOPLE, me: ME && P[ME] ? P[ME].name : '' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Japan 2026 itinerary (updated ${new Date().toISOString().slice(0, 10)}).docx`;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
-  if (msg) msg.textContent = store.mode === 'online' ? 'Downloaded, with everyone\'s latest changes.' : 'Downloaded. Offline, so it has the changes this phone last saw.';
+  if (msg) say(msg, store.mode === 'online' ? 'Downloaded, with everyone\'s latest changes.' : 'Downloaded. Offline, so it has the changes this phone last saw.');
 }
 
 // A photo is cropped to a 256px square and sent as a small JPEG.
@@ -902,15 +905,33 @@ function renderNearby() {
     <div class="card fl">${guide.length ? guide.map((x) => { const d = DIET[x.name]; return `<a class="frow" style="--c:${d && d.pork === 'main' ? '#c62d22' : d && d.halal === 'certified' ? '#1f7a3f' : '#2c4f86'};text-decoration:none" href="https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}&travelmode=walking" target="_blank" rel="noopener"><span class="n">★</span><span class="m"><b>${esc(x.name)}</b><span class="tags">${porkTag(d)}${halTag(d)}</span>${d ? `<span class="info" style="display:block;color:var(--ink);margin-top:6px">${esc(d.note)}</span>` : ''}${d && d.alt ? `<span class="info" style="display:block;color:#1f7a3f;font-weight:700;margin-top:3px">Halal nearby: ${esc(d.alt)}</span>` : ''}<span class="info" style="display:block">${esc(x.meta || '')} · ${walk(x.m)}</span></span><span class="go">Go ›</span></a>`; }).join('') : '<p class="empty">No guide picks within 2.5 km. Tap See all in this city.</p>'}</div>
     <p class="honest">"Muslim-friendly cuisine" means the cuisine is often halal (Indian, Turkish, Indonesian and so on), not that it's certified. Fish and udon places are usually pork-free, but broths and sauces can use mirin or sake.</p>`;
 }
+// The map library is only for this map: loaded the first time it shows (its styles go where the page had them, before its own).
+let leafletP = null;
+const leaflet = () => leafletP || (leafletP = Promise.all([
+  new Promise((ok) => { const el = document.createElement('link'); el.rel = 'stylesheet'; el.href = '../vendor/leaflet/leaflet.css'; el.onload = el.onerror = ok; document.head.insertBefore(el, document.querySelector('head style')); }),
+  new Promise((ok, no) => { const el = document.createElement('script'); el.src = '../vendor/leaflet/leaflet.js'; el.onload = ok; el.onerror = no; document.head.appendChild(el); }),
+]).catch((e) => { leafletP = null; throw e; }));
+// Redrawn, the page keeps its map rather than building a new one: its tiles, circle and pins come off, it is reset to the
+// stop at zoom 15, and they go back on in the order a new map got them (the tiles, then the circle on a drawing layer of its
+// own, then the pins) before the results are fitted. One caught mid-zoom or under a finger is made new, as before.
+let fzoom = false, ftiles = null; const fdown = new Set();
+addEventListener('pointerup', (e) => fdown.delete(e.pointerId)); addEventListener('pointercancel', (e) => fdown.delete(e.pointerId));
 function mountFoodMap() {
-  const el = document.getElementById('fmap'); if (!el || !window.L) return;
-  if (fmap) { fmap.remove(); fmap = null; }
-  const c = center(); fmap = L.map(el, { zoomControl: false, attributionControl: false }).setView([c.lat, c.lng], 15);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(fmap);
-  L.circle([c.lat, c.lng], { radius: fd.radius, color: '#1e6bff', weight: 1, fillOpacity: 0.05 }).addTo(fmap);
-  L.marker([c.lat, c.lng], { icon: L.divIcon({ className: '', html: '<div class="fpin me"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }) }).addTo(fmap);
+  const el = document.getElementById('fmap'); if (!el) return;
+  if (!window.L) { leaflet().then(() => { if (document.getElementById('fmap') === el) mountFoodMap(); }, () => {}); return; }
+  if (fmap && (fzoom || fdown.size)) { fmap.remove(); fmap = null; }
+  const c = center();
+  if (fmap) { el.replaceWith(fmap.getContainer()); flayer.clearLayers(); ftiles.remove(); fmap.invalidateSize(false).setView([c.lat, c.lng], 15, { reset: true }); ftiles.addTo(fmap); }
+  else {
+    fmap = L.map(el, { zoomControl: false, attributionControl: false }).setView([c.lat, c.lng], 15); fzoom = false;
+    ftiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(fmap);
+    flayer = L.layerGroup().addTo(fmap); fmap.on('zoomanim', () => (fzoom = true)).on('zoomend', () => (fzoom = false));
+    el.addEventListener('pointerdown', (e) => fdown.add(e.pointerId), true);
+  }
+  L.circle([c.lat, c.lng], { radius: fd.radius, color: '#1e6bff', weight: 1, fillOpacity: 0.05, renderer: L.svg().addTo(flayer) }).addTo(flayer);
+  L.marker([c.lat, c.lng], { icon: L.divIcon({ className: '', html: '<div class="fpin me"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }) }).addTo(flayer);
   const shown = Array.isArray(fd.res) ? fd.res.filter((x) => x.kinds.some((k) => fd.show[k])).slice(0, 25) : [];
-  shown.forEach((x, i) => { L.marker([x.lat, x.lng], { icon: L.divIcon({ className: '', html: `<div class="fpin" data-fp="${x.id}" style="--c:${KIND[x.kinds[0]][2]}">${i + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) }).addTo(fmap).on('click', () => { const r = document.querySelector(`[data-food="${x.id}"]`); r && r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }); });
+  shown.forEach((x, i) => { L.marker([x.lat, x.lng], { icon: L.divIcon({ className: '', html: `<div class="fpin" data-fp="${x.id}" style="--c:${KIND[x.kinds[0]][2]}">${i + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) }).addTo(flayer).on('click', () => { const r = document.querySelector(`[data-food="${x.id}"]`); r && r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }); });
   if (shown.length) fmap.fitBounds([[c.lat, c.lng], ...shown.map((x) => [x.lat, x.lng])], { padding: [24, 24], maxZoom: 16 });
 }
 
@@ -918,13 +939,33 @@ function mountFoodMap() {
 const page = document.getElementById('page'), fab = document.getElementById('fab');
 const picker = document.querySelector('.proto-picker'), hl = picker.querySelector('.proto-picker-highlight'), items = [...picker.querySelectorAll('.proto-picker-item')];
 let tab = Math.max(0, (parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
-function render() {
-  const y = scrollY;
-  syncPeople(); page.innerHTML = [renderExpenses, renderBookings, renderTaxi, renderFood, renderSettings][tab]();
+/* Whatever changes asks for a redraw; several in one go (a store update reaches four listeners) draw once, before the next
+   paint. A redraw that would draw the same page is skipped (nothing flashes or slides in again), and a status that arrives
+   later (offline, last backup, flight alerts) redraws just its own card when nothing else on the page changed. Not while
+   the page shows what a redraw resets (a message written into it, a box being typed in, the map): that is drawn in full,
+   as before. */
+let drawQ = false, onPage = '', parts = {}, was = {};
+const part = (k, html) => ((parts[k] = html), html);
+const PART = { off: () => document.getElementById('off-line').closest('.card'), bk: () => document.getElementById('bk-line').closest('.setrow'), al: () => page.querySelector('.agrid').closest('.card') };
+const say = (el, t) => { el.textContent = t; onPage = ''; }; // a message written straight into the page: the next redraw clears it
+const asDrawn = () => !(tab === 3 && foodView === 'nearby') && !(page.contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName));
+function render() { if (!drawQ) { drawQ = true; queueMicrotask(draw); } }
+function draw() {
+  drawQ = false; const y = scrollY; parts = {};
+  syncPeople(); const h = [renderExpenses, renderBookings, renderTaxi, renderFood, renderSettings][tab](), same = asDrawn();
+  if (h !== onPage || !same) {
+    const ks = Object.keys(parts), cut = (s, ps) => ks.reduce((s2, k) => s2.replace(ps[k], '\0'), s);
+    if (same && ks.length && ks.every((k) => k in was) && cut(h, parts) === cut(onPage, was)) { for (const k of ks) if (parts[k] !== was[k]) PART[k]().outerHTML = parts[k]; }
+    else {
+      page.innerHTML = h; moveSeg(...page.querySelectorAll('.seg'));
+      if (tab === 3 && foodView === 'nearby') mountFoodMap(); else if (fmap) { fmap.remove(); fmap = null; }
+    }
+    onPage = h;
+  }
+  was = parts;
   fab.hidden = tab !== 0; document.body.classList.toggle('has-fab', tab === 0);
-  page.querySelectorAll('.seg').forEach(moveSeg);
-  if (tab === 3 && foodView === 'nearby') { mountFoodMap(); if (fd.res == null) searchFood(); }
-  window.scrollTo(0, y);
+  if (tab === 3 && foodView === 'nearby' && fd.res == null) searchFood();
+  if (scrollY !== y) window.scrollTo(0, y); // only if it moved: scrolling to where it already is would stop a flick
 }
 // money has its own page now: the old Expenses tab sends you there
 function setTab(i) { if (VIEW && i === 0) i = 1;
@@ -980,7 +1021,7 @@ page.addEventListener('click', (e) => {
 page.addEventListener('change', async (e) => {
   if (e.target.id === 'bud-in' && P[ME]) { const v = parseFloat(String(e.target.value).replace(/[^\d.]/g, '')) || 0; ls.set(budgetKey(), Math.round(v * RATE[ex.cur])); return render(); }
   if (e.target.id === 'idea-day') { ideas.day = e.target.value; ls.set('proto.ideaday', ideas.day); return render(); }
-  if (e.target.id === 'pf-photo' && P[ME] && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) msg.textContent = 'Uploading…'; try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) msg.textContent = err.message; } return; }
+  if (e.target.id === 'pf-photo' && P[ME] && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) say(msg, 'Uploading…'); try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) say(msg, err.message); } return; }
  if (e.target.id === 'f-where') { if (e.target.value === 'My location') return; fd.here = null; fd.where = e.target.value; ls.set('proto.fwhere', fd.where); searchFood(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); driver.classList.remove('on'); } });
 if (VIEW) { items[0].hidden = true; document.body.classList.add('guest'); }
@@ -1013,7 +1054,8 @@ window.__tourEnv = {
   exCount: () => ex.list.length, sheetOpen: () => sheet.classList.contains('on'), closeSheet: () => closeSheet(),
   driverOpen: () => driver.classList.contains('on'),
 };
-if (SANDBOX) { document.body.classList.add('practice'); setTimeout(runTour, 60); }
+// the practice tour's code is only fetched in practice
+if (SANDBOX) { document.body.classList.add('practice'); Promise.all([import('../js/tour.js?v=9'), new Promise((r) => setTimeout(r, 60))]).then(([t]) => t.runTour()); }
 </script>
 </body>
 </html>
