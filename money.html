@@ -8,6 +8,12 @@
 <meta name="color-scheme" content="light">
 <meta name="theme-color" content="#f6f4ef">
 <title>Money · Japan 2026</title>
+<!-- fetched while the page itself is still coming in: the code it starts with, and the fonts its first draw uses -->
+<link rel="modulepreload" href='./js/store.js?v=9'>
+<link rel="preload" href="vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 @font-face { font-family:'Zen Kaku Gothic New'; font-weight:400; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku Gothic New'; font-weight:500; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
@@ -692,7 +698,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 
 <script type="module">
 import { store, SANDBOX, GUEST } from './js/store.js?v=9';
-import { runTour } from './js/tour.js?v=9';
 /* ───────── people, days, money ───────── */
 const P = {
   naf: { name:'Naf', ini:'N', c:'#1f98b8', couple:'nasa', partner:'sara' },
@@ -1915,7 +1920,7 @@ addEventListener('pageshow', (e) => { if (!e.persisted) return; const c = ls.get
     }
   } }
 window.__tourEnv = { page:'money', store, formOpen:() => !!F, exCount:() => S.ex.length, closeForm:() => { if (F) closeForm(); } };
-if (SANDBOX) { document.body.classList.add('practice'); setTimeout(runTour, 60); }
+if (SANDBOX) { document.body.classList.add('practice'); import('./js/tour.js?v=9').then((m) => setTimeout(m.runTour, 60)); } // (the tour's code is only loaded for the tour)
 
 </script>
 </body>
