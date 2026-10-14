@@ -106,7 +106,7 @@ const WM = /^https:\/\/(upload|thumb)\.wikimedia\.org\/[^\s"'()<>\\]{1,400}$/;
 const WM_PAGE = /^https:\/\/(commons\.wikimedia|en\.wikipedia)\.org\/[^\s"'()<>\\]{1,300}$/;
 function cleanInfo(v) {
   const out = {};
-  for (const [k, max] of Object.entries({ ja: 40, ro: 60, key: 50, story: 400, credit: 120 })) if (typeof v[k] === 'string' && clean(v[k], max)) out[k] = clean(v[k], max);
+  for (const [k, max] of Object.entries({ ja: 40, ro: 60, key: 50, story: 400, dyk: 200, credit: 120 })) if (typeof v[k] === 'string' && clean(v[k], max)) out[k] = clean(v[k], max);
   if (['temple', 'shrine', 'station', 'food', 'shop', 'park', 'sight', 'attraction', 'hotel'].includes(v.kind)) out.kind = v.kind;
   if (WM.test(v.img || '')) { out.img = v.img; out.thumb = WM.test(v.thumb || '') ? v.thumb : v.img; if (WM_PAGE.test(v.file || '')) out.file = v.file; }
   else delete out.credit;
