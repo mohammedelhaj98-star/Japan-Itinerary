@@ -911,20 +911,20 @@ const leaflet = () => leafletP || (leafletP = Promise.all([
   new Promise((ok) => { const el = document.createElement('link'); el.rel = 'stylesheet'; el.href = '../vendor/leaflet/leaflet.css'; el.onload = el.onerror = ok; document.head.insertBefore(el, document.querySelector('head style')); }),
   new Promise((ok, no) => { const el = document.createElement('script'); el.src = '../vendor/leaflet/leaflet.js'; el.onload = ok; el.onerror = no; document.head.appendChild(el); }),
 ]).catch((e) => { leafletP = null; throw e; }));
-// Redrawn, the page keeps its map rather than building a new one: it is reset to the stop at zoom 15 (its tiles cleared, as
-// a new map starts), the circle (with a drawing layer of its own, as a new map made) and the pins are drawn new, and the
-// results are fitted from there. One caught mid-zoom or under a finger is made new, as before.
-let fzoom = false; const fdown = new Set();
+// Redrawn, the page keeps its map rather than building a new one: its tiles, circle and pins come off, it is reset to the
+// stop at zoom 15, and they go back on in the order a new map got them (the tiles, then the circle on a drawing layer of its
+// own, then the pins) before the results are fitted. One caught mid-zoom or under a finger is made new, as before.
+let fzoom = false, ftiles = null; const fdown = new Set();
 addEventListener('pointerup', (e) => fdown.delete(e.pointerId)); addEventListener('pointercancel', (e) => fdown.delete(e.pointerId));
 function mountFoodMap() {
   const el = document.getElementById('fmap'); if (!el) return;
   if (!window.L) { leaflet().then(() => { if (document.getElementById('fmap') === el) mountFoodMap(); }, () => {}); return; }
   if (fmap && (fzoom || fdown.size)) { fmap.remove(); fmap = null; }
   const c = center();
-  if (fmap) { el.replaceWith(fmap.getContainer()); flayer.clearLayers(); fmap.invalidateSize(false).setView([c.lat, c.lng], 15, { reset: true }); }
+  if (fmap) { el.replaceWith(fmap.getContainer()); flayer.clearLayers(); ftiles.remove(); fmap.invalidateSize(false).setView([c.lat, c.lng], 15, { reset: true }); ftiles.addTo(fmap); }
   else {
     fmap = L.map(el, { zoomControl: false, attributionControl: false }).setView([c.lat, c.lng], 15); fzoom = false;
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(fmap);
+    ftiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(fmap);
     flayer = L.layerGroup().addTo(fmap); fmap.on('zoomanim', () => (fzoom = true)).on('zoomend', () => (fzoom = false));
     el.addEventListener('pointerdown', (e) => fdown.add(e.pointerId), true);
   }
