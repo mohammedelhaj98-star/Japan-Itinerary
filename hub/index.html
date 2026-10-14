@@ -146,12 +146,15 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const photo = $('#photo'); if (photo.complete) photo.classList.add('in'); else photo.addEventListener('load', () => photo.classList.add('in'));
 
 const byId = Object.fromEntries(PEOPLE.map((p) => [p.id, p]));
-// Everyone's chosen colour and photo, set in the trip's Settings tab.
+// Everyone's chosen colour and photo, set in the trip's Settings tab. The faces already showing take them where they are
+// (the page isn't drawn again, and doesn't jump back to the top).
 const avStyle = (p) => `--c:${p.c}${p.photo ? `;background-image:url('${p.photo}')` : ''}`;
+const paint = (el, p) => { if (el && p) { el.className = `av ${p.photo ? 'ph' : ''}`; el.setAttribute('style', avStyle(p)); } };
 fetch('/api/state', { cache: 'no-store' }).then((r) => r.json()).then((st) => {
   const pf = st.profiles || {}; let changed = false;
   for (const p of PEOPLE) { const x = pf[p.id]; if (!x) continue; if (x.color) { p.c = x.color; changed = true; } if (x.photo) { p.photo = `/api/photo/${p.id}?v=${x.photo}`; changed = true; } }
-  if (changed && $('#s-trip').classList.contains('on')) renderTrips(); else if (changed && $('#s-who').classList.contains('on')) renderWho();
+  if (changed && $('#s-trip').classList.contains('on')) paint($('#switch .av'), byId[ls.get('trips.me')]);
+  else if (changed && $('#s-who').classList.contains('on')) PEOPLE.forEach((p) => paint($(`[data-me="${p.id}"] .av`), p));
 }).catch(() => {});
 const next = new URLSearchParams(location.search).get('next');
 
