@@ -8,6 +8,12 @@
 <meta name="color-scheme" content="light">
 <meta name="theme-color" content="#f6f4ef">
 <title>Money · Japan 2026</title>
+<!-- fetched while the page itself is still coming in: the code it starts with, and the fonts its first draw uses -->
+<link rel="modulepreload" href='./js/store.js?v=9'>
+<link rel="preload" href="vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/instrument-serif-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 @font-face { font-family:'Zen Kaku Gothic New'; font-weight:400; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku Gothic New'; font-weight:500; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
@@ -108,7 +114,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .pen { display:grid; flex:none; place-items:center; width:28px; height:28px; border-radius:50%; color:var(--blue-ink); background:color-mix(in srgb, var(--blue) 10%, var(--card)); }
 .pen svg { width:14px; height:14px; }
 .pen[aria-expanded="true"] { background:var(--ink); color:#fff; }
-.routeed { margin:2px 0 8px; padding:2px 6px 2px 12px; min-height:48px; border-radius:14px; background:var(--tint); display:flex; align-items:center; gap:2px; flex-wrap:nowrap; animation:reveal 220ms var(--ease); }
+.routeed { margin:2px 0 8px; padding:2px 6px 2px 12px; min-height:48px; border-radius:14px; background:var(--tint); display:flex; align-items:center; gap:2px; flex-wrap:nowrap; }
+/* the editor reveals when the pen opens it; a re-draw while it's open leaves it still */
+.routeed.rvl { animation:reveal 220ms var(--ease); }
 .routeed small { font-size:12.5px; font-weight:700; color:var(--ink3); margin-right:2px; white-space:nowrap; }
 .routeed .sep { width:1px; height:22px; background:var(--line); margin:0 8px; flex:none; }
 .who1 { width:40px; height:44px; display:grid; place-items:center; flex:none; }
@@ -617,6 +625,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 
 /* the real page: back to the trip, add an expense, sync status, and a note for guests */
 .app { padding-top:calc(52px + env(safe-area-inset-top,0px)); }
+/* a re-draw keeps the parts that didn't change: the page mustn't shift its scroll to follow them (a whole re-draw never did) */
+.app { overflow-anchor:none; }
 .tback { position:fixed; top:calc(10px + env(safe-area-inset-top,0px)); left:max(12px, calc(50% - 218px)); z-index:60; display:flex; align-items:center; gap:4px; height:36px; padding:0 14px 0 9px; border-radius:999px; background:rgba(252,250,246,.9); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); color:var(--ink); font-size:14px; font-weight:700; text-decoration:none; box-shadow:0 6px 18px -8px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,10,.08); }
 .tback::after { content:''; position:absolute; inset:-4px; }
 .addfab[hidden] { display:none; }
@@ -688,7 +698,6 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 
 <script type="module">
 import { store, SANDBOX, GUEST } from './js/store.js?v=9';
-import { runTour } from './js/tour.js?v=9';
 /* ───────── people, days, money ───────── */
 const P = {
   naf: { name:'Naf', ini:'N', c:'#1f98b8', couple:'nasa', partner:'sara' },
@@ -698,8 +707,10 @@ const P = {
 };
 const IDS = ['naf', 'sara', 'mariam', 'm'];
 const COUPLE = { nasa:{ name:'NASA', ids:['naf','sara'] }, mm:{ name:'M&M', ids:['mariam','m'] } };
+// number and date formats, made once (toLocaleString builds a new formatter on every call)
+const DF = new Intl.DateTimeFormat('en-GB', { day:'numeric', month:'short', timeZone:'UTC' }), NF = new Intl.NumberFormat('en-GB'), NF0 = new Intl.NumberFormat('en-GB', { minimumFractionDigits:0, maximumFractionDigits:0 }), NF2 = new Intl.NumberFormat('en-GB', { minimumFractionDigits:2, maximumFractionDigits:2 });
 const DAYS = [['pre',0,'','','Before the trip'],["d01",1,"2026-10-16","Fri","Arrival in Tokyo"],["d02",2,"2026-10-17","Sat","Harajuku + Kawagoe Matsuri"],["d03",3,"2026-10-18","Sun","Fuji or Nikko + omakase"],["d04",4,"2026-10-19","Mon","Tsukiji + Ginza + Shimokitazawa + Nakano"],["d05",5,"2026-10-20","Tue","Hakone"],["d06",6,"2026-10-21","Wed","Hakone → Kyoto"],["d07",7,"2026-10-22","Thu","Nara + Osaka"],["d08",8,"2026-10-23","Fri","Arashiyama + samurai"],["d09",9,"2026-10-24","Sat","Fushimi dawn + temples"],["d10",10,"2026-10-25","Sun","Kimono day in Higashiyama"],["d11",11,"2026-10-26","Mon","USJ Halloween"],["d12",12,"2026-10-27","Tue","Kyoto → Tokyo + Ginza"],["d13",13,"2026-10-28","Wed","Asakusa + Kappabashi"],["d14",14,"2026-10-29","Thu","Tokyo DisneySea"],["d15",15,"2026-10-30","Fri","Meiji + Shibuya + Shinjuku"],["d16",16,"2026-10-31","Sat","Ikebukuro Halloween night"],["d17",17,"2026-11-01","Sun","Final morning + flight"]]
-  .map(([id, n, date, dow, title]) => ({ id, n, date, dow, title, short: id === 'pre' ? 'Before' : `D${n}`, dd: date ? new Date(date + 'T00:00:00Z').toLocaleDateString('en-GB', { day:'numeric', month:'short', timeZone:'UTC' }) : 'the trip' }));
+  .map(([id, n, date, dow, title]) => ({ id, n, date, dow, title, short: id === 'pre' ? 'Before' : `D${n}`, dd: date ? DF.format(new Date(date + 'T00:00:00Z')) : 'the trip' }));
 const DAY = Object.fromEntries(DAYS.map((d) => [d.id, d]));
 // today in Japan: before the trip it's 'pre', after it the last day
 const TODAY = (() => { const d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); const day = DAYS.find((x) => x.date === d); return day ? day.id : d < DAYS[1].date ? 'pre' : DAYS[DAYS.length - 1].id; })();
@@ -728,8 +739,8 @@ const CASH_ICON = ico('<rect x="2.5" y="6" width="19" height="12" rx="2"/><circl
 const CLIP = ico('<path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7.1-7.1l8.2-8.2a3.4 3.4 0 0 1 4.8 4.8l-8.2 8.2a1.7 1.7 0 0 1-2.4-2.4l7.5-7.5"/>');
 const TICK = ico('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
 const WITH = { cash:'Cash', card:'Card', ic:'IC card' };
-const fmtY = (v) => (v < 0 ? '−' : '') + '¥' + Math.abs(Math.round(v)).toLocaleString('en-GB');
-const fmtC = (v, c = S.cur) => { const x = Math.abs(v) / RATE[c]; const d = x >= 100 ? 0 : 2; return (v < 0 ? '−' : '') + SYM[c] + x.toLocaleString('en-GB', { minimumFractionDigits:d, maximumFractionDigits:d }); };
+const fmtY = (v) => (v < 0 ? '−' : '') + '¥' + NF.format(Math.abs(Math.round(v)));
+const fmtC = (v, c = S.cur) => { const x = Math.abs(v) / RATE[c]; const d = x >= 100 ? 0 : 2; return (v < 0 ? '−' : '') + SYM[c] + (d ? NF2 : NF0).format(x); };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const av = (id, cls = '') => `<span class="av ${cls} ${P[id].photo ? 'ph' : ''}" style="--c:${P[id].c}${P[id].photo ? `;background-image:url('${P[id].photo}')` : ''}" title="${P[id].name}">${P[id].ini}</span>`;
 const uid = () => 'x' + Math.random().toString(36).slice(2, 9);
@@ -789,16 +800,16 @@ function ledger() {
   const net = Object.fromEntries(IDS.map((a) => [a, IDS.reduce((s, b) => s + M[b][a] - M[a][b], 0)])); // >0: owed to a
   return { M, net, items };
 }
-// "Between you two" for one couple: the items and the one net amount
-function between(cpl) {
-  const [a, b] = COUPLE[cpl].ids, list = ledger().items.filter((i) => P[i.a].couple === cpl);
+// "Between you two" for one couple: the items and the one net amount (L: the ledger, when it's already worked out)
+function between(cpl, L = ledger()) {
+  const [a, b] = COUPLE[cpl].ids, list = L.items.filter((i) => P[i.a].couple === cpl);
   const v = list.reduce((s, i) => s + (i.a === a ? i.v : -i.v), 0); // >0: a owes b
   return { list, row:Math.abs(v) >= 1 ? (v > 0 ? { from:a, to:b, yen:Math.round(v) } : { from:b, to:a, yen:Math.round(-v) }) : null };
 }
 // Payments between the couples. Each can be sent by either partner of the paying couple and received by either
 // partner of the receiving couple; payments between the same two people are combined (or netted, both ways).
-function transfers() {
-  const { M, net } = ledger(), raw = [];
+function transfers(L = ledger()) {
+  const { M, net } = L, raw = [];
   const push = (sendKey, sendDef, recvKey, recvDef, yen, debts, credits, flows) => {
     const sendSide = P[sendDef].couple, recvSide = P[recvDef].couple;
     raw.push({ from:S.senders[sendKey] || sendDef, to:S.recv[recvKey] || recvDef, yen, debts, credits, flows, sendKeys:[sendKey], recvKeys:[recvKey], sendSide, recvSide });
@@ -887,8 +898,8 @@ function settleCard() {
   return `<div class="card settle">${rows.length ? rows.map((t, i) => trRow(t, i)).join('') : `<p class="even"><span class="evtick" aria-hidden="true">${TICK}</span>The two couples are square.</p>`}${pays}</div>`;
 }
 // inside one couple: one line, with what it's made of underneath
-function betweenCard(cpl) {
-  const { list, row } = between(cpl), [a, b] = COUPLE[cpl].ids; window.__trIn = row;
+function betweenCard(cpl, L) {
+  const { list, row } = between(cpl, L), [a, b] = COUPLE[cpl].ids; window.__trIn = row;
   return `<div class="card settle between"><div class="tr"><div class="tr-m">${row ? `<span class="pair">${av(row.from)}<span class="a">→</span>${av(row.to)}</span><span class="trname"><b>${P[row.from].name}</b> owes <b>${P[row.to].name}</b></span><span class="tramt"><b>${fmtY(row.yen)}</b><small>${fmtC(row.yen)}</small></span><button class="paid" data-payin>Paid</button>`
     : `<span class="trname zero">${P[a].name} and ${P[b].name} are square</span>`}</div>
     ${list.length ? `<div class="inlist">${list.map((i) => i.loan ? `<button class="inrow" data-loan="${i.loan}"><span>${i.label}</span><span>${P[i.a].name} → ${P[i.b].name} ${fmtY(i.v)}</span></button>` : `<p><span>${i.label}</span><span>${P[i.a].name} → ${P[i.b].name} ${fmtY(i.v)}</span></p>`).join('')}</div>` : ''}</div></div>`;
@@ -951,30 +962,57 @@ const vibrate = () => { try { navigator.vibrate && navigator.vibrate(15); } catc
 /* ───────── rendering ───────── */
 const app = document.getElementById('app');
 const SEARCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
+// The page is drawn from parts: [key, html], or [key, start tag, [the parts inside it], end tag]. A part whose HTML is
+// what it was last time keeps its elements, so a tap re-makes only what it changed (the list, a card, two day bars) and
+// the rest isn't parsed, styled or painted again. The page comes out exactly as drawing it whole would make it: a part
+// that was decorated since (an animation class, a count) or that holds the focus is made again, as a whole redraw did.
+// What's new at a level is parsed in one go (one parse costs far less than many), each part with all that's inside it
+// and a marker between parts, in a div as #app's whole HTML was; the markers come out as the nodes are shared out.
+// (Every part closes what it opens, so a marker always lands between parts.)
+const mold = document.createElement('div'), M = '<!--·-->', full = ([, h, kids, end]) => (kids ? h + kids.map(full).join(M) + end : h);
+function cut(ns) { const out = [[]]; for (const n of ns) if (n.nodeType === 8 && n.data === '·') { n.remove(); out.push([]); } else out[out.length - 1].push(n); return out; }
+function rec([k, h, kids, end], nodes) { if (!kids) return { k, h, nodes }; const g = cut([...nodes[0].childNodes]); return { k, h, end, nodes, kids:kids.map((p, i) => rec(p, g[i])) }; }
+function patch(box, parts, was = []) {
+  const old = new Map(was.map((r) => [r.k, r]));
+  const kept = parts.map(([k, h, kids, end]) => { const o = old.get(k); old.delete(k); return o && !o.dirty && o.h === h && o.end === end && !o.kids === !kids ? o : null; });
+  const fresh = parts.filter((p, i) => !kept[i]); let g = [], j = 0;
+  if (fresh.length) { mold.innerHTML = fresh.map(full).join(M); g = cut([...mold.childNodes]); }
+  const recs = parts.map((p, i) => { const o = kept[i]; if (!o) return rec(p, g[j++]); if (p[2]) o.kids = patch(o.nodes[0], p[2], o.kids); return o; });
+  const want = new Set(recs.flatMap((r) => r.nodes));
+  for (let n = box.firstChild, nx; n; n = nx) { nx = n.nextSibling; if (!want.has(n)) n.remove(); }
+  let at = box.firstChild;
+  for (const r of recs) for (const n of r.nodes) { if (n === at) at = at.nextSibling; else box.insertBefore(n, at); }
+  return recs;
+}
+// an element decorated after it was drawn: its part is made afresh next time
+function taint(el, recs = drawn) { for (const r of recs) if (r.nodes.some((n) => n.contains(el))) { if (r.kids && r.nodes[0] !== el) taint(el, r.kids); else r.dirty = true; return; } }
+let drawn = []; const charts = new WeakSet();
 function render() {
   commit();
   if (!WHO) { app.innerHTML = `<div class="nomoney"><h1>Money</h1><p>The expenses are just for the four of us. Pick your name on the trips page to see them.</p><a class="pill" href="/?next=japan">Go to the trips page</a></div>`; addfab.hidden = true; return; }
-  people(); app.innerHTML = renderExpenses() + `<p class="syncl">${syncLine()}</p>`; addfab.hidden = !!F;
+  people(); const f = document.activeElement; if (f && f !== app && app.contains(f)) taint(f); // a whole redraw took the focus away, so this does too
+  drawn = patch(app, [...renderExpenses(), ['syncl', `<p class="syncl">${syncLine()}</p>`]], drawn); addfab.hidden = !!F;
   countUp(); squareIn();
   document.querySelectorAll('.dscroll').forEach((el) => {
-    const k = el.dataset.chart, t = el.querySelector('.today');
-    // opening a page: today is always in view, as the right-most bar once the trip is past its first week
-    el.scrollLeft = S.cscroll[k] != null ? S.cscroll[k] : t ? Math.max(0, t.offsetLeft + t.offsetWidth - el.clientWidth) : 0;
-    el.addEventListener('scroll', () => { S.cscroll[k] = el.scrollLeft; }, { passive:true });
+    const k = el.dataset.chart, t = el.querySelector('.today'), fresh = !charts.has(el);
+    // opening a page: today is always in view, as the right-most bar once the trip is past its first week; a chart
+    // kept from the last draw stays where it was swiped to (setting it again would snap a swipe in progress back)
+    if (fresh || S.cscroll[k] == null) el.scrollLeft = S.cscroll[k] != null ? S.cscroll[k] : t ? Math.max(0, t.offsetLeft + t.offsetWidth - el.clientWidth) : 0;
+    if (fresh) { charts.add(el); el.addEventListener('scroll', () => { S.cscroll[k] = el.scrollLeft; }, { passive:true }); }
   });
 }
 const keepTop = () => { const y = scrollY; render(); scrollTo(0, y); };
 // the big spend figures tick from what they showed to the new amount when it changes (an expense lands, one is
 // deleted, another phone adds one); the first time a figure is drawn it just shows
 const RM = matchMedia('(prefers-reduced-motion: reduce)');
-const unfold = (els) => { if (!RM.matches) [...els].slice(0, 8).forEach((el, i) => { el.style.animationDelay = `${i * 25}ms`; el.classList.add('unfold'); }); };
+const unfold = (els) => { if (!RM.matches) [...els].slice(0, 8).forEach((el, i) => { el.style.animationDelay = `${i * 25}ms`; el.classList.add('unfold'); taint(el); }); };
 // a settle-up row that has just been paid slides out and closes up before the card is redrawn; if that leaves
 // nobody owing anybody, the "square" line comes in with its tick
 // the chevron on a toggle is redrawn with the card, so it turns here rather than snapping
-const turnChev = (el, open) => { if (el && !RM.matches) el.animate([{ transform: `rotate(${open ? 0 : 90}deg)` }, { transform: `rotate(${open ? 90 : 0}deg)` }], { duration: 200, easing: 'cubic-bezier(.23,1,.32,1)' }); };
+const turnChev = (el, open) => { if (el && !RM.matches) { el.animate([{ transform: `rotate(${open ? 0 : 90}deg)` }, { transform: `rotate(${open ? 90 : 0}deg)` }], { duration: 200, easing: 'cubic-bezier(.23,1,.32,1)' }); taint(el); } };
 let sqAt = 0, settling = false;
 // the save that follows redraws the card again, so the square line carries on from where its animation got to
-function squareIn() { const t = performance.now() - sqAt, ev = sqAt && t < 600 && document.querySelector('.settle .even'); if (ev) { ev.style.setProperty('--sqt', `${-t}ms`); ev.classList.add('sq-in'); } }
+function squareIn() { const t = performance.now() - sqAt, ev = sqAt && t < 600 && document.querySelector('.settle .even'); if (ev) { ev.style.setProperty('--sqt', `${-t}ms`); ev.classList.add('sq-in'); taint(ev); } }
 // the payment is saved first (commit), so leaving the page mid-animation loses nothing; redraws from the save wait
 function settleAway(row) {
   commit(); settling = true;
@@ -986,36 +1024,39 @@ function settleAway(row) {
   };
   if (!row || !row.isConnected || RM.matches) return done();
   const h = row.offsetHeight, ease = 'cubic-bezier(.23,1,.32,1)';
-  row.style.overflow = 'hidden'; row.style.pointerEvents = 'none';
+  row.style.overflow = 'hidden'; row.style.pointerEvents = 'none'; taint(row);
   row.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(28px)' }], { duration: 200, easing: 'ease-in', fill: 'forwards' });
   const a = row.animate([{ height: h + 'px' }, { height: '0px', paddingTop: '0px', paddingBottom: '0px' }], { duration: 200, delay: 140, easing: ease, fill: 'forwards' });
   a.finished.then(done, done); setTimeout(done, 900); // never hold the page's redraws for long
 }
-const shownFig = {}, figRaf = {};
+const shownFig = {}, figRaf = {}, figRun = {}, counted = new WeakSet();
 function countUp() {
   document.querySelectorAll('[data-count]').forEach((el) => {
-    const k = el.dataset.count, to = +el.dataset.v, from = shownFig[k];
-    shownFig[k] = to; cancelAnimationFrame(figRaf[k]);
+    if (counted.has(el)) return; counted.add(el); // kept from the last draw: left as it is
+    const k = el.dataset.count, to = +el.dataset.v, from = shownFig[k], run = figRun[k];
+    // drawn again mid-count, to the same amount: the count carries on in the new element instead of starting over
+    if (run && run.to === to && !RM.matches) { run.el = el; el.style.display = 'inline-block'; el.style.minWidth = run.w; el.textContent = fmtY(from); taint(el); return; }
+    shownFig[k] = to; cancelAnimationFrame(figRaf[k]); figRun[k] = null;
     if (from == null || from === to || RM.matches) return;
     // the serif's figures aren't all one width: hold the box at the wider of the two amounts so what follows stays put
-    el.style.display = 'inline-block'; const wTo = el.offsetWidth; el.textContent = fmtY(from); el.style.minWidth = Math.max(wTo, el.offsetWidth) + 'px';
-    const t0 = performance.now(), d = 420;
+    el.style.display = 'inline-block'; const wTo = el.offsetWidth; el.textContent = fmtY(from); el.style.minWidth = Math.max(wTo, el.offsetWidth) + 'px'; taint(el);
+    const t0 = performance.now(), d = 420, r = figRun[k] = { to, el, w:el.style.minWidth };
     const tick = (now) => {
       const p = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - p, 3), v = Math.round(from + (to - from) * e);
-      el.textContent = fmtY(v); shownFig[k] = p < 1 ? v : to;
-      if (p < 1) figRaf[k] = requestAnimationFrame(tick); else el.style.minWidth = '';
+      r.el.textContent = fmtY(v); shownFig[k] = p < 1 ? v : to;
+      if (p < 1) figRaf[k] = requestAnimationFrame(tick); else { r.el.style.minWidth = ''; if (figRun[k] === r) figRun[k] = null; }
     };
     figRaf[k] = requestAnimationFrame(tick);
   });
 }
 const fmtK = (v) => (v >= 1000 ? `¥${(v / 1000).toFixed(v >= 100000 ? 0 : 1).replace(/\.0$/, '')}k` : fmtY(v));
-// the day chart, swiped sideways; tap a day to filter the list below
+// the day chart, swiped sideways; tap a day to filter the list below (a part per bar: a tap re-makes just the two that change)
 function dayChart(id, byDay, byDayCat, sel, attr) {
   // before the trip gets its own bar first; it's scaled to the trip days and capped, so a big deposit doesn't flatten them
   const tripDays = DAYS.filter((d) => d.n), max = Math.max(1, ...tripDays.map((d) => byDay[d.id] || 0)), pre = byDay.pre ? [DAY.pre] : [];
-  return `<div class="dscroll" data-chart="${id}" role="group" aria-label="Spend by day, swipe for more days">${[...pre, ...tripDays].map((d) => {
+  return ['chart', `<div class="dscroll" data-chart="${id}" role="group" aria-label="Spend by day, swipe for more days">`, [...pre, ...tripDays].map((d) => {
     const v = byDay[d.id] || 0, parts = Object.entries(byDayCat[d.id] || {}).filter(([, x]) => x > 0), fut = d.n > DAY[TODAY].n, isPre = d.id === 'pre', capped = v > max;
-    return `<button class="dbar ${isPre ? 'pre' : ''} ${capped ? 'capped' : ''} ${d.id === TODAY ? 'today' : ''} ${sel === d.id ? 'on' : ''} ${fut ? 'future' : ''}" data-${attr}="${d.id}" aria-pressed="${sel === d.id}" aria-label="${isPre ? 'Before the trip' : `Day ${d.n}, ${d.dow} ${d.dd}`}, ${fmtY(v)}"><span class="dcol">${v ? `<span class="dv">${fmtK(v)}</span><span class="stack" style="height:${Math.min(100, Math.max(5, v / max * 100))}%">${parts.map(([k, x]) => `<i style="--c:${CATS[k][1]};flex:${x}"></i>`).join('')}</span>` : ''}</span><span class="dl"><b>${isPre ? 'Before' : d.id === TODAY ? 'Today' : `D${d.n}`}</b>${isPre ? 'trip' : d.dow}</span></button>`; }).join('')}</div>`;
+    return [d.id, `<button class="dbar ${isPre ? 'pre' : ''} ${capped ? 'capped' : ''} ${d.id === TODAY ? 'today' : ''} ${sel === d.id ? 'on' : ''} ${fut ? 'future' : ''}" data-${attr}="${d.id}" aria-pressed="${sel === d.id}" aria-label="${isPre ? 'Before the trip' : `Day ${d.n}, ${d.dow} ${d.dd}`}, ${fmtY(v)}"><span class="dcol">${v ? `<span class="dv">${fmtK(v)}</span><span class="stack" style="height:${Math.min(100, Math.max(5, v / max * 100))}%">${parts.map(([k, x]) => `<i style="--c:${CATS[k][1]};flex:${x}"></i>`).join('')}</span>` : ''}</span><span class="dl"><b>${isPre ? 'Before' : d.id === TODAY ? 'Today' : `D${d.n}`}</b>${isPre ? 'trip' : d.dow}</span></button>`]; }), '</div>'];
 }
 const curSeg = () => `<div class="seg sm" role="group" aria-label="Show money in">${['CAD','QAR','USD'].map((c) => `<button data-cur="${c}" class="${S.cur === c ? 'on' : ''}">${c}</button>`).join('')}</div>`;
 const viewSeg = () => `<div class="seg vseg">${[['group','Group'],['mine',P[S.me].name],['us',COUPLE[P[S.me].couple].name]].map(([k,l]) => `<button data-view="${k}" class="${S.view === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
@@ -1036,20 +1077,19 @@ function renderExpenses() {
   const byDay = {}, byDayCat = {};
   group.forEach((x) => { for (const [d, f] of spread(x)) { byDay[d] = (byDay[d] || 0) + x.yen * f; (byDayCat[d] = byDayCat[d] || {})[x.cat] = (byDayCat[d][x.cat] || 0) + x.yen * f; } });
   const cats = Object.entries(byCat).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const gpass = `<div class="gpass ticket">
-    <div class="gp-top"><span>Group spend</span>${news.length ? `<button class="gp-news hit" data-shownews aria-expanded="${!!S.showNews}"><i class="dot"></i>${news.length} new</button>` : ''}</div>
-    <span class="seal" aria-hidden="true"><span>Day<b>${DAY[TODAY].n}</b>of 17</span></span>
-    <div class="gp-big"><span data-count="group" data-v="${total}">${fmtY(total)}</span><em>${fmtC(total)}</em></div>
-    ${dayChart('group', byDay, byDayCat, S.gday, 'gday')}
-    <button class="gp-cats" data-legend aria-expanded="${!!S.legend}" aria-label="Spend by type">${cats.slice(0, S.legend ? 9 : 3).map(([k, v]) => `<span style="--c:${CATS[k][1]}"><i></i>${CATS[k][0]} <b>${Math.round(v / total * 100)}%</b>${S.legend ? ` <em class="lg-y">${fmtY(v)}</em>` : ''}</span>`).join('')}${!S.legend && cats.length > 3 ? `<span><b>+${cats.length - 3}</b></span>` : ''}</button>
-  </div>`;
+  const gpass = ['gpass', '<div class="gpass ticket">', [
+    ['top', `\n    <div class="gp-top"><span>Group spend</span>${news.length ? `<button class="gp-news hit" data-shownews aria-expanded="${!!S.showNews}"><i class="dot"></i>${news.length} new</button>` : ''}</div>`],
+    ['seal', `\n    <span class="seal" aria-hidden="true"><span>Day<b>${DAY[TODAY].n}</b>of 17</span></span>`],
+    ['big', `\n    <div class="gp-big"><span data-count="group" data-v="${total}">${fmtY(total)}</span><em>${fmtC(total)}</em></div>\n    `],
+    dayChart('group', byDay, byDayCat, S.gday, 'gday'),
+    ['cats', `\n    <button class="gp-cats" data-legend aria-expanded="${!!S.legend}" aria-label="Spend by type">${cats.slice(0, S.legend ? 9 : 3).map(([k, v]) => `<span style="--c:${CATS[k][1]}"><i></i>${CATS[k][0]} <b>${Math.round(v / total * 100)}%</b>${S.legend ? ` <em class="lg-y">${fmtY(v)}</em>` : ''}</span>`).join('')}${!S.legend && cats.length > 3 ? `<span><b>+${cats.length - 3}</b></span>` : ''}</button>\n  `]], '</div>'];
 
   const dayChip = S.gday ? `<button class="pill on" data-gday="${S.gday}">${DAY[S.gday].n ? `Day ${DAY[S.gday].n}` : 'Before the trip'} ✕</button>` : '';
-  return `<div class="top">${viewSeg()}${curSeg()}</div>${gpass}${newsDrop}
-    <p class="sec">Settle up ${modeSeg()}</p>${settleCard()}
-    <p class="sec">All expenses <span class="fppl">${dayChip}${S.searchOpen ? '' : `<button class="iconb" data-searchopen aria-label="Search expenses">${SEARCH}</button>`}${IDS.map((i) => `<button data-fperson="${i}" class="${S.fperson === i ? 'on' : ''}" aria-pressed="${S.fperson === i}" aria-label="Only ${P[i].name}'s">${av(i, 'sm')}</button>`).join('')}</span></p>
-    ${S.searchOpen ? `<div class="searchrow"><input class="tin" id="gq" type="search" placeholder="Search expenses" value="${esc(S.q || '')}" autocomplete="off"><button class="linkb hit" data-searchclose>Done</button></div>` : ''}
-    <div id="glist">${listGroup(groupShown())}</div>`;
+  return [['top', `<div class="top">${viewSeg()}${curSeg()}</div>`], gpass, ['news', newsDrop],
+    ['settle', `\n    <p class="sec">Settle up ${modeSeg()}</p>${settleCard()}`],
+    ['lhead', `\n    <p class="sec">All expenses <span class="fppl">${dayChip}${S.searchOpen ? '' : `<button class="iconb" data-searchopen aria-label="Search expenses">${SEARCH}</button>`}${IDS.map((i) => `<button data-fperson="${i}" class="${S.fperson === i ? 'on' : ''}" aria-pressed="${S.fperson === i}" aria-label="Only ${P[i].name}'s">${av(i, 'sm')}</button>`).join('')}</span></p>
+    ${S.searchOpen ? `<div class="searchrow"><input class="tin" id="gq" type="search" placeholder="Search expenses" value="${esc(S.q || '')}" autocomplete="off"><button class="linkb hit" data-searchclose>Done</button></div>` : ''}\n    `],
+    ['glist', '<div id="glist">', [listGroup(groupShown())], '</div>']];
 }
 function groupShown() {
   const q = (S.q || '').trim().toLowerCase();
@@ -1058,7 +1098,8 @@ function groupShown() {
     .filter((x) => !S.gday || spread(x).some(([d]) => d === S.gday))
     .filter((x) => !q || `${x.title} ${CATS[x.cat][0]} ${P[x.payer].name}`.toLowerCase().includes(q));
 }
-function renderGlist() { const g = document.getElementById('glist'); if (g) g.innerHTML = listGroup(groupShown()); document.querySelectorAll('[data-fperson]').forEach((b) => { b.classList.toggle('on', b.dataset.fperson === S.fperson); b.setAttribute('aria-pressed', b.dataset.fperson === S.fperson); }); }
+// the list alone, while typing a search (the rows it keeps aren't made again)
+function renderGlist() { const g = drawn.find((r) => r.k === 'glist'); if (g) g.kids = patch(g.nodes[0], [listGroup(groupShown())], g.kids); }
 const splitName = (x) => { const k = Object.keys(x.shares); if (Object.values(x.owes).some(Boolean)) return 'Split unevenly'; if (k.length === 4) return 'All four'; if (k.length === 2 && P[k[0]].partner === k[1]) return `${P[k[0]].name} + ${P[k[1]].name}`; if (isOwn(x)) return `Only ${P[x.payer].name}`; return 'Split unevenly'; };
 // what an expense means for whoever this phone belongs to, in one line
 function meLine(x) {
@@ -1071,21 +1112,29 @@ function meLine(x) {
   if (owed) return `<span class="me pos">${n} is owed ${fmtY(owed)}</span>`;
   return '';
 }
-// what a list puts on one day: a hotel counts one night's share, like the day chart
-const onDay = (xs, dayId, amt) => xs.reduce((s, x) => s + spread(x).filter(([d]) => d === dayId).reduce((t, [, f]) => t + amt(x) * f, 0), 0);
+// what a list puts on each day, in one pass: a hotel counts one night's share, like the day chart
+// (added up in the same order as one day at a time, so the totals come out the same to the last bit)
+function dayTotals(xs, amt) {
+  const t = {};
+  for (const x of xs) { const one = {}; for (const [d, f] of spread(x)) one[d] = (one[d] ?? 0) + amt(x) * f; for (const d in one) t[d] = (t[d] ?? 0) + one[d]; }
+  return t;
+}
 function groupByDay(list) {
   const g = {}; for (const x of list) (g[x.day] = g[x.day] || []).push(x);
   return DAYS.slice().reverse().filter((d) => g[d.id]).map((d) => [d, g[d.id]]);
 }
 const dayName = (d) => (d.id === 'pre' ? 'Before the trip' : `Day ${d.n} · ${esc(d.title)}`);
-const isNew = (x) => S.log.some((l) => l.who !== S.me && l.at > (S.seen[S.me] || 0) && l.title === x.title);
+// the titles others added or changed since this phone last looked (the blue dot)
+const newTitles = () => new Set(S.log.filter((l) => l.who !== S.me && l.at > (S.seen[S.me] || 0)).map((l) => l.title));
+// the list: a part per day heading and per row, so a filter or a new expense keeps the rows that stay
 function listGroup(list) {
-  if (!list.length) return `<div class="card"><p class="even">${S.q || S.fperson ? 'Nothing matches.' : 'No expenses yet.'}</p></div>`;
-  return `<div class="card xlist">${groupByDay(list).map(([d, xs]) => `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(onDay(list.filter((x) => !isOwn(x)), d.id, (x) => x.yen))}</span></p>${xs.map((x) => {
+  if (!list.length) return ['none', `<div class="card"><p class="even">${S.q || S.fperson ? 'Nothing matches.' : 'No expenses yet.'}</p></div>`];
+  const tot = dayTotals(list.filter((x) => !isOwn(x)), (x) => x.yen), fresh = newTitles();
+  return ['card', '<div class="card xlist">', groupByDay(list).flatMap(([d, xs]) => [['h:' + d.id, `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>`], ...xs.map((x) => {
     const ml = meLine(x);
-    return `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span>
-    <span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}${x.receipt ? `<span class="clip" aria-label="has a receipt">${CLIP}</span>` : ''}${isNew(x) ? '<i class="new" aria-label="new"></i>' : ''}</b><small>${P[x.payer].name} paid · ${ml || `${splitName(x)}${isOwn(x) ? ' · not shared' : ''}`}${x.nights > 1 ? ` · ${x.nights} nights` : ''}</small></span>
-    <span class="r"><b>${fmtY(x.yen)}</b>${x.orig ? `<small>${SYM[x.orig.ccy]}${x.orig.amt}</small>` : ''}</span></button>`; }).join('')}`).join('')}</div>`;
+    return [x.id, `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span>
+    <span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}${x.receipt ? `<span class="clip" aria-label="has a receipt">${CLIP}</span>` : ''}${fresh.has(x.title) ? '<i class="new" aria-label="new"></i>' : ''}</b><small>${P[x.payer].name} paid · ${ml || `${splitName(x)}${isOwn(x) ? ' · not shared' : ''}`}${x.nights > 1 ? ` · ${x.nights} nights` : ''}</small></span>
+    <span class="r"><b>${fmtY(x.yen)}</b>${x.orig ? `<small>${SYM[x.orig.ccy]}${x.orig.amt}</small>` : ''}</span></button>`]; })]), '</div>'];
 }
 
 /* A person's page and a couple's page. The top is a pass in their colour (spent of budget, pace, today);
@@ -1115,7 +1164,7 @@ function renderMine(ids, kind) {
     ${pre ? `<p class="hero-note">Includes ${fmtY(pre)} paid before the trip</p>` : ''}</div>`;
 
   // their payments: the settle-up rows that involve them (indexes kept so Paid and the pen still work)
-  const { rows } = transfers(); window.__tr = rows;
+  const L = ledger(), { rows } = transfers(L); window.__tr = rows;
   // by couple, the couple pays as one, so a person sees their couple's payments; person to person, just their own
   const inv = S.mode === 'couple' ? COUPLE[cpl].ids : ids;
   const mineRows = rows.map((t, i) => [t, i]).filter(([t]) => inv.includes(t.from) || inv.includes(t.to));
@@ -1125,7 +1174,7 @@ function renderMine(ids, kind) {
   const payments = `<p class="sec">${COUPLE[cpl].name} settle up ${modeSeg()}</p>
     <div class="card settle">${mineRows.length ? mineRows.map(([t, i]) => trRow(t, i)).join('') : `<p class="even"><span class="evtick" aria-hidden="true">${TICK}</span>Nothing for ${who} to pay or collect.</p>`}
       <p class="paidfor">${who} paid ${fmtY(forOther)} for ${COUPLE[otherC].name}${us ? '' : ` · ${fmtY(forPartner)} for ${P[P[me].partner].name}`}</p></div>
-    ${us ? `<p class="sec">Between ${COUPLE[cpl].name}</p>${betweenCard(cpl)}` : ''}`;
+    ${us ? `<p class="sec">Between ${COUPLE[cpl].name}</p>${betweenCard(cpl, L)}` : ''}`;
 
   // wallet: a banknote for cash, a dark card for IC
   const amt = (fn) => ids.length > 1 ? ids.map((i) => `<span class="wl-p ${fn(i) < 0 ? 'neg' : ''}">${av(i, 'sm')}${fmtY(fn(i))}</span>`).join('') : `<b class="${fn(me) < 0 ? 'neg' : ''}">${fmtY(fn(me))}</b>`;
@@ -1143,13 +1192,15 @@ function renderMine(ids, kind) {
 
   const shown = lines.filter((x) => (S.mineDay === 'all' || spread(x).some(([d]) => d === S.mineDay)) && (!S.mineCat || x.cat === S.mineCat));
   const filters = (S.mineDay !== 'all' || S.mineCat) ? `<div class="filt">${S.mineDay !== 'all' ? `<button class="pill on" data-mday="all">${DAY[S.mineDay].n ? `Day ${DAY[S.mineDay].n}` : 'Before the trip'} ✕</button>` : ''}${S.mineCat ? `<button class="pill on" data-mcat="${S.mineCat}">${CATS[S.mineCat][0]} ✕</button>` : ''}</div>` : '';
-  const rowsHtml = groupByDay(shown).map(([d, xs]) => `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(onDay(shown, d.id, (x) => x.mine))}</span></p>${xs.map((x) => {
+  const tot = dayTotals(shown, (x) => x.mine);
+  const list = groupByDay(shown).flatMap(([d, xs]) => [['h:' + d.id, `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>`], ...xs.map((x) => {
     const own = isOwn(x);
-    return `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}</b><small>${own ? `Only ${P[x.payer].name}` : `${P[x.payer].name} paid · ${splitName(x)}`} · ${WITH[x.with]}</small></span>
-      <span class="share"><b>${fmtY(x.mine)}</b>${own ? '' : `<small>${x.yen < 0 ? `of ${fmtY(-x.yen)} back` : `of ${fmtY(x.yen)}`}</small>`}</span></button>`; }).join('')}`).join('');
+    return [x.id, `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}</b><small>${own ? `Only ${P[x.payer].name}` : `${P[x.payer].name} paid · ${splitName(x)}`} · ${WITH[x.with]}</small></span>
+      <span class="share"><b>${fmtY(x.mine)}</b>${own ? '' : `<small>${x.yen < 0 ? `of ${fmtY(-x.yen)} back` : `of ${fmtY(x.yen)}`}</small>`}</span></button>`]; })]);
 
-  return `<div class="top">${viewSeg()}${curSeg()}</div>${hero}${wallet}${payments}<p class="sec">Where it went</p><div class="chart">${chart}${types}</div>${filters}
-    <div class="card xlist" style="margin-top:8px">${rowsHtml || '<p class="even">Nothing here.</p>'}</div>`;
+  return [['top', `<div class="top">${viewSeg()}${curSeg()}</div>`], ['hero', hero], ['wallet', wallet], ['pay', `${payments}<p class="sec">Where it went</p>`],
+    ['where', '<div class="chart">', [chart, ['types', types]], '</div>'], ['filt', `${filters}\n    `],
+    ['list', '<div class="card xlist" style="margin-top:8px">', list.length ? list : [['none', '<p class="even">Nothing here.</p>']], '</div>']];
 }
 
 /* ───────── the expense form page ───────── */
@@ -1241,7 +1292,7 @@ function renderMove() {
   fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${cash ? `${P[me].name}'s cash` : `${P[me].name}'s IC card`}</b><button class="del" style="visibility:hidden">Delete</button></div>${kindTabs()}
     <div class="fsec">${cash ? `<div class="seg cxseg">${[['got','Got cash'],['gave','Gave cash']].map(([k, l]) => `<button data-fcxdir="${k}" class="${dir === k ? 'on' : ''}">${l}</button>`).join('')}</div>
       <div class="pickrow"><small>${dir === 'got' ? 'From' : 'To'}</small><div class="lineopts">${chips}</div></div>` : ''}
-      <div class="amtin"><select disabled aria-hidden="true"><option>¥</option></select><input id="fmove" inputmode="numeric" enterkeyhint="done" placeholder="0" value="${F.mamt ? (+F.mamt).toLocaleString('en-GB') : ''}" aria-label="Amount"></div>
+      <div class="amtin"><select disabled aria-hidden="true"><option>¥</option></select><input id="fmove" inputmode="numeric" enterkeyhint="done" placeholder="0" value="${F.mamt ? NF.format(+F.mamt) : ''}" aria-label="Amount"></div>
       ${cash ? '' : `<div class="pickrow"><small>Paid with</small><div class="seg cxseg">${[['card','Card'],['cash','Cash']].map(([k, l]) => `<button data-ficwith="${k}" class="${(F.icwith || S.icWith) === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>`}</div>
     <div class="fsec"><div class="details"><button class="pill ${F.exp === 'day' ? 'on' : ''}" data-fexp="day" aria-expanded="${F.exp === 'day'}">${dayLabel} ▾</button></div>
       ${F.exp === 'day' ? `<div class="fstrip" id="fstrip">${DAYS.map((dd) => `<button data-fday="${dd.id}" class="${F.day === dd.id ? 'on' : ''}"><small>${dd.short}${dd.id === TODAY ? ' · today' : ''}</small><b>${dd.dd}</b></button>`).join('')}</div>` : ''}</div></div>`;
@@ -1302,7 +1353,7 @@ function camRect(v) {
 const camC = document.createElement('canvas');
 function camCheck() {
   const v = cam.el && cam.el.querySelector('video'); if (!v || !v.videoWidth || cam.shot) return;
-  const r = camRect(v), w = 72, h = Math.round(w * r.h / r.w); camC.width = w; camC.height = h;
+  const r = camRect(v), w = 72, h = Math.round(w * r.h / r.w); if (camC.width !== w) camC.width = w; if (camC.height !== h) camC.height = h; // (setting a size clears and remakes the canvas)
   const g = camC.getContext('2d', { willReadFrequently:true }); g.drawImage(v, r.x, r.y, r.w, r.h, 0, 0, w, h);
   const d = g.getImageData(0, 0, w, h).data, L = new Float32Array(w * h);
   let sum = 0; for (let i = 0; i < w * h; i++) { L[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]; sum += L[i]; }
@@ -1320,7 +1371,7 @@ function camCheck() {
   if (tb) tb.classList.toggle('nudge', mean < 70 && !cam.torch);
   cam.good = ok ? cam.good + 1 : 0;
   const ready = cam.good >= 2; // good on two checks in a row, so it doesn't flicker
-  hint.textContent = ok && !ready ? 'Hold still…' : msg;
+  const say = ok && !ready ? 'Hold still…' : msg; if (hint.textContent !== say) hint.textContent = say;
   cam.el.querySelector('.cam-frame').classList.toggle('ok', ready);
   cam.el.querySelector('.cam-shutter').classList.toggle('ready', ready);
 }
@@ -1429,6 +1480,7 @@ function useItems() {
 function closeItems() { F.view = null; if (F.split) F.split.edit = null; delete fsave.dataset.items; renderForm(); scrollTo(0, 0); }
 function fixPrice(el) { const it = F.split.items[F.split.edit], v = parseInt(el.value.replace(/[^\d]/g, ''), 10); if (it && v >= 0) it.price = v; F.split.edit = null; renderItems(); }
 
+let rimg = null, rsrc = null;
 function renderForm() {
   if (F.kind === 'cash' || F.kind === 'ic') return renderMove();
   if (F.view === 'items') return renderItems();
@@ -1446,6 +1498,7 @@ function renderForm() {
   const early = DAY[F.day] && DAY[F.day].n >= 1 && DAY[F.day].n <= 5 && F.set.some((i) => P[i].couple === 'mm');
   const nightsMax = Math.max(1, DAYS.length - DAYS.findIndex((d) => d.id === F.day));
   const d = DAY[F.day], dayLabel = d.id === 'pre' ? 'Before the trip' : `Day ${d.n} · ${d.dd}${d.id === TODAY ? ' · today' : ''}`;
+  const sp = fpage.querySelector('.spin'), turn = sp && sp.getAnimations()[0] ? sp.getAnimations()[0].currentTime : null;
   fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${F.id ? 'Edit expense' : 'New expense'}</b><button class="del" data-fdel style="${F.id ? '' : 'visibility:hidden'}">Delete</button></div>${F.id ? '' : kindTabs()}
     ${SANDBOX ? '<div class="draft"><span>Practice: type an amount (like 3000), check who paid, then tap Add expense. Nothing is saved.</span></div>' : ''}
     ${F.draft ? '<div class="draft"><span>Filled in from the expense that was undone.</span><button data-fblank>Start blank</button></div>' : ''}
@@ -1465,15 +1518,20 @@ function renderForm() {
       ${F.exp === 'cat' ? `<div class="cats">${Object.entries(CATS).map(([k, [l, , ic]]) => `<button class="pill ${F.cat === k ? 'on' : ''}" data-cat="${k}">${ic} ${l}</button>`).join('')}</div>` : ''}
       ${F.exp === 'day' ? `<div class="fstrip" id="fstrip">${DAYS.map((dd) => `<button data-fday="${dd.id}" class="${F.day === dd.id ? 'on' : ''}"><small>${dd.short}${dd.id === TODAY ? ' · today' : ''}</small><b>${dd.dd}</b></button>`).join('')}</div>` : ''}
       ${F.cat === 'hotel' && F.day !== 'pre' ? `<div class="nights"><span>Spread over</span><button class="pill" data-nights="-1" aria-label="One night fewer">−</button><b>${F.nights} night${F.nights === 1 ? '' : 's'}</b><button class="pill" data-nights="1" aria-label="One night more" ${F.nights >= nightsMax ? 'disabled' : ''}>+</button></div>` : ''}
-      ${F.receipt ? `<div class="rcpt"><img src="${F.receipt}" alt="Receipt photo"><button class="pill" data-rmreceipt>Remove receipt</button></div>` : ''}</div>
+      ${F.receipt ? `<div class="rcpt"><img alt="Receipt photo"><button class="pill" data-rmreceipt>Remove receipt</button></div>` : ''}</div>
     ${F.by ? `<p class="conv" style="padding:14px 16px 0">Added by ${P[F.by].name}</p>` : ''}</div>`;
+  // the receipt photo (a big data URL) is the same <img> each time: not parsed and decoded again on every tap
+  const ri = fpage.querySelector('.rcpt img');
+  if (!ri) rimg = null; else { if (!rimg || rsrc !== F.receipt) { rimg = new Image(); rimg.src = rsrc = F.receipt; rimg.alt = 'Receipt photo'; } ri.replaceWith(rimg); }
+  // a redraw while a receipt is being read: the spinner carries on turning rather than starting its turn again
+  const sp2 = turn != null && fpage.querySelector('.spin'); if (sp2 && sp2.getAnimations()[0]) sp2.getAnimations()[0].currentTime = turn;
   fsave.textContent = F.id ? 'Save' : 'Add expense';
   fsave.disabled = !(total && !left && F.set.length);
   const fs = document.getElementById('fstrip'), on = fs && fs.querySelector('.on'); if (on) fs.scrollLeft = on.offsetLeft - 12;
 }
 fpage.addEventListener('input', (e) => {
   if (!F) return;
-  if (e.target.id === 'fmove') { const dg = e.target.value.replace(/[^\d]/g, ''); e.target.value = dg ? (+dg).toLocaleString('en-GB') : ''; F.mamt = dg; fsave.disabled = !(+dg > 0); return; }
+  if (e.target.id === 'fmove') { const dg = e.target.value.replace(/[^\d]/g, ''); e.target.value = dg ? NF.format(+dg) : ''; F.mamt = dg; fsave.disabled = !(+dg > 0); return; }
   if (e.target.id === 'famt') { F.amt = e.target.value.replace(/[^\d.]/g, ''); return liveForm(); }
   if (e.target.id === 'ftitle') { // guess the type and offer earlier entries, in place so the keyboard stays up
     F.title = e.target.value;
@@ -1596,7 +1654,7 @@ function askDelete(id) {
 // whole-yen boxes in the sheets get commas as you type; the cash button waits for an amount
 sheet.addEventListener('input', (e) => {
   if (!['cashamt', 'icamt', 'budin', 'peamt', 'payamt'].includes(e.target.id)) return;
-  const el = e.target, digits = el.value.replace(/[^\d]/g, ''); el.value = digits ? (+digits).toLocaleString('en-GB') : '';
+  const el = e.target, digits = el.value.replace(/[^\d]/g, ''); el.value = digits ? NF.format(+digits) : '';
   const ok = sheet.querySelector('[data-cashok]'); if (ok) ok.disabled = !(+digits > 0);
 });
 sheet.addEventListener('input', (e) => { if (e.target.id === 'payamt' && PAY) { const v = +e.target.value.replace(/[^\d]/g, '') || 0; PAY.amt = String(v); document.getElementById('payconv').textContent = `${fmtC(v)} today. Change it if only part was paid.`; } });
@@ -1644,15 +1702,15 @@ function openRoute(i) {
 }
 // change who sends or receives; if that merges payments, say so and offer Undo
 function applyRoute(isR, keys, who) {
-  const store = isR ? S.recv : S.senders, before = transfers().rows.length;
+  const L = ledger(), store = isR ? S.recv : S.senders, before = transfers(L).rows.length; // who sends or receives doesn't change the ledger
   const prev = keys.map((k) => [k, store[k], S.setBy[(isR ? 'r:' : 's:') + k]]);
   for (const k of keys) { store[k] = who; S.setBy[(isR ? 'r:' : 's:') + k] = S.me; }
-  const after = transfers().rows;
+  const after = transfers(L).rows;
   const still = after.find((r) => keys.every((k) => (isR ? r.recvKeys : r.sendKeys).includes(k)));
   S.editRow = still ? [...still.sendKeys, '|', ...still.recvKeys].join(',') : null; closeSheet(); const y = scrollY; render(); scrollTo(0, y);
   if (after.length < before) {
     const m = after.find((r) => r.parts && r.parts.length > 1 && keys.some((k) => (isR ? r.recvKeys : r.sendKeys).includes(k)));
-    if (m) { const el = document.querySelector(`.tr[data-mkey="${m.mkey}"]`); if (el) el.classList.add('flash'); }
+    if (m) { const el = document.querySelector(`.tr[data-mkey="${m.mkey}"]`); if (el) { el.classList.add('flash'); taint(el); } }
     toast(m ? `Combined into one: ${P[m.from].name} pays ${P[m.to].name} ${fmtY(m.yen)}` : 'Payments combined', () => {
       for (const [k, v, b] of prev) { if (v == null) delete store[k]; else store[k] = v; if (b == null) delete S.setBy[(isR ? 'r:' : 's:') + k]; else S.setBy[(isR ? 'r:' : 's:') + k] = b; }
       render(); scrollTo(0, y);
@@ -1700,7 +1758,7 @@ app.addEventListener('click', (e) => {
   const mc = t('[data-mcat]'); if (mc) return keep(() => { S.mineCat = S.mineCat === mc.dataset.mcat ? null : mc.dataset.mcat; });
   if (t('[data-gotcash]')) { closeSheet(); return openForm(null, { day:TODAY, kind:'cash' }); }
   if (t('[data-ictop]')) { closeSheet(); return openForm(null, { day:TODAY, kind:'ic' }); }
-  const er = t('[data-editrow]'); if (er) return keep(() => { S.editRow = S.editRow === er.dataset.editrow ? null : er.dataset.editrow; });
+  const er = t('[data-editrow]'); if (er) { keep(() => { S.editRow = S.editRow === er.dataset.editrow ? null : er.dataset.editrow; }); if (!RM.matches) document.querySelectorAll('.routeed').forEach((el) => { el.classList.add('rvl'); taint(el); }); return; }
   const rs = t('[data-rsend]') || t('[data-rrecv]'); if (rs) { const isR = !!rs.dataset.rrecv, [ks, who] = (isR ? rs.dataset.rrecv : rs.dataset.rsend).split(':'); return applyRoute(isR, ks.split(','), who); }
   const rc = t('[data-rcopy]'); if (rc) { const r = window.__tr[+rc.dataset.rcopy], msg = `Japan trip: ${fmtC(r.yen, 'CAD')} (${fmtY(r.yen)}) from ${P[r.from].name} to ${P[r.to].name}`; try { navigator.clipboard.writeText(msg).then(() => toast('Copied: ' + msg), () => toast(msg)); } catch { toast(msg); } return; }
   if (t('[data-payin]')) return openPay(window.__trIn);
@@ -1714,7 +1772,9 @@ app.addEventListener('click', (e) => {
   if (t('[data-cashsheet]')) return openSheet(`<h3>Add to ${P[S.me].name}'s money</h3><div class="row"><button data-gotcash>Got cash</button><button data-ictop>IC top-up</button></div>`);
   const x = t('[data-ex]'); if (x) return openForm(x.dataset.ex);
 });
-app.addEventListener('input', (e) => { if (e.target.id === 'gq') { S.q = e.target.value; renderGlist(); } });
+// typing a search: the list follows once a frame, however fast the keys come
+let qRaf = 0;
+app.addEventListener('input', (e) => { if (e.target.id === 'gq') { S.q = e.target.value; if (!qRaf) qRaf = requestAnimationFrame(() => { qRaf = 0; renderGlist(); }); } });
 // form extras: the currency picker inside the amount box, and the Type / Day pills that open in place
 fpage.addEventListener('change', (e) => { if (F && e.target.id === 'fccy') { F.ccy = e.target.value; F.fixed = {}; renderForm(); } });
 fpage.addEventListener('click', (e) => { const x = e.target.closest('[data-fexp]'); if (F && x) { F.exp = F.exp === x.dataset.fexp ? null : x.dataset.fexp; renderForm(); } });
@@ -1812,14 +1872,19 @@ addfab.addEventListener('click', () => openForm(null, { day:TODAY }));
 const MINE = P[ME] && !SANDBOX ? ME : null;
 const savePrefs = (p) => { if (MINE) store.setProfile(MINE, p); }; // see store.watchPrefs
 // another phone changed something: show it, unless the form or a sheet is open (then on the next draw)
-let sig = '';
+// (the data and the sync status are compared apart: when only the status changed, like the first check on opening or
+// the signal going and coming back, just the sync line is redrawn; and a redraw leaves the scroll alone, so a fling carries on)
+let sig = '', sigS = '';
+const dataSig = () => JSON.stringify(store.getExpenses()) + JSON.stringify(store.getMoney()) + JSON.stringify(Object.values(store.getProfiles()).map((v) => [v.color, v.photo]));
 store.subscribe(() => {
   if (committing) return;
-  const pf = store.getProfiles(), s2 = store.mode + store.pending() + JSON.stringify(store.getExpenses()) + JSON.stringify(store.getMoney()) + JSON.stringify(Object.values(pf).map((v) => [v.color, v.photo]));
-  if (s2 === sig) return; sig = s2;
+  const s1 = dataSig(), s2 = store.mode + store.pending(), same = s1 === sig;
+  if (same && s2 === sigS) return; sig = s1; sigS = s2;
   if (F || sheet.classList.contains('on') || settling) { stale = true; return; }
-  load(); const y = scrollY; render(); scrollTo(0, y);
+  if (same && !stale && IDS.every((i) => P[i].photo === store.photoUrl(i))) return syncl();
+  load(); render();
 });
+function syncl() { const r = drawn.find((r) => r.k === 'syncl'), h = `<p class="syncl">${syncLine()}</p>`; if (r && r.h !== h) { r.nodes[0].innerHTML = syncLine(); r.h = h; } }
 // the form and sheets pick up what changed meanwhile once they close
 const render0 = render;
 render = function () { if (stale && !F && !sheet.classList.contains('on')) { commit(); load(); } render0(); };
@@ -1828,7 +1893,7 @@ store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) locatio
 
 load();
 if (WHO && !S.seen[S.me]) S.seen[S.me] = Date.now(); // first visit: nothing is "new" yet
-render();
+render(); sig = dataSig(); sigS = store.mode + store.pending(); // what's on screen now
 // your currency and settle-up choice, from your profile (another phone, or Settings)
 store.watchPrefs(MINE, (p) => {
   let ch = false;
@@ -1857,7 +1922,7 @@ addEventListener('pageshow', (e) => { if (!e.persisted) return; const c = ls.get
     }
   } }
 window.__tourEnv = { page:'money', store, formOpen:() => !!F, exCount:() => S.ex.length, closeForm:() => { if (F) closeForm(); } };
-if (SANDBOX) { document.body.classList.add('practice'); setTimeout(runTour, 60); }
+if (SANDBOX) { document.body.classList.add('practice'); import('./js/tour.js?v=9').then((m) => setTimeout(m.runTour, 60)); } // (the tour's code is only loaded for the tour)
 
 </script>
 </body>

@@ -668,14 +668,21 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const pg = await ctx.newPage(); await pg.clock.install({ time: new Date('2026-10-22T07:00:00Z') });
   await pg.addInitScript(() => { localStorage.setItem('trips.me', '"naf"'); localStorage.setItem('trips.pin', '6666'); });
-  const done = pg.waitForEvent('console', { predicate: (m) => /precached/.test(m.text()), timeout: 40000 }).catch(() => null);
-  await pg.addInitScript(() => navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', (e) => e.data && e.data.type === 'precached' && console.log('precached ' + e.data.saved + '/' + e.data.total)));
+  // the photos the page asks the service worker to save (it doesn't answer: a message to a page kept for Back drops it)
+  await pg.addInitScript(() => { const pm = ServiceWorker.prototype.postMessage; ServiceWorker.prototype.postMessage = function (m, ...r) { if (m && m.type === 'precache') window.__precache = m.urls; return pm.call(this, m, ...r); }; });
   await pg.goto(B + '/japan/'); await pg.waitForTimeout(2000);
   await pg.evaluate(() => navigator.serviceWorker.ready); await pg.reload(); await pg.waitForTimeout(1000);
-  const msg = await done; ok('photos for the next days saved', !!msg, msg && msg.text());
-  // one saved copy per page, script and data file, under its bare URL: not one per deploy stamp (?v=…)
-  const keys = await pg.evaluate(async () => { const n = (await caches.keys()).find((k) => /^japan2026-v/.test(k)); const c = await caches.open(n); return (await c.keys()).map((r) => new URL(r.url).pathname + new URL(r.url).search); });
-  ok('offline copy: one copy per file, none under a deploy stamp', keys.length > 10 && keys.includes('/japan/js/store.js') && keys.includes('/japan/') && !keys.some((k) => /\?/.test(k)), keys.filter((k) => /\?/.test(k)).slice(0, 4).join() || `${keys.length} files`);
+  let photosSaved = null;
+  for (let t = 0; t < 80 && !photosSaved; t++) {
+    photosSaved = await pg.evaluate(async () => { const u = window.__precache; if (!u) return null; const c = await caches.open('days'); const n = (await Promise.all(u.map((x) => c.match(x)))).filter(Boolean).length; return n === u.length ? `${n}/${u.length}` : null; });
+    if (!photosSaved) await pg.waitForTimeout(500);
+  }
+  ok('photos for the next days saved', !!photosSaved, photosSaved);
+  // the app opens from its saved copy: each page, library and font once under its own address, and the code and data the
+  // trip page names under the deploy address it names (?v=…), nothing from any other deploy
+  const offKeys = await pg.evaluate(async () => { const n = (await caches.keys()).find((k) => /^japan2026-v/.test(k)); const c = await caches.open(n); const page = await (await c.match('/japan/')).text(); return { keys: (await c.keys()).map((r) => new URL(r.url).pathname + new URL(r.url).search), named: [...new Set([...page.matchAll(/\.\/((?:js|data)\/[^'"]+\.js\?v=\d+)/g)].map((m) => '/japan/' + m[1]))] }; });
+  const stamped = offKeys.keys.filter((k) => /\?v=/.test(k)), deploys = new Set(offKeys.named.map((u) => u.split('v=')[1]));
+  ok('offline copy: the code the trip page names, under its deploy address, and no other deploy', offKeys.keys.includes('/japan/js/store.js') && offKeys.keys.includes('/japan/') && offKeys.named.length >= 6 && offKeys.named.every((u) => offKeys.keys.includes(u)) && stamped.every((k) => deploys.has(k.split('v=')[1])), `${offKeys.keys.length} files, ${stamped.length} under a deploy address: ${stamped.slice(0, 3).join()}`);
   // Settings: the offline line, and saving the whole trip before a flight
   const offLine = () => pg.textContent('#off-line').catch(() => '');
   await pg.goto(B + '/japan/prototypes/tools.html?v=5'); await pg.waitForFunction(() => /saved|ready|Not/.test(document.getElementById('off-line')?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
@@ -984,6 +991,28 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('Oct 24: M&M check out of the Green and meet NASA at Fushimi Inari, not the Granbell start', d9.includes('d09-mm-out') && d9.includes('d09-fushimi') && !d9.includes('d09-leave'), d9.join());
   ok('no page errors on the trains phone', !P.errs.length, P.errs.join(' | '));
   await P.ctx.close();
+}
+// Back to a page the browser kept: it lets go of its own recent expense changes, as a fresh page would. Laid over the
+// next download of the shared copy, they would undo a newer change made on another page meanwhile, and that copy is saved.
+{
+  const K = await phone();
+  await K.page.goto(B + '/'); await K.page.evaluate((pin) => { localStorage.setItem('trips.me', '"m"'); localStorage.setItem('trips.pin', pin); }, PIN);
+  await K.page.goto(B + '/japan/money'); await K.page.waitForTimeout(1500);
+  const ex = { title: 'Back test', yen: 1000, payer: 'm', split: ['m', 'mariam'], cat: 'food', day: 'd05' };
+  await K.page.evaluate((x) => window.__tourEnv.store.setExpense('bk-x', x), ex); await K.page.waitForTimeout(800); // this page's own change
+  // off to another page: the browser keeps this one, frozen
+  const cdp = await K.ctx.newCDPSession(K.page);
+  await K.page.evaluate(() => dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true }))); await cdp.send('Page.setWebLifecycleState', { state: 'frozen' });
+  const K2 = await K.ctx.newPage(); await K2.goto(B + '/japan/money'); await K2.waitForTimeout(1500);
+  await K2.evaluate((x) => window.__tourEnv.store.setExpense('bk-x', x), { ...ex, yen: 2000 }); await K2.waitForTimeout(1200); await K2.close(); // changed on the other page
+  // Back, then the next download of the shared copy (anyone's change brings one)
+  await cdp.send('Page.setWebLifecycleState', { state: 'active' }); await K.page.evaluate(() => dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))); await K.page.waitForTimeout(600);
+  await K.page.evaluate(() => window.__tourEnv.store.refresh()); await K.page.waitForTimeout(300);
+  const got = await K.page.evaluate(() => [window.__tourEnv.store.getExpenses()['bk-x'], JSON.parse(localStorage.getItem('japan2026.state.v1')).expenses['bk-x']].map((x) => x && x.yen));
+  ok('Back: an expense changed on another page meanwhile stays changed, after the next download too', got[0] === 2000 && got[1] === 2000 && exMap()['bk-x'].yen === 2000, JSON.stringify([...got, exMap()['bk-x'].yen]));
+  await K.page.evaluate(() => window.__tourEnv.store.setExpense('bk-x', null)); await K.page.waitForTimeout(800);
+  ok('no page errors on the Back phone', !K.errs.length, K.errs.join(' | '));
+  await K.ctx.close();
 }
 for (const [n, x] of [['A', A], ['N', N], ['C', C]]) ok(`no page errors ${n}`, !x.errs.length, x.errs.join(' | '));
 console.log(`\n${pass} passed, ${fail} failed`);
