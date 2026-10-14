@@ -1758,7 +1758,9 @@ app.addEventListener('click', (e) => {
   if (t('[data-cashsheet]')) return openSheet(`<h3>Add to ${P[S.me].name}'s money</h3><div class="row"><button data-gotcash>Got cash</button><button data-ictop>IC top-up</button></div>`);
   const x = t('[data-ex]'); if (x) return openForm(x.dataset.ex);
 });
-app.addEventListener('input', (e) => { if (e.target.id === 'gq') { S.q = e.target.value; renderGlist(); } });
+// typing a search: the list follows once a frame, however fast the keys come
+let qRaf = 0;
+app.addEventListener('input', (e) => { if (e.target.id === 'gq') { S.q = e.target.value; if (!qRaf) qRaf = requestAnimationFrame(() => { qRaf = 0; renderGlist(); }); } });
 // form extras: the currency picker inside the amount box, and the Type / Day pills that open in place
 fpage.addEventListener('change', (e) => { if (F && e.target.id === 'fccy') { F.ccy = e.target.value; F.fixed = {}; renderForm(); } });
 fpage.addEventListener('click', (e) => { const x = e.target.closest('[data-fexp]'); if (F && x) { F.exp = F.exp === x.dataset.fexp ? null : x.dataset.fexp; renderForm(); } });
