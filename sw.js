@@ -2,8 +2,8 @@
 // - Pages, fonts, libraries: the saved copy straight away, while the newest is fetched in the background for next time
 //   (so a deploy shows on each phone's next open). With nothing saved yet, the network.
 // - The code and data a page imports (*.js?v=<deploy>): a new address each deploy, so each is saved once by its full
-//   address and a page always runs with the code it names. A changed page brings its new code in at once; code that no
-//   saved page names any more is dropped.
+//   address and a page always runs with the code it names. A changed page is saved only once all of its new code is (a
+//   signal lost halfway keeps the old page, whole); code that no saved page names any more is dropped.
 // - Day assets (today + next 2 days): the page sends the list of photos; they're saved ahead of time in 'days'.
 // - Map tiles (MapTiler, OpenStreetMap fallback): saved as you view them, shown from the saved copy while refreshed;
 //   no bulk pre-downloading.
@@ -49,15 +49,16 @@ self.addEventListener('message', (e) => {
 const bareUrl = (u) => u.origin + u.pathname;
 const isVersioned = (u) => u.pathname.endsWith('.js') && u.searchParams.has('v');
 const isPage = (r) => /text\/html/.test(r.headers.get('content-type') || '');
-// Save the code a page names (*.js?v=…) that isn't saved yet. At install the plain copies just saved are the same deploy,
-// so they're filed under the versioned address without downloading them again.
+// Save the code a page names (*.js?v=…) that isn't saved yet: true once all of it is. At install the plain copies just
+// saved are the same deploy, so they're filed under the versioned address without downloading them again.
 async function warm(cache, html, base, fromPlain) {
   for (const u of new Set([...html.matchAll(/["']([^"'\s]+\.js\?v=\d+)["']/g)].map((m) => new URL(m[1], base).href))) {
     if (await cache.match(u)) continue;
     const plain = fromPlain && (await cache.match(bareUrl(new URL(u))));
     if (plain) { await cache.put(u, plain); continue; }
-    try { const r = await fetch(u, { cache: 'no-cache' }); if (r.ok) await cache.put(u, r); } catch { return; } // offline: next time
+    try { const r = await fetch(u, { cache: 'no-cache' }); if (!r.ok) return false; await cache.put(u, r); } catch { return false; } // offline: next time
   }
+  return true;
 }
 // Drop saved code that no saved page names any more (an old deploy's).
 async function prune(cache) {
@@ -66,12 +67,15 @@ async function prune(cache) {
   await Promise.all(keys.filter((k) => { const u = new URL(k.url); return isVersioned(u) && !live.has(u.searchParams.get('v')); }).map((k) => cache.delete(k)));
 }
 // A newer copy from the network replaces the saved one, unless it's the same file (same ETag: nothing is rewritten).
-// A changed page brings in the code it names now, so the next open needs no network either.
+// A changed page replaces the saved one only once the code it names is saved too, so the next open needs no network
+// either. If the signal goes halfway, the old page stays (with its own code) and the next open tries again: offline,
+// a page never runs with half of another deploy's code.
 async function save(cache, key, r, hit) {
   const tag = r.headers.get('etag'); if (hit && tag && hit.headers.get('etag') === tag) return;
-  const html = isPage(r) ? await r.clone().text() : null;
+  const page = isPage(r);
+  if (page && !(await warm(cache, await r.clone().text(), key))) return;
   await cache.put(key, r);
-  if (html) { await warm(cache, html, key); await prune(cache); }
+  if (page) await prune(cache);
 }
 // The pages saved at install came through Cloudflare's redirect (money.html → money), and a browser refuses to open a
 // page from a redirected copy, so it's handed over as a plain one.
