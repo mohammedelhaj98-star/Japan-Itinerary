@@ -791,16 +791,16 @@ function ledger() {
   const net = Object.fromEntries(IDS.map((a) => [a, IDS.reduce((s, b) => s + M[b][a] - M[a][b], 0)])); // >0: owed to a
   return { M, net, items };
 }
-// "Between you two" for one couple: the items and the one net amount
-function between(cpl) {
-  const [a, b] = COUPLE[cpl].ids, list = ledger().items.filter((i) => P[i.a].couple === cpl);
+// "Between you two" for one couple: the items and the one net amount (L: the ledger, when it's already worked out)
+function between(cpl, L = ledger()) {
+  const [a, b] = COUPLE[cpl].ids, list = L.items.filter((i) => P[i.a].couple === cpl);
   const v = list.reduce((s, i) => s + (i.a === a ? i.v : -i.v), 0); // >0: a owes b
   return { list, row:Math.abs(v) >= 1 ? (v > 0 ? { from:a, to:b, yen:Math.round(v) } : { from:b, to:a, yen:Math.round(-v) }) : null };
 }
 // Payments between the couples. Each can be sent by either partner of the paying couple and received by either
 // partner of the receiving couple; payments between the same two people are combined (or netted, both ways).
-function transfers() {
-  const { M, net } = ledger(), raw = [];
+function transfers(L = ledger()) {
+  const { M, net } = L, raw = [];
   const push = (sendKey, sendDef, recvKey, recvDef, yen, debts, credits, flows) => {
     const sendSide = P[sendDef].couple, recvSide = P[recvDef].couple;
     raw.push({ from:S.senders[sendKey] || sendDef, to:S.recv[recvKey] || recvDef, yen, debts, credits, flows, sendKeys:[sendKey], recvKeys:[recvKey], sendSide, recvSide });
@@ -889,8 +889,8 @@ function settleCard() {
   return `<div class="card settle">${rows.length ? rows.map((t, i) => trRow(t, i)).join('') : `<p class="even"><span class="evtick" aria-hidden="true">${TICK}</span>The two couples are square.</p>`}${pays}</div>`;
 }
 // inside one couple: one line, with what it's made of underneath
-function betweenCard(cpl) {
-  const { list, row } = between(cpl), [a, b] = COUPLE[cpl].ids; window.__trIn = row;
+function betweenCard(cpl, L) {
+  const { list, row } = between(cpl, L), [a, b] = COUPLE[cpl].ids; window.__trIn = row;
   return `<div class="card settle between"><div class="tr"><div class="tr-m">${row ? `<span class="pair">${av(row.from)}<span class="a">→</span>${av(row.to)}</span><span class="trname"><b>${P[row.from].name}</b> owes <b>${P[row.to].name}</b></span><span class="tramt"><b>${fmtY(row.yen)}</b><small>${fmtC(row.yen)}</small></span><button class="paid" data-payin>Paid</button>`
     : `<span class="trname zero">${P[a].name} and ${P[b].name} are square</span>`}</div>
     ${list.length ? `<div class="inlist">${list.map((i) => i.loan ? `<button class="inrow" data-loan="${i.loan}"><span>${i.label}</span><span>${P[i.a].name} → ${P[i.b].name} ${fmtY(i.v)}</span></button>` : `<p><span>${i.label}</span><span>${P[i.a].name} → ${P[i.b].name} ${fmtY(i.v)}</span></p>`).join('')}</div>` : ''}</div></div>`;
@@ -1073,20 +1073,27 @@ function meLine(x) {
   if (owed) return `<span class="me pos">${n} is owed ${fmtY(owed)}</span>`;
   return '';
 }
-// what a list puts on one day: a hotel counts one night's share, like the day chart
-const onDay = (xs, dayId, amt) => xs.reduce((s, x) => s + spread(x).filter(([d]) => d === dayId).reduce((t, [, f]) => t + amt(x) * f, 0), 0);
+// what a list puts on each day, in one pass: a hotel counts one night's share, like the day chart
+// (added up in the same order as one day at a time, so the totals come out the same to the last bit)
+function dayTotals(xs, amt) {
+  const t = {};
+  for (const x of xs) { const one = {}; for (const [d, f] of spread(x)) one[d] = (one[d] ?? 0) + amt(x) * f; for (const d in one) t[d] = (t[d] ?? 0) + one[d]; }
+  return t;
+}
 function groupByDay(list) {
   const g = {}; for (const x of list) (g[x.day] = g[x.day] || []).push(x);
   return DAYS.slice().reverse().filter((d) => g[d.id]).map((d) => [d, g[d.id]]);
 }
 const dayName = (d) => (d.id === 'pre' ? 'Before the trip' : `Day ${d.n} · ${esc(d.title)}`);
-const isNew = (x) => S.log.some((l) => l.who !== S.me && l.at > (S.seen[S.me] || 0) && l.title === x.title);
+// the titles others added or changed since this phone last looked (the blue dot)
+const newTitles = () => new Set(S.log.filter((l) => l.who !== S.me && l.at > (S.seen[S.me] || 0)).map((l) => l.title));
 function listGroup(list) {
   if (!list.length) return `<div class="card"><p class="even">${S.q || S.fperson ? 'Nothing matches.' : 'No expenses yet.'}</p></div>`;
-  return `<div class="card xlist">${groupByDay(list).map(([d, xs]) => `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(onDay(list.filter((x) => !isOwn(x)), d.id, (x) => x.yen))}</span></p>${xs.map((x) => {
+  const tot = dayTotals(list.filter((x) => !isOwn(x)), (x) => x.yen), fresh = newTitles();
+  return `<div class="card xlist">${groupByDay(list).map(([d, xs]) => `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>${xs.map((x) => {
     const ml = meLine(x);
     return `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span>
-    <span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}${x.receipt ? `<span class="clip" aria-label="has a receipt">${CLIP}</span>` : ''}${isNew(x) ? '<i class="new" aria-label="new"></i>' : ''}</b><small>${P[x.payer].name} paid · ${ml || `${splitName(x)}${isOwn(x) ? ' · not shared' : ''}`}${x.nights > 1 ? ` · ${x.nights} nights` : ''}</small></span>
+    <span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}${x.receipt ? `<span class="clip" aria-label="has a receipt">${CLIP}</span>` : ''}${fresh.has(x.title) ? '<i class="new" aria-label="new"></i>' : ''}</b><small>${P[x.payer].name} paid · ${ml || `${splitName(x)}${isOwn(x) ? ' · not shared' : ''}`}${x.nights > 1 ? ` · ${x.nights} nights` : ''}</small></span>
     <span class="r"><b>${fmtY(x.yen)}</b>${x.orig ? `<small>${SYM[x.orig.ccy]}${x.orig.amt}</small>` : ''}</span></button>`; }).join('')}`).join('')}</div>`;
 }
 
@@ -1117,7 +1124,7 @@ function renderMine(ids, kind) {
     ${pre ? `<p class="hero-note">Includes ${fmtY(pre)} paid before the trip</p>` : ''}</div>`;
 
   // their payments: the settle-up rows that involve them (indexes kept so Paid and the pen still work)
-  const { rows } = transfers(); window.__tr = rows;
+  const L = ledger(), { rows } = transfers(L); window.__tr = rows;
   // by couple, the couple pays as one, so a person sees their couple's payments; person to person, just their own
   const inv = S.mode === 'couple' ? COUPLE[cpl].ids : ids;
   const mineRows = rows.map((t, i) => [t, i]).filter(([t]) => inv.includes(t.from) || inv.includes(t.to));
@@ -1127,7 +1134,7 @@ function renderMine(ids, kind) {
   const payments = `<p class="sec">${COUPLE[cpl].name} settle up ${modeSeg()}</p>
     <div class="card settle">${mineRows.length ? mineRows.map(([t, i]) => trRow(t, i)).join('') : `<p class="even"><span class="evtick" aria-hidden="true">${TICK}</span>Nothing for ${who} to pay or collect.</p>`}
       <p class="paidfor">${who} paid ${fmtY(forOther)} for ${COUPLE[otherC].name}${us ? '' : ` · ${fmtY(forPartner)} for ${P[P[me].partner].name}`}</p></div>
-    ${us ? `<p class="sec">Between ${COUPLE[cpl].name}</p>${betweenCard(cpl)}` : ''}`;
+    ${us ? `<p class="sec">Between ${COUPLE[cpl].name}</p>${betweenCard(cpl, L)}` : ''}`;
 
   // wallet: a banknote for cash, a dark card for IC
   const amt = (fn) => ids.length > 1 ? ids.map((i) => `<span class="wl-p ${fn(i) < 0 ? 'neg' : ''}">${av(i, 'sm')}${fmtY(fn(i))}</span>`).join('') : `<b class="${fn(me) < 0 ? 'neg' : ''}">${fmtY(fn(me))}</b>`;
@@ -1145,7 +1152,8 @@ function renderMine(ids, kind) {
 
   const shown = lines.filter((x) => (S.mineDay === 'all' || spread(x).some(([d]) => d === S.mineDay)) && (!S.mineCat || x.cat === S.mineCat));
   const filters = (S.mineDay !== 'all' || S.mineCat) ? `<div class="filt">${S.mineDay !== 'all' ? `<button class="pill on" data-mday="all">${DAY[S.mineDay].n ? `Day ${DAY[S.mineDay].n}` : 'Before the trip'} ✕</button>` : ''}${S.mineCat ? `<button class="pill on" data-mcat="${S.mineCat}">${CATS[S.mineCat][0]} ✕</button>` : ''}</div>` : '';
-  const rowsHtml = groupByDay(shown).map(([d, xs]) => `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(onDay(shown, d.id, (x) => x.mine))}</span></p>${xs.map((x) => {
+  const tot = dayTotals(shown, (x) => x.mine);
+  const rowsHtml = groupByDay(shown).map(([d, xs]) => `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>${xs.map((x) => {
     const own = isOwn(x);
     return `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}</b><small>${own ? `Only ${P[x.payer].name}` : `${P[x.payer].name} paid · ${splitName(x)}`} · ${WITH[x.with]}</small></span>
       <span class="share"><b>${fmtY(x.mine)}</b>${own ? '' : `<small>${x.yen < 0 ? `of ${fmtY(-x.yen)} back` : `of ${fmtY(x.yen)}`}</small>`}</span></button>`; }).join('')}`).join('');
@@ -1646,10 +1654,10 @@ function openRoute(i) {
 }
 // change who sends or receives; if that merges payments, say so and offer Undo
 function applyRoute(isR, keys, who) {
-  const store = isR ? S.recv : S.senders, before = transfers().rows.length;
+  const L = ledger(), store = isR ? S.recv : S.senders, before = transfers(L).rows.length; // who sends or receives doesn't change the ledger
   const prev = keys.map((k) => [k, store[k], S.setBy[(isR ? 'r:' : 's:') + k]]);
   for (const k of keys) { store[k] = who; S.setBy[(isR ? 'r:' : 's:') + k] = S.me; }
-  const after = transfers().rows;
+  const after = transfers(L).rows;
   const still = after.find((r) => keys.every((k) => (isR ? r.recvKeys : r.sendKeys).includes(k)));
   S.editRow = still ? [...still.sendKeys, '|', ...still.recvKeys].join(',') : null; closeSheet(); const y = scrollY; render(); scrollTo(0, y);
   if (after.length < before) {
