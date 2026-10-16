@@ -311,17 +311,17 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   ok('a failed backup says so', /Last try didn't work: Google Drive didn't answerLast backup: today/.test(await n.textContent('#bk-line')), await n.textContent('#bk-line'));
   await (await n.$('#bk-line')).scrollIntoViewIfNeeded(); await n.screenshot({ path: OUT + 'backup-failed.png' });
 
-  // the next day: yesterday's backup is there, the first change makes today's
-  js[0].name = 'Money 2026-10-17.json';
-  const st = JSON.parse(kv.get('backup')); kv.set('backup', JSON.stringify({ ...st, day: '2026-10-17', tried: Date.now() - 864e5, error: null, files: { '2026-10-17': st.files[today] } })); resetBackupMemory();
+  // the next day: yesterday's backup is there, the first change makes today's ("yesterday" is a fixed past date, so it never lands on today)
+  js[0].name = 'Money 2026-09-30.json';
+  const st = JSON.parse(kv.get('backup')); kv.set('backup', JSON.stringify({ ...st, day: '2026-09-30', tried: Date.now() - 864e5, error: null, files: { '2026-09-30': st.files[today] } })); resetBackupMemory();
   await post('money', { id: 'b:naf', value: 50000 });
   const js2 = one(`Money ${today}.json`);
-  ok('next day: a new day\'s files, yesterday\'s kept', js2.length === 1 && one('Money 2026-10-17.json').length === 1 && JSON.parse(js2[0].data.toString()).money['b:naf'] === 50000);
+  ok('next day: a new day\'s files, yesterday\'s kept', js2.length === 1 && one('Money 2026-09-30.json').length === 1 && JSON.parse(js2[0].data.toString()).money['b:naf'] === 50000);
 
   // Drive not connected: nothing runs, Settings says what to do
-  const g = kv.get('gdrive'); kv.delete('gdrive'); resetBackupMemory(); kv.set('backup', JSON.stringify({ ...JSON.parse(kv.get('backup')), day: '2026-10-17', tried: null })); const before = files.size;
+  const g = kv.get('gdrive'); kv.delete('gdrive'); resetBackupMemory(); kv.set('backup', JSON.stringify({ ...JSON.parse(kv.get('backup')), day: '2026-09-30', tried: null })); const before = files.size;
   await post('money', { id: 'b:sara', value: 40000 });
-  ok('not connected: no backup tried', files.size === before && JSON.parse(kv.get('backup')).day === '2026-10-17');
+  ok('not connected: no backup tried', files.size === before && JSON.parse(kv.get('backup')).day === '2026-09-30');
   await n.reload(); await n.waitForFunction(() => /Photos page/.test(document.getElementById('bk-line')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
   ok('not connected: Settings points to the Photos page', /Connect Google Drive on the Photos page/.test(await n.textContent('#bk-line')) && await n.$eval('[data-backup]', (b) => b.disabled));
   kv.set('gdrive', g);
