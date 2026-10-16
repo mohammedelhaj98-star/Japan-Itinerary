@@ -312,11 +312,12 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   await (await n.$('#bk-line')).scrollIntoViewIfNeeded(); await n.screenshot({ path: OUT + 'backup-failed.png' });
 
   // the next day: yesterday's backup is there, the first change makes today's
-  js[0].name = 'Money 2026-10-17.json';
-  const st = JSON.parse(kv.get('backup')); kv.set('backup', JSON.stringify({ ...st, day: '2026-10-17', tried: Date.now() - 864e5, error: null, files: { '2026-10-17': st.files[today] } })); resetBackupMemory();
+  const yday = new Date(Date.parse(today + 'T12:00:00Z') - 864e5).toISOString().slice(0, 10);
+  js[0].name = `Money ${yday}.json`;
+  const st = JSON.parse(kv.get('backup')); kv.set('backup', JSON.stringify({ ...st, day: yday, tried: Date.now() - 864e5, error: null, files: { [yday]: st.files[today] } })); resetBackupMemory();
   await post('money', { id: 'b:naf', value: 50000 });
   const js2 = one(`Money ${today}.json`);
-  ok('next day: a new day\'s files, yesterday\'s kept', js2.length === 1 && one('Money 2026-10-17.json').length === 1 && JSON.parse(js2[0].data.toString()).money['b:naf'] === 50000);
+  ok('next day: a new day\'s files, yesterday\'s kept', js2.length === 1 && one(`Money ${yday}.json`).length === 1 && JSON.parse(js2[0].data.toString()).money['b:naf'] === 50000);
 
   // Drive not connected: nothing runs, Settings says what to do
   const g = kv.get('gdrive'); kv.delete('gdrive'); resetBackupMemory(); kv.set('backup', JSON.stringify({ ...JSON.parse(kv.get('backup')), day: '2026-10-17', tried: null })); const before = files.size;
