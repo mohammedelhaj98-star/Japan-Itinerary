@@ -1694,23 +1694,26 @@ sheet.addEventListener('click', (e) => {
 });
 
 // delete an expense, with Undo putting it back (on every phone, like the delete)
-function delEx(id, ms) {
+function delEx(id, ms, later) {
   const x = S.ex.find((e) => e.id === id); if (!x) return;
   const after = S.pays.length && !isOwn(x);
-  S.ex = S.ex.filter((e) => e !== x); const lg = logIt('deleted', x); render();
+  S.ex = S.ex.filter((e) => e !== x); const lg = logIt('deleted', x); if (later) { commit(); sig = dataSig(); } else render(); // later: saved now (our own save doesn't redraw), redrawn once the swiped row has gone
   toast(`Deleted ${x.title}${after ? '. Settle-up amounts changed.' : ''}`, () => { S.ex.push(x); S.log = S.log.filter((q) => q !== lg); render(); }, ms);
 }
-// swipe an expense left: a short swipe shows a Delete button, a long one deletes it (the Undo note brings it back)
-function swipeRows(onDelete) {
-  const OPEN = 88, FAR = 0.55;
+// swipe an expense left: a short swipe shows a Delete button, a long one deletes it (the Undo note brings it back).
+// The delete is saved first; the list is redrawn (after) once the row has slid away and folded up.
+function swipeRows(onDelete, after) {
+  const OPEN = 88, FAR = 0.55, rm = matchMedia('(prefers-reduced-motion: reduce)');
   let d = null, open = null, eat = false;
   const move = (r, x) => { r.querySelector('.xrow').style.transform = x ? `translate3d(${x}px,0,0)` : ''; r.style.setProperty('--w', `${-x}px`); };
   const shut = (r) => { if (!r) return; r.classList.remove('far'); move(r, 0); if (open === r) open = null; };
   const gone = (r) => {
-    open = null; d = null; r.classList.remove('drag'); r.classList.add('far', 'going');
-    r.style.height = `${r.offsetHeight}px`; move(r, -r.offsetWidth);
+    open = null; d = null; r.classList.remove('drag'); onDelete(r.dataset.swr);
+    const done = () => { after(); if (r.isConnected) { r.classList.remove('going', 'far'); r.style.height = ''; move(r, 0); } };
+    if (rm.matches) return done();
+    r.classList.add('far', 'going'); r.style.height = `${r.offsetHeight}px`; move(r, -r.offsetWidth);
     requestAnimationFrame(() => { r.style.height = '0px'; });
-    setTimeout(() => { onDelete(r.dataset.swr); if (r.isConnected) { r.classList.remove('going', 'far'); r.style.height = ''; move(r, 0); } }, 360);
+    setTimeout(done, 360);
   };
   document.addEventListener('pointerdown', (e) => {
     const r = e.target.closest('.swr'); eat = false; d = null;
@@ -1746,7 +1749,7 @@ function swipeRows(onDelete) {
 }
 const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
 const swRow = (id, row) => `<div class="swr" data-swr="${id}"><button class="swdel" tabindex="-1" aria-hidden="true"><span>${TRASH}Delete</span></button>${row}</div>`;
-swipeRows((id) => { vibrate(); delEx(id, 10000); });
+swipeRows((id) => { vibrate(); delEx(id, 10000, true); }, () => render());
 
 /* ───────── toast with undo ───────── */
 const toastEl = document.getElementById('toast'); let undoFn = null, toastT = 0;

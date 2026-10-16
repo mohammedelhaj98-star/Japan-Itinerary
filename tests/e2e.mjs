@@ -340,6 +340,10 @@ await rowSwipe(-330); await N.page.waitForTimeout(400);
 ok('a long swipe deletes it straight away, with 10 s to undo', exN() === 0 && /Deleted Fuunji ramen test/.test(await N.page.textContent('.toast')) && !!(await N.page.$('.toast .tbar')));
 await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
 ok('and undo brings that back too', exN() === 1);
+await N.page.emulateMedia({ reducedMotion: 'reduce' }); await rowSwipe(-100); await N.page.tap('#glist .swdel'); await N.page.waitForTimeout(60);
+ok('with reduced motion the row goes at once, no slide', !(await N.page.$('#glist .swr')) && /Deleted Fuunji ramen test/.test(await N.page.textContent('.toast')));
+await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800); await N.page.emulateMedia({ reducedMotion: 'no-preference' });
+ok('…and Undo brings it back', exN() === 1);
 await N.page.tap('#glist .xrow'); await N.page.waitForTimeout(400);
 ok('a plain tap still opens the expense', await formOn()); await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
 // Mo marks the settle-up paid: it's a payment record, and the row goes
