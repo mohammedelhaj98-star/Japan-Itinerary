@@ -1005,7 +1005,7 @@ function shopStrip(e) {
   const its = Object.entries(store.getShop()).filter(([, x]) => x && x.ai && x.ai.at === e.id && (!x.lock || x.lock === ME_ID) && (ui.who === 'all' || x.list === 'all' || x.list === ui.who));
   if (!its.length) return '';
   const left = its.filter(([, x]) => !x.done).length, can = !(GUEST && !SANDBOX);
-  return `<div class="buyh"><a class="buyh-h" href="prototypes/tools?v=3">${I.bag}<span>${left ? `${left} to buy here` : 'All bought here'}</span><small>Shopping list${I.chevR}</small></a><ul>${its.map(([id, x]) => `<li class="${x.done ? 'done' : ''}">${can ? `<button class="buyh-t press" data-shtick="${id}" aria-label="${x.done ? 'Not bought yet' : 'Bought'}: ${esc(x.name)}">${x.done ? I.check : ''}</button>` : ''}<div><b>${esc(x.name)}</b><small>${esc(x.ai.shop)} · ${x.list === 'all' ? 'All of us' : x.list === 'mm' ? 'M&amp;M' : 'NASA'}${x.for ? ` · for ${esc(x.for)}` : ''}</small></div></li>`).join('')}</ul></div>`;
+  return `<div class="buyh"><a class="buyh-h" href="prototypes/tools?v=3">${I.bag}<span>${left ? `${left} to buy here` : 'All bought here'}</span><small>Shopping list${I.chevR}</small></a><ul>${its.map(([id, x]) => `<li class="${x.done ? 'done' : ''}">${can ? `<button class="buyh-t press" data-shtick="${id}" aria-label="${x.done ? 'Not bought yet' : 'Bought'}: ${esc(x.name)}">${x.done ? I.check : ''}</button>` : ''}<div><b>${esc(x.name)}${x.qty > 1 ? ` ×${x.qty}` : ''}</b><small>${esc(x.ai.shop)} · ${x.list === 'all' ? 'All of us' : x.list === 'mm' ? 'M&amp;M' : 'NASA'}${x.for ? ` · for ${esc(x.for)}` : ''}</small></div></li>`).join('')}</ul></div>`;
 }
 
 /* ═══ render: sheet ═══ */

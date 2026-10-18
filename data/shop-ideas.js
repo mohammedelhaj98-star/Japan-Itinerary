@@ -2,8 +2,9 @@
 // tied to the stop on our route where it's easiest to buy (a stop id from data/itinerary.js). halal: a short warning
 // when some versions have alcohol or gelatin (none of us drink). Checked against the shops' own sites, Oct 2026.
 export const SHOP_CATS = {
-  sweets: ['Sweets & snacks', 'お菓子'], craft: ['Craft & kitchen', '工芸'], beauty: ['Beauty & pharmacy', '薬局'], toys: ['Toys, games & anime', 'おもちゃ'],
-  fashion: ['Fashion', '服'], stationery: ['Stationery', '文具'], shrine: ['Temples & shrines', 'お守り'], gadgets: ['Gadgets & home', '家電'],
+  sweets: ['Sweets & snacks', 'お菓子'], skincare: ['Skincare & makeup', '化粧品'], hair: ['Hair & body', 'ヘアケア'], pharmacy: ['Pharmacy & health', '薬局'],
+  fashion: ['Fashion', '服'], toys: ['Toys & anime', 'おもちゃ'], stationery: ['Stationery', '文具'], craft: ['Craft & kitchen', '工芸'],
+  gadgets: ['Gadgets & home', '家電'], shrine: ['Temples & shrines', 'お守り'], other: ['Other', 'その他'],
 };
 
 // [category, name, why, where, stop id, halal note, Japanese name to show staff]
@@ -27,12 +28,12 @@ export const SHOP_IDEAS = [
   ['craft', 'Kiyomizu-yaki pottery', "Kyoto's own pottery, sold on the slopes up to the temple.", 'Gojozaka and Chawanzaka', 'd10-ninenzaka', '', '清水焼'],
   ['craft', 'Yosegi puzzle box', "Hakone's wooden mosaic boxes that open only with a secret sequence of moves.", 'Shops around Hakone-machi', 'd05-cruise', '', '寄木細工の秘密箱'],
   ['craft', 'Kyoto incense', 'Calm, woody incense from a maker that has been at it for 300 years.', 'Shoyeido, a short walk from Nishiki', 'd09-nishiki', '', 'お香'],
-  ['beauty', 'Biore UV Aqua Rich sunscreen', 'Light, watery sunscreen that people stock up on by the box.', 'Matsumoto Kiyoshi, Shibuya', 'd15-shibuya', '', 'ビオレUV アクアリッチ'],
-  ['beauty', 'Hada Labo Gokujyun lotion', 'Hyaluronic lotion, about half the price you pay abroad.', 'Any drugstore', 'd15-shibuya', '', '肌ラボ 極潤'],
-  ['beauty', 'Melano CC serum', 'Cult vitamin C serum for dark spots.', 'Any drugstore', 'd15-shibuya', '', 'メラノCC'],
-  ['beauty', 'Steam eye masks', 'Self-warming eye masks, perfect for the flight home.', 'Any drugstore', 'd15-shibuya', '', 'めぐりズム 蒸気でホットアイマスク'],
-  ['beauty', 'Yojiya blotting paper', "Kyoto's famous face-blotting papers in the geisha-face packet.", 'Yojiya, Gion and Higashiyama', 'd10-ninenzaka', '', 'よーじやのあぶらとり紙'],
-  ['beauty', 'Canmake and Kate makeup', 'Cheap, good Japanese makeup brands.', 'Don Quijote or any drugstore', 'd15-shibuya', '', 'キャンメイク'],
+  ['skincare', 'Biore UV Aqua Rich sunscreen', 'Light, watery sunscreen that people stock up on by the box.', 'Matsumoto Kiyoshi, Shibuya', 'd15-shibuya', '', 'ビオレUV アクアリッチ'],
+  ['skincare', 'Hada Labo Gokujyun lotion', 'Hyaluronic lotion, about half the price you pay abroad.', 'Any drugstore', 'd15-shibuya', '', '肌ラボ 極潤'],
+  ['skincare', 'Melano CC serum', 'Cult vitamin C serum for dark spots.', 'Any drugstore', 'd15-shibuya', '', 'メラノCC'],
+  ['pharmacy', 'Steam eye masks', 'Self-warming eye masks, perfect for the flight home.', 'Any drugstore', 'd15-shibuya', '', 'めぐりズム 蒸気でホットアイマスク'],
+  ['skincare', 'Yojiya blotting paper', "Kyoto's famous face-blotting papers in the geisha-face packet.", 'Yojiya, Gion and Higashiyama', 'd10-ninenzaka', '', 'よーじやのあぶらとり紙'],
+  ['skincare', 'Canmake and Kate makeup', 'Cheap, good Japanese makeup brands.', 'Don Quijote or any drugstore', 'd15-shibuya', '', 'キャンメイク'],
   ['toys', 'Gachapon capsule toys', 'Thousands of capsule machines in one store, from ¥300 a go.', 'Gashapon Department Store, Sunshine City', 'd16-ikebukuro', '', 'ガチャガチャ'],
   ['toys', 'Pokémon Center exclusives', "Plush and cards only sold in Japan's Pokémon Centers.", 'Pokémon Center Mega Tokyo, Sunshine City', 'd16-ikebukuro', '', 'ポケモンセンター限定'],
   ['toys', 'Nintendo Tokyo merch', "Mario, Zelda and Animal Crossing goods you can't buy online.", 'Nintendo Tokyo, Shibuya Parco', 'd15-shibuya', '', 'ニンテンドートウキョウ限定'],
