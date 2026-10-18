@@ -714,16 +714,17 @@ function routeFor(list) {
 const dayLabel = (d) => new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 function whenPill(st) { const n = Math.round((Date.parse(st.d.date) - Date.parse(jstToday())) / 864e5); return n < 0 ? 'Passed' : n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `in ${n} days`; }
 const inShopEx = (id) => Object.values(store.getExpenses()).find((x) => x.src === id) || null;
-// The helper finds where to buy it and what kind of thing it is. at: a stop someone picked (its day pill), so the
-// helper only looks there and the thing stays on it; keepCat: a category someone picked stays.
-async function askShop(id, { at = null, keepCat = false } = {}) {
+// The helper finds where to buy it and what kind of thing it is (the category only fills an empty one: once set, by
+// the helper or someone's pick, it changes only from its pill). at: a stop someone picked (its day pill), so the
+// helper only looks there and the thing stays on it.
+async function askShop(id, { at = null } = {}) {
   const x = store.getShop()[id]; if (!x || sh.asking.has(id)) return;
   sh.asking.add(id); shRender();
   const stops = (at ? [at] : routeFor(x.list)).map((st) => ({ id: st.id, date: st.d.date, city: st.d.city, title: st.title, place: st.place }));
   try {
     const r = await store.api('shop-ai', { id, name: x.name === PIC_NAME ? '' : x.name, note: x.note || '', who: SH_WHO[x.list], today: jstToday(), stops });
     const st = at || (r.at ? stopById(r.at) : null), cur = store.getShop()[id];
-    if (cur && r.shop) store.setShop(id, { ...cur, ...(cur.name === PIC_NAME && r.name ? { name: r.name } : {}), ...(r.cat && (!keepCat || !cur.cat) ? { cat: r.cat } : {}), ai: { shop: r.shop, why: r.why, search: r.search, ja: r.ja, halal: r.halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
+    if (cur && r.shop) store.setShop(id, { ...cur, ...(cur.name === PIC_NAME && r.name ? { name: r.name } : {}), ...(r.cat && !cur.cat ? { cat: r.cat } : {}), ai: { shop: r.shop, why: r.why, search: r.search, ja: r.ja, halal: r.halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
   } catch (err) { sh.msg = err && err.pin ? 'Asking AI needs the PIN.' : navigator.onLine === false ? 'No signal: tap Ask AI once you\'re back online.' : "Couldn't find a shop for that. Tap Ask AI to try again."; }
   sh.asking.delete(id); shRender();
 }
@@ -878,11 +879,12 @@ function setShopValue(id, kind, v) {
   if (kind === 'list' && SH_LISTS[v] && v !== x.list) {
     store.setShop(id, { ...x, list: v });
     // still on the new group's route: it keeps its day; otherwise AI finds one on theirs
-    if (!(x.ai && x.ai.at && routeFor(v).some((st) => st.id === x.ai.at))) askShop(id, { keepCat: true });
+    if (!(x.ai && x.ai.at && routeFor(v).some((st) => st.id === x.ai.at))) askShop(id);
   }
   if (kind === 'day') { const st = stopById(v); if (!st) return;
-    if (x.ai) store.setShop(id, { ...x, ai: { ...x.ai, at: st.id, stop: st.title, date: st.d.date, day: st.d.id } });
-    askShop(id, { at: st, keepCat: true }); }
+    // kept straight away (with the stop's place as the shop until AI answers), so the pick survives a failed lookup
+    store.setShop(id, { ...x, ai: { ...(x.ai || { shop: st.place || st.title }), at: st.id, stop: st.title, date: st.d.date, day: st.d.id } });
+    askShop(id, { at: st }); }
 }
 function boughtSheet(id) {
   const x = store.getShop()[id]; if (!x) return;
