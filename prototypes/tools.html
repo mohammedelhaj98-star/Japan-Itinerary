@@ -724,6 +724,9 @@ async function askShop(id, { at = null } = {}) {
   try {
     const r = await store.api('shop-ai', { id, name: x.name === PIC_NAME ? '' : x.name, note: x.note || '', who: SH_WHO[x.list], today: jstToday(), stops });
     const st = at || (r.at ? stopById(r.at) : null), cur = store.getShop()[id];
+    // someone picked another day while this was asking: this answer is for the old stop, so ask again for the new one
+    const moved = cur && cur.ai && cur.ai.at && cur.ai.at !== ((at && at.id) || (x.ai && x.ai.at) || '');
+    if (moved) { sh.asking.delete(id); return askShop(id, { at: stopById(cur.ai.at) }); }
     if (cur && r.shop) store.setShop(id, { ...cur, ...(cur.name === PIC_NAME && r.name ? { name: r.name } : {}), ...(r.cat && !cur.cat ? { cat: r.cat } : {}), ai: { shop: r.shop, why: r.why, search: r.search, ja: r.ja, halal: r.halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
   } catch (err) { sh.msg = err && err.pin ? 'Asking AI needs the PIN.' : navigator.onLine === false ? 'No signal: tap Ask AI once you\'re back online.' : "Couldn't find a shop for that. Tap Ask AI to try again."; }
   sh.asking.delete(id); shRender();
