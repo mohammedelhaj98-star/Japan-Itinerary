@@ -647,12 +647,14 @@ const sh = { list: ls.get('proto.shlist', P[ME] ? P[ME].couple : 'all'), cat: 'a
 const PIC_NAME = 'From a photo'; // a thing added as just a photo, until the helper says what it is
 const shVisible = (x) => !x.lock || x.lock === ME;
 const shItems = () => Object.entries(store.getShop()).map(([id, x]) => ({ id, ...x })).filter((x) => x && x.name && SH_LISTS[x.list] && shVisible(x));
-// every stop on the trip, edited and added ones included, with its day and who it's for
+// every stop on the trip, edited and added ones included, with its day and who it's for (off: on a choice's option
+// that wasn't picked, so it's not on the route, though a thing already placed there still finds it)
 function allStops() {
   const C = store.state.custom || {}, out = [];
   for (const d of DAYS) for (const it of d.items) {
-    const evs = it.type === 'event' ? [it] : it.type === 'choice' ? it.options.flatMap((o) => o.items || []) : [];
-    for (const e of evs) { const c = C[e.id] || {}; if (c.hidden) continue; out.push({ id: e.id, d, title: c.title || e.title, place: (c.place && c.place.name) || (e.place && e.place.name) || '', who: c.who || e.who || 'all' }); }
+    const pick = it.type === 'choice' ? store.getChoice(it.id, it.default) : '', on = (o) => o.id === pick || (!it.options.some((y) => y.id === pick) && o === it.options[0]);
+    const evs = it.type === 'event' ? [[it, false]] : it.type === 'choice' ? it.options.flatMap((o) => (o.items || []).map((e) => [e, !on(o)])) : [];
+    for (const [e, off] of evs) { const c = C[e.id] || {}; if (c.hidden) continue; out.push({ id: e.id, d, title: c.title || e.title, place: (c.place && c.place.name) || (e.place && e.place.name) || '', who: c.who || e.who || 'all', off }); }
   }
   for (const [id, c] of Object.entries(C)) if (c && c.added && !c.hidden && dayOf(c.day)) out.push({ id, d: dayOf(c.day), title: c.title || 'New stop', place: (c.place && c.place.name) || '', who: c.who || 'all' });
   return out;
@@ -662,7 +664,7 @@ const stopById = (id) => allStops().find((x) => x.id === id) || null;
 const onRoute = (st, list) => st.who === 'all' || st.who === list;
 function routeFor(list) {
   const t = jstToday(), from = list === 'mm' && t < MM_FROM ? MM_FROM : t;
-  return allStops().filter((x) => x.d.date >= from && (list === 'all' ? x.who === 'all' : onRoute(x, list)) && x.title);
+  return allStops().filter((x) => !x.off && x.d.date >= from && (list === 'all' ? x.who === 'all' : onRoute(x, list)) && x.title);
 }
 const dayLabel = (d) => new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 function whenPill(st) { const n = Math.round((Date.parse(st.d.date) - Date.parse(jstToday())) / 864e5); return n < 0 ? 'Passed' : n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `in ${n} days`; }
