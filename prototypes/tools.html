@@ -731,7 +731,9 @@ async function askShop(id, { at = null } = {}) {
 // Things on the list from before there were categories (or whose helper answer came without one): sorted in one go
 async function sortShopCats() {
   if (VIEW || SANDBOX || !P[ME]) return;
-  const need = shItems().filter((x) => !x.cat && x.name !== PIC_NAME && !sh.asking.has(x.id) && !sh.sorting.has(x.id)).slice(0, 40);
+  // not things added in the last few minutes: the phone that added one is still asking AI about it, and a write from
+  // here (the whole item, without that answer yet) could land after its answer and wipe it
+  const need = shItems().filter((x) => !x.cat && x.name !== PIC_NAME && (x.at || 0) < Date.now() - 5 * 60e3 && !sh.asking.has(x.id) && !sh.sorting.has(x.id)).slice(0, 40);
   if (!need.length) return;
   need.forEach((x) => sh.sorting.add(x.id)); // asked once per visit: a failure isn't retried until the page opens again
   try {
