@@ -643,7 +643,8 @@ const SH_LISTS = { all: 'All of us', mm: 'M&M', nasa: 'NASA' };
 const SH_WHO = { all: 'All four of us', mm: 'Mo and Mariam (M&M)', nasa: 'Naf and Sara (NASA)' };
 const MM_FROM = '2026-10-21'; // M&M land on Oct 21: their part of the route starts there
 const jstToday = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-const sh = { list: ls.get('proto.shlist', P[ME] ? P[ME].couple : 'all'), cat: 'all', lock: false, asking: new Set(), name: '', for: '', note: '', photo: '', pics: new Map() };
+// the page opens on a list (the last one looked at, else your couple's), never on Ideas, so the box to add things is there
+const sh = { list: ((l) => (SH_LISTS[l] ? l : P[ME] ? P[ME].couple : 'all'))(ls.get('proto.shlist', '')), cat: 'all', lock: false, asking: new Set(), name: '', for: '', note: '', photo: '', pics: new Map() };
 const PIC_NAME = 'From a photo'; // a thing added as just a photo, until the helper says what it is
 const shVisible = (x) => !x.lock || x.lock === ME;
 const shItems = () => Object.entries(store.getShop()).map(([id, x]) => ({ id, ...x })).filter((x) => x && x.name && SH_LISTS[x.list] && shVisible(x));
@@ -751,13 +752,13 @@ function renderShopIdeas() {
     }).join('');
     return `<div class="sp-cat"><h3>${esc(n)}</h3><span>${ja}</span></div><div class="card sp-list">${rows}</div>`;
   }).join('');
-  return `<div class="sp-cat top"><h3>Only in Japan</h3><span>日本だけ</span></div><p class="sp-intro">Things you can only get here, or that are far better or cheaper here, each placed on our route.${VIEW ? '' : ' Tap <b>+</b> to put one on a list.'}</p>
+  return `<div class="sp-cat top"><h3>Only in Japan</h3><span>日本だけ</span></div>
     <div class="sp-chips">${chips}</div>${cats}`;
 }
 function renderShop() {
   const all = shItems(), n = (k) => all.filter((x) => x.list === k && !x.done).length;
   const seg = `<div class="sp-seg"><div class="seg sp-lists">${Object.entries(SH_LISTS).map(([k, l]) => `<button class="${sh.list === k ? 'on' : ''}" data-shlist="${k}">${k === 'all' ? 'All' : esc(l)}${n(k) ? ` <em>${n(k)}</em>` : ''}</button>`).join('')}<button class="${sh.list === 'ideas' ? 'on' : ''}" data-shlist="ideas">Ideas</button><i></i></div></div>`;
-  const head = `<header class="ph"><small>Shopping</small><h1>Things to buy <span class="sp-ja">買い物</span></h1><p>One list for all four phones, with the easiest place on our route to get each thing.</p></header>${seg}`;
+  const head = `<header class="ph"><small>Shopping</small><h1>Things to buy <span class="sp-ja">買い物</span></h1></header>${seg}`;
   if (sh.list === 'ideas') return head + renderShopIdeas();
   const mine = all.filter((x) => x.list === sh.list), todo = mine.filter((x) => !x.done), done = mine.filter((x) => x.done);
   const add = VIEW ? '' : !P[ME] ? '<p class="sp-intro">Pick who you are on the trips page to add things.</p>' : `<div class="card sp-add">
@@ -1223,7 +1224,7 @@ page.addEventListener('click', (e) => {
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couple' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couple' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
     const sid = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); saveExpense(sid, { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); render(); return undoable(`Marked ${tr.from.name} → ${tr.to.name} paid`, () => saveExpense(sid, null)); }
   const xr = t('[data-ex]'); if (xr) return openEx(xr.dataset.ex);
-  const shl = t('[data-shlist]'); if (shl) { sh.list = shl.dataset.shlist; ls.set('proto.shlist', sh.list); sh.msg = ''; return render(); }
+  const shl = t('[data-shlist]'); if (shl) { sh.list = shl.dataset.shlist; if (sh.list !== 'ideas') ls.set('proto.shlist', sh.list); sh.msg = ''; return render(); }
   const shc = t('[data-shcat]'); if (shc) { sh.cat = shc.dataset.shcat; return render(); }
   if (t('[data-shlock]')) { sh.lock = !sh.lock; return render(); }
   if (t('[data-shadd]')) { addShop(); return render(); }
