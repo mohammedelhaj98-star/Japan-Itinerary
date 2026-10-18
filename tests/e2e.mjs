@@ -506,9 +506,12 @@ await N.page.tap('[data-bkwho="all"]');
   ok('the list shows where, when, and the halal warning', /Gransta, inside Tokyo Station/.test(await N.page.textContent('.sp-list')) && /Day 12/.test(await N.page.textContent('.sp-list')) && /gelatin/.test(await N.page.textContent('.sp-list')));
   await N.page.fill('#sh-name', 'Pearl necklace'); await N.page.fill('#sh-for', 'Sara'); await N.page.tap('[data-shlock]'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
   const [, pearl] = shBy('Pearl necklace');
+  const spR = await (await sp({ id: 'shy', value: { name: 'Fan', list: 'all', by: 'm' } })).json(); await sp({ id: 'shy', value: null });
+  ok("a change's answer leaves out other people's secret presents", spR.ok && !JSON.stringify(spR.shop).includes('Pearl'));
   ok('a secret present is kept as only Naf\'s, with who it\'s for', pearl && pearl.lock === 'naf' && pearl.for === 'Sara', JSON.stringify(pearl));
   // just a photo (a screenshot from TikTok): the helper says what it is, and the photo is kept for showing staff
-  await N.page.setInputFiles('#sh-file', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForTimeout(600);
+  await N.page.waitForFunction(() => !document.querySelector('.sp-ai.think'), null, { timeout: 5000 }).catch(() => {}); // the helper has answered for the necklace
+  await N.page.setInputFiles('#sh-file', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForSelector('.sp-prev img', { timeout: 5000 }).catch(() => {});
   ok('a photo can be added without a name', !!(await N.page.$('.sp-prev img')) && !(await N.page.$eval('[data-shadd]', (b) => b.disabled)));
   await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(2000);
   const [picId, pic] = shBy('Matcha Kit Kat');
@@ -521,6 +524,8 @@ await N.page.tap('[data-bkwho="all"]');
   await N.page.tap('#driver [data-dx]'); await N.page.waitForTimeout(400);
   await N.page.screenshot({ path: SH + 'shopping.png', fullPage: true });
   ok('a secret present never leaves the server without the PIN', !JSON.stringify((await (await fetch(B + '/api/state')).json()).shop || {}).includes('Pearl'));
+  const shopFor = async (me) => JSON.stringify((await (await fetch(B + '/api/state', { headers: { 'x-trip-pin': PIN, 'x-trip-me': me } })).json()).shop || {});
+  ok("…and goes only to Naf's phone: Mo's and Sara's never get it", /Pearl/.test(await shopFor('naf')) && !/Pearl/.test(await shopFor('m')) && !/Pearl/.test(await shopFor('sara')) && /Tokyo Banana/.test(await shopFor('m')));
   await A.page.goto(B + '/japan/prototypes/tools?v=3'); await A.page.waitForTimeout(1500);
   ok("Mo's phone opens on M&M's list", (await A.page.textContent('.sp-lists .on')).startsWith('M&M'));
   await A.page.tap('[data-shlist="nasa"]'); await A.page.waitForTimeout(400);

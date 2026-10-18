@@ -1232,7 +1232,7 @@ page.addEventListener('click', (e) => {
   const shs = t('[data-shstaff]'); if (shs) { showStaff(shs.dataset.shstaff); return; }
   const shp = t('[data-shpic]'); if (shp) { showShopPic(shp.dataset.shpic); return; }
   if (t('[data-shrmpic]')) { sh.photo = ''; return render(); }
-  const shd = t('[data-shdel]'); if (shd) { const id = shd.dataset.shdel, x = store.getShop()[id]; if (!x) return; return askConfirm(`Remove ${x.name}?`, 'It goes from the list on all four phones.', 'Remove', () => { store.setShop(id, null); render(); undoable('Removed', () => store.setShop(id, x)); }); }
+  const shd = t('[data-shdel]'); if (shd) { const id = shd.dataset.shdel, x = store.getShop()[id]; if (!x) return; return askConfirm(`Remove ${x.name}?`, 'It goes from the list on all four phones.', 'Remove', () => { store.setShop(id, null); render(); undoable('Removed', () => store.setShop(id, x)); if (x.photo) setTimeout(() => { if (!store.getShop()[id]) store.setShopPhoto(id, null); }, 8000); }); } // its photo goes too, once Undo has gone
   const shi = t('[data-shidea]'); if (shi && (P[ME] || SANDBOX)) { pickListSheet(+shi.dataset.shidea); return; }
   if (t('[data-here]')) { if (!navigator.geolocation) { fd.err = 'Location is not available on this device.'; return render(); }
     navigator.geolocation.getCurrentPosition((p) => { fd.here = { name: 'My location', lat: p.coords.latitude, lng: p.coords.longitude }; searchFood(); }, () => { fd.err = 'Could not get your location. Check location permission, or pick a stop instead.'; render(); }, { enableHighAccuracy: true, timeout: 10000 }); return; }

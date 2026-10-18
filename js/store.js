@@ -19,6 +19,8 @@ const sbGet = () => { try { return JSON.parse(sessionStorage.getItem(SB_KEY)); }
 // per phone with the group's PIN, kept in localStorage and sent with every change; the server checks it.
 export const GUEST = (() => { try { return JSON.parse(localStorage.getItem('trips.me')) === 'guest'; } catch { return false; } })();
 const pinOf = () => { try { return localStorage.getItem('trips.pin') || ''; } catch { return ''; } };
+// who this phone is: the server only sends a secret present on the shopping list to the phone of the person who added it
+const meOf = () => { try { return JSON.parse(localStorage.getItem('trips.me')) || ''; } catch { return ''; } };
 
 function lsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; }
@@ -65,7 +67,7 @@ export const store = {
     const res = await fetch('/api/' + path, {
       method: body ? 'POST' : 'GET',
       // the PIN goes with reads too: without it the server leaves out the expenses
-      headers: body ? { 'content-type': 'application/json', 'x-trip-pin': pinOf() } : pinOf() ? { 'x-trip-pin': pinOf() } : undefined,
+      headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(pinOf() ? { 'x-trip-pin': pinOf() } : {}), ...(meOf() ? { 'x-trip-me': meOf() } : {}) },
       body: body ? JSON.stringify(body) : undefined,
       cache: 'no-store',
     });

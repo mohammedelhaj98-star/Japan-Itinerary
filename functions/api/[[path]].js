@@ -320,7 +320,7 @@ export async function onRequest(ctx) {
   }
 
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type, x-trip-pin, x-photo-token' } });
+    return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type, x-trip-pin, x-trip-me, x-photo-token' } });
   }
 
   // the daily site check reads this: no trip data, just whether anything went wrong
@@ -336,6 +336,9 @@ export async function onRequest(ctx) {
 
   const pin = env.TRIP_PIN ? String(env.TRIP_PIN) : '';
   const member = !pin || request.headers.get('x-trip-pin') === pin;
+  // a secret present (lock) goes only to the phone of the person who added it, which says who it is in x-trip-me
+  const me = member && PEOPLE.includes(request.headers.get('x-trip-me')) ? request.headers.get('x-trip-me') : '';
+  const ownShop = (map) => Object.fromEntries(Object.entries(map || {}).filter(([, x]) => !x.lock || x.lock === me));
   try {
     const live = store.kind === 'durable-object';
     if (request.method === 'GET' && path === 'version') {
@@ -349,7 +352,8 @@ export async function onRequest(ctx) {
     // The money stays between the four of us: without the PIN the state comes back with no expenses.
     if (request.method === 'GET' && path === 'state') {
       const st = await readState(store);
-      if (!member) { st.expenses = {}; st.money = {}; st.shop = Object.fromEntries(Object.entries(st.shop || {}).filter(([, x]) => !x.lock)); }
+      if (!member) { st.expenses = {}; st.money = {}; }
+      st.shop = ownShop(st.shop);
       return json({ ...st, live });
     }
 
@@ -484,7 +488,7 @@ export async function onRequest(ctx) {
         return { value: map };
       });
       if (r.error) return json({ error: r.error }, r.status);
-      return json({ ok: true, shop: r.value });
+      return json({ ok: true, shop: ownShop(r.value) });
     }
 
     if (path === 'money') {
