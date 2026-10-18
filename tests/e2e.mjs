@@ -45,7 +45,11 @@ store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store
 // Workers AI stand-in for /api/scan: it "reads" a ramen receipt where the total was mistaken for the cash handed over
 // …and for /api/fill (a question in words rather than a photo): it knows Yanaka Ginza
 const FILL_SAID = { known: true, name: 'Yanaka Ginza shopping street', ja: '谷中銀座商店街', ro: 'Yanaka Ginza Shōtengai', cat: 'shop', kind: 'shop', notes: 'Old-Tokyo shopping street. The menchi-katsu is usually pork and beef: ask for beef only.', cost: '¥500–1,500 per person', minutes: 60, key: 'Since the 1940s · About 60 shops', story: 'It survived the 1923 earthquake and the war, so it still looks like 1950s Tokyo.', dyk: 'Seven wooden cats hide along the street.', wikipedia: 'Yanaka Ginza', search: 'Yanaka Ginza', lat: 35.7277, lng: 139.766 };
-const FAKE_AI = { run: async (m, inp) => typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
+// …and for /api/shop-ai (where on the route to buy something): Tokyo Banana is at Gransta, inside Tokyo Station, on day 12
+const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Banana flavour in one place.', at: 'd12-shinkansen', search: 'Tokyo Banana', ja: '東京ばな奈', halal: 'Check the box for gelatin.' };
+// (sent a photo instead of a name, it sees a box of matcha Kit Kats)
+const said = (c) => typeof c === 'string' ? c : ((c.find((x) => x.type === 'text') || {}).text || '');
+const FAKE_AI = { run: async (m, inp) => /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
@@ -54,7 +58,7 @@ const server = http.createServer(async (req, res) => {
   if (u.pathname.startsWith('/api/')) {
     const chunks = []; for await (const c of req) chunks.push(c);
     const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: ENV });
-    res.writeHead(r.status, { 'content-type': 'application/json' }); return res.end(await r.text());
+    res.writeHead(r.status, { 'content-type': r.headers.get('content-type') || 'application/json' }); return res.end(Buffer.from(await r.arrayBuffer()));
   }
   let p = decodeURIComponent(u.pathname); if (p === '/japan') { res.writeHead(301, { location: '/japan/' }); return res.end(); }
   let f = path.join(DIST, p); if (p.endsWith('/')) f = path.join(f, 'index.html'); else if (!fs.existsSync(f) && fs.existsSync(f + '.html')) f += '.html';
@@ -486,6 +490,81 @@ ok('undo puts it back', (await N.page.$$eval('.bk.todo', (e) => e.length)) === t
 await N.page.tap('[data-bkwho="mm"]'); await N.page.waitForTimeout(300);
 ok('M&M filter hides NASA-only bookings', !/Yoroniku/.test(await N.page.textContent('#page')));
 await N.page.tap('[data-bkwho="all"]');
+// 3f · shopping: three lists, the helper puts each thing on the route, secret presents, Only in Japan ideas,
+// bought → expenses, a "to buy here" strip on the stop, and taxi details on the phrase cards and travel kit
+{
+  const shOf = () => JSON.parse(store.get('shop') || '{}'), shBy = (name) => Object.entries(shOf()).find(([, x]) => x.name === name) || [];
+  const sp = (body, pin = PIN) => fetch(B + '/api/shop', { method: 'POST', headers: { 'content-type': 'application/json', ...(pin ? { 'x-trip-pin': pin } : {}) }, body: JSON.stringify(body) });
+  ok('shopping list changes need the PIN, a real list and a real person', (await sp({ id: 'shx', value: { name: 'X', list: 'all', by: 'naf' } }, null)).status === 403
+    && (await sp({ id: 'shx', value: { name: 'X', list: 'everyone', by: 'naf' } })).status === 400 && (await sp({ id: 'shx', value: { name: 'X', list: 'all', by: 'bob' } })).status === 400 && !shOf().shx);
+  ok('finding a shop needs the PIN', (await fetch(B + '/api/shop-ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Tokyo Banana', stops: [] }) })).status === 403);
+  await N.page.goto(B + '/japan/prototypes/tools?v=3'); await N.page.waitForTimeout(1500);
+  ok("Shopping opens on your own couple's list", /Things to buy/.test(await N.page.textContent('#page')) && (await N.page.textContent('.sp-lists .on')).startsWith('NASA'));
+  await N.page.fill('#sh-name', 'Tokyo Banana'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
+  const [tbId, tb] = shBy('Tokyo Banana');
+  ok('added to NASA\'s list, and the helper put it on the route: Gransta, day 12', tb && tb.list === 'nasa' && tb.by === 'naf' && tb.ai && tb.ai.at === 'd12-shinkansen' && tb.ai.date === '2026-10-27' && tb.ai.day === 'd12' && tb.ai.ja === '東京ばな奈', JSON.stringify(tb));
+  ok('the list shows where, when, and the halal warning', /Gransta, inside Tokyo Station/.test(await N.page.textContent('.sp-list')) && /Day 12/.test(await N.page.textContent('.sp-list')) && /gelatin/.test(await N.page.textContent('.sp-list')));
+  await N.page.fill('#sh-name', 'Pearl necklace'); await N.page.fill('#sh-for', 'Sara'); await N.page.tap('[data-shlock]'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
+  const [, pearl] = shBy('Pearl necklace');
+  const spR = await (await sp({ id: 'shy', value: { name: 'Fan', list: 'all', by: 'm' } })).json(); await sp({ id: 'shy', value: null });
+  ok("a change's answer leaves out other people's secret presents", spR.ok && !JSON.stringify(spR.shop).includes('Pearl'));
+  ok('a secret present is kept as only Naf\'s, with who it\'s for', pearl && pearl.lock === 'naf' && pearl.for === 'Sara', JSON.stringify(pearl));
+  // just a photo (a screenshot from TikTok): the helper says what it is, and the photo is kept for showing staff
+  await N.page.waitForFunction(() => !document.querySelector('.sp-ai.think'), null, { timeout: 5000 }).catch(() => {}); // the helper has answered for the necklace
+  await N.page.setInputFiles('#sh-file', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForSelector('.sp-prev img', { timeout: 5000 }).catch(() => {});
+  ok('a photo can be added without a name', !!(await N.page.$('.sp-prev img')) && !(await N.page.$eval('[data-shadd]', (b) => b.disabled)));
+  await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(2000);
+  const [picId, pic] = shBy('Matcha Kit Kat');
+  ok('…and the helper names it from the photo and finds where to buy it', pic && pic.photo > 0 && pic.ai && pic.ai.at === 'd12-shinkansen' && /^data:image\/jpeg;base64,/.test(store.get('sp:' + picId) || ''), JSON.stringify(pic));
+  ok('the photo shows on the list', /^(data|blob):/.test(await N.page.getAttribute(`[data-spimg="${picId}"]`, 'src').catch(() => '')));
+  ok('the photo needs the PIN to see', (await fetch(B + '/api/shop-photo/' + picId)).status === 403 && (await fetch(B + '/api/shop-photo/' + picId, { headers: { 'x-trip-pin': PIN } })).headers.get('content-type') === 'image/jpeg');
+  await N.page.tap(`[data-shstaff="${picId}"]`); await N.page.waitForTimeout(500);
+  ok('Show staff shows the photo with "Do you have this?"', /これはありますか/.test(await N.page.textContent('#driver')) && !!(await N.page.$('#driver .sp-big')));
+  await N.page.screenshot({ path: SH + 'shopping-staff.png' });
+  await N.page.tap('#driver [data-dx]'); await N.page.waitForTimeout(400);
+  await N.page.screenshot({ path: SH + 'shopping.png', fullPage: true });
+  ok('a secret present never leaves the server without the PIN', !JSON.stringify((await (await fetch(B + '/api/state')).json()).shop || {}).includes('Pearl'));
+  const shopFor = async (me) => JSON.stringify((await (await fetch(B + '/api/state', { headers: { 'x-trip-pin': PIN, 'x-trip-me': me } })).json()).shop || {});
+  ok("…and goes only to Naf's phone: Mo's and Sara's never get it", /Pearl/.test(await shopFor('naf')) && !/Pearl/.test(await shopFor('m')) && !/Pearl/.test(await shopFor('sara')) && /Tokyo Banana/.test(await shopFor('m')));
+  await A.page.goto(B + '/japan/prototypes/tools?v=3'); await A.page.waitForTimeout(1500);
+  ok("Mo's phone opens on M&M's list", (await A.page.textContent('.sp-lists .on')).startsWith('M&M'));
+  await A.page.tap('[data-shlist="nasa"]'); await A.page.waitForTimeout(400);
+  ok("Mo sees NASA's Tokyo Banana but not Naf's secret present", /Tokyo Banana/.test(await A.page.textContent('#page')) && !/Pearl/.test(await A.page.textContent('#page')));
+  ok("…and the photo Naf added, fetched with the PIN", await A.page.$eval(`[data-spimg="${picId}"]`, (im) => im.src.startsWith('blob:') && im.naturalWidth > 0).catch(() => false));
+  await N.page.tap('[data-shlist="ideas"]'); await N.page.waitForTimeout(400);
+  ok('Ideas: Only in Japan, by category', /Only in Japan/.test(await N.page.textContent('#page')) && (await N.page.$$('[data-shidea]')).length > 40);
+  await N.page.screenshot({ path: SH + 'shopping-ideas.png' });
+  await N.page.tap('[data-shidea]'); await N.page.waitForTimeout(450); await N.page.tap('#sheet [data-shpick="all"]'); await N.page.waitForTimeout(900);
+  const [, kk] = shBy('Regional Kit Kat flavours');
+  ok('an idea goes on All of us with its place on the route already found', kk && kk.list === 'all' && kk.idea === true && kk.ai.at === 'd07-shinsaibashi' && kk.ai.date === '2026-10-22', JSON.stringify(kk));
+  await N.page.tap('[data-shlist="nasa"]'); await N.page.waitForTimeout(400);
+  await N.page.tap(`[data-shtick="${tbId}"]`); await N.page.waitForTimeout(500);
+  ok('ticking it bought asks about expenses', /Add it to expenses/.test(await N.page.textContent('#sheet')) && shOf()[tbId].done === true && shOf()[tbId].doneBy === 'naf');
+  const navs = [], onNav = (r) => { if (r.isNavigationRequest()) navs.push(r.url()); }; N.page.on('request', onNav);
+  await N.page.fill('#sh-yen', '1500'); await N.page.tap('[data-shex]'); await N.page.waitForURL(/\/japan\/money/, { timeout: 5000 }).catch(() => {}); N.page.off('request', onNav);
+  const exU = new URL(navs.find((u) => /\/money\?/.test(u)) || N.page.url());
+  ok('…and opens the expense form filled in: Shopping, ¥1,500, split within NASA', exU.searchParams.get('add') === '1' && exU.searchParams.get('c') === 'shopping' && exU.searchParams.get('y') === '1500' && exU.searchParams.get('src') === tbId && /Tokyo Banana/.test(exU.searchParams.get('t') || '') && exU.searchParams.get('s') === 'naf,sara', exU.href);
+  await N.page.waitForTimeout(1200);
+  ok('…where the form is open with the name and Shopping filled in', /Tokyo Banana/.test(await N.page.inputValue('#ftitle').catch(() => '')) || /Tokyo Banana/.test(await N.page.textContent('body')));
+  // the stop's own card: what to buy there; Naf sees the secret present, Mo doesn't
+  await N.page.goto(B + '/japan/?d=d12'); await N.page.waitForTimeout(2500);
+  const strip = await N.page.textContent('#p-d12-shinkansen .buyh').catch(() => '');
+  ok('the stop says what to buy there (two left, one bought)', /2 to buy here/.test(strip) && /Tokyo Banana/.test(strip) && /Pearl necklace/.test(strip), strip);
+  await A.page.goto(B + '/japan/?d=d12'); await A.page.waitForTimeout(2500);
+  ok("Naf's secret present stays off Mo's trip page", !/Pearl/.test(await A.page.textContent('body')));
+  // taxi: every stop's "Please take me here" card has the address; the travel kit has tonight's hotel
+  await N.page.evaluate(() => document.querySelector('#p-d12-shinkansen .say').click()); await N.page.waitForTimeout(600);
+  const card = await N.page.textContent('#jpcard').catch(() => '');
+  ok('a stop\'s first phrase card has the taxi details: postcode, address, phone', /〒\d{3}-\d{4}/.test(card) && /東京都/.test(card) && /Open in Maps/.test(card), card.slice(0, 200));
+  await N.page.evaluate(() => document.querySelector('#jpcard [data-jpx]').click()); await N.page.waitForTimeout(400);
+  await N.page.tap('#kitbtn'); await N.page.waitForTimeout(700); await N.page.tap('#kitb [data-tab="say"]'); await N.page.waitForTimeout(400);
+  ok('the travel kit\'s Phrases start with "take us to the hotel", and the other hotels', /take us to the hotel/.test(await N.page.textContent('#kitb')) && (await N.page.$$('#kitb .kh-o button')).length >= 3);
+  await N.page.tap('#kitb .kh'); await N.page.waitForTimeout(500);
+  ok('…which shows the driver the hotel in Japanese with its address', /このホテルまでお願いします/.test(await N.page.textContent('#jpcard')) && /〒\d{3}-\d{4}/.test(await N.page.textContent('#jpcard')));
+  await N.page.screenshot({ path: SH + 'taxi-hotel.png' });
+  await N.page.evaluate(() => document.querySelector('#jpcard [data-jpx]').click()); await N.page.waitForTimeout(300);
+  ok('no page errors while shopping', !N.errs.length && !A.errs.length, [...N.errs, ...A.errs].join(' | '));
+}
 // 4 · trip day at 4 PM JST: open on the stop happening now; scrub away; Now brings it back
 const C = await phone('2026-10-22T07:00:00Z');
 await C.page.goto(B + '/japan/'); await C.page.waitForURL(/next=japan/); await C.page.tap('[data-me="sara"]'); await enterPin(C.page); await C.page.waitForURL(/\/japan\//); await C.page.waitForTimeout(2500);
@@ -934,6 +1013,15 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await P.page.screenshot({ path: SH + 'flights-day6.png' });
   ok('no page errors on the flight phone', !P.errs.length, P.errs.join(' | '));
   await P.ctx.close();
+  // the shopping heads-up: 8 AM Japan time on a day the route passes something on the list, only to phones that turned it on
+  const SA = await import(REPO + '/lib/shop-alert.js');
+  const sa = SA.morningAlerts({ a: { name: 'Tokyo Banana', list: 'nasa', ai: { date: '2026-10-27', stop: 'Gransta', day: 'd12' } }, b: { name: 'Pearl necklace', list: 'nasa', lock: 'naf', ai: { date: '2026-10-27' } }, c: { name: 'Kit Kat', list: 'all', ai: { date: '2026-10-22' } } }, '2026-10-27');
+  ok('morning heads-up: only the couple whose list has something on today\'s route, never a secret present', sa.length === 1 && sa[0].people.join() === 'naf,sara' && /Tokyo Banana/.test(sa[0].text) && !/Pearl/.test(sa[0].text) && /v=3&d=d12/.test(sa[0].url), JSON.stringify(sa));
+  const h3 = await handset(); await post({ id: 'phone-three', sub: sub(3, h3), prefs: { naf: { shop: true } } });
+  await onRequest({ request: new Request(B + '/api/shop', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ id: 'sh-alert', value: { name: 'Matcha Kit Kat', list: 'nasa', by: 'naf', ai: { shop: 'Gransta, inside Tokyo Station', at: 'd12-shinkansen', stop: 'Shinkansen to Tokyo', date: '2026-10-27', day: 'd12' } } }) }), env: ENV });
+  sent.length = 0; const early = await tick('2026-10-26T22:30:00Z'), at8 = await tick('2026-10-26T23:05:00Z'), again = await tick('2026-10-26T23:10:00Z');
+  const shopSent = sent.filter((x) => x.url.includes('phone3')), shopMsg = shopSent[0] ? await open(h3, shopSent[0].init) : {};
+  ok('…sent once, from 8 AM, to the phone that follows NASA\'s list, and not to the others', early.shop === 0 && at8.shop >= 1 && again.shop === 0 && shopSent.length === 1 && sent.length === 1 && /Matcha Kit Kat/.test(shopMsg.body) && !/Pearl/.test(shopMsg.body) && /^shop-2026-10-27-nasa$/.test(shopMsg.tag), JSON.stringify([early, at8, again, sent.length, shopMsg]));
   for (const k of ['FLIGHT_FETCH', 'FLIGHTAWARE_KEY', 'PUSH_FETCH', 'PUSH_RETRY_MS', 'VAPID_PUBLIC', 'VAPID_PRIVATE']) delete DO_ENV[k];
 }
 // 16 · trains and M&M's nights away: tickets with car, seats and reservation; a booking waiting on its confirmation

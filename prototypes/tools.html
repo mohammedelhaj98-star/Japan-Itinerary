@@ -267,15 +267,84 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 .save:disabled { opacity:.35; }
 .del { width:100%; height:46px; border-radius:14px; background:#fff; color:#c62d22; font-weight:700; margin-top:8px; }
 
-/* ── taxi cards ── */
-.hlist { display:grid; gap:10px; margin:0 12px; }
-.hcard { position:relative; height:150px; border-radius:22px; overflow:hidden; background:center/cover no-repeat #555; color:#fff; display:flex; align-items:flex-end; text-align:left; width:100%; }
-.hcard::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.05) 20%, rgba(0,0,0,.72)); }
-.hcard > div { position:relative; z-index:1; padding:14px 16px; width:100%; }
-.hcard small { font-size:12px; font-weight:700; opacity:.85; }
-.hcard b { display:block; font-size:19px; letter-spacing:-.02em; line-height:1.15; }
-.hcard .jp { font-family:var(--mincho); font-size:14px; opacity:.9; margin-top:2px; display:block; }
-.tonight { position:absolute; top:12px; left:12px; z-index:2; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:4px 9px; border-radius:999px; background:var(--red); color:#fff; }
+/* ── shopping ── */
+.sp-ja { font-family:var(--mincho); font-size:18px; color:#b94b74; letter-spacing:0; margin-left:6px; }
+.sp-seg { display:flex; padding:0 16px 4px; }
+.sp-lists { width:100%; }
+.sp-lists button { flex:1; padding:8px 4px; font-size:14px; white-space:nowrap; }
+.sp-lists button em { font-style:normal; font-size:11.5px; color:var(--ink3); background:rgba(0,0,0,.06); border-radius:999px; padding:0 6px; margin-left:3px; }
+.sp-add { margin:12px 12px 0; padding:12px; }
+.sp-line { display:flex; gap:8px; }
+.sp-add input { flex:1; min-width:0; height:44px; border-radius:12px; border:1px solid var(--line); background:#faf9f6; padding:0 12px; font:inherit; font-size:16px; color:var(--ink); }
+.sp-go { height:44px; padding:0 16px; border-radius:12px; background:var(--ink); color:#fff; font-weight:700; font-size:15px; }
+.sp-go:disabled { opacity:.35; }
+.sp-cam { flex:none; width:44px; height:44px; border-radius:12px; background:rgba(0,0,0,.05); display:grid; place-items:center; color:var(--ink2); position:relative; overflow:hidden; }
+.sp-cam input { position:absolute; inset:0; opacity:0; width:100%; height:100%; }
+.sp-prev { display:flex; gap:10px; align-items:center; margin-top:8px; }
+.sp-prev img { flex:none; width:56px; height:56px; border-radius:10px; object-fit:cover; background:#eee; }
+.sp-prev p { flex:1; font-size:13px; color:var(--ink2); }
+.sp-pic { flex:none; width:56px; height:56px; border-radius:10px; overflow:hidden; background:#ece9e1; padding:0; }
+.sp-pic img { width:100%; height:100%; object-fit:cover; display:block; }
+.sp-big { display:block; max-width:100%; max-height:52vh; margin:18px auto 0; border-radius:14px; box-shadow:0 4px 20px rgba(0,0,0,.12); }
+.driver .name.sm { font-size:min(8vw,34px); margin-top:16px; }
+.sp-more { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.sp-more input { flex:1 1 120px; height:38px; font-size:16px; }
+.sp-lock { height:38px; padding:0 12px; border-radius:10px; background:rgba(0,0,0,.05); font-size:13px; font-weight:700; color:var(--ink2); }
+.sp-lock.on { background:var(--ink); color:#fff; }
+.sp-to { font-size:12.5px; color:var(--ink3); margin-top:8px; }
+.sp-msg { font-size:13px; color:#a5281e; margin-top:6px; }
+.sp-list { margin:0 12px; padding:2px 14px; }
+.sp-it, .sp-idea { display:flex; gap:12px; padding:14px 0; border-top:1px solid var(--line); align-items:flex-start; }
+.sp-it:first-child, .sp-idea:first-child { border-top:0; }
+.sp-tick { flex:none; width:28px; height:28px; border-radius:50%; box-shadow:inset 0 0 0 2px rgba(20,20,10,.22); display:grid; place-items:center; margin-top:1px; transition:background 200ms, box-shadow 200ms; color:#fff; }
+.sp-it.done .sp-tick { background:var(--ok); box-shadow:none; }
+.sp-bd { flex:1; min-width:0; }
+.sp-nm { font-size:16px; font-weight:700; line-height:1.3; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.sp-it.done .sp-nm { color:var(--ink3); text-decoration:line-through; }
+.sp-tag { font-size:11.5px; font-weight:700; border-radius:999px; padding:1px 8px; background:rgba(185,75,116,.1); color:#b94b74; }
+.sp-tag.lk { background:rgba(20,20,20,.07); color:var(--ink2); }
+.sp-note { font-size:13.5px; color:var(--ink2); margin-top:2px; }
+.sp-by { font-size:12px; color:var(--ink3); margin-top:3px; display:flex; align-items:center; gap:5px; }
+.sp-by .av.sm { width:16px; height:16px; font-size:7.5px; }
+.sp-got { font-size:12.5px; color:var(--ok); font-weight:700; margin-top:3px; }
+.sp-got a { color:var(--blue); }
+.sp-ai { margin-top:9px; border-radius:14px; background:#faf6f8; padding:10px 11px; box-shadow:inset 0 0 0 1px rgba(185,75,116,.14); }
+.sp-ai b { font-size:14px; display:block; }
+.sp-ai p { font-size:12.5px; color:var(--ink2); margin-top:2px; }
+.sp-ai .sp-hl, .sp-idea .sp-hl { color:#a56a00; font-weight:700; }
+.sp-ai.think { background:linear-gradient(90deg, #faf6f8, #f3e6ec, #faf6f8); background-size:200% 100%; animation:spshim 1.2s linear infinite; color:var(--ink3); font-size:13px; font-weight:700; }
+@keyframes spshim { to { background-position:-200% 0; } }
+.sp-when { display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
+.sp-pill { font-size:12px; font-weight:700; border-radius:999px; padding:2px 9px; background:#fff; box-shadow:0 0 0 1px var(--line); color:var(--ink2); text-decoration:none; }
+.sp-pill.on { background:var(--ok); color:#fff; box-shadow:none; }
+.sp-pill.soon { background:#fff4df; color:#a56a00; box-shadow:none; }
+.sp-acts { display:flex; gap:6px; margin-top:9px; flex-wrap:wrap; }
+.sp-act { height:30px; padding:0 12px; border-radius:999px; background:rgba(0,0,0,.06); font-size:12.5px; font-weight:700; display:inline-flex; align-items:center; text-decoration:none; color:var(--ink); }
+.sp-act.dark { background:var(--ink); color:#fff; }
+.sp-act.del { color:#a5281e; background:none; padding:0 6px; }
+.sp-find { margin-top:9px; height:32px; padding:0 12px; border-radius:999px; background:#faf6f8; box-shadow:inset 0 0 0 1px rgba(185,75,116,.25); color:#b94b74; font-size:13px; font-weight:700; }
+.sp-empty { padding:18px 4px; text-align:center; color:var(--ink3); font-size:14px; }
+.sp-link { color:var(--blue); font-weight:700; font-size:inherit; }
+.sp-intro { padding:2px 20px 4px; font-size:14px; color:var(--ink2); }
+.sp-cat { padding:18px 20px 6px; display:flex; align-items:baseline; gap:8px; }
+.sp-cat.top { padding-top:14px; }
+.sp-cat h3 { font-size:19px; letter-spacing:-.02em; }
+.sp-cat span { font-family:var(--mincho); color:#b94b74; font-size:14px; }
+.sp-chips { display:flex; gap:8px; overflow-x:auto; padding:8px 16px 4px; scrollbar-width:none; }
+.sp-chips::-webkit-scrollbar { display:none; }
+.sp-chip { flex:none; height:34px; padding:0 13px; border-radius:999px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:13.5px; font-weight:700; color:var(--ink2); }
+.sp-chip.on { background:var(--ink); color:#fff; box-shadow:none; }
+.sp-chip i { font-style:normal; font-weight:500; opacity:.6; font-size:12px; }
+.sp-idea b { font-size:15.5px; display:block; line-height:1.3; }
+.sp-idea p { font-size:13.5px; color:var(--ink2); margin-top:2px; }
+.sp-idea .sp-where { font-size:12.5px; color:var(--ink3); margin-top:4px; }
+.sp-plus { flex:none; width:34px; height:34px; border-radius:50%; background:rgba(185,75,116,.1); color:#b94b74; font-size:22px; line-height:1; display:grid; place-items:center; }
+.sp-plus.got { background:var(--ok); color:#fff; font-size:15px; font-weight:700; }
+.sp-pick { display:flex; flex-direction:column; gap:8px; }
+.sp-pick button { height:52px; border-radius:14px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:16px; display:flex; align-items:center; gap:10px; padding:0 14px; text-align:left; }
+.sp-pick button.mine { box-shadow:0 0 0 2px var(--ink); }
+.sp-pick button small { margin-left:auto; font-size:12.5px; color:var(--ink3); }
+.sp-not { width:100%; height:42px; font-weight:700; font-size:14.5px; color:var(--ink2); margin-top:6px; }
 .driver { position:fixed; inset:0; z-index:1000; background:#fbf8f1; display:flex; flex-direction:column; padding:calc(70px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); opacity:0; transform:scale(.97); pointer-events:none; transition:opacity 220ms ease, transform 280ms var(--ease); overflow-y:auto; }
 .driver.on { opacity:1; transform:none; pointer-events:auto; }
 .driver .x { position:absolute; top:var(--top); right:14px; width:48px; height:48px; border-radius:50%; background:#fff; display:grid; place-items:center; box-shadow:0 2px 10px rgba(0,0,0,.12); }
@@ -289,8 +358,6 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 .driver .warn input { width:100%; margin-top:8px; font:500 16px var(--sans); border:1px solid rgba(0,0,0,.1); border-radius:10px; padding:10px 12px; }
 .driver dl { display:grid; grid-template-columns:auto 1fr; gap:6px 14px; margin:18px 0 0; font-size:14.5px; }
 .driver dt { color:var(--ink3); font-weight:700; } .driver dd { margin:0; min-width:0; }
-.hcard .htag { align-self:flex-start; display:inline-block; margin-top:6px; font-size:12.5px; font-weight:700; color:#7a5a00; background:#fff6dd; padding:3px 9px; border-radius:999px; }
-.hcard .hwho { position:absolute; top:12px; right:12px; z-index:2; font-size:11px; font-weight:700; letter-spacing:.04em; padding:4px 9px; border-radius:999px; background:rgba(255,255,255,.92); color:#c25350; }
 .driver .acts { display:flex; gap:8px; margin-top:auto; padding-top:24px; }
 .driver .acts a, .driver .acts button { flex:1; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:700; text-decoration:none; background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.08); }
 .driver .acts a.pri { background:var(--ink); color:#fff; }
@@ -347,12 +414,12 @@ body.has-fab .homefab { transform:translate3d(0,-68px,0); }
 <button class="fab press" id="fab" hidden><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>Add expense</button>
 <div class="scrim" id="scrim"></div>
 <section class="sheet" id="sheet" aria-label="Expense"></section>
-<div class="driver" id="driver" role="dialog" aria-label="Taxi card"></div>
+<div class="driver" id="driver" role="dialog" aria-label="Show to staff"></div>
 <nav class="proto-picker" aria-label="Prototype tools">
   <span class="proto-picker-highlight" aria-hidden="true"></span>
   <button class="proto-picker-item" data-active aria-current="true">Expenses</button>
   <button class="proto-picker-item">Bookings</button>
-  <button class="proto-picker-item">Taxi</button>
+  <button class="proto-picker-item">Shopping</button>
   <button class="proto-picker-item">Ideas</button>
   <button class="proto-picker-item">Settings</button>
 </nav>
@@ -361,13 +428,14 @@ import { TRIP, DAYS, HOTELS } from '../data/itinerary.js?v=9';
 import { FOOD, BOOKINGS, TIPS, SUGGESTIONS } from '../data/guide.js?v=9';
 import { PLACES } from '../data/places.js?v=9';
 import { DIET } from '../data/diet.js?v=9';
-import { HOTEL_JA } from '../data/hotels-ja.js?v=9';
+import { SHOP_IDEAS, SHOP_CATS } from '../data/shop-ideas.js?v=9';
 import { store, SANDBOX, GUEST, deviceId } from '../js/store.js?v=9';
 import { CAT, MODE, PROFILE_COLORS } from '../js/colors.js?v=9';
 import { offline } from '../js/offline.js?v=9';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch { return f; } }, set(k, v) { if (SANDBOX) return; try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const CAM = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="1.8"/><path d="M21 15l-4.5-4.5L7 20"/></svg>';
 const X = '<svg width="20" height="20" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 const ARROW = '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M4 12h15M14 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const LOC = '<svg width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -399,7 +467,7 @@ const CATS = { food: ['Food', '#cc5a26', '🍜'], transport: ['Transport', '#2f5
 const SPLITS = { all: ['naf', 'sara', 'mariam', 'm'], nasa: ['naf', 'sara'], mm: ['mariam', 'm'] };
 // Expenses live in the shared trip store (Cloudflare KV), so every phone sees the same list.
 const ME = (() => { try { return JSON.parse(localStorage.getItem('trips.me')); } catch { return null; } })();
-// Guests can look at bookings, ideas, taxi cards and settings, but change nothing and don't see the expenses.
+// Guests can look at bookings, shopping, ideas and settings, but change nothing and don't see the expenses.
 // In the practice tour they can try everything (on an empty expense list; nothing is saved anyway).
 const VIEW = GUEST && !SANDBOX;
 // "Just me" expenses (own) are someone's personal spending: only on their own Mine page, never in who-owes-whom.
@@ -567,32 +635,163 @@ addEventListener('pointerup', swEnd); addEventListener('pointercancel', () => { 
 let swallowClick = false;
 document.getElementById('page').addEventListener('click', (e) => { if (swallowClick) { e.stopImmediatePropagation(); e.preventDefault(); return; } const d = e.target.closest('[data-delask]'); if (d) { e.stopImmediatePropagation(); askDelete(d.dataset.delask); return; } if (swOpen && e.target.closest('.xsw .xrow')) { e.stopImmediatePropagation(); closeSwipe(); } }, true);
 
-/* ═══════════ 2 · TAXI CARDS ═══════════ */
-/* Japanese names and districts confirmed against OpenStreetMap; full addresses for Kyoto and Hakone still need the booking confirmation. */
-const HJA = Object.fromEntries(Object.entries(HOTEL_JA).map(([k, v]) => [k, { ja: v.ja, addr: v.addr_ja, zip: v.zip, en: v.addr_en, phone: v.phone }]));
-// tonight's hotel for this phone's couple: M&M have two nights away (a day's mmHotel)
-function tonightHotel() { const t = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10); const d = DAYS.find((x) => x.date === t) || DAYS[0]; return d.mmHotel && P[ME] && P[ME].couple === 'mm' ? d.mmHotel : d.hotel; }
-// a hotel still waiting on the room (HOTELS[].pending is its Bookings id): "Mark as booked" on the Bookings page or its stop clears it
-const hotelPending = (h) => !!h.pending && store.getChoice(h.pending, '') !== 'booked';
-function renderTaxi() {
-  const tn = tonightHotel();
-  return `<header class="ph"><small>Taxi cards</small><h1>Take me to the hotel</h1><p>Tap a hotel and show the screen to the driver. It says, in Japanese, "Please take me to this hotel".</p></header>
-    <div class="hlist">${HOTELS.map((h) => { const pi = PLACES[h.name] || {}; const j = HJA[h.id] || {}; return `<button class="hcard press" data-hotel="${h.id}" style="${pi.img ? `background-image:url('../img/places/${esc(pi.img)}')` : 'background-color:#55702f'}">${h.id === tn ? '<span class="tonight">Tonight</span>' : ''}${h.who === 'mm' ? '<span class="hwho">M&amp;M</span>' : ''}<div><small>${esc(h.city)} · ${esc(h.dates)} · ${h.nights} night${h.nights > 1 ? 's' : ''}</small><b>${esc(h.name)}</b>${j.ja ? `<span class="jp">${esc(j.ja)}</span>` : ''}${hotelPending(h) ? '<span class="htag">Room not confirmed yet</span>' : ''}</div></button>`; }).join('')}</div>`;
+/* ═══════════ 2 · SHOPPING ═══════════ */
+/* One shared list in three parts: All of us, M&M, NASA. Each thing gets where on our route it's easiest to buy (asked of
+   the helper in lib/shop-claude.js when it's added), which also puts a "to buy here" strip on that stop's card. The Only in
+   Japan tab is data/shop-ideas.js. lock: only the person who added it sees it (a present for someone in the group). */
+const SH_LISTS = { all: 'All of us', mm: 'M&M', nasa: 'NASA' };
+const SH_WHO = { all: 'All four of us', mm: 'Mo and Mariam (M&M)', nasa: 'Naf and Sara (NASA)' };
+const MM_FROM = '2026-10-21'; // M&M land on Oct 21: their part of the route starts there
+const jstToday = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const sh = { list: ls.get('proto.shlist', P[ME] ? P[ME].couple : 'all'), cat: 'all', lock: false, asking: new Set(), name: '', for: '', note: '', photo: '', pics: new Map() };
+const PIC_NAME = 'From a photo'; // a thing added as just a photo, until the helper says what it is
+const shVisible = (x) => !x.lock || x.lock === ME;
+const shItems = () => Object.entries(store.getShop()).map(([id, x]) => ({ id, ...x })).filter((x) => x && x.name && SH_LISTS[x.list] && shVisible(x));
+// every stop on the trip, edited and added ones included, with its day and who it's for (off: on a choice's option
+// that wasn't picked, so it's not on the route, though a thing already placed there still finds it)
+function allStops() {
+  const C = store.state.custom || {}, out = [];
+  for (const d of DAYS) for (const it of d.items) {
+    const pick = it.type === 'choice' ? store.getChoice(it.id, it.default) : '', on = (o) => o.id === pick || (!it.options.some((y) => y.id === pick) && o === it.options[0]);
+    const evs = it.type === 'event' ? [[it, false]] : it.type === 'choice' ? it.options.flatMap((o) => (o.items || []).map((e) => [e, !on(o)])) : [];
+    for (const [e, off] of evs) { const c = C[e.id] || {}; if (c.hidden) continue; out.push({ id: e.id, d, title: c.title || e.title, place: (c.place && c.place.name) || (e.place && e.place.name) || '', who: c.who || e.who || 'all', off }); }
+  }
+  for (const [id, c] of Object.entries(C)) if (c && c.added && !c.hidden && dayOf(c.day)) out.push({ id, d: dayOf(c.day), title: c.title || 'New stop', place: (c.place && c.place.name) || '', who: c.who || 'all' });
+  return out;
+}
+const stopById = (id) => allStops().find((x) => x.id === id) || null;
+// a list's people are on a stop when it's for everyone or for them (All of us: stops for everyone)
+const onRoute = (st, list) => st.who === 'all' || st.who === list;
+function routeFor(list) {
+  const t = jstToday(), from = list === 'mm' && t < MM_FROM ? MM_FROM : t;
+  return allStops().filter((x) => !x.off && x.d.date >= from && (list === 'all' ? x.who === 'all' : onRoute(x, list)) && x.title);
+}
+const dayLabel = (d) => new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+function whenPill(st) { const n = Math.round((Date.parse(st.d.date) - Date.parse(jstToday())) / 864e5); return n < 0 ? 'Passed' : n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `in ${n} days`; }
+const inShopEx = (id) => Object.values(store.getExpenses()).find((x) => x.src === id) || null;
+async function askShop(id) {
+  const x = store.getShop()[id]; if (!x || sh.asking.has(id)) return;
+  sh.asking.add(id); shRender();
+  const stops = routeFor(x.list).map((st) => ({ id: st.id, date: st.d.date, city: st.d.city, title: st.title, place: st.place }));
+  try {
+    const r = await store.api('shop-ai', { id, name: x.name === PIC_NAME ? '' : x.name, note: x.note || '', who: SH_WHO[x.list], today: jstToday(), stops });
+    const st = r.at ? stopById(r.at) : null, cur = store.getShop()[id];
+    if (cur && r.shop) store.setShop(id, { ...cur, ...(cur.name === PIC_NAME && r.name ? { name: r.name } : {}), ai: { shop: r.shop, why: r.why, search: r.search, ja: r.ja, halal: r.halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
+  } catch (err) { sh.msg = err && err.pin ? 'Finding a shop needs the PIN.' : navigator.onLine === false ? 'No signal: tap Find where to buy once you\'re back online.' : "Couldn't find a shop for that. Try Find where to buy again."; }
+  sh.asking.delete(id); shRender();
+}
+// a redraw while a box on the page is being typed in would take the keyboard away: it waits until the box is left
+let shLater = false;
+const shRender = () => { if (/^sh-/.test((document.activeElement && document.activeElement.id) || '')) shLater = true; else render(); };
+const newShopId = () => 'sh' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+async function addShop() {
+  const name = sh.name.trim(), photo = sh.photo; if ((!name && !photo) || !P[ME]) return;
+  const id = newShopId(), list = sh.list === 'ideas' ? P[ME].couple : sh.list;
+  const x = { name: name || PIC_NAME, list, by: ME, ...(sh.for.trim() ? { for: sh.for.trim() } : {}), ...(sh.note.trim() ? { note: sh.note.trim() } : {}), ...(sh.lock ? { lock: ME } : {}), ...(photo ? { photo: Date.now() } : {}), at: Date.now() };
+  if (photo) sh.pics.set(id, photo);
+  store.setShop(id, x);
+  sh.name = sh.for = sh.note = sh.photo = ''; sh.lock = false; sh.msg = '';
+  // the photo goes up first: the helper reads it from the server to say what it is
+  if (photo && !SANDBOX && !(await store.setShopPhoto(id, photo))) {
+    const cur = store.getShop()[id];
+    if (!name) { store.setShop(id, null); sh.photo = photo; sh.msg = navigator.onLine === false ? 'No signal: the photo didn\'t send. Tap Add again once you\'re back online.' : 'The photo didn\'t send. Tap Add to try again.'; return shRender(); }
+    if (cur) { const { photo: _, ...rest } = cur; store.setShop(id, rest); }
+    sh.msg = 'The photo didn\'t send, so it was added without it.';
+  }
+  askShop(id);
+}
+// a photo from the phone (a screenshot, a TikTok), shrunk like a receipt: big enough to read, small enough to send
+function shopPhoto(file) {
+  return new Promise((ok, bad) => { const u = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { const k = Math.min(1, 1200 / Math.max(img.width, img.height)), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); ok(c.toDataURL('image/jpeg', 0.72)); };
+    img.onerror = () => { URL.revokeObjectURL(u); bad(new Error('not a photo')); }; img.src = u; });
+}
+// photos are read with the PIN, so each comes back as a blob URL once and is kept for the visit
+function loadShopPics() {
+  for (const x of shItems()) if (x.photo && !sh.pics.has(x.id)) {
+    sh.pics.set(x.id, '');
+    store.shopPhotoUrl(x.id, x.photo).then((u) => { if (!u) { sh.pics.delete(x.id); return; } sh.pics.set(x.id, u); document.querySelectorAll(`img[data-spimg="${x.id}"]`).forEach((im) => { im.src = u; }); });
+  }
+}
+function showShopPic(id) {
+  const x = store.getShop()[id], u = sh.pics.get(id); if (!x || !u) return;
+  driver.innerHTML = `<button class="x" data-dx aria-label="Close">${X}</button><p class="lbl">${esc(x.name)}</p><img class="sp-big" src="${esc(u)}" alt="${esc(x.name)}">`;
+  driver.classList.add('on');
+}
+function addIdea(i, list) {
+  const [, name, why, where, at, halal, ja] = SHOP_IDEAS[i], st = stopById(at);
+  store.setShop(newShopId(), { name, list, by: P[ME] ? ME : 'naf', idea: true, at: Date.now(), ai: { shop: where, why, search: where.split(',')[0], ja, halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
+}
+const MAPS = (q) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+function shopRow(x) {
+  const st = x.ai && x.ai.at ? stopById(x.ai.at) : null, exd = !VIEW && inShopEx(x.id), asking = sh.asking.has(x.id);
+  const tags = `${x.for ? `<span class="sp-tag">for ${esc(x.for)}</span>` : ''}${x.lock ? '<span class="sp-tag lk">only you</span>' : ''}`;
+  const ai = asking ? `<div class="sp-ai think">${x.name === PIC_NAME ? 'Working out what\'s in the photo and where to get it…' : 'Finding the easiest place on your route…'}</div>`
+    : x.ai ? `<div class="sp-ai"><b>${esc(x.ai.shop)}</b>${x.ai.why ? `<p>${esc(x.ai.why)}</p>` : ''}${st ? `<div class="sp-when"><a class="sp-pill ${onRoute(st, x.list) || x.list === 'all' ? 'on' : ''}" href="../?d=${st.d.id}">${onRoute(st, x.list) || x.list === 'all' ? 'On your route' : 'Near your route'} · Day ${st.d.n} · ${esc(st.title)}</a><span class="sp-pill ${/Today|Tomorrow/.test(whenPill(st)) ? 'soon' : ''}">${dayLabel(st.d)} · ${whenPill(st)}</span></div>` : ''}${x.ai.halal ? `<p class="sp-hl">${esc(x.ai.halal)}</p>` : ''}</div>`
+    : VIEW ? '' : `<button class="sp-find press" data-shfind="${x.id}">Find where to buy</button>`;
+  const acts = x.done ? '' : `<div class="sp-acts">${x.ai && x.ai.search ? `<a class="sp-act dark press" href="${MAPS(x.ai.search)}" target="_blank" rel="noopener">Near me</a>` : ''}${(x.ai && x.ai.ja) || x.photo ? `<button class="sp-act press" data-shstaff="${x.id}">Show staff</button>` : ''}${VIEW ? '' : `<button class="sp-act press" data-shfind="${x.id}">Ask again</button><button class="sp-act del press" data-shdel="${x.id}" aria-label="Remove ${esc(x.name)}">Remove</button>`}</div>`;
+  return `<div class="sp-it ${x.done ? 'done' : ''}"><button class="sp-tick press" data-shtick="${x.id}" ${VIEW ? 'disabled' : ''} aria-label="${x.done ? 'Not bought yet' : 'Bought'}: ${esc(x.name)}">${x.done ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</button>
+    <div class="sp-bd"><div class="sp-nm">${esc(x.name)}${tags}</div>${x.note ? `<p class="sp-note">${esc(x.note)}</p>` : ''}${P[x.by] ? `<p class="sp-by"><span class="av sm" style="${avStyle(P[x.by])}">${P[x.by].ini}</span>added by ${esc(P[x.by].name)}</p>` : ''}
+    ${x.done ? `<p class="sp-got">${exd ? `In expenses · ${fmtY(exd.yen)}` : `Bought${P[x.doneBy] ? ` by ${esc(P[x.doneBy].name)}` : ''}`}${!exd && !VIEW ? ` · <a href="${esc(shopExHref(x))}">Add to expenses</a>` : ''}</p>` : ai}${acts}</div>${x.photo ? `<button class="sp-pic press" data-shpic="${x.id}" aria-label="See the photo"><img data-spimg="${x.id}" src="${esc(sh.pics.get(x.id) || '')}" alt=""></button>` : ''}</div>`;
+}
+function shopExHref(x, yen) {
+  const split = x.list === 'all' ? SPLITS.all : SPLITS[x.list];
+  const q = new URLSearchParams({ add: '1', d: x.ai && x.ai.day ? x.ai.day : todayId(), src: x.id, t: x.name, c: 'shopping', p: P[ME] ? ME : x.by, s: split.join(','), ...(yen ? { y: String(yen) } : {}) });
+  return '../money?' + q.toString();
+}
+function renderShopIdeas() {
+  const has = new Map(shItems().map((x) => [x.name.toLowerCase(), x]));
+  const chips = [['all', 'Everything', SHOP_IDEAS.length], ...Object.entries(SHOP_CATS).map(([k, [n]]) => [k, n, SHOP_IDEAS.filter((x) => x[0] === k).length])]
+    .map(([k, n, c]) => `<button class="sp-chip press ${sh.cat === k ? 'on' : ''}" data-shcat="${k}">${esc(n)} <i>${c}</i></button>`).join('');
+  const cats = Object.entries(SHOP_CATS).filter(([k]) => sh.cat === 'all' || sh.cat === k).map(([k, [n, ja]]) => {
+    const rows = SHOP_IDEAS.map((x, i) => [x, i]).filter(([x]) => x[0] === k).map(([[, name, why, where, at, halal], i]) => {
+      const st = stopById(at), got = has.get(name.toLowerCase());
+      return `<div class="sp-idea"><div class="sp-bd"><b>${esc(name)}</b><p>${esc(why)}</p><p class="sp-where">${esc(where)}${st ? ` · Day ${st.d.n}, ${dayLabel(st.d)}${st.who !== 'all' ? ` · ${st.who === 'nasa' ? 'NASA' : 'M&amp;M'} only` : ''}` : ''}</p>${halal ? `<p class="sp-hl">${esc(halal)}</p>` : ''}</div>
+        ${VIEW ? '' : got ? `<span class="sp-plus got" title="On ${esc(SH_LISTS[got.list])}">✓</span>` : `<button class="sp-plus press" data-shidea="${i}" aria-label="Add ${esc(name)} to a list">+</button>`}</div>`;
+    }).join('');
+    return `<div class="sp-cat"><h3>${esc(n)}</h3><span>${ja}</span></div><div class="card sp-list">${rows}</div>`;
+  }).join('');
+  return `<div class="sp-cat top"><h3>Only in Japan</h3><span>日本だけ</span></div><p class="sp-intro">Things you can only get here, or that are far better or cheaper here, each placed on our route.${VIEW ? '' : ' Tap <b>+</b> to put one on a list.'}</p>
+    <div class="sp-chips">${chips}</div>${cats}`;
+}
+function renderShop() {
+  const all = shItems(), n = (k) => all.filter((x) => x.list === k && !x.done).length;
+  const seg = `<div class="sp-seg"><div class="seg sp-lists">${Object.entries(SH_LISTS).map(([k, l]) => `<button class="${sh.list === k ? 'on' : ''}" data-shlist="${k}">${k === 'all' ? 'All' : esc(l)}${n(k) ? ` <em>${n(k)}</em>` : ''}</button>`).join('')}<button class="${sh.list === 'ideas' ? 'on' : ''}" data-shlist="ideas">Ideas</button><i></i></div></div>`;
+  const head = `<header class="ph"><small>Shopping</small><h1>Things to buy <span class="sp-ja">買い物</span></h1><p>One list for all four phones, with the easiest place on our route to get each thing.</p></header>${seg}`;
+  if (sh.list === 'ideas') return head + renderShopIdeas();
+  const mine = all.filter((x) => x.list === sh.list), todo = mine.filter((x) => !x.done), done = mine.filter((x) => x.done);
+  const add = VIEW ? '' : !P[ME] ? '<p class="sp-intro">Pick who you are on the trips page to add things.</p>' : `<div class="card sp-add">
+      <div class="sp-line"><label class="sp-cam press" aria-label="Add a photo or screenshot">${CAM}<input type="file" id="sh-file" accept="image/*"></label><input id="sh-name" placeholder="${sh.photo ? 'What is it? (or leave it to us)' : 'Something to buy…'}" autocomplete="off" maxlength="90" value="${esc(sh.name)}" aria-label="Something to buy"><button class="sp-go press" data-shadd ${sh.name.trim() || sh.photo ? '' : 'disabled'}>Add</button></div>
+      ${sh.photo ? `<div class="sp-prev"><img src="${esc(sh.photo)}" alt="The photo to add"><p>${sh.name.trim() ? 'The photo goes with it.' : 'No name needed: we\'ll work out what it is from the photo.'}</p><button class="sp-act press" data-shrmpic>Remove</button></div>` : ''}
+      <div class="sp-more"><input id="sh-for" placeholder="Gift for… (optional)" maxlength="40" value="${esc(sh.for)}" aria-label="Gift for"><input id="sh-note" placeholder="Note: size, colour…" maxlength="200" value="${esc(sh.note)}" aria-label="Note"><button class="sp-lock press ${sh.lock ? 'on' : ''}" data-shlock aria-pressed="${sh.lock}">${sh.lock ? 'Only me' : 'Secret?'}</button></div>
+      <p class="sp-to">Adds to <b>${esc(SH_LISTS[sh.list])}</b>. ${sh.lock ? 'Locked: only you will see it.' : 'Everyone can see it.'}</p>${sh.msg ? `<p class="sp-msg">${esc(sh.msg)}</p>` : ''}</div>`;
+  queueMicrotask(loadShopPics);
+  return head + add + `<p class="sec"><span>To buy · ${esc(SH_LISTS[sh.list])}</span></p><div class="card sp-list">${todo.length ? todo.map(shopRow).join('') : `<p class="sp-empty">Nothing on this list yet.${VIEW ? '' : ' Add something above, or pick from <button class="sp-link" data-shlist="ideas">Ideas</button>.'}</p>`}</div>
+    ${done.length ? `<p class="sec"><span>Bought</span></p><div class="card sp-list">${done.map(shopRow).join('')}</div>` : ''}`;
+}
+function boughtSheet(id) {
+  const x = store.getShop()[id]; if (!x) return;
+  ed = null;
+  sheet.innerHTML = `<div class="grab"></div><div class="sh-h"><b>Bought: ${esc(x.name)}</b><button data-shclose>Close</button></div>
+    <p class="sp-intro" style="padding:0 2px 12px">Add it to expenses? The form opens with the name and Shopping filled in, paid by ${P[ME] ? esc(P[ME].name) : 'you'}, split ${x.list === 'all' ? 'between all four' : `within ${esc(SH_LISTS[x.list])}`}. You can change any of it there.</p>
+    <label class="fld"><span>How much (yen)</span><input id="sh-yen" inputmode="numeric" autocomplete="off" placeholder="¥"></label>
+    <button class="bigb press" data-shex="${id}">Add to expenses</button><button class="sp-not" data-shclose>Not now</button>`;
+  scrim.classList.add('on'); sheet.classList.add('on');
+}
+function pickListSheet(i) {
+  const name = SHOP_IDEAS[i][1], mine = P[ME] ? P[ME].couple : 'all';
+  ed = null;
+  sheet.innerHTML = `<div class="grab"></div><div class="sh-h"><b>Add ${esc(name)}</b><button data-shclose>Cancel</button></div>
+    <div class="sp-pick">${Object.entries(SH_LISTS).map(([k, l]) => `<button class="press ${k === mine ? 'mine' : ''}" data-shpick="${k}" data-i="${i}"><b>${esc(l)}</b><small>${k === mine ? 'your list' : k === 'all' ? 'everyone' : ''}</small></button>`).join('')}</div>`;
+  scrim.classList.add('on'); sheet.classList.add('on');
+}
+function showStaff(id) {
+  const x = store.getShop()[id], pic = sh.pics.get(id); if (!x || (!(x.ai && x.ai.ja) && !pic)) return;
+  driver.innerHTML = `<button class="x" data-dx aria-label="Close">${X}</button><p class="lbl">Show this to staff</p><p class="say">これはありますか</p><p class="sayr">kore wa arimasu ka · "Do you have this?"</p>
+    ${pic ? `<img class="sp-big" src="${esc(pic)}" alt="">` : ''}${x.ai && x.ai.ja ? `<p class="name${pic ? ' sm' : ''}">${esc(x.ai.ja)}</p>` : ''}<p class="en">${esc(x.name)}${x.note ? ` · ${esc(x.note)}` : ''}</p>`;
+  driver.classList.add('on');
 }
 const driver = document.getElementById('driver');
-function openDriver(id) {
-  const h = HOTELS.find((x) => x.id === id), j = HJA[id] || {};
-  driver.innerHTML = `<button class="x" data-dx aria-label="Close">${X}</button>
-    <p class="lbl">Show this to the driver</p><p class="say">このホテルまでお願いします</p><p class="sayr">kono hoteru made onegaishimasu · "Please take me to this hotel"</p>
-    <p class="name">${esc(j.ja || h.name)}</p>
-    <p class="addr">${esc([j.zip, j.addr].filter(Boolean).join(' '))}</p>
-    ${j.phone ? `<p class="addr" style="font-family:var(--sans);font-size:24px;font-weight:700;letter-spacing:.02em">☎ ${esc(j.phone)}</p><p class="sayr">Drivers can type the phone number into their navigation.</p>` : ''}
-    <p class="en">${esc(h.name)} · ${esc(j.en || h.city)}</p>
-    ${hotelPending(h) ? '<p class="warn"><b>Room not confirmed yet.</b> The price and arrival time are agreed. Mark it booked on its stop or on the Bookings page once they confirm.</p>' : ''}
-    ${h.info ? `<dl>${h.info.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
-    <div class="acts"><a class="pri" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.addr || h.q || h.name)}" target="_blank" rel="noopener">Open in Maps</a>${j.phone ? `<a href="tel:${esc('+81' + j.phone.replace(/^0/, '').replace(/-/g, ''))}">Call hotel</a>` : ''}<button data-copy="${esc((j.ja || h.name) + ' ' + (j.addr || ''))}">Copy</button></div>`;
-  driver.classList.add('on'); driver.dataset.h = id;
-}
 driver.addEventListener('click', (e) => { if (e.target.closest('[data-dx]')) driver.classList.remove('on'); const c = e.target.closest('[data-copy]'); if (c) { navigator.clipboard && navigator.clipboard.writeText(c.dataset.copy); c.textContent = 'Copied'; } });
 
 /* ═══════════ 3 · FOOD NEARBY ═══════════ */
@@ -729,12 +928,13 @@ function renderSettings() {
 }
 // Add to Home Screen: an iPhone only shows alerts for a site on the Home Screen (iOS 16.4+), and can't be asked from a
 // page, so it gets the two taps; Android Chrome offers its own install prompt, which the button opens.
-const AL_KINDS = [['delay', 'Delays', '15 min or more'], ['gate', 'Gate or terminal', ''], ['cancel', 'Cancelled or diverted', ''], ['landed', 'Landed + belt', '']];
+const AL_KINDS = [['delay', 'Delays', '15 min or more'], ['gate', 'Gate or terminal', ''], ['cancel', 'Cancelled or diverted', ''], ['landed', 'Landed + belt', ''], ['shop', 'Shopping heads-up', '8 AM, on days we pass something on the list']];
 const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const al = { install: null, home: ls.get('japan2026.homeDone', false), on: ls.get('japan2026.alertsOn', false), busy: false, msg: '', key: undefined, tracking: false,
   // chosen by couple (Mo's call: the tickets name each person, Settings goes by couple); the server keeps it per person
-  prefs: (() => { const p = ls.get('japan2026.alertsByCouple', {}); return Object.fromEntries(Object.keys(COUPLES).map((c) => [c, Object.fromEntries(AL_KINDS.map(([k]) => [k, !(p[c] && p[c][k] === false)]))])); })() };
+  // the shopping heads-up starts on for your own couple's list only
+  prefs: (() => { const p = ls.get('japan2026.alertsByCouple', {}), mine = P[ME] ? P[ME].couple : null; return Object.fromEntries(Object.keys(COUPLES).map((c) => [c, Object.fromEntries(AL_KINDS.map(([k]) => [k, k === 'shop' && !(p[c] && typeof p[c].shop === 'boolean') ? !mine || mine === c : !(p[c] && p[c][k] === false)]))])); })() };
 addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); al.install = e; if (tab === 4 && !sub) render(); });
 addEventListener('appinstalled', () => { al.home = true; ls.set('japan2026.homeDone', true); if (tab === 4 && !sub) render(); });
 const PUSH_OK = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -748,13 +948,16 @@ function homeCard() {
   return `<div class="homec"><h3>Add the trip to your Home Screen</h3><p>It opens like an app, works offline, and can show flight alerts.</p>
     ${al.install ? '<button class="hbig press" data-install>Install Japan 2026</button>' : '<p>In Chrome: tap ⋮, then Add to Home screen.</p>'}<button class="hlink" data-homedone>I've done it</button></div><div style="height:14px"></div>`;
 }
-function alertsCard() {
-  // "On" is what this phone remembers; check it against the browser's subscription once (it can expire or be dropped),
-  // and send it to the server again so both agree
+// "On" is what this phone remembers; check it against the browser's subscription once (it can expire or be dropped),
+// and send it to the server again so both agree (this also sends a phone's shopping heads-up choice the first time)
+function syncAlerts() {
   if (al.on && PUSH_OK && !al.synced && !SANDBOX) { al.synced = true; navigator.serviceWorker.getRegistration('../').then((r) => (r ? r.pushManager.getSubscription() : null)).then((s0) => {
     if (s0) return sendPrefs(s0.toJSON()).catch(() => {});
     al.on = false; ls.set('japan2026.alertsOn', false); if (tab === 4 && !sub) render();
   }, () => {}); }
+}
+function alertsCard() {
+  syncAlerts();
   if (al.key === undefined && !SANDBOX) { al.key = null; store.api('push').then((r) => { al.key = r.key; al.tracking = r.tracking; }, () => {}).finally(() => { if (tab === 4 && !sub) render(); }); }
   let btn, line;
   if (!PUSH_OK) { btn = ''; line = IOS && !STANDALONE ? 'Add the trip to your Home Screen first, then open it from there.' : "This browser can't show alerts."; }
@@ -762,7 +965,7 @@ function alertsCard() {
   else { btn = `<button class="alon ${al.on ? 'is' : ''} press" data-alerts ${al.busy ? 'disabled' : ''}>${al.busy ? '…' : al.on ? 'On' : 'Turn on'}</button>`; line = al.on ? `On for ${P[ME] ? P[ME].name : 'this phone'}. Tap to turn off.` : 'Off until you allow them.'; if (!al.tracking) line += ' Alerts start once the flight service is connected.'; }
   const grid = AL_KINDS.map(([k, t, sm]) => `<div class="k">${t}${sm ? `<small>${sm}</small>` : ''}</div>${Object.entries(COUPLES).map(([id, c]) => `<div class="c"><button class="asw" style="--p:${c.c}" role="switch" aria-checked="${al.prefs[id][k]}" aria-label="${t} for ${esc(c.name)}" data-alpref="${id}:${k}"></button></div>`).join('')}`).join('');
   return `<div class="card scard"><div class="setrow"><span>Alerts on this phone<small>${line}</small></span>${btn}</div>
-    <p class="alsub">Alerts for whose flights:</p><div class="agrid"><span></span>${Object.values(COUPLES).map((c) => `<span class="h" style="color:${c.c}">${esc(c.name)}</span>`).join('')}${grid}</div>
+    <p class="alsub">Alerts for each couple's flights and shopping list:</p><div class="agrid"><span></span>${Object.values(COUPLES).map((c) => `<span class="h" style="color:${c.c}">${esc(c.name)}</span>`).join('')}${grid}</div>
     ${al.msg ? `<p class="almsg">${esc(al.msg)}</p>` : ''}<p class="alsub">Each phone picks its own. A flight with people from both couples sends one alert.</p></div>`;
 }
 const urlKey = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
@@ -937,6 +1140,7 @@ function mountFoodMap() {
 
 /* ═══════════ harness ═══════════ */
 const page = document.getElementById('page'), fab = document.getElementById('fab');
+page.addEventListener('focusout', () => { if (shLater) { shLater = false; setTimeout(render, 0); } });
 const picker = document.querySelector('.proto-picker'), hl = picker.querySelector('.proto-picker-highlight'), items = [...picker.querySelectorAll('.proto-picker-item')];
 let tab = Math.max(0, (parseInt(new URLSearchParams(location.search).get('v'), 10) || 1) - 1);
 /* Whatever changes asks for a redraw; several in one go (a store update reaches four listeners) draw once, before the next
@@ -952,7 +1156,7 @@ const asDrawn = () => !(tab === 3 && foodView === 'nearby') && !(page.contains(d
 function render() { if (!drawQ) { drawQ = true; queueMicrotask(draw); } }
 function draw() {
   drawQ = false; const y = scrollY; parts = {};
-  syncPeople(); const h = [renderExpenses, renderBookings, renderTaxi, renderFood, renderSettings][tab](), same = asDrawn();
+  syncPeople(); const h = [renderExpenses, renderBookings, renderShop, renderFood, renderSettings][tab](), same = asDrawn();
   if (h !== onPage || !same) {
     const ks = Object.keys(parts), cut = (s, ps) => ks.reduce((s2, k) => s2.replace(ps[k], '\0'), s);
     if (same && ks.length && ks.every((k) => k in was) && cut(h, parts) === cut(onPage, was)) { for (const k of ks) if (parts[k] !== was[k]) PART[k]().outerHTML = parts[k]; }
@@ -980,7 +1184,17 @@ document.querySelectorAll('[data-home]').forEach((a) => a.addEventListener('clic
 }));
 function backToTrip() { if (fromTrip() && history.length > 1) history.back(); else location.href = '../'; }
 fab.addEventListener('click', () => openEx(null));
-page.addEventListener('input', (e) => { if (e.target.id === 'sg-text') ideas.draft = e.target.value; });
+page.addEventListener('input', (e) => { if (e.target.id === 'sg-text') ideas.draft = e.target.value;
+  if (e.target.id === 'sh-name') { sh.name = e.target.value; const b = page.querySelector('[data-shadd]'); if (b) b.disabled = !sh.name.trim() && !sh.photo; }
+  if (e.target.id === 'sh-for') sh.for = e.target.value; if (e.target.id === 'sh-note') sh.note = e.target.value; });
+page.addEventListener('keydown', (e) => { if (e.key === 'Enter' && /^sh-(name|for|note)$/.test(e.target.id)) { e.preventDefault(); addShop(); render(); } });
+// the shopping sheets: bought → expenses, and which list an idea goes on
+sheet.addEventListener('click', (e) => {
+  if (e.target.closest('[data-shclose]')) { closeSheet(); return; }
+  const ex0 = e.target.closest('[data-shex]'); if (ex0) { const x = store.getShop()[ex0.dataset.shex], y = parseInt((document.getElementById('sh-yen').value || '').replace(/\D/g, ''), 10); if (x) location.href = shopExHref({ id: ex0.dataset.shex, ...x }, y > 0 ? y : 0); return; }
+  const pk = e.target.closest('[data-shpick]'); if (pk) { addIdea(+pk.dataset.i, pk.dataset.shpick); closeSheet(); undoToast(`Added to ${SH_LISTS[pk.dataset.shpick]}`); render(); }
+});
+const undoToast = (msg) => { undoFn = null; toastEl.innerHTML = `<span>${esc(msg)}</span>`; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), 2600); };
 page.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
   const fv = t('[data-fview]'); if (fv) { foodView = fv.dataset.fview; const u = new URL(location); u.searchParams.set('f', foodView); history.replaceState(null, '', u); return render(); }
@@ -1009,16 +1223,29 @@ page.addEventListener('click', (e) => {
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couple' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couple' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
     const sid = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); saveExpense(sid, { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); render(); return undoable(`Marked ${tr.from.name} → ${tr.to.name} paid`, () => saveExpense(sid, null)); }
   const xr = t('[data-ex]'); if (xr) return openEx(xr.dataset.ex);
-  const h = t('[data-hotel]'); if (h) return openDriver(h.dataset.hotel);
+  const shl = t('[data-shlist]'); if (shl) { sh.list = shl.dataset.shlist; ls.set('proto.shlist', sh.list); sh.msg = ''; return render(); }
+  const shc = t('[data-shcat]'); if (shc) { sh.cat = shc.dataset.shcat; return render(); }
+  if (t('[data-shlock]')) { sh.lock = !sh.lock; return render(); }
+  if (t('[data-shadd]')) { addShop(); return render(); }
+  const shk = t('[data-shtick]'); if (shk && P[ME]) { const id = shk.dataset.shtick, x = store.getShop()[id]; if (!x) return;
+    if (x.done) { const { done, doneBy, doneAt, ...rest } = x; store.setShop(id, rest); return render(); }
+    store.setShop(id, { ...x, done: true, doneBy: ME, doneAt: Date.now() }); render(); if (!VIEW && !inShopEx(id)) boughtSheet(id); return; }
+  const shf = t('[data-shfind]'); if (shf) { askShop(shf.dataset.shfind); return; }
+  const shs = t('[data-shstaff]'); if (shs) { showStaff(shs.dataset.shstaff); return; }
+  const shp = t('[data-shpic]'); if (shp) { showShopPic(shp.dataset.shpic); return; }
+  if (t('[data-shrmpic]')) { sh.photo = ''; return render(); }
+  const shd = t('[data-shdel]'); if (shd) { const id = shd.dataset.shdel, x = store.getShop()[id]; if (!x) return; return askConfirm(`Remove ${x.name}?`, 'It goes from the list on all four phones.', 'Remove', () => { store.setShop(id, null); render(); undoable('Removed', () => store.setShop(id, x)); if (x.photo) setTimeout(() => { if (!store.getShop()[id]) store.setShopPhoto(id, null); }, 8000); }); } // its photo goes too, once Undo has gone
+  const shi = t('[data-shidea]'); if (shi && (P[ME] || SANDBOX)) { pickListSheet(+shi.dataset.shidea); return; }
   if (t('[data-here]')) { if (!navigator.geolocation) { fd.err = 'Location is not available on this device.'; return render(); }
     navigator.geolocation.getCurrentPosition((p) => { fd.here = { name: 'My location', lat: p.coords.latitude, lng: p.coords.longitude }; searchFood(); }, () => { fd.err = 'Could not get your location. Check location permission, or pick a stop instead.'; render(); }, { enableHighAccuracy: true, timeout: 10000 }); return; }
-  const sh = t('[data-show]'); if (sh) { fd.show[sh.dataset.show] = !fd.show[sh.dataset.show]; return render(); }
+  const shw = t('[data-show]'); if (shw) { fd.show[shw.dataset.show] = !fd.show[shw.dataset.show]; return render(); }
   if (t('[data-allguide]')) { fd.allGuide = !fd.allGuide; return render(); }
   if (t('[data-radius]')) { fd.radius = fd.radius > 800 ? 800 : 1500; return searchFood(); }
   if (t('[data-pork]')) { driver.innerHTML = `<button class="x" data-dx aria-label="Close">${X}</button><p class="lbl">Show this to staff</p><p class="name" style="margin-top:40px">豚肉とアルコールが入ったものは食べられません</p><p class="sayr" style="margin-top:14px">butaniku to arukōru ga haitta mono wa taberaremasen</p><p class="en">"I can't eat anything that contains pork or alcohol."</p><p class="say" style="margin-top:30px;font-size:22px">これは豚肉が入っていますか</p><p class="sayr">kore wa butaniku ga haitte imasu ka · "Does this contain pork?"</p>`; driver.classList.add('on'); return; }
   const fr = t('[data-food]'); if (fr && !t('a')) { document.querySelectorAll('.fpin.sel').forEach((p) => p.classList.remove('sel')); const pin = document.querySelector(`[data-fp="${fr.dataset.food}"]`); if (pin) { pin.classList.add('sel'); const x = fd.res.find((r) => r.id === fr.dataset.food); fmap.panTo([x.lat, x.lng]); } }
 });
 page.addEventListener('change', async (e) => {
+  if (e.target.id === 'sh-file' && e.target.files && e.target.files[0]) { try { sh.photo = await shopPhoto(e.target.files[0]); sh.msg = ''; } catch { sh.msg = 'That file isn\'t a photo the phone can read.'; } return render(); }
   if (e.target.id === 'bud-in' && P[ME]) { const v = parseFloat(String(e.target.value).replace(/[^\d.]/g, '')) || 0; ls.set(budgetKey(), Math.round(v * RATE[ex.cur])); return render(); }
   if (e.target.id === 'idea-day') { ideas.day = e.target.value; ls.set('proto.ideaday', ideas.day); return render(); }
   if (e.target.id === 'pf-photo' && P[ME] && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) say(msg, 'Uploading…'); try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) say(msg, err.message); } return; }
@@ -1026,6 +1253,7 @@ page.addEventListener('change', async (e) => {
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); driver.classList.remove('on'); } });
 if (VIEW) { items[0].hidden = true; document.body.classList.add('guest'); }
 setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
+if (tab === 2) setTimeout(syncAlerts, 1500);
 // The ¥ button on the trip lands here with ?add=1&d=<day>: straight into a new expense for that day.
 { const q = new URLSearchParams(location.search);
   if (q.get('add') && tab === 0 && !VIEW) { const u = new URL(location); u.searchParams.delete('add'); u.searchParams.delete('d'); history.replaceState(null, '', u); openEx(null, { day: q.get('d'), quick: true }); } }
@@ -1034,6 +1262,7 @@ let exSig = '';
 store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode + store.pending() + JSON.stringify(store.getExpenses()) + JSON.stringify(Object.fromEntries(Object.entries(pf).map(([k, v]) => [k, [v.color, v.photo]]))); if (sig === exSig) return; exSig = sig; if ((tab === 0 || tab === 4) && !document.getElementById('sheet').classList.contains('on')) render(); });
 let ckSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.checks || {}); if (sig === ckSig) return; ckSig = sig; if (tab === 4 && !cfmBg.classList.contains('on')) render(); });
 let sgSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.suggestions || []); if (sig === sgSig) return; sgSig = sig; if (tab === 3 && foodView !== 'nearby' && document.activeElement?.id !== 'sg-text') render(); });
+let shSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.shop || {}) + (tab === 2 && !VIEW ? Object.values(store.getExpenses()).filter((x) => x.src && x.src.startsWith('sh')).length : ''); if (sig === shSig) return; shSig = sig; if (tab === 2 && !sheet.classList.contains('on')) shRender(); });
 let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });
 // your currency and settle-up choice, from your profile (another phone, or the money page)
 store.watchPrefs(MINE, (p) => {
@@ -1052,7 +1281,7 @@ window.__tourEnv = {
   getTab: () => tab, setTab: (i) => { if (tab !== i) setTab(i); },
   getFoodView: () => foodView, setFoodView: (v) => { if (v === 'ideas') v = 'food'; if (foodView !== v) { foodView = v; render(); } },
   exCount: () => ex.list.length, sheetOpen: () => sheet.classList.contains('on'), closeSheet: () => closeSheet(),
-  driverOpen: () => driver.classList.contains('on'),
+  driverOpen: () => driver.classList.contains('on'), shopView: () => sh.list, shopCount: () => Object.keys(store.getShop()).length,
 };
 // the practice tour's code is only fetched in practice
 if (SANDBOX) { document.body.classList.add('practice'); Promise.all([import('../js/tour.js?v=9'), new Promise((r) => setTimeout(r, 60))]).then(([t]) => t.runTour()); }

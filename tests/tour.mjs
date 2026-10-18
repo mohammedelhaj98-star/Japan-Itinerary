@@ -105,17 +105,15 @@ for (const sc of scenarios) {
   await step(22, '[data-vote]', () => pg.tap('[data-vote]'), 'voting');
   await step(23, '[data-fview="shop"]', () => pg.tap('[data-fview="shop"]'), 'tapping Shops');
   await step(24, '[data-fview="nearby"]', () => pg.tap('[data-fview="nearby"]'), 'tapping Halal');
-  await step(25, '.proto-picker-item:nth-of-type(3)', () => pg.tap('.proto-picker-item:nth-of-type(3)'), 'tapping Taxi');
-  await step(26, '.hcard', () => pg.tap('.hcard'), 'tapping a hotel');
-  // the driver card fills the screen; the tour steps aside until it's closed
-  await pg.waitForFunction(() => document.querySelector('.tour.paused'), null, { timeout: 4000 }).catch(() => bad('step 27: tour did not step aside for the driver card'));
-  await pg.tap('#driver [data-dx]'); await pg.waitForTimeout(400);
-  await step(27, '.proto-picker-item:nth-of-type(5)', () => pg.tap('.proto-picker-item:nth-of-type(5)'), 'tapping Settings');
-  await step(28, '.card:has(.me)');
-  await step(29, '[data-sub="stamps"]');
+  await step(25, '.proto-picker-item:nth-of-type(3)', () => pg.tap('.proto-picker-item:nth-of-type(3)'), 'tapping Shopping');
+  await step(26, '[data-shlist="ideas"]', () => pg.tap('[data-shlist="ideas"]'), 'tapping Ideas');
+  await step(27, '[data-shidea]', async () => { await pg.tap('[data-shidea]'); await pg.waitForTimeout(450); await pg.tap('#sheet [data-shpick="all"]'); }, 'adding an idea to a list');
+  await step(28, '.proto-picker-item:nth-of-type(5)', () => pg.tap('.proto-picker-item:nth-of-type(5)'), 'tapping Settings');
+  await step(29, '.card:has(.me)');
+  await step(30, '[data-sub="stamps"]');
   // last step: back to the real trip
   await pg.waitForTimeout(500); if (!/everything/i.test(await pg.textContent('.tour-card h3'))) bad('last step is not the wrap-up');
-  await pg.screenshot({ path: `${OUT}${sc.name}-30.png` });
+  await pg.screenshot({ path: `${OUT}${sc.name}-31.png` });
   await pg.tap('[data-tnext]'); await pg.waitForURL((u) => !/tools/.test(u.toString()), { timeout: 8000 }).catch(() => bad('Back to the trip did not leave the tools page'));
   await pg.waitForTimeout(1800);
   // nothing saved
