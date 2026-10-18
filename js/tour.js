@@ -11,7 +11,7 @@ const ss = { get: (k) => { try { return sessionStorage.getItem(k); } catch { ret
 const q = (sel) => (typeof sel === 'function' ? sel() : document.querySelector(sel));
 const votes = (st) => (st.suggestions || []).reduce((n, x) => n + (x.votes || []).length, 0);
 const booked = (st) => Object.entries(st.choices || {}).filter(([k, v]) => k.startsWith('bk-') && v === 'booked').length;
-const pick = (n) => `.proto-picker-item:nth-of-type(${n})`; // Expenses 1, Bookings 2, Taxi 3, Food 4, Settings 5
+const pick = (n) => `.proto-picker-item:nth-of-type(${n})`; // Expenses 1, Bookings 2, Shopping 3, Food 4, Settings 5
 const toolsUrl = (v) => (location.pathname.includes('/prototypes/') ? `tools?v=${v}` : `prototypes/tools?v=${v}`);
 const tripUrl = () => (location.pathname.includes('/prototypes/') ? '../' : './');
 const moneyUrl = () => (location.pathname.includes('/prototypes/') ? '../money' : 'money');
@@ -29,7 +29,7 @@ const STEPS = [
   { page: 'trip', el: '.pass.open [data-stamp]', t: 'Stamp it', x: 'When you\'ve done a stop, stamp it so everyone can see. <b>Tap Stamp.</b>', pre: (e) => e.drawer.close(), done: (e) => e.store.isChecked(e.ui.sel) },
   { page: 'trip', el: '#grab', noscroll: true, t: 'Bigger map', x: '<b>Swipe the stops down from here, or tap the handle,</b> to give the map the whole screen.', pre: (e) => { e.drawer.close(); window.scrollTo(0, 0); }, done: (e) => e.mapMax.isOn() },
   { page: 'trip', el: '#grab', noscroll: true, t: 'Bring them back', x: '<b>Tap the handle again</b> (or swipe up).', done: (e) => !e.mapMax.isOn() },
-  { page: 'trip', el: '#ttBtn', t: 'Trip tools', x: 'Expenses, bookings, ideas, taxi cards and Settings, with the card colours on top. <b>Tap +.</b>', pre: (e) => e.drawer.close(), done: () => !!document.querySelector('#tt.open') },
+  { page: 'trip', el: '#ttBtn', t: 'Trip tools', x: 'Expenses, bookings, shopping, ideas and Settings, with the card colours on top. <b>Tap +.</b>', pre: (e) => e.drawer.close(), done: () => !!document.querySelector('#tt.open') },
   { page: 'trip', el: '.tt-opt[href$="money"]', t: 'Expenses', x: '<b>Tap Expenses.</b>', nav: moneyUrl(), pre: () => { const tt = document.getElementById('tt'); if (tt && !tt.classList.contains('open')) document.getElementById('ttBtn').click(); } },
   // ── tools page ──
   { page: 'money', el: '.gpass', t: 'Shared expenses', x: 'What the group has spent, day by day. Below it: who pays whom to settle up, by couple or person to person. Your own page and your couple\'s are in the switch at the top.' },
@@ -43,9 +43,10 @@ const STEPS = [
   { page: 'tools', el: '[data-vote]', t: 'Vote', x: '<b>Tap Vote</b> on an idea you like. Everyone sees who voted.', snap: (e) => votes(e.store.state), done: (e, s0) => votes(e.store.state) !== s0 },
   { page: 'tools', el: '[data-fview="shop"]', t: 'Shops & places', x: 'Stores you want to see and places to visit get their own lists, so nothing gets lost. <b>Tap Shops.</b>', done: (e) => e.getFoodView() === 'shop' },
   { page: 'tools', el: '[data-fview="nearby"]', t: 'Halal & pork-free nearby', x: '<b>Tap Halal</b> to find halal and pork-free food around you or any stop on the trip.', done: (e) => e.getFoodView() === 'nearby' },
-  { page: 'tools', el: pick(3), t: 'Taxi cards', x: '<b>Tap Taxi.</b>', done: (e) => e.getTab() === 2 },
-  { page: 'tools', el: '.hcard', t: 'Show the driver', x: 'Each card says, in Japanese, "please take me to this hotel". <b>Tap a hotel.</b>', pre: (e) => e.setTab(2), done: (e) => e.driverOpen() },
-  { page: 'tools', el: pick(5), t: 'Settings', x: 'Close the card with ✕ when you\'re done showing it. <b>Then tap Settings.</b>', allow: '#driver.on', done: (e) => e.getTab() === 4 },
+  { page: 'tools', el: pick(3), t: 'Shopping', x: 'One list for all four phones, split into All of us, M&amp;M and NASA. <b>Tap Shopping.</b>', done: (e) => e.getTab() === 2 },
+  { page: 'tools', el: '[data-shlist="ideas"]', t: 'Only in Japan', x: 'Things you can only get here, each placed on our route. <b>Tap Ideas.</b>', pre: (e) => e.setTab(2), done: (e) => e.shopView() === 'ideas' },
+  { page: 'tools', el: '[data-shidea]', t: 'Put it on a list', x: '<b>Tap + on something you like, then pick a list.</b> Its stop on the trip gets a "to buy here" note.', pre: (e) => e.setTab(2), allow: '#sheet.on', snap: (e) => e.shopCount(), done: (e, s0) => e.shopCount() > s0 },
+  { page: 'tools', el: pick(5), t: 'Settings', x: '<b>Tap Settings.</b>', done: (e) => e.getTab() === 4 },
   { page: 'tools', el: () => document.querySelector('.me')?.closest('.card'), t: 'Your profile', x: 'Pick a colour or add a photo: it shows on all four phones. (In this practice it isn\'t saved.)', pre: (e) => e.setTab(4) },
   { page: 'tools', el: '[data-sub="stamps"]', t: 'Stamps, export and the tour', x: 'Undo stamps here, export the whole trip to Word further down, and start this practice again from <b>Take the tour</b>.', pre: (e) => e.setTab(4) },
   { page: 'tools', el: null, t: 'That\'s everything', x: 'You\'ve seen the whole app. <b>Nothing from this practice was saved.</b> Ending it brings back the real trip.', last: true },
