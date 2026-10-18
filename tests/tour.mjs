@@ -106,7 +106,7 @@ for (const sc of scenarios) {
   await step(23, '[data-fview="shop"]', () => pg.tap('[data-fview="shop"]'), 'tapping Shops');
   await step(24, '[data-fview="nearby"]', () => pg.tap('[data-fview="nearby"]'), 'tapping Halal');
   await step(25, '.proto-picker-item:nth-of-type(3)', () => pg.tap('.proto-picker-item:nth-of-type(3)'), 'tapping Shopping');
-  await step(26, '[data-shlist="ideas"]', () => pg.tap('[data-shlist="ideas"]'), 'tapping Ideas');
+  await step(26, '[data-shpill="ideas"]', () => pg.tap('[data-shpill="ideas"]'), 'tapping Ideas');
   await step(27, '[data-shidea]', async () => { await pg.tap('[data-shidea]'); await pg.waitForTimeout(450); await pg.tap('#sheet [data-shpick="all"]'); }, 'adding an idea to a list');
   await step(28, '.proto-picker-item:nth-of-type(5)', () => pg.tap('.proto-picker-item:nth-of-type(5)'), 'tapping Settings');
   await step(29, '.card:has(.me)');

@@ -17,7 +17,8 @@
 //   POST /api/shop                    { id, value:object|null }  (a thing on the shopping list; null deletes)
 //   POST /api/shop-ai                 { id?, name, note?, who?, today?, stops:[{ id, date, city, title, place? }] }  → where
 //                                     on the route it's easiest to buy: { name, shop, why, at, search, ja, halal }
-//                                     (lib/shop-claude.js); with the item's photo when it has one (name may then be "")
+//                                     (lib/shop-claude.js); with the item's photo when it has one (name may then be ""); and cat
+//   POST /api/shop-cat                { items:[{ id, name }] }  → { cats: { id: cat } }  (categories for things added before there were any)
 //   POST /api/shop-photo              { id, photo:dataURL|null }  (a list item's photo: a screenshot, a TikTok)
 //   GET  /api/shop-photo/:id          → that photo (with the PIN)
 //   POST /api/receipt                 { id, photo:dataURL|null }  (an expense's receipt photo)
@@ -48,7 +49,7 @@
 import { handlePhotos } from '../../lib/photos.js';
 import { readReceiptClaude, CLAUDE_MODEL } from '../../lib/scan-claude.js';
 import { fillStop } from '../../lib/fill-claude.js';
-import { pickShop } from '../../lib/shop-claude.js';
+import { pickShop, sortShop, CATS as SHOP_CAT_KEYS } from '../../lib/shop-claude.js';
 import { autoBackup, backupMoney, backupStatus } from '../../lib/backup.js';
 import { stateStore } from '../../lib/state-store.js';
 
@@ -180,6 +181,8 @@ function cleanShop(v) {
   if (isP(v.lock)) out.lock = v.lock;
   if (v.done === true) { out.done = true; if (isP(v.doneBy)) out.doneBy = v.doneBy; if (stamp(v.doneAt) != null) out.doneAt = v.doneAt; }
   if (v.idea === true) out.idea = true;
+  if (Number.isInteger(v.qty) && v.qty > 1 && v.qty <= 99) out.qty = v.qty; // how many (one when left out)
+  if (SHOP_CAT_KEYS.includes(v.cat)) out.cat = v.cat; // what kind of thing (the helper says; anyone can change it)
   if (stamp(v.photo) != null) out.photo = v.photo; // when its photo was added (the photo itself: KV 'sp:<id>')
   if (v.ai && typeof v.ai === 'object' && clean(v.ai.shop, 90)) {
     const ai = { shop: clean(v.ai.shop, 90) };
@@ -407,6 +410,11 @@ export async function onRequest(ctx) {
       const photo = isId(body.id || '') && kv ? await kv.get('sp:' + body.id) : null;
       if (!clean(body.name, 90) && !photo) return json({ error: 'name required' }, 400);
       try { const r = await pickShop(env, { ...body, name: typeof body.name === 'string' ? body.name : '', photo }); return json(r, r.error ? 502 : 200); } catch (err) { return json({ error: String(err && err.message || err) }, 502); }
+    }
+
+    if (path === 'shop-cat') {
+      if (!member) return json({ error: 'pin required', pin: true }, 403);
+      try { const r = await sortShop(env, body); return json(r, r.error ? (r.error === 'items required' ? 400 : 502) : 200); } catch (err) { return json({ error: String(err && err.message || err) }, 502); }
     }
 
     if (path === 'fill') {

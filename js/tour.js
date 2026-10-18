@@ -44,7 +44,7 @@ const STEPS = [
   { page: 'tools', el: '[data-fview="shop"]', t: 'Shops & places', x: 'Stores you want to see and places to visit get their own lists, so nothing gets lost. <b>Tap Shops.</b>', done: (e) => e.getFoodView() === 'shop' },
   { page: 'tools', el: '[data-fview="nearby"]', t: 'Halal & pork-free nearby', x: '<b>Tap Halal</b> to find halal and pork-free food around you or any stop on the trip.', done: (e) => e.getFoodView() === 'nearby' },
   { page: 'tools', el: pick(3), t: 'Shopping', x: 'One list for all four phones, split into All of us, M&amp;M and NASA. <b>Tap Shopping.</b>', done: (e) => e.getTab() === 2 },
-  { page: 'tools', el: '[data-shlist="ideas"]', t: 'Only in Japan', x: 'Things you can only get here, each placed on our route. <b>Tap Ideas.</b>', pre: (e) => e.setTab(2), done: (e) => e.shopView() === 'ideas' },
+  { page: 'tools', el: '[data-shpill="ideas"]', t: 'Only in Japan', x: 'Things you can only get here, each placed on our route. <b>Tap Ideas.</b>', pre: (e) => e.setTab(2), done: (e) => e.shopView() === 'ideas' },
   { page: 'tools', el: '[data-shidea]', t: 'Put it on a list', x: '<b>Tap + on something you like, then pick a list.</b> Its stop on the trip gets a "to buy here" note.', pre: (e) => e.setTab(2), allow: '#sheet.on', snap: (e) => e.shopCount(), done: (e, s0) => e.shopCount() > s0 },
   { page: 'tools', el: pick(5), t: 'Settings', x: '<b>Tap Settings.</b>', done: (e) => e.getTab() === 4 },
   { page: 'tools', el: () => document.querySelector('.me')?.closest('.card'), t: 'Your profile', x: 'Pick a colour or add a photo: it shows on all four phones. (In this practice it isn\'t saved.)', pre: (e) => e.setTab(4) },

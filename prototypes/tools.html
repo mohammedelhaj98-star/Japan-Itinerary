@@ -269,10 +269,34 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 
 /* ── shopping ── */
 .sp-ja { font-family:var(--mincho); font-size:18px; color:#b94b74; letter-spacing:0; margin-left:6px; }
-.sp-seg { display:flex; padding:0 16px 4px; }
-.sp-lists { width:100%; }
-.sp-lists button { flex:1; padding:8px 4px; font-size:14px; white-space:nowrap; }
-.sp-lists button em { font-style:normal; font-size:11.5px; color:var(--ink3); background:rgba(0,0,0,.06); border-radius:999px; padding:0 6px; margin-left:3px; }
+.sp-filt { display:flex; gap:7px; padding:0 16px 2px; overflow-x:auto; scrollbar-width:none; }
+.sp-filt::-webkit-scrollbar { display:none; }
+.sp-fp { flex:none; height:36px; padding:0 13px; border-radius:999px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:14px; font-weight:700; color:var(--ink); display:inline-flex; align-items:center; gap:5px; }
+.sp-fp svg { color:var(--ink3); transition:transform 200ms var(--ease); }
+.sp-fp.open svg { transform:rotate(180deg); }
+.sp-fp.open { box-shadow:0 0 0 2px var(--ink); }
+.sp-fp.on { background:var(--ink); color:#fff; box-shadow:none; }
+.sp-fp.on svg { color:rgba(255,255,255,.7); }
+.sp-opts { display:flex; flex-wrap:wrap; gap:7px; padding:10px 16px 2px; animation:spdrop 220ms var(--ease); }
+@keyframes spdrop { from { opacity:0; transform:translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .sp-opts { animation:none; } }
+.sp-opts .sp-chip { height:32px; font-size:13px; }
+.sp-dh { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:18px 20px 7px; font-size:13px; font-weight:700; color:var(--ink2); }
+.sp-dh span { min-width:0; }
+.sp-dh i { flex:none; font-style:normal; font-size:12px; color:var(--ink3); }
+.sp-dh i.soon { color:#a56a00; }
+.sp-hd { display:flex; flex-direction:column; align-items:flex-start; width:100%; text-align:left; gap:1px; min-height:28px; }
+.sp-sub { font-size:12.5px; color:var(--ink3); display:flex; align-items:center; gap:5px; }
+.sp-chev { display:inline-flex; color:var(--ink3); transition:transform 200ms var(--ease); }
+.sp-it.open .sp-chev { transform:rotate(180deg); }
+.sp-think { color:#b94b74; font-weight:700; }
+.sp-x { animation:spdrop 220ms var(--ease); }
+@media (prefers-reduced-motion: reduce) { .sp-x { animation:none; } }
+.sp-pill.ed { display:inline-flex; align-items:center; gap:4px; background:#faf6f8; box-shadow:inset 0 0 0 1px rgba(185,75,116,.25); color:#8c3a59; padding:4px 10px; text-align:left; }
+.sp-pill.ed svg { flex:none; opacity:.7; }
+.sp-act.ai { background:#faf6f8; box-shadow:inset 0 0 0 1px rgba(185,75,116,.25); color:#b94b74; }
+.sp-dayh { font-size:12.5px; font-weight:700; color:var(--ink3); margin:14px 2px 7px; }
+.sp-dayh:first-of-type { margin-top:2px; }
 .sp-add { margin:12px 12px 0; padding:12px; }
 .sp-line { display:flex; gap:8px; }
 .sp-add input { flex:1; min-width:0; height:44px; border-radius:12px; border:1px solid var(--line); background:#faf9f6; padding:0 12px; font:inherit; font-size:16px; color:var(--ink); }
@@ -283,18 +307,25 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 .sp-prev { display:flex; gap:10px; align-items:center; margin-top:8px; }
 .sp-prev img { flex:none; width:56px; height:56px; border-radius:10px; object-fit:cover; background:#eee; }
 .sp-prev p { flex:1; font-size:13px; color:var(--ink2); }
-.sp-pic { flex:none; width:56px; height:56px; border-radius:10px; overflow:hidden; background:#ece9e1; padding:0; }
+.sp-pic { flex:none; width:44px; height:44px; border-radius:10px; overflow:hidden; background:#ece9e1; padding:0; }
 .sp-pic img { width:100%; height:100%; object-fit:cover; display:block; }
 .sp-big { display:block; max-width:100%; max-height:52vh; margin:18px auto 0; border-radius:14px; box-shadow:0 4px 20px rgba(0,0,0,.12); }
 .driver .name.sm { font-size:min(8vw,34px); margin-top:16px; }
 .sp-more { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
-.sp-more input { flex:1 1 120px; height:38px; font-size:16px; }
+.sp-more input { flex:1 1 40%; height:38px; font-size:16px; }
+.sp-qty { display:inline-flex; align-items:center; height:38px; border-radius:10px; background:rgba(0,0,0,.05); flex:none; }
+.sp-qty button { width:34px; height:100%; font-size:18px; font-weight:700; color:var(--ink2); }
+.sp-qty button:disabled { opacity:.3; }
+.sp-qty b { min-width:18px; text-align:center; font-size:15px; }
+.sp-qty.sm { height:32px; margin-top:8px; background:none; box-shadow:inset 0 0 0 1px var(--line); border-radius:999px; padding-left:12px; }
+.sp-qty.sm span { font-size:12.5px; font-weight:700; color:var(--ink2); margin-right:4px; }
+.sp-tag.q { background:var(--ink); color:#fff; }
 .sp-lock { height:38px; padding:0 12px; border-radius:10px; background:rgba(0,0,0,.05); font-size:13px; font-weight:700; color:var(--ink2); }
 .sp-lock.on { background:var(--ink); color:#fff; }
 .sp-to { font-size:12.5px; color:var(--ink3); margin-top:8px; }
 .sp-msg { font-size:13px; color:#a5281e; margin-top:6px; }
 .sp-list { margin:0 12px; padding:2px 14px; }
-.sp-it, .sp-idea { display:flex; gap:12px; padding:14px 0; border-top:1px solid var(--line); align-items:flex-start; }
+.sp-it, .sp-idea { display:flex; gap:12px; padding:11px 0; border-top:1px solid var(--line); align-items:flex-start; }
 .sp-it:first-child, .sp-idea:first-child { border-top:0; }
 .sp-tick { flex:none; width:28px; height:28px; border-radius:50%; box-shadow:inset 0 0 0 2px rgba(20,20,10,.22); display:grid; place-items:center; margin-top:1px; transition:background 200ms, box-shadow 200ms; color:#fff; }
 .sp-it.done .sp-tick { background:var(--ok); box-shadow:none; }
@@ -341,8 +372,13 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 .sp-plus { flex:none; width:34px; height:34px; border-radius:50%; background:rgba(185,75,116,.1); color:#b94b74; font-size:22px; line-height:1; display:grid; place-items:center; }
 .sp-plus.got { background:var(--ok); color:#fff; font-size:15px; font-weight:700; }
 .sp-pick { display:flex; flex-direction:column; gap:8px; }
-.sp-pick button { height:52px; border-radius:14px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:16px; display:flex; align-items:center; gap:10px; padding:0 14px; text-align:left; }
+.sp-pick button { min-height:52px; border-radius:14px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:16px; display:flex; align-items:center; gap:10px; padding:8px 14px; text-align:left; }
 .sp-pick button.mine { box-shadow:0 0 0 2px var(--ink); }
+.sp-pick.stops { gap:6px; }
+.sp-pick.stops button { min-height:44px; font-size:15px; border-radius:12px; padding:6px 12px; }
+.sp-pick.two { display:grid; grid-template-columns:1fr 1fr; }
+.sp-pick.two button { height:48px; font-size:14.5px; }
+.sp-pick small { color:var(--ink3); font-size:12.5px; margin-left:auto; text-align:right; }
 .sp-pick button small { margin-left:auto; font-size:12.5px; color:var(--ink3); }
 .sp-not { width:100%; height:42px; font-weight:700; font-size:14.5px; color:var(--ink2); margin-top:6px; }
 .driver { position:fixed; inset:0; z-index:1000; background:#fbf8f1; display:flex; flex-direction:column; padding:calc(70px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom)); opacity:0; transform:scale(.97); pointer-events:none; transition:opacity 220ms ease, transform 280ms var(--ease); overflow-y:auto; }
@@ -643,8 +679,12 @@ const SH_LISTS = { all: 'All of us', mm: 'M&M', nasa: 'NASA' };
 const SH_WHO = { all: 'All four of us', mm: 'Mo and Mariam (M&M)', nasa: 'Naf and Sara (NASA)' };
 const MM_FROM = '2026-10-21'; // M&M land on Oct 21: their part of the route starts there
 const jstToday = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-// the page opens on a list (the last one looked at, else your couple's), never on Ideas, so the box to add things is there
-const sh = { list: ((l) => (SH_LISTS[l] ? l : P[ME] ? P[ME].couple : 'all'))(ls.get('proto.shlist', '')), cat: 'all', lock: false, asking: new Set(), name: '', for: '', note: '', photo: '', pics: new Map() };
+// Filters along the top: Group (a list, or Everything), Category, Day, and Ideas. The page opens on a group (the last
+// one looked at, else your couple's), never on Ideas, so the box to add things is there. One row is open at a time.
+const SH_GROUPS = { every: 'Everything', ...SH_LISTS };
+const sh = { list: ((l) => (SH_GROUPS[l] ? l : P[ME] ? P[ME].couple : 'all'))(ls.get('proto.shlist', '')), ideas: false, cat: 'any', day: 'any', pill: '', open: '', qty: 1, lock: false, asking: new Set(), sorting: new Set(), name: '', for: '', note: '', photo: '', pics: new Map() };
+const addList = () => (sh.list === 'every' ? (P[ME] ? P[ME].couple : 'all') : sh.list); // Everything adds to your couple's list
+const catName = (k) => (SHOP_CATS[k] || SHOP_CATS.other)[0];
 const PIC_NAME = 'From a photo'; // a thing added as just a photo, until the helper says what it is
 const shVisible = (x) => !x.lock || x.lock === ME;
 const shItems = () => Object.entries(store.getShop()).map(([id, x]) => ({ id, ...x })).filter((x) => x && x.name && SH_LISTS[x.list] && shVisible(x));
@@ -661,6 +701,10 @@ function allStops() {
   return out;
 }
 const stopById = (id) => allStops().find((x) => x.id === id) || null;
+// one look-up of every stop per drawing of the page (the list asks for a stop per row, several times)
+let shStops = null;
+const stopOf = (id) => (shStops || (shStops = new Map(allStops().map((x) => [x.id, x])), queueMicrotask(() => { shStops = null; }), shStops)).get(id) || null;
+const dayOfItem = (x) => { const st = x.ai && x.ai.at ? stopOf(x.ai.at) : null; return st ? st.d : (x.ai && x.ai.day && dayOf(x.ai.day)) || null; };
 // a list's people are on a stop when it's for everyone or for them (All of us: stops for everyone)
 const onRoute = (st, list) => st.who === 'all' || st.who === list;
 function routeFor(list) {
@@ -670,16 +714,30 @@ function routeFor(list) {
 const dayLabel = (d) => new Date(d.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 function whenPill(st) { const n = Math.round((Date.parse(st.d.date) - Date.parse(jstToday())) / 864e5); return n < 0 ? 'Passed' : n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `in ${n} days`; }
 const inShopEx = (id) => Object.values(store.getExpenses()).find((x) => x.src === id) || null;
-async function askShop(id) {
+// The helper finds where to buy it and what kind of thing it is. at: a stop someone picked (its day pill), so the
+// helper only looks there and the thing stays on it; keepCat: a category someone picked stays.
+async function askShop(id, { at = null, keepCat = false } = {}) {
   const x = store.getShop()[id]; if (!x || sh.asking.has(id)) return;
   sh.asking.add(id); shRender();
-  const stops = routeFor(x.list).map((st) => ({ id: st.id, date: st.d.date, city: st.d.city, title: st.title, place: st.place }));
+  const stops = (at ? [at] : routeFor(x.list)).map((st) => ({ id: st.id, date: st.d.date, city: st.d.city, title: st.title, place: st.place }));
   try {
     const r = await store.api('shop-ai', { id, name: x.name === PIC_NAME ? '' : x.name, note: x.note || '', who: SH_WHO[x.list], today: jstToday(), stops });
-    const st = r.at ? stopById(r.at) : null, cur = store.getShop()[id];
-    if (cur && r.shop) store.setShop(id, { ...cur, ...(cur.name === PIC_NAME && r.name ? { name: r.name } : {}), ai: { shop: r.shop, why: r.why, search: r.search, ja: r.ja, halal: r.halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
-  } catch (err) { sh.msg = err && err.pin ? 'Finding a shop needs the PIN.' : navigator.onLine === false ? 'No signal: tap Find where to buy once you\'re back online.' : "Couldn't find a shop for that. Try Find where to buy again."; }
+    const st = at || (r.at ? stopById(r.at) : null), cur = store.getShop()[id];
+    if (cur && r.shop) store.setShop(id, { ...cur, ...(cur.name === PIC_NAME && r.name ? { name: r.name } : {}), ...(r.cat && (!keepCat || !cur.cat) ? { cat: r.cat } : {}), ai: { shop: r.shop, why: r.why, search: r.search, ja: r.ja, halal: r.halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
+  } catch (err) { sh.msg = err && err.pin ? 'Asking AI needs the PIN.' : navigator.onLine === false ? 'No signal: tap Ask AI once you\'re back online.' : "Couldn't find a shop for that. Tap Ask AI to try again."; }
   sh.asking.delete(id); shRender();
+}
+// Things on the list from before there were categories (or whose helper answer came without one): sorted in one go
+async function sortShopCats() {
+  if (VIEW || SANDBOX || !P[ME]) return;
+  const need = shItems().filter((x) => !x.cat && x.name !== PIC_NAME && !sh.asking.has(x.id) && !sh.sorting.has(x.id)).slice(0, 40);
+  if (!need.length) return;
+  need.forEach((x) => sh.sorting.add(x.id)); // asked once per visit: a failure isn't retried until the page opens again
+  try {
+    const r = await store.api('shop-cat', { items: need.map((x) => ({ id: x.id, name: x.name })) });
+    for (const [id, c] of Object.entries(r.cats || {})) { const cur = store.getShop()[id]; if (cur && !cur.cat) store.setShop(id, { ...cur, cat: c }); }
+  } catch { /* they stay under Other for now */ }
+  shRender();
 }
 // a redraw while a box on the page is being typed in would take the keyboard away: it waits until the box is left
 let shLater = false;
@@ -687,11 +745,11 @@ const shRender = () => { if (/^sh-/.test((document.activeElement && document.act
 const newShopId = () => 'sh' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 async function addShop() {
   const name = sh.name.trim(), photo = sh.photo; if ((!name && !photo) || !P[ME]) return;
-  const id = newShopId(), list = sh.list === 'ideas' ? P[ME].couple : sh.list;
-  const x = { name: name || PIC_NAME, list, by: ME, ...(sh.for.trim() ? { for: sh.for.trim() } : {}), ...(sh.note.trim() ? { note: sh.note.trim() } : {}), ...(sh.lock ? { lock: ME } : {}), ...(photo ? { photo: Date.now() } : {}), at: Date.now() };
+  const id = newShopId(), list = addList();
+  const x = { name: name || PIC_NAME, list, by: ME, ...(sh.qty > 1 ? { qty: sh.qty } : {}), ...(sh.for.trim() ? { for: sh.for.trim() } : {}), ...(sh.note.trim() ? { note: sh.note.trim() } : {}), ...(sh.lock ? { lock: ME } : {}), ...(photo ? { photo: Date.now() } : {}), at: Date.now() };
   if (photo) sh.pics.set(id, photo);
   store.setShop(id, x);
-  sh.name = sh.for = sh.note = sh.photo = ''; sh.lock = false; sh.msg = '';
+  sh.name = sh.for = sh.note = sh.photo = ''; sh.lock = false; sh.qty = 1; sh.msg = '';
   // the photo goes up first: the helper reads it from the server to say what it is
   if (photo && !SANDBOX && !(await store.setShopPhoto(id, photo))) {
     const cur = store.getShop()[id];
@@ -721,54 +779,110 @@ function showShopPic(id) {
 }
 function addIdea(i, list) {
   const [, name, why, where, at, halal, ja] = SHOP_IDEAS[i], st = stopById(at);
-  store.setShop(newShopId(), { name, list, by: P[ME] ? ME : 'naf', idea: true, at: Date.now(), ai: { shop: where, why, search: where.split(',')[0], ja, halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
+  store.setShop(newShopId(), { name, list, by: P[ME] ? ME : 'naf', idea: true, cat: SHOP_IDEAS[i][0], at: Date.now(), ai: { shop: where, why, search: where.split(',')[0], ja, halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
 }
 const MAPS = (q) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+const CHEV = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+// A row is one line (tick, name, category, photo); tapping it opens the rest: where and why, its pills (group,
+// category, day: each can be changed), and the buttons.
 function shopRow(x) {
-  const st = x.ai && x.ai.at ? stopById(x.ai.at) : null, exd = !VIEW && inShopEx(x.id), asking = sh.asking.has(x.id);
-  const tags = `${x.for ? `<span class="sp-tag">for ${esc(x.for)}</span>` : ''}${x.lock ? '<span class="sp-tag lk">only you</span>' : ''}`;
-  const ai = asking ? `<div class="sp-ai think">${x.name === PIC_NAME ? 'Working out what\'s in the photo and where to get it…' : 'Finding the easiest place on your route…'}</div>`
-    : x.ai ? `<div class="sp-ai"><b>${esc(x.ai.shop)}</b>${x.ai.why ? `<p>${esc(x.ai.why)}</p>` : ''}${st ? `<div class="sp-when"><a class="sp-pill ${onRoute(st, x.list) || x.list === 'all' ? 'on' : ''}" href="../?d=${st.d.id}">${onRoute(st, x.list) || x.list === 'all' ? 'On your route' : 'Near your route'} · Day ${st.d.n} · ${esc(st.title)}</a><span class="sp-pill ${/Today|Tomorrow/.test(whenPill(st)) ? 'soon' : ''}">${dayLabel(st.d)} · ${whenPill(st)}</span></div>` : ''}${x.ai.halal ? `<p class="sp-hl">${esc(x.ai.halal)}</p>` : ''}</div>`
-    : VIEW ? '' : `<button class="sp-find press" data-shfind="${x.id}">Find where to buy</button>`;
-  const acts = x.done ? '' : `<div class="sp-acts">${x.ai && x.ai.search ? `<a class="sp-act dark press" href="${MAPS(x.ai.search)}" target="_blank" rel="noopener">Near me</a>` : ''}${(x.ai && x.ai.ja) || x.photo ? `<button class="sp-act press" data-shstaff="${x.id}">Show staff</button>` : ''}${VIEW ? '' : `<button class="sp-act press" data-shfind="${x.id}">Ask again</button><button class="sp-act del press" data-shdel="${x.id}" aria-label="Remove ${esc(x.name)}">Remove</button>`}</div>`;
-  return `<div class="sp-it ${x.done ? 'done' : ''}"><button class="sp-tick press" data-shtick="${x.id}" ${VIEW ? 'disabled' : ''} aria-label="${x.done ? 'Not bought yet' : 'Bought'}: ${esc(x.name)}">${x.done ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</button>
-    <div class="sp-bd"><div class="sp-nm">${esc(x.name)}${tags}</div>${x.note ? `<p class="sp-note">${esc(x.note)}</p>` : ''}${P[x.by] ? `<p class="sp-by"><span class="av sm" style="${avStyle(P[x.by])}">${P[x.by].ini}</span>added by ${esc(P[x.by].name)}</p>` : ''}
-    ${x.done ? `<p class="sp-got">${exd ? `In expenses · ${fmtY(exd.yen)}` : `Bought${P[x.doneBy] ? ` by ${esc(P[x.doneBy].name)}` : ''}`}${!exd && !VIEW ? ` · <a href="${esc(shopExHref(x))}">Add to expenses</a>` : ''}</p>` : ai}${acts}</div>${x.photo ? `<button class="sp-pic press" data-shpic="${x.id}" aria-label="See the photo"><img data-spimg="${x.id}" src="${esc(sh.pics.get(x.id) || '')}" alt=""></button>` : ''}</div>`;
+  const st = x.ai && x.ai.at ? stopOf(x.ai.at) : null, exd = !VIEW && inShopEx(x.id), asking = sh.asking.has(x.id), open = sh.open === x.id;
+  const tags = `${x.qty > 1 ? `<span class="sp-tag q">×${x.qty}</span>` : ''}${x.for ? `<span class="sp-tag">for ${esc(x.for)}</span>` : ''}${x.lock ? '<span class="sp-tag lk">only you</span>' : ''}`;
+  const sub = asking ? `<span class="sp-think">${x.name === PIC_NAME ? 'Asking AI what\'s in the photo…' : 'Asking AI…'}</span>`
+    : x.done ? `<span class="sp-got">${exd ? `In expenses · ${fmtY(exd.yen)}` : `Bought${P[x.doneBy] ? ` by ${esc(P[x.doneBy].name)}` : ''}`}</span>`
+    : esc([sh.list === 'every' ? SH_LISTS[x.list] : '', x.cat ? catName(x.cat) : sh.sorting.has(x.id) ? 'Sorting…' : '', x.ai ? '' : 'No shop yet'].filter(Boolean).join(' · '));
+  const pills = `<div class="sp-when">${VIEW ? `<span class="sp-pill">${esc(SH_LISTS[x.list])}</span><span class="sp-pill">${esc(catName(x.cat))}</span>${st ? `<span class="sp-pill">Day ${st.d.n} · ${dayLabel(st.d)} · ${esc(st.title)}</span>` : ''}`
+    : `<button class="sp-pill ed press" data-shset="list" data-id="${x.id}">${esc(SH_LISTS[x.list])} ${CHEV}</button><button class="sp-pill ed press" data-shset="cat" data-id="${x.id}">${esc(x.cat ? catName(x.cat) : 'Category')} ${CHEV}</button><button class="sp-pill ed press" data-shset="day" data-id="${x.id}">${st ? `Day ${st.d.n} · ${esc(st.title)}` : 'Pick a day'} ${CHEV}</button>`}</div>`;
+  const ai = x.ai && !asking ? `<div class="sp-ai"><b>${esc(x.ai.shop)}</b>${x.ai.why ? `<p>${esc(x.ai.why)}</p>` : ''}${x.ai.halal ? `<p class="sp-hl">${esc(x.ai.halal)}</p>` : ''}</div>` : '';
+  const acts = x.done ? (!exd && !VIEW ? `<div class="sp-acts"><a class="sp-act press" href="${esc(shopExHref(x))}">Add to expenses</a></div>` : '')
+    : `<div class="sp-acts">${x.ai && x.ai.search ? `<a class="sp-act dark press" href="${MAPS(x.ai.search)}" target="_blank" rel="noopener">Near me</a>` : ''}${(x.ai && x.ai.ja) || x.photo ? `<button class="sp-act press" data-shstaff="${x.id}">Show staff</button>` : ''}${st ? `<a class="sp-act press" href="../?d=${st.d.id}">See the day</a>` : ''}${VIEW ? '' : `<button class="sp-act ai press" data-shfind="${x.id}">Ask AI</button><button class="sp-act del press" data-shdel="${x.id}" aria-label="Remove ${esc(x.name)}">Remove</button>`}</div>`;
+  const qty = VIEW || x.done ? '' : `<div class="sp-qty sm"><span>How many</span><button class="press" data-shiq="-1" data-id="${x.id}" aria-label="One fewer" ${(x.qty || 1) <= 1 ? 'disabled' : ''}>−</button><b>${x.qty || 1}</b><button class="press" data-shiq="1" data-id="${x.id}" aria-label="One more">+</button></div>`;
+  const more = open ? `<div class="sp-x">${x.note ? `<p class="sp-note">${esc(x.note)}</p>` : ''}${P[x.by] ? `<p class="sp-by"><span class="av sm" style="${avStyle(P[x.by])}">${P[x.by].ini}</span>added by ${esc(P[x.by].name)}</p>` : ''}${pills}${qty}${ai}${acts}</div>` : '';
+  return `<div class="sp-it ${x.done ? 'done' : ''} ${open ? 'open' : ''}"><button class="sp-tick press" data-shtick="${x.id}" ${VIEW ? 'disabled' : ''} aria-label="${x.done ? 'Not bought yet' : 'Bought'}: ${esc(x.name)}">${x.done ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</button>
+    <div class="sp-bd"><button class="sp-hd" data-shrow="${x.id}" aria-expanded="${open}"><span class="sp-nm">${esc(x.name)}${tags}</span><span class="sp-sub">${sub}<i class="sp-chev">${CHEV}</i></span></button>${more}</div>${x.photo ? `<button class="sp-pic press" data-shpic="${x.id}" aria-label="See the photo"><img data-spimg="${x.id}" src="${esc(sh.pics.get(x.id) || '')}" alt=""></button>` : ''}</div>`;
 }
 function shopExHref(x, yen) {
   const split = x.list === 'all' ? SPLITS.all : SPLITS[x.list];
-  const q = new URLSearchParams({ add: '1', d: x.ai && x.ai.day ? x.ai.day : todayId(), src: x.id, t: x.name, c: 'shopping', p: P[ME] ? ME : x.by, s: split.join(','), ...(yen ? { y: String(yen) } : {}) });
+  const q = new URLSearchParams({ add: '1', d: x.ai && x.ai.day ? x.ai.day : todayId(), src: x.id, t: x.qty > 1 ? `${x.name} ×${x.qty}` : x.name, c: 'shopping', p: P[ME] ? ME : x.by, s: split.join(','), ...(yen ? { y: String(yen) } : {}) });
   return '../money?' + q.toString();
+}
+const passCat = (k) => sh.cat === 'any' || (k || 'other') === sh.cat;
+const passDay = (d) => sh.day === 'any' || (sh.day === 'none' ? !d : !!d && d.id === sh.day);
+// the filter row: Group ▾ Category ▾ Day ▾ Ideas; a pill opens its choices underneath (with how many each has)
+function shopFilters(rows) {
+  const all = shItems().filter((x) => !x.done), dayLbl = (id) => (id === 'none' ? 'No day yet' : dayOf(id) ? dayLabel(dayOf(id)) : 'Day');
+  const pill = (k, label, on) => `<button class="sp-fp press ${on ? 'on' : ''} ${sh.pill === k ? 'open' : ''}" data-shpill="${k}" aria-expanded="${sh.pill === k}">${label}${k === 'ideas' ? '' : ` ${CHEV}`}</button>`;
+  const opt = (k, v, label, n) => `<button class="sp-chip press ${(k === 'group' ? sh.list : sh[k]) === v && !(k === 'group' && sh.ideas) ? 'on' : ''}" data-shf="${k}" data-v="${v}">${esc(label)}${n != null ? ` <i>${n}</i>` : ''}</button>`;
+  let opts = '';
+  if (sh.pill === 'group') opts = Object.entries(SH_GROUPS).map(([k, l]) => opt('group', k, l, all.filter((x) => k === 'every' || x.list === k).length)).join('');
+  if (sh.pill === 'cat') { const c = (k) => rows.filter((r) => passDay(r.d) && (r.cat || 'other') === k).length; opts = opt('cat', 'any', 'Any', rows.filter((r) => passDay(r.d)).length) + Object.entries(SHOP_CATS).filter(([k]) => c(k) || sh.cat === k).map(([k, [n]]) => opt('cat', k, n, c(k))).join(''); }
+  if (sh.pill === 'day') { const inC = rows.filter((r) => passCat(r.cat)), c = (id) => inC.filter((r) => (id === 'none' ? !r.d : r.d && r.d.id === id)).length;
+    opts = opt('day', 'any', 'Any day', inC.length) + DAYS.filter((d) => c(d.id) || sh.day === d.id).map((d) => opt('day', d.id, `${dayLabel(d)} · ${d.city}`, c(d.id))).join('') + (c('none') ? opt('day', 'none', 'No day yet', c('none')) : ''); }
+  return `<div class="sp-filt">${pill('group', esc(SH_GROUPS[sh.list]), false)}${pill('cat', sh.cat === 'any' ? 'Category' : esc(catName(sh.cat)), sh.cat !== 'any')}${pill('day', sh.day === 'any' ? 'Day' : esc(dayLbl(sh.day)), sh.day !== 'any')}${pill('ideas', 'Ideas', sh.ideas)}</div>
+    ${opts ? `<div class="sp-opts">${opts}</div>` : ''}`;
 }
 function renderShopIdeas() {
   const has = new Map(shItems().map((x) => [x.name.toLowerCase(), x]));
-  const chips = [['all', 'Everything', SHOP_IDEAS.length], ...Object.entries(SHOP_CATS).map(([k, [n]]) => [k, n, SHOP_IDEAS.filter((x) => x[0] === k).length])]
-    .map(([k, n, c]) => `<button class="sp-chip press ${sh.cat === k ? 'on' : ''}" data-shcat="${k}">${esc(n)} <i>${c}</i></button>`).join('');
-  const cats = Object.entries(SHOP_CATS).filter(([k]) => sh.cat === 'all' || sh.cat === k).map(([k, [n, ja]]) => {
-    const rows = SHOP_IDEAS.map((x, i) => [x, i]).filter(([x]) => x[0] === k).map(([[, name, why, where, at, halal], i]) => {
-      const st = stopById(at), got = has.get(name.toLowerCase());
+  const rows = SHOP_IDEAS.map((x, i) => ({ x, i, cat: x[0], d: (stopOf(x[4]) || {}).d || null }));
+  const cats = Object.entries(SHOP_CATS).map(([k, [n, ja]]) => {
+    const list = rows.filter((r) => r.cat === k && passCat(r.cat) && passDay(r.d)); if (!list.length) return '';
+    const html = list.map(({ x: [, name, why, where, at, halal], i }) => {
+      const st = stopOf(at), got = has.get(name.toLowerCase());
       return `<div class="sp-idea"><div class="sp-bd"><b>${esc(name)}</b><p>${esc(why)}</p><p class="sp-where">${esc(where)}${st ? ` · Day ${st.d.n}, ${dayLabel(st.d)}${st.who !== 'all' ? ` · ${st.who === 'nasa' ? 'NASA' : 'M&amp;M'} only` : ''}` : ''}</p>${halal ? `<p class="sp-hl">${esc(halal)}</p>` : ''}</div>
         ${VIEW ? '' : got ? `<span class="sp-plus got" title="On ${esc(SH_LISTS[got.list])}">✓</span>` : `<button class="sp-plus press" data-shidea="${i}" aria-label="Add ${esc(name)} to a list">+</button>`}</div>`;
     }).join('');
-    return `<div class="sp-cat"><h3>${esc(n)}</h3><span>${ja}</span></div><div class="card sp-list">${rows}</div>`;
+    return `<div class="sp-cat"><h3>${esc(n)}</h3><span>${ja}</span></div><div class="card sp-list">${html}</div>`;
   }).join('');
-  return `<div class="sp-cat top"><h3>Only in Japan</h3><span>日本だけ</span></div>
-    <div class="sp-chips">${chips}</div>${cats}`;
+  return shopFilters(rows) + `<div class="sp-cat top"><h3>Only in Japan</h3><span>日本だけ</span></div>${cats || '<p class="sp-empty">No ideas for that day and category.</p>'}`;
 }
 function renderShop() {
-  const all = shItems(), n = (k) => all.filter((x) => x.list === k && !x.done).length;
-  const seg = `<div class="sp-seg"><div class="seg sp-lists">${Object.entries(SH_LISTS).map(([k, l]) => `<button class="${sh.list === k ? 'on' : ''}" data-shlist="${k}">${k === 'all' ? 'All' : esc(l)}${n(k) ? ` <em>${n(k)}</em>` : ''}</button>`).join('')}<button class="${sh.list === 'ideas' ? 'on' : ''}" data-shlist="ideas">Ideas</button><i></i></div></div>`;
-  const head = `<header class="ph"><small>Shopping</small><h1>Things to buy <span class="sp-ja">買い物</span></h1></header>${seg}`;
-  if (sh.list === 'ideas') return head + renderShopIdeas();
-  const mine = all.filter((x) => x.list === sh.list), todo = mine.filter((x) => !x.done), done = mine.filter((x) => x.done);
+  const all = shItems();
+  const head = `<header class="ph"><small>Shopping</small><h1>Things to buy <span class="sp-ja">買い物</span></h1></header>`;
+  queueMicrotask(sortShopCats);
+  if (sh.ideas) return head + renderShopIdeas();
+  const mine = all.filter((x) => sh.list === 'every' || x.list === sh.list), rows = mine.filter((x) => !x.done).map((x) => ({ x, cat: x.cat, d: dayOfItem(x) }));
+  const show = rows.filter((r) => passCat(r.cat) && passDay(r.d)), done = mine.filter((x) => x.done && passCat(x.cat) && passDay(dayOfItem(x)));
   const add = VIEW ? '' : !P[ME] ? '<p class="sp-intro">Pick who you are on the trips page to add things.</p>' : `<div class="card sp-add">
       <div class="sp-line"><label class="sp-cam press" aria-label="Add a photo or screenshot">${CAM}<input type="file" id="sh-file" accept="image/*"></label><input id="sh-name" placeholder="${sh.photo ? 'What is it? (or leave it to us)' : 'Something to buy…'}" autocomplete="off" maxlength="90" value="${esc(sh.name)}" aria-label="Something to buy"><button class="sp-go press" data-shadd ${sh.name.trim() || sh.photo ? '' : 'disabled'}>Add</button></div>
       ${sh.photo ? `<div class="sp-prev"><img src="${esc(sh.photo)}" alt="The photo to add"><p>${sh.name.trim() ? 'The photo goes with it.' : 'No name needed: we\'ll work out what it is from the photo.'}</p><button class="sp-act press" data-shrmpic>Remove</button></div>` : ''}
-      <div class="sp-more"><input id="sh-for" placeholder="Gift for… (optional)" maxlength="40" value="${esc(sh.for)}" aria-label="Gift for"><input id="sh-note" placeholder="Note: size, colour…" maxlength="200" value="${esc(sh.note)}" aria-label="Note"><button class="sp-lock press ${sh.lock ? 'on' : ''}" data-shlock aria-pressed="${sh.lock}">${sh.lock ? 'Only me' : 'Secret?'}</button></div>
-      <p class="sp-to">Adds to <b>${esc(SH_LISTS[sh.list])}</b>. ${sh.lock ? 'Locked: only you will see it.' : 'Everyone can see it.'}</p>${sh.msg ? `<p class="sp-msg">${esc(sh.msg)}</p>` : ''}</div>`;
+      <div class="sp-more"><input id="sh-for" placeholder="Gift for…" maxlength="40" value="${esc(sh.for)}" aria-label="Gift for"><input id="sh-note" placeholder="Note…" maxlength="200" value="${esc(sh.note)}" aria-label="Note: size, colour…"><div class="sp-qty"><button class="press" data-shqty="-1" aria-label="One fewer" ${sh.qty <= 1 ? 'disabled' : ''}>−</button><b aria-label="How many">${sh.qty}</b><button class="press" data-shqty="1" aria-label="One more">+</button></div><button class="sp-lock press ${sh.lock ? 'on' : ''}" data-shlock aria-pressed="${sh.lock}">${sh.lock ? 'Only me' : 'Secret?'}</button></div>
+      <p class="sp-to">Adds to <b>${esc(SH_LISTS[addList()])}</b>. ${sh.lock ? 'Locked: only you will see it.' : 'Everyone can see it.'}</p>${sh.msg ? `<p class="sp-msg">${esc(sh.msg)}</p>` : ''}</div>`;
   queueMicrotask(loadShopPics);
-  return head + add + `<p class="sec"><span>To buy · ${esc(SH_LISTS[sh.list])}</span></p><div class="card sp-list">${todo.length ? todo.map(shopRow).join('') : `<p class="sp-empty">Nothing on this list yet.${VIEW ? '' : ' Add something above, or pick from <button class="sp-link" data-shlist="ideas">Ideas</button>.'}</p>`}</div>
+  // in shopping order: by the day you're at the shop, one heading per day and shop; things with no day yet go last
+  show.sort((a, b) => ((a.d ? a.d.date : '9') + (a.x.ai ? a.x.ai.shop : '')).localeCompare((b.d ? b.d.date : '9') + (b.x.ai ? b.x.ai.shop : '')) || a.x.at - b.x.at);
+  const groups = []; for (const r of show) { const k = r.d ? r.d.id + '|' + r.x.ai.shop : 'none'; const g = groups[groups.length - 1]; if (g && g.k === k) g.rows.push(r); else groups.push({ k, r, rows: [r] }); }
+  const list = groups.map(({ r, rows: rs }) => { const st = r.x.ai && r.x.ai.at ? stopOf(r.x.ai.at) : null;
+    return `<p class="sp-dh"><span>${r.d ? `${dayLabel(r.d)} · ${esc(r.x.ai.shop)}` : 'No day yet'}</span>${st ? `<i class="${/Today|Tomorrow/.test(whenPill(st)) ? 'soon' : ''}">${whenPill(st)}</i>` : ''}</p><div class="card sp-list">${rs.map((y) => shopRow(y.x)).join('')}</div>`; }).join('');
+  const empty = rows.length ? '<p class="sp-empty">Nothing here with these filters.</p>' : `<p class="sp-empty">Nothing on this list yet.${VIEW ? '' : ' Add something above, or pick from <button class="sp-link" data-shpill="ideas">Ideas</button>.'}</p>`;
+  return head + shopFilters(rows) + add + `<p class="sec"><span>To buy · ${esc(SH_GROUPS[sh.list])}${show.length ? ` · ${show.length}` : ''}</span></p>${list || `<div class="card sp-list">${empty}</div>`}
     ${done.length ? `<p class="sec"><span>Bought</span></p><div class="card sp-list">${done.map(shopRow).join('')}</div>` : ''}`;
+}
+// changing an item's group, category or day (its pills): a sheet of choices
+function setShopSheet(id, kind) {
+  const x = store.getShop()[id]; if (!x) return;
+  ed = null;
+  const now = kind === 'list' ? x.list : kind === 'cat' ? x.cat : x.ai && x.ai.at;
+  const b = (v, label, small = '') => `<button class="press ${v === now ? 'mine' : ''}" data-shsetv="${kind}:${v}" data-id="${id}"><b>${esc(label)}</b>${small ? `<small>${esc(small)}</small>` : ''}</button>`;
+  let body = '';
+  if (kind === 'list') body = `<div class="sp-pick">${Object.entries(SH_LISTS).map(([k, l]) => b(k, l, k === x.list ? 'now' : '')).join('')}</div>`;
+  if (kind === 'cat') body = `<div class="sp-pick two">${Object.entries(SHOP_CATS).map(([k, [n]]) => b(k, n)).join('')}</div>`;
+  if (kind === 'day') { const r = routeFor(x.list), days = [...new Set(r.map((st) => st.d))];
+    body = days.length ? days.map((d) => `<p class="sp-dayh">Day ${d.n} · ${dayLabel(d)} · ${esc(d.city)}</p><div class="sp-pick stops">${r.filter((st) => st.d === d).map((st) => b(st.id, st.title, st.place && st.place !== st.title ? st.place : '')).join('')}</div>`).join('') : '<p class="sp-intro">No stops left on this route.</p>'; }
+  const title = kind === 'list' ? 'Which list?' : kind === 'cat' ? 'Which category?' : 'Buy it on which stop?';
+  sheet.innerHTML = `<div class="grab"></div><div class="sh-h"><b>${title}</b><button data-shclose>Cancel</button></div>${kind === 'day' ? '<p class="sp-intro" style="padding:0 2px 10px">AI then finds the best shop at or near it.</p>' : ''}${body}`;
+  scrim.classList.add('on'); sheet.classList.add('on');
+}
+function setShopValue(id, kind, v) {
+  const x = store.getShop()[id]; if (!x) return;
+  if (kind === 'cat' && SHOP_CATS[v]) store.setShop(id, { ...x, cat: v });
+  if (kind === 'list' && SH_LISTS[v] && v !== x.list) {
+    store.setShop(id, { ...x, list: v });
+    // still on the new group's route: it keeps its day; otherwise AI finds one on theirs
+    if (!(x.ai && x.ai.at && routeFor(v).some((st) => st.id === x.ai.at))) askShop(id, { keepCat: true });
+  }
+  if (kind === 'day') { const st = stopById(v); if (!st) return;
+    if (x.ai) store.setShop(id, { ...x, ai: { ...x.ai, at: st.id, stop: st.title, date: st.d.date, day: st.d.id } });
+    askShop(id, { at: st, keepCat: true }); }
 }
 function boughtSheet(id) {
   const x = store.getShop()[id]; if (!x) return;
@@ -1193,6 +1307,7 @@ page.addEventListener('keydown', (e) => { if (e.key === 'Enter' && /^sh-(name|fo
 sheet.addEventListener('click', (e) => {
   if (e.target.closest('[data-shclose]')) { closeSheet(); return; }
   const ex0 = e.target.closest('[data-shex]'); if (ex0) { const x = store.getShop()[ex0.dataset.shex], y = parseInt((document.getElementById('sh-yen').value || '').replace(/\D/g, ''), 10); if (x) location.href = shopExHref({ id: ex0.dataset.shex, ...x }, y > 0 ? y : 0); return; }
+  const sv = e.target.closest('[data-shsetv]'); if (sv) { const [k, v] = sv.dataset.shsetv.split(':'); setShopValue(sv.dataset.id, k, v); closeSheet(); render(); return; }
   const pk = e.target.closest('[data-shpick]'); if (pk) { addIdea(+pk.dataset.i, pk.dataset.shpick); closeSheet(); undoToast(`Added to ${SH_LISTS[pk.dataset.shpick]}`); render(); }
 });
 const undoToast = (msg) => { undoFn = null; toastEl.innerHTML = `<span>${esc(msg)}</span>`; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), 2600); };
@@ -1224,9 +1339,13 @@ page.addEventListener('click', (e) => {
   const pd = t('[data-paid]'); if (pd) { const tr = transfers(balances())[+pd.dataset.paid]; const from = ex.mode === 'couple' ? COUPLES[tr.from.id].ids[0] : tr.from.id, to = ex.mode === 'couple' ? COUPLES[tr.to.id].ids[0] : tr.to.id;
     const sid = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); saveExpense(sid, { title: `${tr.from.name} paid ${tr.to.name}`, yen: Math.round(tr.yen), payer: from, split: [to], cat: 'settle', day: todayId() }); render(); return undoable(`Marked ${tr.from.name} → ${tr.to.name} paid`, () => saveExpense(sid, null)); }
   const xr = t('[data-ex]'); if (xr) return openEx(xr.dataset.ex);
-  const shl = t('[data-shlist]'); if (shl) { sh.list = shl.dataset.shlist; if (sh.list !== 'ideas') ls.set('proto.shlist', sh.list); sh.msg = ''; return render(); }
-  const shc = t('[data-shcat]'); if (shc) { sh.cat = shc.dataset.shcat; return render(); }
+  const spp = t('[data-shpill]'); if (spp) { const k = spp.dataset.shpill; if (k === 'ideas') { sh.ideas = !sh.ideas; sh.pill = ''; } else sh.pill = sh.pill === k ? '' : k; sh.msg = ''; return render(); }
+  const spf = t('[data-shf]'); if (spf) { const { shf: k, v } = spf.dataset; if (k === 'group') { sh.list = v; sh.ideas = false; ls.set('proto.shlist', v); } else sh[k] = v; sh.pill = ''; return render(); }
+  const spr = t('[data-shrow]'); if (spr) { sh.open = sh.open === spr.dataset.shrow ? '' : spr.dataset.shrow; return render(); }
+  const sps = t('[data-shset]'); if (sps && !VIEW) { setShopSheet(sps.dataset.id, sps.dataset.shset); return; }
   if (t('[data-shlock]')) { sh.lock = !sh.lock; return render(); }
+  const sq = t('[data-shqty]'); if (sq) { sh.qty = Math.min(99, Math.max(1, sh.qty + +sq.dataset.shqty)); return render(); }
+  const siq = t('[data-shiq]'); if (siq) { const x = store.getShop()[siq.dataset.id]; if (!x) return; const n = Math.min(99, Math.max(1, (x.qty || 1) + +siq.dataset.shiq)), { qty: _, ...rest } = x; store.setShop(siq.dataset.id, n > 1 ? { ...rest, qty: n } : rest); return render(); }
   if (t('[data-shadd]')) { addShop(); return render(); }
   const shk = t('[data-shtick]'); if (shk && P[ME]) { const id = shk.dataset.shtick, x = store.getShop()[id]; if (!x) return;
     if (x.done) { const { done, doneBy, doneAt, ...rest } = x; store.setShop(id, rest); return render(); }
@@ -1282,7 +1401,7 @@ window.__tourEnv = {
   getTab: () => tab, setTab: (i) => { if (tab !== i) setTab(i); },
   getFoodView: () => foodView, setFoodView: (v) => { if (v === 'ideas') v = 'food'; if (foodView !== v) { foodView = v; render(); } },
   exCount: () => ex.list.length, sheetOpen: () => sheet.classList.contains('on'), closeSheet: () => closeSheet(),
-  driverOpen: () => driver.classList.contains('on'), shopView: () => sh.list, shopCount: () => Object.keys(store.getShop()).length,
+  driverOpen: () => driver.classList.contains('on'), shopView: () => (sh.ideas ? 'ideas' : sh.list), shopCount: () => Object.keys(store.getShop()).length,
 };
 // the practice tour's code is only fetched in practice
 if (SANDBOX) { document.body.classList.add('practice'); Promise.all([import('../js/tour.js?v=9'), new Promise((r) => setTimeout(r, 60))]).then(([t]) => t.runTour()); }

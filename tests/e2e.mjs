@@ -46,10 +46,12 @@ store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store
 // …and for /api/fill (a question in words rather than a photo): it knows Yanaka Ginza
 const FILL_SAID = { known: true, name: 'Yanaka Ginza shopping street', ja: '谷中銀座商店街', ro: 'Yanaka Ginza Shōtengai', cat: 'shop', kind: 'shop', notes: 'Old-Tokyo shopping street. The menchi-katsu is usually pork and beef: ask for beef only.', cost: '¥500–1,500 per person', minutes: 60, key: 'Since the 1940s · About 60 shops', story: 'It survived the 1923 earthquake and the war, so it still looks like 1950s Tokyo.', dyk: 'Seven wooden cats hide along the street.', wikipedia: 'Yanaka Ginza', search: 'Yanaka Ginza', lat: 35.7277, lng: 139.766 };
 // …and for /api/shop-ai (where on the route to buy something): Tokyo Banana is at Gransta, inside Tokyo Station, on day 12
-const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Banana flavour in one place.', at: 'd12-shinkansen', search: 'Tokyo Banana', ja: '東京ばな奈', halal: 'Check the box for gelatin.' };
+const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Banana flavour in one place.', at: 'd12-shinkansen', search: 'Tokyo Banana', ja: '東京ばな奈', halal: 'Check the box for gelatin.', cat: 'sweets' };
 // (sent a photo instead of a name, it sees a box of matcha Kit Kats)
 const said = (c) => typeof c === 'string' ? c : ((c.find((x) => x.type === 'text') || {}).text || '');
-const FAKE_AI = { run: async (m, inp) => /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
+// (asked to sort things into categories: masks, serums and creams are skincare, the rest sweets)
+const sorted = (text) => ({ items: [...text.matchAll(/^([a-z0-9_-]+) \| (.+)$/gim)].map(([, id, name]) => ({ id, cat: /mask|serum|cream/i.test(name) ? 'skincare' : 'sweets' })) });
+const FAKE_AI = { run: async (m, inp) => /^Sort each thing/.test(said(inp.messages[0].content)) ? { response: sorted(said(inp.messages[0].content)) } : /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana', cat: /necklace/i.test(said(inp.messages[0].content)) ? 'fashion' : 'sweets' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
@@ -494,21 +496,25 @@ await N.page.tap('[data-bkwho="all"]');
 // bought → expenses, a "to buy here" strip on the stop, and taxi details on the phrase cards and travel kit
 {
   const shOf = () => JSON.parse(store.get('shop') || '{}'), shBy = (name) => Object.entries(shOf()).find(([, x]) => x.name === name) || [];
+  const pickGroup = async (pg, g) => { await pg.tap('[data-shpill="group"]'); await pg.waitForTimeout(250); await pg.tap(`[data-shf="group"][data-v="${g}"]`); await pg.waitForTimeout(400); };
   const sp = (body, pin = PIN) => fetch(B + '/api/shop', { method: 'POST', headers: { 'content-type': 'application/json', ...(pin ? { 'x-trip-pin': pin } : {}) }, body: JSON.stringify(body) });
   ok('shopping list changes need the PIN, a real list and a real person', (await sp({ id: 'shx', value: { name: 'X', list: 'all', by: 'naf' } }, null)).status === 403
     && (await sp({ id: 'shx', value: { name: 'X', list: 'everyone', by: 'naf' } })).status === 400 && (await sp({ id: 'shx', value: { name: 'X', list: 'all', by: 'bob' } })).status === 400 && !shOf().shx);
   ok('finding a shop needs the PIN', (await fetch(B + '/api/shop-ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Tokyo Banana', stops: [] }) })).status === 403);
   await N.page.goto(B + '/japan/prototypes/tools?v=3'); await N.page.waitForTimeout(1500);
-  ok("Shopping opens on your own couple's list", /Things to buy/.test(await N.page.textContent('#page')) && (await N.page.textContent('.sp-lists .on')).startsWith('NASA'));
+  ok("Shopping opens on your own couple's list", /Things to buy/.test(await N.page.textContent('#page')) && (await N.page.textContent('[data-shpill="group"]')).trim().startsWith('NASA'));
   await N.page.fill('#sh-name', 'Tokyo Banana'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
   const [tbId, tb] = shBy('Tokyo Banana');
-  ok('added to NASA\'s list, and the helper put it on the route: Gransta, day 12', tb && tb.list === 'nasa' && tb.by === 'naf' && tb.ai && tb.ai.at === 'd12-shinkansen' && tb.ai.date === '2026-10-27' && tb.ai.day === 'd12' && tb.ai.ja === '東京ばな奈', JSON.stringify(tb));
-  ok('the list shows where, when, and the halal warning', /Gransta, inside Tokyo Station/.test(await N.page.textContent('.sp-list')) && /Day 12/.test(await N.page.textContent('.sp-list')) && /gelatin/.test(await N.page.textContent('.sp-list')));
-  await N.page.fill('#sh-name', 'Pearl necklace'); await N.page.fill('#sh-for', 'Sara'); await N.page.tap('[data-shlock]'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
+  ok('added to NASA\'s list, and the helper put it on the route: Gransta, day 12', tb && tb.list === 'nasa' && tb.by === 'naf' && tb.ai && tb.ai.at === 'd12-shinkansen' && tb.ai.date === '2026-10-27' && tb.ai.day === 'd12' && tb.ai.ja === '東京ばな奈' && tb.cat === 'sweets', JSON.stringify(tb));
+  ok('folded, it shows a heading with the day and shop, and its category', /Tue, 27 Oct · Gransta, inside Tokyo Station/.test(await N.page.textContent('#page')) && /Sweets & snacks/.test(await N.page.textContent(`[data-shrow="${tbId}"]`)) && !/gelatin/.test(await N.page.textContent('.sp-list')));
+  await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300);
+  ok('tapped open: why there, the halal warning, its pills and Ask AI', /Every Tokyo Banana flavour/.test(await N.page.textContent('.sp-list')) && /gelatin/.test(await N.page.textContent('.sp-list')) && /Day 12/.test(await N.page.textContent(`[data-shset="day"][data-id="${tbId}"]`)) && /Ask AI/.test(await N.page.textContent('.sp-list')));
+  await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300);
+  await N.page.fill('#sh-name', 'Pearl necklace'); await N.page.fill('#sh-for', 'Sara'); await N.page.tap('[data-shlock]'); await N.page.tap('[data-shqty="1"]'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
   const [, pearl] = shBy('Pearl necklace');
   const spR = await (await sp({ id: 'shy', value: { name: 'Fan', list: 'all', by: 'm' } })).json(); await sp({ id: 'shy', value: null });
   ok("a change's answer leaves out other people's secret presents", spR.ok && !JSON.stringify(spR.shop).includes('Pearl'));
-  ok('a secret present is kept as only Naf\'s, with who it\'s for', pearl && pearl.lock === 'naf' && pearl.for === 'Sara', JSON.stringify(pearl));
+  ok('a secret present is kept as only Naf\'s, with who it\'s for and how many', pearl && pearl.lock === 'naf' && pearl.for === 'Sara' && pearl.qty === 2, JSON.stringify(pearl));
   // just a photo (a screenshot from TikTok): the helper says what it is, and the photo is kept for showing staff
   await N.page.waitForFunction(() => !document.querySelector('.sp-ai.think'), null, { timeout: 5000 }).catch(() => {}); // the helper has answered for the necklace
   await N.page.setInputFiles('#sh-file', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForSelector('.sp-prev img', { timeout: 5000 }).catch(() => {});
@@ -518,7 +524,7 @@ await N.page.tap('[data-bkwho="all"]');
   ok('…and the helper names it from the photo and finds where to buy it', pic && pic.photo > 0 && pic.ai && pic.ai.at === 'd12-shinkansen' && /^data:image\/jpeg;base64,/.test(store.get('sp:' + picId) || ''), JSON.stringify(pic));
   ok('the photo shows on the list', /^(data|blob):/.test(await N.page.getAttribute(`[data-spimg="${picId}"]`, 'src').catch(() => '')));
   ok('the photo needs the PIN to see', (await fetch(B + '/api/shop-photo/' + picId)).status === 403 && (await fetch(B + '/api/shop-photo/' + picId, { headers: { 'x-trip-pin': PIN } })).headers.get('content-type') === 'image/jpeg');
-  await N.page.tap(`[data-shstaff="${picId}"]`); await N.page.waitForTimeout(500);
+  await N.page.tap(`[data-shrow="${picId}"]`); await N.page.waitForTimeout(300); await N.page.tap(`[data-shstaff="${picId}"]`); await N.page.waitForTimeout(500);
   ok('Show staff shows the photo with "Do you have this?"', /これはありますか/.test(await N.page.textContent('#driver')) && !!(await N.page.$('#driver .sp-big')));
   await N.page.screenshot({ path: SH + 'shopping-staff.png' });
   await N.page.tap('#driver [data-dx]'); await N.page.waitForTimeout(400);
@@ -527,20 +533,53 @@ await N.page.tap('[data-bkwho="all"]');
   const shopFor = async (me) => JSON.stringify((await (await fetch(B + '/api/state', { headers: { 'x-trip-pin': PIN, 'x-trip-me': me } })).json()).shop || {});
   ok("…and goes only to Naf's phone: Mo's and Sara's never get it", /Pearl/.test(await shopFor('naf')) && !/Pearl/.test(await shopFor('m')) && !/Pearl/.test(await shopFor('sara')) && /Tokyo Banana/.test(await shopFor('m')));
   await A.page.goto(B + '/japan/prototypes/tools?v=3'); await A.page.waitForTimeout(1500);
-  ok("Mo's phone opens on M&M's list", (await A.page.textContent('.sp-lists .on')).startsWith('M&M'));
-  await A.page.tap('[data-shlist="nasa"]'); await A.page.waitForTimeout(400);
+  ok("Mo's phone opens on M&M's list", (await A.page.textContent('[data-shpill="group"]')).trim().startsWith('M&M'));
+  await pickGroup(A.page, 'nasa');
   ok("Mo sees NASA's Tokyo Banana but not Naf's secret present", /Tokyo Banana/.test(await A.page.textContent('#page')) && !/Pearl/.test(await A.page.textContent('#page')));
   ok("…and the photo Naf added, fetched with the PIN", await A.page.$eval(`[data-spimg="${picId}"]`, (im) => im.src.startsWith('blob:') && im.naturalWidth > 0).catch(() => false));
-  await N.page.tap('[data-shlist="ideas"]'); await N.page.waitForTimeout(400);
+  // the filters: Category and Day narrow the list, Everything shows all three lists
+  await N.page.tap('[data-shpill="cat"]'); await N.page.waitForTimeout(250);
+  ok('the Category pill opens the categories in use, with counts', /Sweets & snacks/.test(await N.page.textContent('.sp-opts')) && !/Stationery/.test(await N.page.textContent('.sp-opts')));
+  await N.page.tap('[data-shf="cat"][data-v="sweets"]'); await N.page.waitForTimeout(300);
+  ok('…and picking one shows only those', /Tokyo Banana/.test(await N.page.textContent('#page')) && !/Pearl necklace/.test(await N.page.textContent('#page')) && /Sweets/.test(await N.page.textContent('[data-shpill="cat"]')));
+  await N.page.tap('[data-shpill="day"]'); await N.page.waitForTimeout(250);
+  ok('the Day pill lists only days with something to buy', (await N.page.$$('.sp-opts [data-shf="day"]')).length === 2 && /Tue, 27 Oct/.test(await N.page.textContent('.sp-opts')));
+  await N.page.tap('[data-shf="day"][data-v="d12"]'); await N.page.waitForTimeout(300);
+  ok('…and picking a day shows that day', /Tokyo Banana/.test(await N.page.textContent('#page')) && /27 Oct/.test(await N.page.textContent('[data-shpill="day"]')));
+  await N.page.tap('[data-shpill="day"]'); await N.page.waitForTimeout(250); await N.page.tap('[data-shf="day"][data-v="any"]'); await N.page.tap('[data-shpill="cat"]'); await N.page.waitForTimeout(250); await N.page.tap('[data-shf="cat"][data-v="any"]'); await N.page.waitForTimeout(300);
+  // an item's pills change it: category, then group (still on the route: keeps its day), then day (AI looks at that stop)
+  await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300); await N.page.tap(`[data-shset="cat"][data-id="${tbId}"]`); await N.page.waitForTimeout(450);
+  await N.page.tap('#sheet [data-shsetv="cat:gadgets"]'); await N.page.waitForTimeout(500);
+  await N.page.tap(`[data-shiq="1"][data-id="${tbId}"]`); await N.page.waitForTimeout(300); await N.page.tap(`[data-shiq="1"][data-id="${tbId}"]`); await N.page.waitForTimeout(300); await N.page.tap(`[data-shiq="-1"][data-id="${tbId}"]`); await N.page.waitForTimeout(400);
+  ok('the quantity counter on an item: ×2 shows on its folded line', shOf()[tbId].qty === 2 && /×2/.test(await N.page.textContent(`[data-shrow="${tbId}"]`)));
+  await N.page.tap(`[data-shiq="-1"][data-id="${tbId}"]`); await N.page.waitForTimeout(300);
+  ok('…and back to one, it drops the count', !('qty' in shOf()[tbId]));
+  ok('tapping its category pill changes the category', shOf()[tbId].cat === 'gadgets' && /Gadgets/.test(await N.page.textContent(`[data-shrow="${tbId}"]`)));
+  await N.page.tap(`[data-shset="list"][data-id="${tbId}"]`); await N.page.waitForTimeout(450); await N.page.tap('#sheet [data-shsetv="list:all"]'); await N.page.waitForTimeout(600);
+  ok('…its group pill moves it to another list, keeping its stop', shOf()[tbId].list === 'all' && shOf()[tbId].ai.at === 'd12-shinkansen' && shOf()[tbId].cat === 'gadgets', JSON.stringify(shOf()[tbId]));
+  await pickGroup(N.page, 'every'); await N.page.tap(`[data-shrow="${tbId}"]`).catch(() => {}); await N.page.waitForTimeout(300);
+  if (!(await N.page.$(`[data-shset="day"][data-id="${tbId}"]`))) { await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300); }
+  await N.page.tap(`[data-shset="day"][data-id="${tbId}"]`); await N.page.waitForTimeout(450);
+  const dayPick = await N.page.$$eval('#sheet [data-shsetv^="day:"]', (b) => b.map((x) => x.dataset.shsetv.slice(4))), newStop = dayPick.find((x) => x !== 'd12-shinkansen');
+  await N.page.tap(`#sheet [data-shsetv="day:${newStop}"]`); await N.page.waitForTimeout(1500);
+  ok('…and its day pill puts it on the stop you pick, with AI asked again for a shop there', shOf()[tbId].ai.at === newStop && shOf()[tbId].cat === 'gadgets' && dayPick.length > 5, newStop + ' ' + JSON.stringify(shOf()[tbId]));
+  await sp({ id: tbId, value: { ...shOf()[tbId], list: 'nasa', cat: 'sweets', ai: { ...shOf()[tbId].ai, at: 'd12-shinkansen', date: '2026-10-27', day: 'd12' } } }); // back as it was, for the checks below
+  // things from before there were categories get sorted by AI when the page opens
+  ok('sorting needs the PIN', (await fetch(B + '/api/shop-cat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ items: [{ id: 'a', name: 'x' }] }) })).status === 403);
+  await sp({ id: 'shold1', value: { name: 'Rice sheet mask', list: 'nasa', by: 'sara', at: 1 } }); await sp({ id: 'shold2', value: { name: 'Mochi', list: 'all', by: 'm', at: 2 } });
+  await N.page.reload(); await N.page.waitForTimeout(2500);
+  ok('…and things added before categories get one when the page opens', shOf().shold1 && shOf().shold1.cat === 'skincare' && shOf().shold2.cat === 'sweets', JSON.stringify([shOf().shold1, shOf().shold2]));
+  await sp({ id: 'shold1', value: null }); await sp({ id: 'shold2', value: null });
+  await N.page.tap('[data-shpill="ideas"]'); await N.page.waitForTimeout(400);
   ok('Ideas: Only in Japan, by category', /Only in Japan/.test(await N.page.textContent('#page')) && (await N.page.$$('[data-shidea]')).length > 40);
   await N.page.screenshot({ path: SH + 'shopping-ideas.png' });
   await N.page.reload(); await N.page.waitForTimeout(1500);
-  ok('coming back, Shopping opens on a list with the box to add things, not on Ideas', !!(await N.page.$('.sp-add #sh-name')) && !(await N.page.textContent('.sp-lists .on')).startsWith('Ideas'));
-  await N.page.tap('[data-shlist="ideas"]'); await N.page.waitForTimeout(400);
+  ok('coming back, Shopping opens on a list with the box to add things, not on Ideas', !!(await N.page.$('.sp-add #sh-name')) && !(await N.page.$('.sp-fp.on[data-shpill="ideas"]')));
+  await N.page.tap('[data-shpill="ideas"]'); await N.page.waitForTimeout(400);
   await N.page.tap('[data-shidea]'); await N.page.waitForTimeout(450); await N.page.tap('#sheet [data-shpick="all"]'); await N.page.waitForTimeout(900);
   const [, kk] = shBy('Regional Kit Kat flavours');
-  ok('an idea goes on All of us with its place on the route already found', kk && kk.list === 'all' && kk.idea === true && kk.ai.at === 'd07-shinsaibashi' && kk.ai.date === '2026-10-22', JSON.stringify(kk));
-  await N.page.tap('[data-shlist="nasa"]'); await N.page.waitForTimeout(400);
+  ok('an idea goes on All of us with its place on the route already found', kk && kk.list === 'all' && kk.idea === true && kk.ai.at === 'd07-shinsaibashi' && kk.ai.date === '2026-10-22' && kk.cat === 'sweets', JSON.stringify(kk));
+  await pickGroup(N.page, 'nasa');
   await N.page.tap(`[data-shtick="${tbId}"]`); await N.page.waitForTimeout(500);
   ok('ticking it bought asks about expenses', /Add it to expenses/.test(await N.page.textContent('#sheet')) && shOf()[tbId].done === true && shOf()[tbId].doneBy === 'naf');
   const navs = [], onNav = (r) => { if (r.isNavigationRequest()) navs.push(r.url()); }; N.page.on('request', onNav);
