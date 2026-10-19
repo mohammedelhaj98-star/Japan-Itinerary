@@ -176,10 +176,14 @@ of that, less once the live connection carries the changes; a hibernating WebSoc
 
 `/japan/photos` (+ menu → Photos) shows everyone's photos and videos by day and stop. Files live in one person's
 Google Drive under `Our Trips / Japan 2026 / Day NN · …`; the site uploads into it as them (`lib/photos.js`).
+The four can also add photos with the Google Drive app (the Photos page's **Drive** button opens the trip folder; the
+app keeps uploading in the background). The next member to open the Photos page files them by day and stop, from the
+camera time and location, or the day folder they were put in. That needs the full `drive` scope; a Drive connected
+with the older `drive.file` scope shows a "Reconnect" banner, and a reconnect must use the same Google account.
 
 One-time setup:
 1. Google Cloud console: new project → enable the **Google Drive API** → OAuth consent screen (External, add the
-   `drive.file` scope, then **Publish app** so sign-ins don't expire after 7 days) → Credentials → OAuth client ID,
+   `drive` scope, then **Publish app** so sign-ins don't expire after 7 days) → Credentials → OAuth client ID,
    type *Web application*, redirect URI `https://ourtrips.date/api/photos/callback`.
 2. `npx wrangler pages secret put GOOGLE_CLIENT_ID --project-name japan2026` and the same for `GOOGLE_CLIENT_SECRET`,
    then redeploy (`bash scripts/deploy.sh`).

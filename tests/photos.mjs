@@ -16,18 +16,21 @@ let fails = 0; const ok = (n, c, info = '') => { if (!c) fails++; console.log(c 
 /* ── stand-in Google ── */
 const G = 'http://localhost:8798';
 const files = new Map(), sessions = new Map(); let nid = 1, failPuts = 0, putDelay = 0, sessionsMade = 0, failDrive = false;
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'; let aboutUser = { displayName: 'Naf Test', emailAddress: 'naf@example.com' };
 const newId = () => 'fileid' + String(nid++).padStart(8, '0');
 const body = (req) => new Promise((r) => { const c = []; req.on('data', (d) => c.push(d)); req.on('end', () => r(Buffer.concat(c))); });
 const multipart = (raw, b) => { const sep = Buffer.from('--' + b), out = []; let i = raw.indexOf(sep); while (i >= 0) { const j = raw.indexOf(sep, i + sep.length); if (j < 0) break; const part = raw.slice(i + sep.length + 2, j - 2), h = part.indexOf('\r\n\r\n'); out.push({ head: part.slice(0, h).toString(), data: part.slice(h + 4) }); i = j; } return out; };
 const pick = (q, re) => { const m = re.exec(q); return m ? m[1].replace(/\\'/g, "'") : null; };
 function query(q) {
+  const not = [...q.matchAll(/not appProperties has \{ key='([^']+)' and value='([^']*)' \}/g)].map((m) => [m[1], m[2]]); q = q.replace(/not appProperties has \{[^}]*\}/g, '');
+  const parents = [...q.matchAll(/'([^']+)' in parents/g)].map((m) => m[1]), media = /mimeType contains 'image\/'/.test(q);
   const name = pick(q, /name='((?:[^'\\]|\\.)*)'/), mime = pick(q, /mimeType='([^']+)'/), parent = pick(q, /'([^']+)' in parents/);
   const props = [...q.matchAll(/appProperties has \{ key='([^']+)' and value='([^']*)' \}/g)].map((m) => [m[1], m[2]]);
-  return [...files.values()].filter((f) => !f.trashed && (!name || f.name === name) && (!mime || f.mimeType === mime) && (!parent || f.parents.includes(parent)) && props.every(([k, v]) => (f.appProperties || {})[k] === v));
+  return [...files.values()].filter((f) => !f.trashed && (!name || f.name === name) && (!mime || f.mimeType === mime) && (!parent || parents.some((x) => (f.parents || []).includes(x))) && (!media || /^(image|video)\//.test(f.mimeType)) && props.every(([k, v]) => (f.appProperties || {})[k] === v) && !not.some(([k, v]) => (f.appProperties || {})[k] === v));
 }
-const fileJson = (f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents, size: String(f.data ? f.data.length : 0), appProperties: f.appProperties,
+const fileJson = (f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents, size: String(f.data ? f.data.length : 0), appProperties: f.appProperties, createdTime: f.createdTime, owners: f.owners,
   thumbnailLink: f.mimeType.startsWith('image/') || f.mimeType.startsWith('video/') ? `${G}/thumb/${f.id}=s220` : undefined,
-  imageMediaMetadata: f.mimeType.startsWith('image/') ? { width: 1200, height: 1600, rotation: 0 } : undefined, videoMediaMetadata: f.mimeType.startsWith('video/') ? { width: 1080, height: 1920, durationMillis: '4000' } : undefined });
+  imageMediaMetadata: f.mimeType.startsWith('image/') ? { width: 1200, height: 1600, rotation: 0, ...(f.meta || {}) } : undefined, videoMediaMetadata: f.mimeType.startsWith('video/') ? { width: 1080, height: 1920, durationMillis: '4000' } : undefined });
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 const google = http.createServer(async (req, res) => {
   const u = new URL(req.url, G);
@@ -35,7 +38,7 @@ const google = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   const send = (s, j, h = {}) => { res.writeHead(s, { 'content-type': 'application/json', ...h }); res.end(JSON.stringify(j)); };
   if (u.pathname === '/o/oauth2/v2/auth') { res.writeHead(302, { location: `${u.searchParams.get('redirect_uri')}?code=good&state=${encodeURIComponent(u.searchParams.get('state'))}` }); return res.end(); }
-  if (u.pathname === '/token') { const f = new URLSearchParams((await body(req)).toString()); if (f.get('client_secret') !== 'csec') return send(401, {}); if (f.get('grant_type') === 'authorization_code' && f.get('code') === 'good') return send(200, { access_token: 'AT', refresh_token: 'RT', expires_in: 3600 }); if (f.get('grant_type') === 'refresh_token' && f.get('refresh_token') === 'RT') return send(200, { access_token: 'AT', expires_in: 3600 }); return send(400, { error: 'invalid_grant' }); }
+  if (u.pathname === '/token') { const f = new URLSearchParams((await body(req)).toString()); if (f.get('client_secret') !== 'csec') return send(401, {}); if (f.get('grant_type') === 'authorization_code' && f.get('code') === 'good') return send(200, { access_token: 'AT', refresh_token: 'RT', expires_in: 3600, scope: DRIVE_SCOPE }); if (f.get('grant_type') === 'refresh_token' && f.get('refresh_token') === 'RT') return send(200, { access_token: 'AT', expires_in: 3600 }); return send(400, { error: 'invalid_grant' }); }
   const th = /^\/thumb\/([^=]+)=s(\d+)$/.exec(u.pathname);
   if (th) { const f = files.get(th[1]); if (!f) return send(404, {}); res.writeHead(200, { 'content-type': f.mimeType.startsWith('image/') ? f.mimeType : 'image/png' }); return res.end(f.mimeType.startsWith('image/') ? f.data : PNG); }
   const ss = /^\/session\/(\w+)$/.exec(u.pathname);
@@ -62,6 +65,7 @@ const google = http.createServer(async (req, res) => {
     sessions.set(sid, { meta: { ...meta, mimeType: meta.mimeType || req.headers['x-upload-content-type'] }, size: +req.headers['x-upload-content-length'], got: 0, parts: [], origin: req.headers.origin });
     res.writeHead(200, { location: `${G}/session/${sid}` }); return res.end();
   }
+  if (u.pathname === '/drive/v3/about') return send(200, { user: aboutUser });
   if (u.pathname === '/drive/v3/files' && req.method === 'GET') return send(200, { files: query(u.searchParams.get('q') || '').map(fileJson) });
   if (u.pathname === '/drive/v3/files' && req.method === 'POST') { const m = JSON.parse((await body(req)).toString()); const id = newId(); files.set(id, { ...m, id, appProperties: m.appProperties || {} }); return send(200, { id }); }
   const fm = /^\/drive\/v3\/files\/([\w-]+)$/.exec(u.pathname);
@@ -336,6 +340,54 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   ok('not connected: Settings points to the Photos page', /Connect Google Drive on the Photos page/.test(await n.textContent('#bk-line')) && await n.$eval('[data-backup]', (b) => b.disabled));
   kv.set('gdrive', g);
   ok('backup needs the PIN', (await onRequest({ request: new Request(B + '/api/backup'), env })).status === 403);
+}
+
+// 13 · photos added straight into the trip's folders with the Google Drive app show up, filed by day and stop
+{
+  const FOLDER = 'application/vnd.google-apps.folder';
+  const fid = (re) => ([...files.values()].find((f) => re.test(f.name || '') && f.mimeType === FOLDER) || {}).id;
+  const tripDir = fid(/^Japan 2026$/), d7 = fid(/^Day 07 · /), d8 = fid(/^Day 08 · /);
+  ok('a folder for every day is ready for the Drive app', tripDir && d7 && d8 && [...files.values()].filter((f) => f.mimeType === FOLDER && (f.parents || [])[0] === tripDir && /^Day \d\d · /.test(f.name)).length >= 15);
+  const add = (name, mimeType, parents, extra) => { const id = newId(); files.set(id, { id, name, mimeType, parents, appProperties: {}, data: fs.readFileSync(FIX + '/castle.jpg'), ...extra }); return id; };
+  const heic = add('IMG_1001.HEIC', 'image/heic', [d7], { meta: { time: '2026:10:22 12:05:00', location: { latitude: 34.6873, longitude: 135.5262 } }, owners: [{ displayName: 'Mariam Q' }], createdTime: '2026-10-22T05:00:00Z' });
+  const jpg = add('IMG_1002.JPG', 'image/jpeg', [tripDir], { meta: { time: '2026:10:22 15:42:07' }, owners: [{ displayName: 'Sara' }], createdTime: '2026-10-22T07:00:00Z' });
+  const mov = add('IMG_1003.MOV', 'video/quicktime', [d8], { owners: [{ displayName: 'Mohammed E' }], createdTime: '2026-10-23T01:10:00Z' });
+  const pdf = add('notes.pdf', 'application/pdf', [tripDir], { createdTime: '2026-10-22T07:00:00Z' });
+  const away = add('elsewhere.jpg', 'image/jpeg', ['root'], { meta: { time: '2026:10:22 15:00:00' }, createdTime: '2026-10-22T07:00:00Z' });
+  const g0 = JSON.parse(kv.get('gdrive'));
+  ok('connecting remembered whose Drive it is and the access', g0.email === 'naf@example.com' && g0.scope === DRIVE_SCOPE);
+
+  // an older connection (only the site's own files): the page asks for a reconnect, nothing is filed
+  kv.set('gdrive', JSON.stringify({ ...g0, scope: 'https://www.googleapis.com/auth/drive.file' }));
+  await n.goto(B + '/japan/photos'); await n.waitForSelector('#drivebanner .banner', { timeout: 8000 }).catch(() => {});
+  ok('old connection: a banner asks Naf to reconnect', /don't show here yet/.test(await n.textContent('#drivebanner')) && /Naf needs to reconnect/.test(await n.textContent('#drivebanner')), await n.textContent('#drivebanner'));
+  ok('…and nothing is filed meanwhile', !files.get(heic).appProperties.trip && !files.get(jpg).appProperties.trip);
+  await n.screenshot({ path: OUT + 'drive-reconnect.png' });
+
+  // reconnecting with a different Google account is refused (the photos would move to another Drive)
+  aboutUser = { displayName: 'Someone Else', emailAddress: 'else@example.com' };
+  await n.tap('#drivebanner a'); await n.waitForTimeout(1200);
+  ok('reconnect with another account refused', /different Google account/.test(await n.textContent('body')) && JSON.parse(kv.get('gdrive')).scope.endsWith('drive.file'));
+  aboutUser = { displayName: 'Naf Test', emailAddress: 'naf@example.com' };
+
+  // the same account: wider access, and the Drive-app photos are filed
+  await n.goto(B + '/japan/photos'); await n.waitForSelector('#drivebanner .banner', { timeout: 8000 }).catch(() => {});
+  await n.tap('#drivebanner a'); await n.waitForURL(/\/japan\/photos/, { timeout: 10000 });
+  await n.waitForFunction(() => /from the Drive app added/.test(document.getElementById('toast')?.textContent || ''), null, { timeout: 10000 }).catch(() => {});
+  ok('reconnected with full access, banner gone', JSON.parse(kv.get('gdrive')).scope === DRIVE_SCOPE && !(await n.textContent('#drivebanner')).trim());
+  ok('toast: 3 from the Drive app added', /3 from the Drive app added/.test(await n.textContent('#toast')), await n.textContent('#toast'));
+  const ap = (id) => files.get(id).appProperties;
+  ok('HEIC in the Day 7 folder, with a location → Osaka Castle, by Mariam', ap(heic).trip === 'japan' && ap(heic).day === 'd07' && ap(heic).stop === castleId && ap(heic).by === 'mariam', JSON.stringify(ap(heic)));
+  ok('photo in the trip folder → Day 7 · Shinsaibashi by its camera time, by Sara', ap(jpg).day === 'd07' && ap(jpg).stop === shinId && ap(jpg).by === 'sara', JSON.stringify(ap(jpg)));
+  ok('video in the Day 8 folder → Day 8, by Mo (Mohammed)', ap(mov).day === 'd08' && ap(mov).by === 'm' && +ap(mov).t === Date.parse('2026-10-23T01:10:00Z'), JSON.stringify(ap(mov)));
+  ok('a PDF and a photo outside the trip folders are left alone', !ap(pdf).trip && !ap(away).trip);
+  const adoptAway = await onRequest({ request: new Request(B + '/api/photos/adopt', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', items: [{ id: away, day: 'd07', t: Date.now() }] }) }), env });
+  ok('adopt refuses a file outside the trip folders', (await adoptAway.json()).filed === 0 && !ap(away).trip);
+  await n.waitForTimeout(800);
+  ok('they show in the gallery', !!(await n.$(`.grid .th[data-pid="${heic}"]`)) && !!(await n.$(`.grid .th[data-pid="${mov}"]`)));
+  await n.screenshot({ path: OUT + 'drive-filed.png' });
+  const again = await onRequest({ request: new Request(B + '/api/photos/inbox', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: '{"trip":"japan"}' }), env });
+  ok('nothing left to file afterwards', (await again.json()).items.length === 0);
 }
 
 for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S]]) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
