@@ -613,7 +613,7 @@ const qSet = (q) => lsSet(Q_KEY, Object.keys(q).length ? JSON.stringify(q) : nul
 const fileKey = (f) => `${f.name}|${f.size}|${f.lastModified}`;
 let uploading = false, rows = [], wake = null;
 // the trip folder in Drive, for the Drive app (it uploads in the background); the link never changes, so it's kept on the phone
-const DRIVE_KEY = 'photos.drive';
+const DRIVE_KEY = 'photos.drive2'; // 2: asked again once, so the day folders get made
 let driveUrl = lsGet(DRIVE_KEY) || '';
 const paintDrive = () => document.querySelectorAll('[data-drive]').forEach((a) => { a.href = driveUrl || '#'; });
 async function getDrive() {

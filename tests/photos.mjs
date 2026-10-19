@@ -388,6 +388,12 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   await n.screenshot({ path: OUT + 'drive-filed.png' });
   const again = await onRequest({ request: new Request(B + '/api/photos/inbox', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: '{"trip":"japan"}' }), env });
   ok('nothing left to file afterwards', (await again.json()).items.length === 0);
+  const upd = await onRequest({ request: new Request(B + '/api/photos/update', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', ids: [away, pdf], set: { hidden: true } }) }), env });
+  ok('changes to files that aren\'t trip photos are refused', upd.status === 400 && !ap(away).hidden && !ap(pdf).hidden);
+  const before = kv.get('gdrive'); aboutUser = null;
+  await n.goto(B + '/api/photos/connect?k=6666'); await n.waitForTimeout(800);
+  ok('a reconnect Google won\'t name the account of is refused', /didn't say which account/.test(await n.textContent('body')) && kv.get('gdrive') === before);
+  aboutUser = { displayName: 'Naf Test', emailAddress: 'naf@example.com' };
 }
 
 for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S]]) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
