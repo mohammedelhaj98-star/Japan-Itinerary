@@ -158,6 +158,11 @@ body.sel .selbar { transform:none; }
 .up-pick { display:flex; flex-direction:column; align-items:center; gap:6px; padding:22px; border-radius:18px; border:1.5px dashed rgba(20,20,10,.2); text-align:center; color:var(--ink2); font-size:14px; }
 .up-pick b { font-size:16px; color:var(--ink); }
 .up-pick input { display:none; }
+.up-drive { display:flex; align-items:center; gap:12px; margin-top:10px; padding:14px 16px; border-radius:18px; background:#fff; box-shadow:0 0 0 1px var(--line); color:var(--ink2); font-size:13px; line-height:1.35; }
+.up-drive svg { flex:none; color:var(--ink); }
+.up-drive span { flex:1; min-width:0; }
+.up-drive b { display:block; font-size:15px; color:var(--ink); margin-bottom:2px; }
+.up-drive .go-arrow { flex:none; color:var(--ink3); font-size:18px; }
 .uprow { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
 .uprow .pt { position:relative; width:46px; height:46px; border-radius:10px; flex:none; overflow:hidden; background:#ddd8cc; }
 .uprow .pt img, .uprow .pt video { width:100%; height:100%; object-fit:cover; display:block; }
@@ -302,7 +307,7 @@ body.guest [data-select] { display:none; }
 </head>
 <body>
 <main class="page">
-  <div class="bar"><a class="tback press" href="./" data-home><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Trip</a><span class="sp"></span><button class="pill press" data-select hidden>Select</button></div>
+  <div class="bar"><a class="tback press" href="./" data-home><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Trip</a><span class="sp"></span><a class="pill press" data-drive href="#" target="_blank" rel="noopener" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2.5h6.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>Drive</a><button class="pill press" data-select hidden>Select</button></div>
   <header class="ph"><small>Japan 2026 · photos</small></header>
   <div id="gate"></div>
   <div id="main" hidden>
@@ -605,11 +610,26 @@ const qGet = () => { try { return JSON.parse(lsGet(Q_KEY)) || {}; } catch { retu
 const qSet = (q) => lsSet(Q_KEY, Object.keys(q).length ? JSON.stringify(q) : null);
 const fileKey = (f) => `${f.name}|${f.size}|${f.lastModified}`;
 let uploading = false, rows = [], wake = null;
+// the trip folder in Drive, for the Drive app (it uploads in the background); the link never changes, so it's kept on the phone
+const DRIVE_KEY = 'photos.drive';
+let driveUrl = lsGet(DRIVE_KEY) || '';
+const paintDrive = () => document.querySelectorAll('[data-drive]').forEach((a) => { a.href = driveUrl || '#'; });
+async function getDrive() {
+  if (!driveUrl) { driveUrl = (await api('/folder', { trip: TRIP })).url; lsSet(DRIVE_KEY, driveUrl); }
+  paintDrive(); return driveUrl;
+}
+// tapped before the link is known (first time on this phone): fetch it, then go
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-drive]') || driveUrl) return;
+  e.preventDefault(); toast('Finding the Drive folder…');
+  getDrive().then((u) => { location.href = u; }).catch(() => toast('Couldn\'t reach Google Drive. Try again in a moment.'));
+});
 const folderOf = (d) => `Day ${String(d.n).padStart(2, '0')} · ${d.title}`.slice(0, 80);
 function openUpload() {
   if (!member()) return;
   openSheet(`<div class="sh-h"><b>Upload photos</b><button data-sheetx>Close</button></div>
     <label class="up-pick press"><input type="file" id="upfiles" multiple accept="image/*,video/*"><svg width="28" height="28" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="15" rx="3" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10.5" r="1.8" fill="currentColor"/><path d="M5 18l5-5 3 3 3-3 3 3" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><b>Choose photos &amp; videos</b>Each one is filed under the day and stop it was taken at.</label>
+    <a class="up-drive press" data-drive href="${esc(driveUrl || '#')}" target="_blank" rel="noopener"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2.5h6.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg><span><b>Or use the Google Drive app</b>It keeps uploading in the background, even with this page closed. Opens our Japan 2026 folder; pick the day's folder and tap +. These don't show on this page yet.</span><i class="go-arrow">›</i></a>
     <div id="uplist"></div>
     <p class="honest">They go into Google Drive, in Our Trips / Japan 2026, a folder for each day. Keep this page open while it uploads (the screen stays on). If it stops, choose the same photos again and it carries on where it left off. Photos taken outside the trip days go to the nearest day; fix it with Assign.</p>`);
   const list = $('#uplist'); rows.forEach((r) => list.appendChild(r.el));
@@ -1028,8 +1048,9 @@ async function start(retried) {
     $('#gate').innerHTML = `<div class="gate"><h2>Couldn't load the photos</h2><p>${esc(e.status === 409 || e.status === 502 ? e.message : 'Check your connection and try again.')}</p><button class="go press" onclick="location.reload()">Try again</button></div>`; return;
   }
   $('#gate').innerHTML = ''; $('#main').hidden = false;
-  $('[data-select]').hidden = !member(); $('#fab').hidden = !member(); document.body.classList.toggle('guest', !member());
+  $('[data-select]').hidden = !member(); $('#fab').hidden = !member(); $('[data-drive]').hidden = !member(); document.body.classList.toggle('guest', !member());
   render(); renderResume();
+  if (member()) getDrive().catch(() => {});
   const cq = new URLSearchParams(location.search).get('connect');
   if (cq === 'ok') toast('Google Drive connected. Upload away!'); if (cq) history.replaceState(null, '', location.pathname);
   // keep up with the others' uploads while the page is open
