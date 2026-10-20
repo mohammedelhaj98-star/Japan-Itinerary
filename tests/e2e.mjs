@@ -1048,8 +1048,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const flying = { st: 'air', delay: 5, dep: { sch: nasaF.dep, est: nasaF.dep, act: nasaF.dep }, arr: { sch: nasaF.arr, est: new Date(nArr + 5 * 60e3).toISOString(), act: null }, to: 'NRT', toTz: 'Asia/Tokyo', gate: 'E81', no: 'AC9', people: ['naf', 'sara'], changes: [] };
   const lostNow = await F.checkFlights({ flights: { 'd01-land': { ...flying, checkedAt: new Date(nArr).toISOString() } }, now: nArr + 25 * 60e3, look: none, airEvery: 15, lead: 3 });
   const stuck = await F.checkFlights({ flights: { 'd01-land': { ...flying, missing: true, checkedAt: new Date(nArr + 6 * H).toISOString() } }, now: nArr + 9 * H, look: none, airEvery: 15, lead: 3 });
-  const early = await F.checkFlights({ flights: { 'd01-land': { ...flying, st: 'ontime', dep: { sch: nasaF.dep }, checkedAt: new Date(Date.parse(nasaF.dep) - 2 * H).toISOString() } }, now: Date.parse(nasaF.dep) - H, look: none, airEvery: 15, lead: 3 });
-  const ln = lostNow.flights['d01-land'], sk = stuck.flights['d01-land'], er = early.flights['d01-land'];
+  const preDep = await F.checkFlights({ flights: { 'd01-land': { ...flying, st: 'ontime', dep: { sch: nasaF.dep }, checkedAt: new Date(Date.parse(nasaF.dep) - 2 * H).toISOString() } }, now: Date.parse(nasaF.dep) - H, look: none, airEvery: 15, lead: 3 });
+  const ln = lostNow.flights['d01-land'], sk = stuck.flights['d01-land'], er = preDep.flights['d01-land'];
   ok('a flight AirLabs stops seeing after takeoff has landed (alerted while it\'s news, quietly fixed later); one it loses before takeoff keeps what we knew',
     ln.st === 'landed' && !ln.missing && lostNow.alerts.length === 1 && /Naf and Sara have landed at Narita, 4:15 PM\./.test(lostNow.alerts[0].text)
     && sk.st === 'landed' && !sk.missing && sk.nextAt === null && !stuck.alerts.length && er.st === 'ontime' && !er.missing && er.gate === 'E81',
