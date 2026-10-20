@@ -481,6 +481,47 @@ button.ykan { pointer-events:auto; cursor:pointer; }
 .pastlbl svg { width:14px; height:14px; }
 .addgap svg, .addend svg { width:18px; height:18px; }
 .addend { display:flex; align-items:center; justify-content:center; gap:6px; margin:14px 12px 0; width:calc(100% - 24px); height:52px; border-radius:18px; border:1.5px dashed rgba(0,0,0,.18); font-size:14.5px; font-weight:700; color:var(--ink2); }
+/* fold up, skip, reorder */
+.endrow { display:flex; gap:8px; margin:14px 12px 0; }
+.endrow .addend { margin:0; width:auto; flex:1; }
+.endrow .ordb { flex:0 0 auto; padding:0 16px; }
+.acts2 { display:flex; gap:8px; margin-top:8px; }
+.acts2 > * { flex:1; min-height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:700; font-size:13.5px; color:inherit; opacity:.86; border:1.5px solid rgba(255,255,255,.28); }
+.pass.tk .acts2 > * { border-color:rgba(0,0,0,.14); }
+.a-skip.on { background:rgba(0,0,0,.22); border-color:transparent; opacity:1; }
+.skl { display:inline-block; margin-left:6px; padding:0 6px; border-radius:6px; background:rgba(0,0,0,.28); color:#fff; letter-spacing:.06em; }
+.pass.skip:not(.open) { opacity:.55; filter:saturate(.35); }
+.pass.skip.open .hero { filter:saturate(.35); }
+.mioku { position:absolute; top:7px; right:66px; width:54px; height:54px; border-radius:50%; border:2.5px solid #4b4a45; color:#4b4a45; background:rgba(252,247,238,.95); display:grid; place-items:center; font-family:var(--mincho); font-size:17px; letter-spacing:-.04em; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; z-index:3; transition:opacity 200ms, transform 300ms cubic-bezier(.2,1.3,.4,1); }
+.pass.open .mioku { top:150px; right:16px; }
+.pass.skip .mioku { opacity:.92; transform:rotate(-10deg); }
+.pin.skp { opacity:.45; }
+.sknote { display:flex; align-items:center; justify-content:center; gap:2px; margin-top:8px; font-size:12.5px; font-weight:700; opacity:.8; text-decoration:none; }
+.sknote svg { width:14px; height:14px; }
+.grip, .glock { display:none; }
+.foldbar { display:none; align-items:center; gap:8px; margin:2px 14px 12px; }
+body.folded .foldbar { display:flex; }
+.fb-l { flex:1; min-width:0; margin:0; font-size:14px; line-height:1.25; color:var(--ink2); }
+.fb-l b { color:var(--ink); }
+.fb-hint { display:none; font-size:12.5px; }
+.fb-hint svg { width:15px; height:15px; vertical-align:-3px; }
+.fb-b { height:38px; padding:0 14px; border-radius:999px; background:#fff; color:var(--ink); font-size:13.5px; font-weight:700; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px -8px rgba(0,0,0,.35); white-space:nowrap; }
+.fb-b svg { width:16px; height:16px; }
+.fb-done { background:var(--ink); color:#fff; display:none; }
+.fb-reset { display:none; }
+body.reordering .fb-ord { display:none; }
+body.reordering .fb-done, body.reordering .fb-reset { display:inline-flex; }
+body.reordering .fb-l b { display:none; }
+body.reordering .fb-hint { display:block; }
+body.reordering .pass .thumb, body.reordering .pass .tkic, body.reordering .pass .nps { display:none; }
+body.reordering .grip { display:grid; place-items:center; width:48px; height:48px; margin-right:-6px; border-radius:12px; flex:none; touch-action:none; cursor:grab; background:rgba(255,255,255,.16); }
+body.reordering .pass.tk .grip { background:rgba(0,0,0,.07); }
+body.reordering .glock { display:grid; place-items:center; width:44px; flex:none; opacity:.55; }
+body.reordering .pass.locked { opacity:.6; }
+body.reordering .pass.done, body.reordering .pass.skip { opacity:.8; }
+.pass.lift { box-shadow:0 18px 40px -14px rgba(0,0,0,.55); transform-origin:50% 50%; }
+.pass.lift .grip { cursor:grabbing; }
+body.reordering .tt { display:none; } /* the + buttons would sit over the handles */
 .hd .gear { width:34px; height:34px; border-radius:50%; background:rgba(0,0,0,.05); display:grid; place-items:center; flex:none; }
 .hd-r .rr { display:flex; align-items:center; gap:6px; }
 /* editor sheet */
@@ -744,6 +785,10 @@ const I = {
   check: '<svg width="16" height="16" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   sunrise: '<svg viewBox="0 0 24 24"><path d="M4 18h16M7 18a5 5 0 0110 0M12 4v4M5 9l1.5 1.5M19 9l-1.5 1.5M9.5 6.5L12 4l2.5 2.5" stroke="#e0a420" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   sunset: '<svg viewBox="0 0 24 24"><path d="M4 18h16M7 18a5 5 0 0110 0M12 4v4M5 9l1.5 1.5M19 9l-1.5 1.5M9.5 5.5L12 8l2.5-2.5" stroke="#e0703a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  foldUp: '<svg width="17" height="17" viewBox="0 0 24 24"><path d="M6 14l6-6 6 6M6 19h12" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  grip: '<svg width="22" height="22" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  lock: '<svg width="16" height="16" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2.5" stroke="currentColor" stroke-width="2"/><path d="M8.5 11V8a3.5 3.5 0 017 0v3" stroke="currentColor" stroke-width="2"/></svg>',
+  order: '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 4v16M8 4L4.5 7.5M8 4l3.5 3.5M16 20V4M16 20l-3.5-3.5M16 20l3.5-3.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
 };
 const legHex = (e) => (e.travel && MODE[e.travel.mode] ? MODE[e.travel.mode][0] : '#8c8a82');
 // on the dial, rail and colour key a ticket is the beige of its card (a shade darker so it shows on the track)
@@ -857,6 +902,15 @@ function dayItems(d, { who = ui.who, withHidden = false } = {}) {
     const k = s0 ? items.findIndex((x) => x.type === 'event' && span(x) && span(x)[0] > s0[0]) : -1;
     if (k >= 0) items.splice(k, 0, a); else items.push(a);
   }
+  // a day put in a new order (Reorder): the stops it names take each other's places, the rest stay where they are;
+  // a moved stop takes the time of the place it moved into, so the day still runs in time order
+  const ord = C['ord-' + d.id];
+  if (ord && Array.isArray(ord.order)) {
+    const rank = new Map(ord.order.map((id, k) => [id, k])); const at = [];
+    items.forEach((x, k) => { if (x.type === 'event' && rank.has(x.id)) at.push(k); });
+    const moved = at.map((k) => items[k]).sort((a, b) => rank.get(a.id) - rank.get(b.id)); at.forEach((k, j) => { items[k] = moved[j]; });
+  }
+  if (ord && ord.times) items.forEach((x, k) => { const t = ord.times[x.id]; if (x.type === 'event' && typeof t === 'string') items[k] = { ...x, time: t, _baseTime: x.time }; });
   return withHidden ? items : items.filter((x) => !x.hidden);
 }
 function prepare() {
@@ -868,6 +922,10 @@ function prepare() {
 }
 const numOf = (id) => { const s = stops.find((x) => x.ids.includes(id)); return s ? s.n : null; };
 const done = (id) => store.isChecked(id);
+// "Skip it": a stop we didn't get to, kept on the day (faded) and listed under Ideas → Missed. A choice, like Mark as booked.
+const skipped = (id) => store.getChoice('sk-' + id, '') === 'skipped';
+// what Reorder can move: stops, not the journeys between them (trains, buses, flights keep their place and time)
+const movable = (e) => !isTicket(e) && !e.flight;
 // The stop you should be at right now: one in progress (latest start), else the next to start, else the last of the day.
 function nowEv() {
   const m = nowMin(); const sp = events.map((e) => ({ e, s: span(e) })).filter((x) => x.s);
@@ -876,7 +934,7 @@ function nowEv() {
   const up = sp.find((x) => x.s[0] > m); return (up || sp[sp.length - 1]).e;
 }
 const isToday = () => !!tripDay && tripDay.id === day.id;
-const nextEv = () => events.find((e) => !done(e.id) && !e.optional) || events.find((e) => !done(e.id)) || null;
+const nextEv = () => events.find((e) => !done(e.id) && !skipped(e.id) && !e.optional) || events.find((e) => !done(e.id) && !skipped(e.id)) || null;
 // tonight's hotel for this view: M&M's own on their two nights away (a day's mmHotel)
 const hotelIdFor = (d, who = ui.who) => (who === 'mm' && d.mmHotel ? d.mmHotel : d.hotel);
 const hotel = () => HOTELS.find((h) => h.id === hotelIdFor(day)) || {};
@@ -1009,8 +1067,13 @@ function shopStrip(e) {
 }
 
 /* ═══ render: sheet ═══ */
+// under an open stop's buttons: fold it back into the day's list, and (for a place, not a journey) skip it
+function foldRow(e, sk) {
+  const can = !(GUEST && !SANDBOX) && !isTicket(e) && !e.flight && catOf(e).key !== 'hotel'; // a hotel isn't a place you can miss
+  return `<div class="acts2"><button class="a-fold press" data-fold>${I.foldUp}Fold up</button>${can ? `<button class="a-skip press ${sk ? 'on' : ''}" data-skip="${e.id}">${sk ? 'Skipped · undo' : 'Skip it'}</button>` : ''}</div>${can && sk ? `<a class="sknote" href="prototypes/tools?v=4&f=missed">Saved in Ideas → Missed, to fit in another day${I.chevR}</a>` : ''}`;
+}
 function passHTML(e, i) {
-  const c = catOf(e), n = numOf(e.id), tk = isTicket(e), d = done(e.id);
+  const c = catOf(e), n = numOf(e.id), tk = isTicket(e), d = done(e.id), sk = skipped(e.id), mv = movable(e);
   // an added stop that was filled in carries its own Japanese name, story and photo (the trip's own entry wins)
   const own = e._info && !(e.place && PLACES[e.place.name]) ? e._info : null;
   const host = e.place || placeOfEvent(i); const pi0 = own || placeInfo(host); const pi = pi0 && !e.place && !own ? { ...pi0, area: pi0.area || host.name, key: null } : pi0;
@@ -1033,23 +1096,31 @@ function passHTML(e, i) {
     ${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}${e.ticket && !e.ticket.from ? tkt : ''}${shopStrip(e)}
     ${pi && (pi.ja || taxiJa(host)) && host ? `<button class="say press" data-jp="${esc(own ? (e.place ? e.place.name : e.title) : host.name)}"><span class="say-l"><b>${esc(pi.ja || taxiJa(host))}</b>${pi.ro ? `<small>${esc(pi.ro)}</small>` : ''}</span><span class="say-r">Phrases<br>for here${I.chevR}</span></button>` : ''}
     <div class="acts">${e.place ? `<a class="a-dir press" href="${gmDir(e.place, e.travel && e.travel.mode)}" target="_blank" rel="noopener">${I.dir}Directions</a>` : ''}<button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button>${bookAct(e, d) ?? `<button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button>`}</div>
+    ${foldRow(e, sk)}
     ${pi && pi.credit && !tk && !cover ? `<p class="credit">Photo${pi.area ? ` (${esc(pi.area)})` : ''}: <a href="${esc(pi.file)}" target="_blank" rel="noopener">${esc(pi.credit)}</a></p>` : ''}</div>`;
   const nav = `<div class="pnav"><button class="st" data-step="-1" ${events.length < 2 ? 'disabled' : ''} aria-label="Previous stop">${I.chevL}</button><div class="mid">${pi && pi.key ? `<button class="keyp" data-story="${e.id}"><span>${esc(pi.key)}</span>${pi.story ? '<i>Read the story</i>' : ''}</button>` : `<span class="cnt">${i + 1} of ${events.length}</span>`}</div><button class="st" data-step="1" ${events.length < 2 ? 'disabled' : ''} aria-label="Next stop">${I.chevR}</button></div>`;
   if (e.flight) {
     const v = flView(e);
     const fbody = `<div class="body">${story}${flightStrip(e)}${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
-      <div class="acts"><button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div></div>`;
-    return `<article class="pass tk fl ${d ? 'done' : ''} ${v.past ? 'flpast' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${legHex(e)}">${nav}${flightBand(e, n)}${fbody}<div class="hanko" aria-hidden="true">済</div></article>`;
+      <div class="acts"><button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>${foldRow(e, false)}</div>`;
+    return `<article class="pass tk fl locked ${d ? 'done' : ''} ${v.past ? 'flpast' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${legHex(e)}">${nav}${flightBand(e, n)}${fbody}<div class="hanko" aria-hidden="true">済</div></article>`;
   }
   const pend = bkPending(e), pendL = pend ? `<span class="flst late"><i></i>${esc(pend.label)}</span>` : '';
   const yk = e.ticket && e.ticket.pending ? (pend ? '<span class="ykan spot" aria-hidden="true">not<br>booked</span>' : `<button class="ykan ${bkThump === e.id ? 'ykin' : ''}" data-bkundo="${e.id}" aria-label="Booked. Tap to undo">予約済</button>`) : '';
-  const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}</small><b>${esc(e.title)}</b>${pendL}</div>${tk && e.ticket && e.ticket.people ? pills(e.ticket.people) : ''}${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
-  const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}</small><b>${esc(e.title)}</b>${pendL}</div></div></div>`;
-  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}${yk}<div class="hanko" aria-hidden="true">済</div></article>`;
+  const skL = sk ? '<span class="skl">Skipped</span>' : '';
+  const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${skL}</small><b>${esc(e.title)}</b>${pendL}</div>${mv ? `<span class="grip" data-grip="${e.id}" aria-label="Drag to move ${esc(e.title)}">${I.grip}</span>` : `<span class="glock" aria-hidden="true">${I.lock}</span>`}${tk && e.ticket && e.ticket.people ? pills(e.ticket.people) : ''}${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
+  const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}${skL}</small><b>${esc(e.title)}</b>${pendL}</div></div></div>`;
+  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''} ${sk ? 'skip' : ''} ${mv ? '' : 'locked'}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}${yk}<div class="hanko" aria-hidden="true">済</div><div class="mioku" aria-hidden="true">見送</div></article>`;
 }
 
 // The day's sheet and drawer, as HTML. A sync that would draw exactly the same HTML (a change to another day, a flight
 // check with nothing new for this one) leaves the page alone: see store.subscribe below.
+// above the day's stops while they're folded into a list: Reorder, and while reordering, Reset and Done
+function foldBar() {
+  const can = !(GUEST && !SANDBOX), C = CUSTOM()[`ord-${day.id}`];
+  return `<div class="foldbar" id="foldbar"><p class="fb-l"><b>${events.length} stop${events.length === 1 ? '' : 's'}</b><span class="fb-hint">Drag ${I.grip} to move a stop. Trains and buses stay put.</span></p>
+    ${can && events.filter(movable).length > 1 ? `<button class="fb-b press fb-ord" data-reorder>${I.order}Reorder</button>` : ''}${C ? '<button class="fb-b press fb-reset" data-ordreset>Reset</button>' : ''}<button class="fb-b fb-done press" data-orddone>Done</button></div>`;
+}
 function sheetHTML() {
   const dt = new Date(day.date + 'T00:00:00');
   const h0 = hotel(); const ref = stops[0] ? stops[0].e.place : h0;
@@ -1069,8 +1140,8 @@ function sheetHTML() {
     return `<a class="stay press" href="${gmPlace(h)}" target="_blank" rel="noopener" style="${hpi.img ? `background-image:url('${imgUrl(hpi)}')` : 'background-color:#55702f'}">${who ? `<span class="swho">${pills(who)}</span>` : ''}<div><small>${esc(h.city || '')} · ${esc(h.dates || '')}</small><b>${esc(h.name || '')}</b>${pend ? '<span class="htag">Room not confirmed yet</span>' : ''}</div></a>`;
   }).join('');
   const sheet = `<div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
-    ${flightBanner()}<div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
-    <button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>
+    ${flightBanner()}${foldBar()}<div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
+    <div class="endrow"><button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>${events.filter(movable).length > 1 ? `<button class="addend ordb press" data-reorder>${I.order}Reorder</button>` : ''}</div>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
     ${know ? `<p class="sec">Good to know in ${esc(day.city)}</p><div class="know">${know}</div>` : ''}
     <p class="sec">Tonight</p><div class="stays">${stays}</div>
@@ -1230,13 +1301,44 @@ function buildStack() {
     stack.style.height = top + Math.max(0, k - 1) * BAND + (pastFrom >= 0 ? LBL : 0) + 76 + 'px';
     addBtn.classList.toggle('on', selIdx >= 0); addBtn.style.top = Hs + 12 + 'px';
   };
+  // Reorder: hold a stop's handle and drag it; the other stops make room as it passes. Journeys (locked) keep their place.
+  let dr = null, edge = 0;
+  const dragTo = () => {
+    const y = dr.y0c + (dr.cy - dr.cy0) + (scrollY - dr.sy0); dr.c.Y.set(Math.max(-20, Math.min((st.length - 1) * BAND + 20, y)));
+    let to = 0; dr.slots.forEach((k, j) => { if (Math.abs(k * BAND - y) < Math.abs(dr.slots[to] * BAND - y)) to = j; });
+    if (to === dr.to) return; dr.to = to;
+    const rest = dr.ids.filter((x) => x !== dr.c.id); rest.splice(to, 0, dr.c.id); dr.now = rest;
+    rest.forEach((id, j) => { if (id === dr.c.id) return; st.find((c) => c.id === id).Y.to(dr.slots[j] * BAND, { response: 0.32, damping: 0.86 }); }); buzz(3);
+  };
+  const scrollEdge = () => { if (!dr || !edge) { edge = 0; return; } window.scrollBy(0, edge); dragTo(); requestAnimationFrame(scrollEdge); };
+  stack.addEventListener('pointerdown', (ev) => {
+    const g = ev.target.closest('[data-grip]'); if (!g || !document.body.classList.contains('reordering') || dr) return;
+    const c = st.find((x) => x.id === g.dataset.grip); if (!c) return; ev.preventDefault();
+    const slots = st.map((x, k) => k).filter((k) => !st[k].el.classList.contains('locked')), ids = slots.map((k) => st[k].id);
+    dr = { pid: ev.pointerId, c, cy0: ev.clientY, cy: ev.clientY, sy0: scrollY, y0c: c.o.y, slots, ids, from: ids.indexOf(c.id), to: ids.indexOf(c.id), now: ids };
+    try { g.setPointerCapture(ev.pointerId); } catch {}
+    c.el.style.zIndex = 99; c.el.classList.add('lift'); buzz(8);
+  });
+  stack.addEventListener('pointermove', (ev) => {
+    if (!dr || ev.pointerId !== dr.pid) return; dr.cy = ev.clientY; dragTo();
+    const e0 = ev.clientY > innerHeight - 80 ? 9 : ev.clientY < 120 ? -9 : 0; if (e0 && !edge) { edge = e0; requestAnimationFrame(scrollEdge); } else edge = e0;
+  });
+  const drop = (ev) => {
+    if (!dr || ev.pointerId !== dr.pid) return; const d0 = dr; dr = null; edge = 0;
+    d0.c.Y.to(d0.slots[d0.to] * BAND, { response: 0.32, damping: 0.86 }); d0.c.el.classList.remove('lift');
+    setTimeout(() => { d0.c.el.style.zIndex = 10 + st.indexOf(d0.c); }, 260);
+    if (d0.to !== d0.from) { buzz(10); setTimeout(() => saveOrder(d0.now), 280); } // once it has settled: saving redraws the day
+  };
+  stack.addEventListener('pointerup', drop); stack.addEventListener('pointercancel', drop);
   return {
     select(id, { fromDial, scroll } = {}) {
-      if (ui.sel === id) return; ui.sel = id; layout(false); syncPins();
+      if (ui.sel === id) return; if (ui.folded) setFold(false); ui.sel = id; layout(false); syncPins();
       if (scroll && !document.body.classList.contains('mapmax')) { const top = stack.getBoundingClientRect().top; if (top < 70 || top > innerHeight * 0.6) window.scrollTo({ top: scrollY + top - 90, behavior: RM ? 'auto' : 'smooth' }); }
     },
     layout,
-    refresh() { st.forEach((c) => { const d = done(c.id); c.el.classList.toggle('done', d); const b = c.el.querySelector('[data-stamp]'); if (b) b.textContent = d ? 'Stamped 済' : 'Stamp 済'; }); },
+    refresh() { st.forEach((c) => { const d = done(c.id); c.el.classList.toggle('done', d); const b = c.el.querySelector('[data-stamp]'); if (b) b.textContent = d ? 'Stamped 済' : 'Stamp 済';
+      const k = skipped(c.id); c.el.classList.toggle('skip', k); const kb = c.el.querySelector('[data-skip]'); if (kb) { kb.classList.toggle('on', k); kb.textContent = k ? 'Skipped · undo' : 'Skip it'; } }); },
+    fold() { ui.sel = null; layout(false); syncPins(); },
     thump(id) { const c = st.find((x) => x.id === id); if (!c) return; c.el.classList.remove('stamped'); void c.el.offsetWidth; c.el.classList.add('stamped'); c.S.set(0.975); c.S.to(1, { response: 0.32, damping: 0.45 }); },
   };
 }
@@ -1311,7 +1413,7 @@ function declutter() {
     group.forEach((k, m) => { used.add(k); const a = (-90 + (360 / group.length) * m) * Math.PI / 180; els[k].el.style.translate = `${(Math.cos(a) * r).toFixed(1)}px ${(Math.sin(a) * r).toFixed(1)}px`; });
   }
 }
-function syncPins() { const nx = nextEv(); stops.forEach((s) => { const el = pinEls[s.n]; if (!el) return; const d = s.ids.every(done); if (d && !el.classList.contains('done') && el.dataset.seen && synced && !RM) popPin(el); el.dataset.seen = 1; el.classList.toggle('done', d); el.classList.toggle('nx', !!nx && s.ids.includes(nx.id)); el.classList.toggle('sel', s.ids.includes(ui.sel)); }); }
+function syncPins() { const nx = nextEv(); stops.forEach((s) => { const el = pinEls[s.n]; if (!el) return; const d = s.ids.every(done); if (d && !el.classList.contains('done') && el.dataset.seen && synced && !RM) popPin(el); el.dataset.seen = 1; el.classList.toggle('done', d); el.classList.toggle('skp', !d && s.ids.every(skipped)); el.classList.toggle('nx', !!nx && s.ids.includes(nx.id)); el.classList.toggle('sel', s.ids.includes(ui.sel)); }); }
 // Only a pin that was already drawn pops, and only once the first sync is in, so a day opening with stops already stamped stays still.
 let synced = false;
 function popPin(el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); el.addEventListener('animationend', (e) => { if (e.animationName === 'pinpop') el.classList.remove('pop'); }); }
@@ -1610,6 +1712,8 @@ function readFormSafe() { try { readForm(); } catch {} }
 function saveEditor() {
   readForm(); const s0 = edState; if (!s0.title) { s0.msg = 'Give the stop a name first.'; renderEditor(); return; }
   const timeChanged = s0.start !== s0.t0.start || s0.end !== s0.t0.end;
+  // a time typed in here wins over the one a reorder gave the stop
+  if (timeChanged && s0.it) { const ok = 'ord-' + s0.dayId, o = CUSTOM()[ok]; if (o && o.times && s0.it.id in o.times) { const t = { ...o.times }; delete t[s0.it.id]; store.setCustom(ok, { ...o, times: t }); } }
   if (s0.mode === 'add' || (s0.it && s0.it._added)) {
     const id = s0.mode === 'add' ? 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : s0.it.id;
     const prev = s0.mode === 'add' ? {} : CUSTOM()[id] || {};
@@ -1680,6 +1784,7 @@ setp.addEventListener('click', (e) => {
 /* ═══ wiring ═══ */
 function renderDay({ keepScroll, keepSel, selId } = {}) {
   const prevSel = selId || (keepSel ? ui.sel : null);
+  const stayFolded = keepSel && !selId && ui.folded; if (!stayFolded) setFold(false);
   { const d0 = DAYS.find((d) => d.id === ui.dayId) || DAYS[0]; if (!hasEvents(d0)) { const i = DAYS.indexOf(d0); const to = DAYS.slice(i + 1).find((d) => hasEvents(d)) || DAYS.slice(0, i).reverse().find((d) => hasEvents(d)); if (to) ui.dayId = to.id; } }
   prepare();
   // only a new day animates in: a filter, a choice or another phone's change re-draws the same day in place
@@ -1693,6 +1798,7 @@ function renderDay({ keepScroll, keepSel, selId } = {}) {
   moveSeg(document.getElementById('who'));
   // redrawn in place: the open stop stays put too, rather than fading its details in again
   const still = () => { if (!enter) document.querySelectorAll('.pass.open .body').forEach((b) => b.getAnimations().forEach((a) => a.finish())); };
+  if (stayFolded) { ui.sel = null; stackApi.layout(true); syncPins(); still(); const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url); return; }
   if (keep) { ui.sel = prevSel; stackApi.layout(true); syncPins(); dialApi.focus(prevSel, true); still(); const url = new URL(location); url.searchParams.set('d', day.id); history.replaceState(null, '', url); return; }
   const nx = nextEv(); const first = isToday() ? (nowEv() || nx) : nx;
   ui.sel = null; const target = (first || events[0] || {}).id;
@@ -1740,7 +1846,12 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   if (e.target.closest('.cv-in')) { cycleCur(); buzz(4); return; }
   const sp = e.target.closest('[data-step]'); if (sp) { if (!sp.disabled) step(+sp.dataset.step); return; }
   if (swiped) { swiped = false; return; }
-  const st = e.target.closest('[data-stamp]'); if (st) { const id = st.dataset.stamp; const was = done(id); store.toggleCheck(id); if (!was) { buzz(12); stackApi.thump(id); } return; }
+  const st = e.target.closest('[data-stamp]'); if (st) { const id = st.dataset.stamp; const was = done(id); store.toggleCheck(id); if (!was) { buzz(12); stackApi.thump(id); if (skipped(id)) store.setChoice('sk-' + id, ''); } return; }
+  const skb = e.target.closest('[data-skip]'); if (skb) { const id = skb.dataset.skip; if (skipped(id)) store.setChoice('sk-' + id, ''); else { store.setChoice('sk-' + id, 'skipped'); if (done(id)) store.toggleCheck(id); buzz(8); } return; }
+  if (e.target.closest('[data-fold]')) { foldDay(); return; }
+  if (e.target.closest('[data-reorder]')) { foldDay(true); return; }
+  if (e.target.closest('[data-orddone]')) { setFold(true, false); return; }
+  if (e.target.closest('[data-ordreset]')) { if (!confirm(`Put day ${day.n} back in its first order, with its first times, for everyone?`)) return; store.setCustom('ord-' + day.id, null); return; }
   const j = e.target.closest('[data-jp]'); if (j) { showPhrases(j.dataset.jp); return; }
   const sk = e.target.closest('[data-shtick]'); if (sk) { const x = store.getShop()[sk.dataset.shtick]; if (!x) return; if (x.done) { const { done, doneBy, doneAt, ...rest } = x; store.setShop(sk.dataset.shtick, rest); } else { store.setShop(sk.dataset.shtick, { ...x, done: true, ...(ME_ID && ME_ID !== 'guest' ? { doneBy: ME_ID } : {}), doneAt: Date.now() }); buzz(10); } return; }
   const sy = e.target.closest('[data-story]'); if (sy) { const card = document.getElementById('p-' + sy.dataset.story); card.classList.toggle('storyon'); stackApi.layout(false); return; }
@@ -1754,10 +1865,44 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   if (e.target.closest('#addgap')) { openEditor({ mode: 'add', dayId: day.id, after: ui.sel }); return; }
   if (e.target.closest('[data-addend]')) { openEditor({ mode: 'add', dayId: day.id, after: events.length ? events[events.length - 1].id : null }); return; }
   if (e.target.closest('#gear')) { openSettings(); return; }
-  const pk = e.target.closest('[data-pick]'); if (pk && !e.target.closest('a')) { const id = pk.dataset.pick; if (ui.sel !== id) { stackApi.select(id, { scroll: true }); dialApi.focus(id); focusMap(id); } return; }
+  const pk = e.target.closest('[data-pick]'); if (pk && !e.target.closest('a')) { const id = pk.dataset.pick; if (ui.reorder) return; if (ui.sel !== id) { stackApi.select(id, { scroll: true }); dialApi.focus(id); focusMap(id); } else foldDay(); return; } // tapping the top of the open stop folds it
   const w = e.target.closest('[data-who]'); if (w) { ui.who = w.dataset.who; ls.set('japan2026.whoMix', ui.who); renderDay({ keepScroll: true }); return; }
   const c = e.target.closest('[data-choice]'); if (c) { store.setChoice(c.dataset.choice, c.dataset.opt); renderDay({ keepScroll: true }); }
 });
+/* folding: the open stop closes and the day shows as a list of its stops, in order (Reorder works on this list) */
+function setFold(on, reorder = false) { ui.folded = on; ui.reorder = on && reorder; document.body.classList.toggle('folded', on); document.body.classList.toggle('reordering', ui.reorder); }
+function foldDay(reorder = false) {
+  setFold(true, reorder); stackApi.fold(); buzz(4);
+  const top = document.getElementById('foldbar').getBoundingClientRect().top; if (top < 70 || top > innerHeight * 0.7) window.scrollTo({ top: scrollY + top - 90, behavior: RM ? 'auto' : 'smooth' });
+}
+// a drag ended with the stops in a new order, for everyone. ids: the movable stops on show, in their new order.
+// Times: each run of stops between two journeys keeps its start, and its stops follow one another in their new order,
+// each keeping its own length and the gaps between them staying where they were (so moving one up pushes the rest later).
+function saveOrder(ids) {
+  const was = events, mv = was.filter(movable); let j = 0;
+  const seq = was.map((e) => { if (!movable(e)) return e; const id = ids[j++]; return mv.find((x) => x.id === id); });
+  const t = {}; // new times, by stop id
+  for (let k = 0; k < seq.length; k++) {
+    if (!movable(seq[k])) continue; let m = k; while (m + 1 < seq.length && movable(seq[m + 1])) m++;
+    const slot = was.slice(k, m + 1).map(span); let at = (slot.find(Boolean) || [null])[0];
+    for (let q = k; q <= m && at != null; q++) {
+      const e = seq[q], s0 = span(e); if (!s0) continue;
+      const len = s0[1] - s0[0], ranged = /\d\s*(AM|PM)?\s*[–-]/i.test(e.time || '');
+      t[e.id] = ranged ? fmtRange(at, at + len) : fmtRange(at);
+      const a = slot[q - k], b = slot[q - k + 1]; at += len + (a && b ? Math.max(0, b[0] - a[1]) : 0);
+    }
+    k = m;
+  }
+  const full = dayItems(day, { who: 'all', withHidden: true }).filter((x) => x.type === 'event'); const order = full.map((x) => x.id);
+  j = 0; order.forEach((id, k) => { if (mv.some((e) => e.id === id)) order[k] = ids[j++]; });
+  const prev = CUSTOM()['ord-' + day.id] || {}, times = { ...(prev.times || {}) };
+  for (const [id, x] of Object.entries(t)) {
+    const e = full.find((y) => y.id === id); const base = e && ('_baseTime' in e ? e._baseTime : e.time);
+    const sb = span({ time: base }), sx = span({ time: x }); // the same start and end as it had at first: no new time
+    if (sb && sx && sb[0] === sx[0] && sb[1] === sx[1]) delete times[id]; else times[id] = x;
+  }
+  store.setCustom('ord-' + day.id, { day: day.id, order, times });
+}
 function step(d) { const n = events.length; if (n < 2) return; const i = events.findIndex((x) => x.id === ui.sel); const j = ((i < 0 ? 0 : i + d) % n + n) % n; if (j === i) return; const id = events[j].id; stackApi.select(id, { scroll: true }); dialApi.focus(id); focusMap(id); buzz(4); }
 let swiped = false;
 { let sw = null;
@@ -1765,7 +1910,7 @@ let swiped = false;
   const end = (e) => { if (!sw || e.pointerId !== sw.id) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y, v = Math.abs(dx) / Math.max(1, performance.now() - sw.t); sw = null; if (Math.abs(dx) > Math.abs(dy) * 1.6 && (Math.abs(dx) > 60 || (Math.abs(dx) > 25 && v > 0.5))) { swiped = true; setTimeout(() => (swiped = false), 80); step(dx < 0 ? 1 : -1); } };
   window.addEventListener('pointerup', end); window.addEventListener('pointercancel', () => (sw = null)); }
 const customSig = () => JSON.stringify([Object.entries(CUSTOM()).map(([k, v]) => [k, { ...v, ts: undefined }]).sort(), store.state.covers || {}, store.state.flights || {}, // new flight news redraws the stops too
-  Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-')).sort(), Object.values(store.getExpenses()).map((x) => x && x.src).filter(Boolean).sort(), store.state.shop || {}]); // and bookings marked booked or added to expenses, and the shopping list
+  Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-') || k.startsWith('sk-')).sort(), Object.values(store.getExpenses()).map((x) => x && x.src).filter(Boolean).sort(), store.state.shop || {}]); // and bookings marked booked or added to expenses, and the shopping list
 let lastSig = customSig();
 // Would a redraw in place show anything new? Only then is the day drawn again (a sync that changed another day, or a
 // flight check with nothing new for this one, used to rebuild the whole page and the map).
