@@ -196,6 +196,16 @@ const loaded = await n.evaluate(() => Promise.all([...document.querySelectorAll(
 ok('thumbnails load from Google', loaded.length >= 3 && loaded.every((w) => w > 0), loaded.join());
 await n.screenshot({ path: OUT + 'gallery.png', fullPage: true });
 
+// 5b · the Drive link: the Japan 2026 folder, for uploading with the Google Drive app in the background
+const tripFolder = [...files.values()].find((f) => f.name === 'Japan 2026' && f.mimeType === 'application/vnd.google-apps.folder');
+const driveHref = 'https://drive.google.com/drive/folders/' + (tripFolder && tripFolder.id);
+ok('Drive button in the top bar opens the Japan 2026 folder', await n.isVisible('.bar [data-drive]') && (await n.getAttribute('.bar [data-drive]', 'href')) === driveHref, await n.getAttribute('.bar [data-drive]', 'href'));
+await n.tap('[data-upload]'); await n.waitForTimeout(400);
+ok('upload sheet offers the Drive app with the same link', (await n.getAttribute('#sheet [data-drive]', 'href')) === driveHref && /Google Drive app/.test(await n.textContent('#sheet')));
+await n.screenshot({ path: OUT + 'upload-drive.png' });
+await n.tap('[data-sheetx]'); await n.waitForTimeout(300);
+ok('folder link needs the member PIN', (await api('/folder', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"trip":"japan"}' })).status === 403);
+
 // 6 · heart, tag, move, hide, plan photo
 const drag = async (x0, y0, x1, y1, k = 12) => { await n.mouse.move(x0, y0); await n.mouse.down(); for (let i = 1; i <= k; i++) { await n.mouse.move(x0 + (x1 - x0) * i / k, y0 + (y1 - y0) * i / k); await n.waitForTimeout(12); } await n.mouse.up(); };
 await n.tap(`.grid .th[data-pid="${shot.id}"]`); await n.waitForTimeout(700);
@@ -264,7 +274,7 @@ ok('queue cleared', (await n.evaluate(() => localStorage.getItem('photos.queue')
 await gp.reload(); await gp.waitForTimeout(1800);
 const gv = await gp.evaluate(() => ({ n: document.querySelectorAll('.grid .th').length, fab: document.getElementById('fab').hidden, sel: document.querySelector('[data-select]').hidden, ids: [...document.querySelectorAll('.grid .th')].map((e) => e.dataset.pid) }));
 ok('guest sees the photos, not the hidden one', gv.n === 4 && !gv.ids.includes(early.id), JSON.stringify(gv));
-ok('guest has no Upload or Select', gv.fab && gv.sel);
+ok('guest has no Upload, Select or Drive link', gv.fab && gv.sel && (await gp.$eval('.bar [data-drive]', (e) => e.hidden)));
 await gp.tap(`.grid .th[data-pid="${shot.id}"]`); await gp.waitForTimeout(700);
 ok('guest viewer: no heart', await gp.$eval('[data-heart]', (e) => e.hidden));
 await gp.screenshot({ path: OUT + 'guest-viewer.png' });
