@@ -106,6 +106,10 @@ function cleanCustom(v) {
   if (v.info === null) out.info = null;
   else if (v.info && typeof v.info === 'object') { const info = cleanInfo(v.info); if (info) out.info = info; }
   if (v.flight && typeof v.flight === 'object') { const no = String(v.flight.no || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); out.flight = { no }; }
+  // a day put in a new order (key ord-<day>): its stops' ids in order, and the times the moved ones took
+  if (Array.isArray(v.order)) out.order = v.order.filter(isId).slice(0, 120);
+  if (v.times && typeof v.times === 'object' && !Array.isArray(v.times)) { const t = {}; for (const [k, x] of Object.entries(v.times).slice(0, 120)) if (isId(k) && typeof x === 'string') t[k] = clean(x, 40); out.times = t; }
+  if (isId(v.from || '')) out.from = v.from; // an added stop copied from one we skipped (Ideas → Missed)
   if (typeof v.ts === 'string') out.ts = clean(v.ts, 40);
   return Object.keys(out).length ? out : null;
 }
