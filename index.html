@@ -1141,7 +1141,7 @@ function sheetHTML() {
   }).join('');
   const sheet = `<div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
     ${flightBanner()}${foldBar()}<div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
-    <div class="endrow"><button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>${events.filter(movable).length > 1 ? `<button class="addend ordb press" data-reorder>${I.order}Reorder</button>` : ''}</div>
+    <div class="endrow"><button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>${!(GUEST && !SANDBOX) && events.filter(movable).length > 1 ? `<button class="addend ordb press" data-reorder>${I.order}Reorder</button>` : ''}</div>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
     ${know ? `<p class="sec">Good to know in ${esc(day.city)}</p><div class="know">${know}</div>` : ''}
     <p class="sec">Tonight</p><div class="stays">${stays}</div>
@@ -1849,7 +1849,7 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   const st = e.target.closest('[data-stamp]'); if (st) { const id = st.dataset.stamp; const was = done(id); store.toggleCheck(id); if (!was) { buzz(12); stackApi.thump(id); if (skipped(id)) store.setChoice('sk-' + id, ''); } return; }
   const skb = e.target.closest('[data-skip]'); if (skb) { const id = skb.dataset.skip; if (skipped(id)) store.setChoice('sk-' + id, ''); else { store.setChoice('sk-' + id, 'skipped'); if (done(id)) store.toggleCheck(id); buzz(8); } return; }
   if (e.target.closest('[data-fold]')) { foldDay(); return; }
-  if (e.target.closest('[data-reorder]')) { foldDay(true); return; }
+  if (e.target.closest('[data-reorder]')) { if (!(GUEST && !SANDBOX)) foldDay(true); return; } // guests can look, not change
   if (e.target.closest('[data-orddone]')) { setFold(true, false); return; }
   if (e.target.closest('[data-ordreset]')) { if (!confirm(`Put day ${day.n} back in its first order, with its first times, for everyone?`)) return; store.setCustom('ord-' + day.id, null); return; }
   const j = e.target.closest('[data-jp]'); if (j) { showPhrases(j.dataset.jp); return; }
