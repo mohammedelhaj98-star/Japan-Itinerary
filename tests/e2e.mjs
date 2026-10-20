@@ -1043,6 +1043,17 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const sparse = F.fromAirLabs(al({ arr_actual_utc: null, arr_estimated_utc: null, arr_baggage: null }), mo), sparseCh = F.changesOf(mo, { st: 'air', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, sparse, Date.now());
   ok('a landing with no landing time says the scheduled one, not a made-up clock', sparse.st === 'landed' && /landed at Narita, 12:55 PM\./.test(sparseCh.map((c) => c.text).join()), JSON.stringify(sparseCh));
   const dep0 = Date.parse(mo.dep);
+  // AirLabs stops answering for a flight once it lands (it moves on to the next day's): it landed, it isn't "not found"
+  const nasaF = F.tripFlights({}).find((f) => f.id === 'd01-land'), nArr = Date.parse(nasaF.arr), none = async () => null;
+  const flying = { st: 'air', delay: 5, dep: { sch: nasaF.dep, est: nasaF.dep, act: nasaF.dep }, arr: { sch: nasaF.arr, est: new Date(nArr + 5 * 60e3).toISOString(), act: null }, to: 'NRT', toTz: 'Asia/Tokyo', gate: 'E81', no: 'AC9', people: ['naf', 'sara'], changes: [] };
+  const lostNow = await F.checkFlights({ flights: { 'd01-land': { ...flying, checkedAt: new Date(nArr).toISOString() } }, now: nArr + 25 * 60e3, look: none, airEvery: 15, lead: 3 });
+  const stuck = await F.checkFlights({ flights: { 'd01-land': { ...flying, missing: true, checkedAt: new Date(nArr + 6 * H).toISOString() } }, now: nArr + 9 * H, look: none, airEvery: 15, lead: 3 });
+  const preDep = await F.checkFlights({ flights: { 'd01-land': { ...flying, st: 'ontime', dep: { sch: nasaF.dep }, checkedAt: new Date(Date.parse(nasaF.dep) - 2 * H).toISOString() } }, now: Date.parse(nasaF.dep) - H, look: none, airEvery: 15, lead: 3 });
+  const ln = lostNow.flights['d01-land'], sk = stuck.flights['d01-land'], er = preDep.flights['d01-land'];
+  ok('a flight AirLabs stops seeing after takeoff has landed (alerted while it\'s news, quietly fixed later); one it loses before takeoff keeps what we knew',
+    ln.st === 'landed' && !ln.missing && lostNow.alerts.length === 1 && /Naf and Sara have landed at Narita, 4:15 PM\./.test(lostNow.alerts[0].text)
+    && sk.st === 'landed' && !sk.missing && sk.nextAt === null && !stuck.alerts.length && er.st === 'ontime' && !er.missing && er.gate === 'E81',
+    JSON.stringify([ln.st, lostNow.alerts, sk.st, sk.missing, sk.nextAt, stuck.alerts, er.st, er.missing]));
   ok('with AirLabs, checks start 3 hours before takeoff, every 15 minutes in the air; FlightAware still wins when both are set', alSvc.lead === 3 && alSvc.airEvery === 15 && F.nextCheck(mo, null, dep0 - 10 * 3600e3, 15, 3) === dep0 - 3 * 3600e3 && F.nextCheck(mo, null, dep0 - 30 * 3600e3) === dep0 - 24 * 3600e3 && F.lookupFor({ AIRLABS_KEY: 'a', FLIGHTAWARE_KEY: 'b' }).lead === 24);
   // what a phone sees: put Mo's flight back to the late, re-gated look and open day 6
   const o = [...objects.values()][0].o, cur = o.get('flights'), late = { ...cur.value };
