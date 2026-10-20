@@ -47,7 +47,18 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 .scard { margin:0 12px; padding:16px; }
 .foodseg { display:flex; justify-content:center; padding:2px 16px 0; }
 .seg.big button { padding:7px 22px; font-size:14px; }
-.foodseg .seg.big button { padding:7px 15px; }
+.foodseg .seg.big button { padding:7px 11px; }
+.ms-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-top:1px solid var(--line); }
+.ms-row:first-child { border-top:0; padding-top:2px; }
+.ms-th { width:46px; height:46px; border-radius:12px; flex:none; background:center/cover no-repeat rgba(0,0,0,.06); filter:saturate(.5); }
+.ms-t { flex:1; min-width:0; line-height:1.25; }
+.ms-t b { display:block; font-size:15px; }
+.ms-t small { display:block; font-size:12.5px; color:var(--ink3); margin-top:2px; }
+.ms-t em { font-style:normal; color:var(--ok, #2f9e57); font-weight:700; }
+.ms-t a { color:inherit; }
+.ms-b { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex:none; }
+.ms-add { height:34px; padding:0 13px; border-radius:999px; background:var(--ink); color:#fff; font-size:13px; font-weight:700; }
+.ms-un { font-size:12px; font-weight:700; color:var(--ink3); padding:2px 4px; }
 .sg-map { font-size:12.5px; font-weight:700; color:var(--ink2); text-decoration:none; }
 .sg-guest { font-size:14px; color:var(--ink2); }
 .daysel { width:100%; height:40px; border-radius:12px; border:1px solid var(--line); background:#fff; padding:0 10px; font:inherit; font-size:14px; margin-bottom:10px; }
@@ -956,11 +967,51 @@ const KINDS = {
   place: { tab: 'Places', small: 'Ideas · places', h: 'Places to see', p: 'A temple, a view, a museum, a detour: note it here for everyone to vote on.', ph: 'a temple, a viewpoint, a museum…' },
 };
 const fq = new URLSearchParams(location.search).get('f');
-let foodView = fq === 'nearby' || KINDS[fq] ? fq : 'food';
+let foodView = fq === 'nearby' || fq === 'missed' || KINDS[fq] ? fq : 'food';
 const ideas = { day: ls.get('proto.ideaday', 'all'), draft: '' };
 function renderFood() {
-  const seg = `<div class="foodseg"><div class="seg big" id="foodseg">${[...Object.entries(KINDS).map(([k, v]) => [k, v.tab]), ['nearby', 'Halal']].map(([k, l]) => `<button data-fview="${k}" class="${foodView === k ? 'on' : ''}">${l}</button>`).join('')}<i></i></div></div>`;
-  return seg + (foodView === 'nearby' ? renderNearby() : renderIdeas(foodView));
+  const seg = `<div class="foodseg"><div class="seg big" id="foodseg">${[...Object.entries(KINDS).map(([k, v]) => [k, v.tab]), ['missed', 'Missed'], ['nearby', 'Halal']].map(([k, l]) => `<button data-fview="${k}" class="${foodView === k ? 'on' : ''}">${l}</button>`).join('')}<i></i></div></div>`;
+  return seg + (foodView === 'nearby' ? renderNearby() : foodView === 'missed' ? renderMissed() : renderIdeas(foodView));
+}
+/* Missed: the stops someone tapped "Skip it" on (choice sk-<stop> = 'skipped'), by day, each one ready to put on
+   another day (the last morning, say) as an added stop that remembers where it came from */
+function stopIndex() {
+  const C = store.state.custom || {}, byId = {};
+  for (const d of DAYS) for (const it of d.items) { if (it.type === 'event') byId[it.id] = { ...it, d }; if (it.type === 'choice') for (const o of it.options) for (const y of o.items || []) byId[y.id] = { ...y, d }; }
+  for (const [id, c] of Object.entries(C)) {
+    if (c.added) byId[id] = { id, title: c.title || 'New stop', time: c.time || '', d: dayOf(c.day), place: c.place || null, cat: c.cat, who: c.who, desc: c.desc, cost: c.cost, info: c.info || null, from: c.from };
+    else if (byId[id]) { for (const k of ['title', 'time', 'desc', 'cost', 'who']) if (c[k] != null) byId[id][k] = c[k]; if ('place' in c) byId[id].place = c.place; if (c.cat) byId[id].cat = c.cat; }
+  }
+  return byId;
+}
+function missedList() {
+  const byId = stopIndex(), ch = store.state.choices || {};
+  return Object.keys(ch).filter((k) => k.startsWith('sk-') && ch[k] === 'skipped').map((k) => byId[k.slice(3)]).filter(Boolean)
+    .sort((a, b) => String(a.d ? a.d.id : 'zz').localeCompare(b.d ? b.d.id : 'zz'));
+}
+function renderMissed() {
+  const list = missedList(), byId = stopIndex(), copies = Object.values(byId).filter((x) => x.from);
+  const thumb = (x) => { const pi = x.place && PLACES[x.place.name]; const src = pi && pi.img ? `../img/places/t/${pi.img}` : x.info && x.info.thumb ? x.info.thumb : ''; return `<span class="ms-th" style="${src ? `background-image:url('${esc(src)}')` : ''}"></span>`; };
+  const row = (x) => { const on = copies.filter((c) => c.from === x.id && c.d);
+    return `<div class="ms-row">${thumb(x)}<span class="ms-t"><b>${esc(x.title)}</b><small>${x.d ? `Day ${x.d.n} · ${esc(x.d.title)}` : ''}${on.length ? ` · <em>now on ${on.map((c) => `<a href="../?d=${c.d.id}">Day ${c.d.n}</a>`).join(', ')}</em>` : ''}</small></span>
+      ${VIEW ? '' : `<span class="ms-b"><button class="press ms-add" data-missadd="${esc(x.id)}">${on.length ? 'Add again' : 'Add to a day'}</button><button class="ms-un" data-unskip="${esc(x.id)}">Unskip</button></span>`}</div>`; };
+  return `<header class="ph"><small>Ideas · missed</small><h1>Places we skipped</h1><p>Tap <b>Skip it</b> on a stop you didn't get to and it lands here, for everyone. Put it on another day when there's time, like the last morning.</p></header>
+    ${list.length ? `<div class="card scard">${list.map(row).join('')}</div>` : '<div class="card scard"><p class="sub">Nothing skipped yet. Open a stop on the trip page and tap <b>Skip it</b> when you don\'t get to it.</p></div>'}`;
+}
+function missDaySheet(id) {
+  const x = stopIndex()[id]; if (!x) return; const today = todayId();
+  ed = null;
+  sheet.innerHTML = `<div class="grab"></div><div class="sh-h"><b>Put ${esc(x.title)} on…</b><button data-shclose>Cancel</button></div>
+    <p class="sp-intro" style="padding:0 2px 10px">It goes at the end of that day. Drag it into place there with Reorder.</p>
+    <div class="sp-pick stops">${DAYS.filter((d) => d.id >= today).map((d) => `<button class="press" data-misspick="${d.id}" data-id="${esc(id)}"><b>Day ${d.n} · ${esc(d.title)}</b><small>${dayLabel(d)}${d.id === today ? ' · today' : ''}</small></button>`).join('')}</div>`;
+  scrim.classList.add('on'); sheet.classList.add('on');
+}
+// a copy of the skipped stop at the end of the day picked, with no time yet (its place, photo, notes and cost come along)
+function addMissed(id, dayId) {
+  const x = stopIndex()[id]; if (!x) return null; const cat = x.cat || (x.tags || []).find((t) => ['food', 'sight', 'shop', 'hotel', 'plan'].includes(t)) || (x.place ? 'sight' : 'plan');
+  const nid = 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  store.setCustom(nid, { added: true, day: dayId, after: null, title: x.title, time: '', who: x.who || 'all', cat, place: x.place ? { name: x.place.name, lat: x.place.lat, lng: x.place.lng } : null, desc: x.desc || '', cost: x.cost || '', ...(x.info ? { info: x.info } : {}), from: id });
+  return nid;
 }
 function renderIdeas(kind) {
   const K = KINDS[kind] || KINDS.food;
@@ -1316,12 +1367,15 @@ sheet.addEventListener('click', (e) => {
   const ex0 = e.target.closest('[data-shex]'); if (ex0) { const x = store.getShop()[ex0.dataset.shex], y = parseInt((document.getElementById('sh-yen').value || '').replace(/\D/g, ''), 10); if (x) location.href = shopExHref({ id: ex0.dataset.shex, ...x }, y > 0 ? y : 0); return; }
   const sv = e.target.closest('[data-shsetv]'); if (sv) { const [k, v] = sv.dataset.shsetv.split(':'); setShopValue(sv.dataset.id, k, v); closeSheet(); render(); return; }
   const pk = e.target.closest('[data-shpick]'); if (pk) { addIdea(+pk.dataset.i, pk.dataset.shpick); closeSheet(); undoToast(`Added to ${SH_LISTS[pk.dataset.shpick]}`); render(); }
+  const mp = e.target.closest('[data-misspick]'); if (mp) { const d = dayOf(mp.dataset.misspick); addMissed(mp.dataset.id, d.id); closeSheet(); undoToast(`Added to the end of Day ${d.n}`); render(); }
 });
 const undoToast = (msg) => { undoFn = null; toastEl.innerHTML = `<span>${esc(msg)}</span>`; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), 2600); };
 page.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
   const fv = t('[data-fview]'); if (fv) { foodView = fv.dataset.fview; const u = new URL(location); u.searchParams.set('f', foodView); history.replaceState(null, '', u); return render(); }
   if (t('[data-sgpost]') && P[ME]) { const ta = document.getElementById('sg-text'); const text = (ta.value || '').trim(); if (!text) { ta.focus(); return; } ideas.draft = ''; store.addSuggestion({ text, name: P[ME].name, day: ideas.day === 'all' ? null : ideas.day, kind: KINDS[foodView] ? foodView : 'food' }); render(); return; }
+  const ma = t('[data-missadd]'); if (ma) { missDaySheet(ma.dataset.missadd); return; }
+  const un = t('[data-unskip]'); if (un) { store.setChoice('sk-' + un.dataset.unskip, ''); return render(); }
   const vt = t('[data-vote]'); if (vt && P[ME]) { store.toggleVote(vt.dataset.vote, ME); return render(); }
   const sd = t('[data-sgdel]'); if (sd) { const id = sd.dataset.sgdel; return askConfirm('Delete this suggestion?', 'It disappears for everyone.', 'Delete', () => { store.deleteSuggestion(id); render(); }); }
   const bw = t('[data-bkwho]'); if (bw) { bk.who = bw.dataset.bkwho; ls.set('proto.bkwho', bk.who); return render(); }
@@ -1388,6 +1442,7 @@ if (tab === 2) setTimeout(syncAlerts, 1500);
 let exSig = '';
 store.subscribe(() => { const pf = store.getProfiles(); const sig = store.mode + store.pending() + JSON.stringify(store.getExpenses()) + JSON.stringify(Object.fromEntries(Object.entries(pf).map(([k, v]) => [k, [v.color, v.photo]]))); if (sig === exSig) return; exSig = sig; if ((tab === 0 || tab === 4) && !document.getElementById('sheet').classList.contains('on')) render(); });
 let ckSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.checks || {}); if (sig === ckSig) return; ckSig = sig; if (tab === 4 && !cfmBg.classList.contains('on')) render(); });
+let msSig = ''; store.subscribe(() => { const ch = store.state.choices || {}; const sig = JSON.stringify(Object.keys(ch).filter((k) => k.startsWith('sk-')).map((k) => [k, ch[k]])) + JSON.stringify(store.state.custom || {}); if (sig === msSig) return; msSig = sig; if (tab === 3 && foodView === 'missed' && !sheet.classList.contains('on')) render(); });
 let sgSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.suggestions || []); if (sig === sgSig) return; sgSig = sig; if (tab === 3 && foodView !== 'nearby' && document.activeElement?.id !== 'sg-text') render(); });
 let shSig = ''; store.subscribe(() => { const sig = JSON.stringify(store.state.shop || {}) + (tab === 2 && !VIEW ? Object.values(store.getExpenses()).filter((x) => x.src && x.src.startsWith('sh')).length : ''); if (sig === shSig) return; shSig = sig; if (tab === 2 && !sheet.classList.contains('on')) shRender(); });
 let bkSig = ''; store.subscribe(() => { const sig = JSON.stringify(Object.entries(store.state.choices || {}).filter(([k]) => k.startsWith('bk-'))); if (sig === bkSig) return; bkSig = sig; if (tab === 1) render(); });

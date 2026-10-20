@@ -226,6 +226,68 @@ ok('going back to a stamped stop keeps it faded', (await openPass(A.page)) === f
 await A.page.evaluate(() => document.querySelector('.pass.open [data-stamp]').click()); await A.page.waitForTimeout(700);
 ok('un-stamping it brings it back to full strength', (await opac(first)) === '1', await opac(first));
 
+// 2b · fold, skip, reorder (feedback from the trip: an open stop couldn't be closed, a day couldn't be reordered,
+// and there was no "opposite of stamping" for places we didn't get to)
+const shared = (page) => page.evaluate(() => fetch('/api/state', { cache: 'no-store' }).then((r) => r.json()));
+const bandOrder = (page) => page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((el) => [el.dataset.id, new DOMMatrix(getComputedStyle(el).transform).m42]).sort((a, b) => a[1] - b[1]).map((x) => x[0]));
+const domOrder = (page) => page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((el) => el.dataset.id));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-pick]').click()); await A.page.waitForTimeout(900);
+ok('tapping the top of the open stop folds it: none open, the day in order', !(await openPass(A.page)) && (await A.page.evaluate(() => document.body.classList.contains('folded'))) && (await bandOrder(A.page)).join() === (await domOrder(A.page)).join(), (await bandOrder(A.page)).slice(0, 4).join());
+await A.page.evaluate(() => document.querySelector('.pass[data-id="d07-deer"] .band').click()); await A.page.waitForTimeout(900);
+ok('tapping a stop in the folded list opens it', (await openPass(A.page)) === 'd07-deer' && !(await A.page.evaluate(() => document.body.classList.contains('folded'))));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-fold]').click()); await A.page.waitForTimeout(900);
+ok('Fold up folds it too', !(await openPass(A.page)));
+await A.page.evaluate(() => document.querySelector('.pass[data-id="d07-deer"] .band').click()); await A.page.waitForTimeout(900);
+await A.page.evaluate(() => document.querySelector('.pass.open [data-skip]').click()); await A.page.waitForTimeout(900);
+const sk1 = await shared(A.page);
+ok('Skip it marks the stop skipped for everyone, greys it and points at Ideas → Missed', sk1.choices['sk-d07-deer'] === 'skipped' && (await A.page.$eval('.pass[data-id="d07-deer"]', (e) => e.classList.contains('skip'))) && !!(await A.page.$('.pass.open .sknote[href*="f=missed"]')), JSON.stringify(sk1.choices));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-stamp]').click()); await A.page.waitForTimeout(900);
+const sk2 = await shared(A.page);
+ok('stamping a skipped stop unskips it', !sk2.choices['sk-d07-deer'] && sk2.checks['d07-deer'], JSON.stringify(sk2.choices));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-skip]').click()); await A.page.waitForTimeout(900);
+const sk3 = await shared(A.page);
+ok('skipping a stamped stop unstamps it', sk3.choices['sk-d07-deer'] === 'skipped' && !sk3.checks['d07-deer'], JSON.stringify(sk3.checks));
+ok('no Skip on a journey', await A.page.evaluate(() => !document.querySelector('.pass.tk [data-skip]')));
+// Reorder: drag Nakatanidou mochi above Todai-ji; the run between the bus and the train keeps its start and its end
+await A.page.evaluate(() => document.querySelector('[data-reorder]').click()); await A.page.waitForTimeout(1000);
+ok('Reorder folds the day, shows handles on stops (not on journeys) and moves the + buttons away', !(await openPass(A.page)) && (await A.page.$$('.pass:not(.locked) .grip')).length > 0 && (await A.page.evaluate(() => getComputedStyle(document.querySelector('.pass.locked .grip, .pass.locked .glock')).display !== 'none' && !document.querySelector('.pass.locked .grip') && getComputedStyle(document.querySelector('.tt')).display === 'none')));
+await A.page.evaluate(() => document.querySelector('.pass[data-id="d07-mochi"] .grip').scrollIntoView({ block: 'center' })); await A.page.waitForTimeout(400);
+const gm = await A.page.$eval('.pass[data-id="d07-mochi"] .grip', (e) => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+const gt = await A.page.$eval('.pass[data-id="d07-todaiji"] .grip', (e) => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+await A.page.mouse.move(gm[0], gm[1]); await A.page.mouse.down();
+for (let k = 1; k <= 8; k++) { await A.page.mouse.move(gm[0], gm[1] + (gt[1] - gm[1]) * k / 8); await A.page.waitForTimeout(30); }
+await A.page.mouse.up(); await A.page.waitForTimeout(1500);
+const ord = (await shared(A.page)).custom['ord-d07'] || {};
+const oi = (id) => (ord.order || []).indexOf(id);
+ok('the new order is saved for everyone', oi('d07-mochi') >= 0 && oi('d07-mochi') < oi('d07-todaiji') && oi('d07-todaiji') < oi('d07-deer') && oi('d07-bus') === 1, JSON.stringify(ord.order));
+ok('moved stops keep their own length and the run keeps its start and end', ord.times && ord.times['d07-mochi'] === '8:20–8:30 AM' && ord.times['d07-todaiji'] === '8:30–9:25 AM' && ord.times['d07-deer'] === '9:25–10:25 AM', JSON.stringify(ord.times));
+ok('the day stays folded in Reorder after the save', !(await openPass(A.page)) && (await A.page.evaluate(() => document.body.classList.contains('reordering'))) && (await bandOrder(A.page)).indexOf('d07-mochi') < (await bandOrder(A.page)).indexOf('d07-todaiji'));
+await A.page.screenshot({ path: SH + 'reorder.png' });
+await A.page.reload(); await A.page.waitForTimeout(2200);
+const evs = await A.page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((el) => el.dataset.id));
+ok('after a reload the day runs in the new order, with the new times', evs.indexOf('d07-mochi') < evs.indexOf('d07-todaiji') && /8:20/.test(await A.page.textContent('.pass[data-id="d07-mochi"] .band small')), evs.slice(0, 5).join());
+A.page.once('dialog', (d) => d.accept());
+await A.page.evaluate(() => document.querySelector('[data-reorder]').click()); await A.page.waitForTimeout(800);
+await A.page.evaluate(() => document.querySelector('[data-ordreset]').click()); await A.page.waitForTimeout(1200);
+ok('Reset puts the day back in its first order and times', !(await shared(A.page)).custom['ord-d07'] && /8:20/.test(await A.page.textContent('.pass[data-id="d07-todaiji"] .band small')));
+await A.page.evaluate(() => document.querySelector('[data-orddone]').click()); await A.page.waitForTimeout(400);
+// the skipped stop is listed under Ideas → Missed, and Add to a day puts a copy at the end of the day picked
+await A.page.goto(B + '/japan/prototypes/tools?v=4&f=missed'); await A.page.waitForTimeout(1500);
+ok('Ideas → Missed lists the skipped stop', /Nara Park deer/.test(await A.page.textContent('#page')) && !!(await A.page.$('[data-missadd="d07-deer"]')));
+await A.page.tap('[data-missadd="d07-deer"]'); await A.page.waitForTimeout(500);
+await A.page.screenshot({ path: SH + 'missed-pick.png' });
+const lastDay = await A.page.$$eval('[data-misspick]', (b) => b[b.length - 1].dataset.misspick);
+await A.page.tap(`[data-misspick="${lastDay}"]`); await A.page.waitForTimeout(1200);
+const cp = Object.entries((await shared(A.page)).custom).find(([, c]) => c.from === 'd07-deer');
+ok('Add to a day saves a copy on that day, with its place, that remembers where it came from', !!cp && cp[1].added && cp[1].day === lastDay && cp[1].place && cp[1].place.name && cp[1].title === 'Nara Park deer', JSON.stringify(cp));
+ok('the Missed row says which day it is on now', /now on Day/.test(await A.page.textContent('#page')));
+await A.page.screenshot({ path: SH + 'missed.png' });
+await A.page.goto(B + `/japan/?d=${lastDay}`); await A.page.waitForTimeout(2000);
+ok('the copy is the last stop of that day', (await domOrder(A.page)).pop() === cp[0]);
+// tidy up for the rest of the run
+await A.page.evaluate(async (id) => { const h = { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }; await fetch('/api/custom', { method: 'POST', headers: h, body: JSON.stringify({ id, value: null }) }); await fetch('/api/choices', { method: 'POST', headers: h, body: JSON.stringify({ id: 'sk-d07-deer', value: '' }) }); }, cp[0]);
+await A.page.goto(B + '/japan/?d=d07'); await A.page.waitForTimeout(1500);
+
 // 3 · money: expenses shared between two phones (the money page, /japan/money)
 const N = await phone();
 await N.page.goto(B + '/'); await N.page.tap('[data-me="naf"]'); await enterPin(N.page); await N.page.waitForTimeout(600); await N.page.tap('[data-trip="japan"]'); await N.page.waitForURL(/\/japan\//);
