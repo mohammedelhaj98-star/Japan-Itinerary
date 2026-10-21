@@ -895,7 +895,8 @@ export const PLACES = {
    "d": "10 AM–7:35 PM (food last order 6:30 PM)",
    "open": "10:00",
    "close": "19:35",
-   "note": "No regular closing day listed; walk-in seats kept"
+   "note": "No regular closing day listed; walk-in seats kept",
+   "last": "18:30"
   }
  },
  "Samurai Kenbu Theater": {
@@ -1138,7 +1139,7 @@ export const PLACES = {
   "hours": {
    "d": "Lunch 11 AM–3 PM, dinner 5–9 PM; weekend breakfast 8–11 AM",
    "open": "11:00",
-   "close": "15:00",
+   "close": "21:00",
    "closed": [
     "Wed"
    ],
