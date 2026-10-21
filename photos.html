@@ -618,8 +618,9 @@ let uploading = false, rows = [], wake = null;
 const DRIVE_KEY = 'photos.drive2';
 let driveUrl = lsGet(DRIVE_KEY) || '';
 const paintDrive = () => document.querySelectorAll('[data-drive]').forEach((a) => { a.href = driveUrl || '#'; });
+let fresh = false;
 async function getDrive() {
-  if (!driveUrl) { driveUrl = (await api('/folder', { trip: TRIP })).url; lsSet(DRIVE_KEY, driveUrl); }
+  if (!driveUrl || !fresh) { driveUrl = (await api('/folder', { trip: TRIP })).url; lsSet(DRIVE_KEY, driveUrl); fresh = true; } // asked once a visit: the folder can change if it was binned
   paintDrive(); return driveUrl;
 }
 // tapped before the link is known (first time on this phone): fetch it, then go
