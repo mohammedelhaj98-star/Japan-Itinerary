@@ -28,7 +28,7 @@ function query(q) {
   const props = [...q.matchAll(/appProperties has \{ key='([^']+)' and value='([^']*)' \}/g)].map((m) => [m[1], m[2]]);
   return [...files.values()].filter((f) => !f.trashed && (!name || f.name === name) && (!mime || f.mimeType === mime) && (!parent || parents.some((x) => (f.parents || []).includes(x))) && (!media || /^(image|video)\//.test(f.mimeType)) && props.every(([k, v]) => (f.appProperties || {})[k] === v) && !not.some(([k, v]) => (f.appProperties || {})[k] === v));
 }
-const fileJson = (f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents, size: String(f.data ? f.data.length : 0), appProperties: f.appProperties, createdTime: f.createdTime, owners: f.owners,
+const fileJson = (f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents, size: String(f.data ? f.data.length : 0), appProperties: f.appProperties, createdTime: f.createdTime, owners: f.owners, trashed: !!f.trashed,
   thumbnailLink: f.mimeType.startsWith('image/') || f.mimeType.startsWith('video/') ? `${G}/thumb/${f.id}=s220` : undefined,
   imageMediaMetadata: f.mimeType.startsWith('image/') ? { width: 1200, height: 1600, rotation: 0, ...(f.meta || {}) } : undefined, videoMediaMetadata: f.mimeType.startsWith('video/') ? { width: 1080, height: 1920, durationMillis: '4000' } : undefined });
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
@@ -405,6 +405,12 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   const again = await onRequest({ request: new Request(B + '/api/photos/inbox', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: '{"trip":"japan"}' }), env });
   ok('nothing left to file afterwards', (await again.json()).items.length === 0);
   ok('the old day folders are emptied into the trip folder and binned', files.get(d7).trashed && files.get(d8).trashed && [heic, mov, oldFiled].every((id) => files.get(id).parents.join() === tripDir && !files.get(id).trashed), JSON.stringify([d7, d8].map((id) => files.get(id))));
+  // someone bins the trip folder itself in Drive: the site makes a fresh one rather than uploading into the bin
+  files.get(tripDir).trashed = true; env.FOLDER_CHECK_MS = 0;
+  const fr = await onRequest({ request: new Request(B + '/api/photos/folder', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: '{"trip":"japan"}' }), env });
+  const newTrip = fid(/^Japan 2026$/) === tripDir ? [...files.values()].find((f) => f.name === 'Japan 2026' && f.mimeType === FOLDER && !f.trashed) : null;
+  ok('a binned trip folder is replaced by a fresh one', newTrip && newTrip.id !== tripDir && newTrip.parents.join() === fid(/^Our Trips$/) && (await fr.json()).url.endsWith(newTrip.id), newTrip && newTrip.id);
+  delete env.FOLDER_CHECK_MS;
   const upd = await onRequest({ request: new Request(B + '/api/photos/update', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', ids: [away, pdf], set: { hidden: true } }) }), env });
   ok('changes to files that aren\'t trip photos are refused', upd.status === 400 && !ap(away).hidden && !ap(pdf).hidden);
   const before = kv.get('gdrive'); aboutUser = null;
