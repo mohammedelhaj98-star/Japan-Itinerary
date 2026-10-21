@@ -819,19 +819,77 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('guest has no stamp, edit or add-a-stop buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear, #addgap')].every((e) => !e.offsetParent)));
   await g.evaluate(() => { const b = document.querySelector('[data-stamp]'); b && b.click(); }); await g.waitForTimeout(500);
   ok('guest tap on stamp does nothing', !Object.keys(JSON.parse(store.get('checks') || '{}')).some((k) => k.startsWith('d07')));
+  // following along from home: where everyone is right now (4 PM in Japan on day 7: all four in Shinsaibashi), Japan time and their own
+  const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  ok('guest sees Right now: all four at Shinsaibashi, Japan time and their own', /Right now · Day 7 of 17/i.test(gn) && /ALL FOUR/.test(gn) && /Shinsaibashi/.test(gn) && /4:00\s*PM/.test(gn) && /Japan time/.test(gn) && /for you/.test(gn) && /Next: Amerika-mura/.test(gn), gn);
+  ok('guest has no Directions, phrases or ¥ kit', await g.evaluate(() => [...document.querySelectorAll('.a-dir, .say, #kitbtn')].every((e) => !e.offsetParent)));
+  await g.evaluate(() => document.querySelector('#gnow [data-gninfo]').click()); await g.waitForTimeout(900);
+  ok('the i on Right now opens that stop with its story', await g.evaluate(() => { const c = document.querySelector('.pass.open'); return !!c && c.id === 'p-d07-shinsaibashi' && c.classList.contains('storyon') && !!c.querySelector('.storyx').offsetParent; }));
+  for (const d of ['d08', 'd09', 'd12', 'd13']) {
+    await g.goto(B + '/japan/?d=' + d); await g.waitForTimeout(1500);
+    const txt = await g.evaluate(() => document.body.innerText + [...document.querySelectorAll('[aria-label],[title]')].map((e) => e.getAttribute('aria-label') + e.getAttribute('title')).join(' '));
+    ok(`guest on ${d}: M&M's night away is a romantic dinner, no hotel name`, !/in the Green|Pasha/i.test(txt) && (d === 'd09' || d === 'd13' || /Romantic dinner/i.test(txt)), (txt.match(/.{40}(in the Green|Pasha).{40}/i) || [''])[0]);
+  }
+  await g.goto(B + '/japan/'); await g.waitForTimeout(1500);
   await g.tap('#ttBtn'); await g.waitForTimeout(400);
-  ok('guest tools have no Expenses', !(await g.$('.tt-opt[href$="money"]')) && !!(await g.$('.tt-opt[href$="v=2"]')));
+  ok('guest tools are just Photos and Settings', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))) === '["Settings","Photos"]', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))));
   await g.screenshot({ path: SH + 'guest-trip.png' });
-  await g.goto(B + '/japan/prototypes/tools?v=1'); await g.waitForTimeout(1500);
-  ok('guest asking for expenses gets Bookings', /Booked & to book/.test(await g.textContent('#page')) && await g.$eval('.proto-picker-item', (e) => e.hidden));
-  ok('guest cannot mark bookings', !(await g.$('[data-bkmark]')));
-  await g.goto(B + '/japan/prototypes/tools?v=4'); await g.waitForTimeout(1500);
-  ok('guest sees ideas but cannot post', /Chibo Diversity/.test(await g.textContent('#page')) && !(await g.$('#sg-text')) && await g.$eval('[data-vote]', (e) => e.disabled));
+  for (const v of [1, 2, 3, 4]) {
+    await g.goto(B + '/japan/prototypes/tools?v=' + v); await g.waitForTimeout(1200);
+    ok(`guest asking for tab ${v} (Expenses, Bookings, Shopping, Ideas) gets Settings`, /You &(amp;)? the trip/.test(await g.textContent('#page')) && (await g.$$eval('.proto-picker-item', (els) => els.map((e) => e.hidden).join())) === 'true,true,true,true,false' && !(await g.$('[data-bkmark]')));
+  }
   await g.goto(B + '/japan/prototypes/tools?v=5'); await g.waitForTimeout(1500);
   ok('guest settings say guest', /Guest/.test(await g.textContent('.me')) && !(await g.$('[data-pcolor]')) && !/Show money in/.test(await g.textContent('#page')));
   await g.screenshot({ path: SH + 'guest-settings.png', fullPage: true });
   ok('guest wrote nothing', store.get('updatedAt') === before);
   ok('no page errors G', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+// guest on Oct 21 (day 6): Mo and Mariam fly in on two different flights, so they get a row each, and no night card while
+// anyone is in the air; a page left open past midnight in Japan moves on to the new day
+{
+  const G = await phone('2026-10-20T20:00:00Z'); const g = G.page;
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  const gnow = () => g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  let gn = await gnow();
+  ok('5 AM in Japan, Mo and Mariam both flying: a row each, not a night card', /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 2 && !/middle of the night/.test(gn), gn);
+  await g.clock.fastForward('09:00:00'); await g.waitForTimeout(1500); gn = await gnow();
+  ok('2 PM: Mo has landed, Mariam is still in the air', /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 1, gn);
+  await g.clock.fastForward('09:30:00'); await g.waitForTimeout(1500); gn = await gnow();
+  ok('11:30 PM, everyone landed: the night card', /middle of the night/.test(gn), gn);
+  await g.clock.fastForward('00:35:00'); await g.waitForTimeout(2500);
+  ok('left open past midnight, the page moves on to day 7', /Day 7 of 17/i.test(await gnow()) && /[?&]d=d07/.test(g.url()), g.url());
+  ok('no page errors G2', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+// the night after the last day: a guest opening the page sees Day 17 while they fly home, and the card goes once all have landed
+{
+  const G = await phone('2026-11-01T15:30:00Z'); const g = G.page;
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  ok('12:30 AM Nov 2: Day 17, with NASA, Mo and Mariam each in the air', /Day 17 of 17/i.test(gn) && /NASA/.test(gn) && /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 3 && !/middle of the night/.test(gn), gn);
+  await g.clock.fastForward('04:45:00'); await g.waitForTimeout(1500);
+  ok('5:15 AM: Mo is home but the others wait in Vancouver, so the card stays', /Day 17 of 17/i.test(await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; })));
+  await g.clock.fastForward('05:45:00'); await g.waitForTimeout(1500);
+  ok('everyone home: the card goes, and the page stays on Day 17', !(await g.$('#gnow')) && /[?&]d=d17/.test(g.url()), g.url());
+  ok('no page errors G4', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+// a guest who picked the NASA view still sees where M&M are (Oct 23, 6:30 PM: their romantic dinner); and at 2 AM the next
+// night, M&M are still away, so the night card names no hotel for everyone
+for (const [t, test] of [
+  ['2026-10-23T09:30:00Z', (gn) => ['guest on the NASA view still sees M&M at their romantic dinner', /M&M/.test(gn) && /Romantic dinner/.test(gn) && /NASA/.test(gn)]],
+  ['2026-10-23T17:00:00Z', (gn) => ['2 AM after M&M\'s night away: asleep, with no one hotel named for all four', /middle of the night/.test(gn) && !/Granbell|in the Green/i.test(gn)]],
+]) {
+  const G = await phone(t); const g = G.page;
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  await g.evaluate(() => localStorage.setItem('japan2026.whoMix', JSON.stringify('nasa')));
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  const [name, pass] = test(gn); ok(name, pass, gn);
+  ok('no page errors G3', !G.errs.length, G.errs.join(' | '));
   await G.ctx.close();
 }
 // one of the four on a phone from before the PIN: asked once, then straight in

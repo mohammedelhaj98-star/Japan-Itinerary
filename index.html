@@ -74,6 +74,34 @@ svg { display:inline-block; vertical-align:middle; fill:none; }
 body.scrolled .topfade { opacity:1; }
 body.guest [data-stamp], body.guest [data-edit], body.guest [data-addend], body.guest #gear, body.guest #addgap { display:none !important; }
 body.guest [data-choice] { pointer-events:none; }
+/* guests follow along from home: no buttons that only help in Japan (directions, phrases, the ¥ kit) */
+body.guest .a-dir, body.guest .say, body.guest #kitbtn { display:none !important; }
+/* "Right now" (guests only): where each couple is, Japan time and the guest's own */
+.gnow { margin:0 10px 12px; padding:16px 16px 14px; border-radius:22px; background:#fff; display:grid; gap:12px; box-shadow:0 14px 30px -24px rgba(20,20,10,.5); }
+.gnow.night { background:#1d2440; color:#eef0f8; }
+.gn-k { display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--red); }
+.gn-k i { width:7px; height:7px; border-radius:50%; background:currentColor; animation:flblink 1.6s ease-in-out infinite; }
+.gnow.night .gn-k { color:#f2c14e; }
+.gn-clock { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.gn-clock > div { display:grid; }
+.gn-clock b { font-family:'Instrument Serif', 'Times New Roman', serif; font-weight:400; font-size:42px; line-height:.95; letter-spacing:-.02em; }
+.gn-clock b small { font-family:inherit; font-size:15px; margin-left:3px; }
+.gn-clock span, .gn-s, .gn-nx { font-size:12.5px; color:var(--ink3); }
+.gn-you { text-align:right; justify-items:end; }
+.gn-you b { font-family:inherit; font-size:15px; font-weight:700; letter-spacing:0; }
+.gnow.night .gn-clock span, .gnow.night .gn-s, .gnow.night .gn-nx { color:#aab1cc; }
+.gn-row { display:grid; grid-template-columns:auto minmax(0, 1fr); gap:10px; padding-top:12px; border-top:1px solid var(--line); }
+.gnow.night .gn-row { border-top-color:rgba(255,255,255,.12); }
+.gn-row > div { display:grid; gap:2px; justify-items:start; min-width:0; }
+.gn-tag { font-size:10.5px; font-weight:700; letter-spacing:.06em; color:#fff; background:var(--c); padding:4px 7px; border-radius:6px; height:max-content; margin-top:2px; }
+.gn-t { font-size:15px; line-height:1.3; }
+.gn-t i { display:inline-block; width:9px; height:9px; border-radius:3px; background:var(--c); margin-right:6px; vertical-align:1px; }
+.gn-nx { color:var(--ink2); }
+.gn-s .flpill { min-height:22px; font-size:12px; padding:2px 9px; }
+.gn-i { display:inline-grid; place-items:center; width:24px; height:24px; margin-left:8px; border-radius:50%; background:rgba(20,20,10,.07); font:italic 400 15px/1 'Instrument Serif', 'Times New Roman', serif; vertical-align:1px; }
+.gnow.night .gn-i { background:rgba(255,255,255,.14); }
+.gn-sleep { font-size:13.5px; padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.08); }
+@media (prefers-reduced-motion: reduce) { .gn-k i { animation:none; } }
 .top { position:fixed; top:var(--top); left:10px; right:10px; z-index:600; display:flex; gap:8px; justify-content:center; max-width:460px; margin:0 auto; }
 /* changes made with no signal, still waiting to reach the other phones */
 .unsynced { position:fixed; top:calc(var(--top) + 56px); left:50%; transform:translate3d(-50%,-6px,0) scale(.96); opacity:0; visibility:hidden; transition:opacity 160ms ease, transform 240ms var(--ease), background-color 200ms ease, color 200ms ease, visibility 0s linear 240ms; z-index:880; /* above the day dial drawer's top edge */ font-size:12px; font-weight:600; color:#7a5a00; background:#fff6dd; border-radius:12px; padding:4px 10px; box-shadow:0 1px 4px rgba(0,0,0,.12); pointer-events:none; white-space:nowrap; }
@@ -754,6 +782,8 @@ import { store, SANDBOX, GUEST } from './js/store.js?v=9';
 import { offline } from './js/offline.js?v=9';
 import { runTour } from './js/tour.js?v=9';
 import { CAT, MODE } from './js/colors.js?v=9';
+import { forGuests } from './js/guest.js?v=9';
+if (GUEST && !SANDBOX) forGuests(DAYS); // M&M's nights away read as a romantic dinner for guests
 
 /* ═══ motion engine: interruptible springs (Apple response/damping) ═══ */
 function recenterNow() {
@@ -904,7 +934,10 @@ const KNOW = {
 const qs = new URLSearchParams(location.search);
 const todayJST = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const tripDay = DAYS.find((d) => d.date === todayJST);
-const ui = SANDBOX ? { dayId: 'd07', who: 'all', sel: null } : { dayId: qs.get('d') || (tripDay ? tripDay.id : DAYS[0].id), who: ls.get('japan2026.whoMix', 'all'), sel: null };
+// the day after the trip, a guest still sees the last day: some of them are flying home overnight
+const dayAfter = (s) => new Date(Date.parse(s + 'T00:00:00Z') + 864e5).toISOString().slice(0, 10), lastDay = DAYS[DAYS.length - 1];
+const homeDay = GUEST && !SANDBOX && !tripDay && todayJST === dayAfter(lastDay.date) ? lastDay : null;
+const ui = SANDBOX ? { dayId: 'd07', who: 'all', sel: null } : { dayId: qs.get('d') || (tripDay || homeDay || DAYS[0]).id, who: ls.get('japan2026.whoMix', 'all'), sel: null };
 let day, events, asides, stops, map, layers = [], pinEls = {}, dialApi = null, stackApi = null, shownDay = null;
 const nowMin = () => { const t = new Date(Date.now() + 9 * 3600e3); return t.getUTCHours() * 60 + t.getUTCMinutes(); };
 
@@ -1077,6 +1110,72 @@ function flightBanner() {
   return `<div class="flban ${tone}" role="status">${I.plane}<div><b>Flight update${un.length > 1 ? `s · ${un.length}` : ''}</b>${esc(c.text)}</div><button class="press" data-flseen>Got it</button></div>`;
 }
 
+/* ═══ guests: "Right now", for family following along from home ═══ */
+// Where each couple is on today's plan: their last stamped stop, unless the plan has moved well past it (a stamp
+// forgotten), else the stop the plan says; a flight in the air wins. Both couples on the same stop → one "All four" row;
+// a couple on two different flights (or one flying, one not) → a row each.
+const COUPLE = { naf: 'nasa', sara: 'nasa', mariam: 'mm', m: 'mm' }, MEMBERS = { nasa: ['naf', 'sara'], mm: ['mariam', 'm'] };
+// for a couple (g) or just one of them (p)
+const forCouple = (e, g, p) => (e.flight ? (e.flight.people || []).some((x) => (p ? x === p : COUPLE[x] === g)) : !e.who || e.who === 'all' || e.who === g);
+// in the air: the tracker says so, or (before its first check) the flight's own times say it has taken off and not landed
+const flying = (e) => { if (!e.flight) return false; const v = flView(e), now = Date.now(); if (v.st === 'air') return true; if (['landed', 'cancelled', 'diverted'].includes(v.st)) return false; return Date.parse(v.dep || '') <= now && now < Date.parse(v.arr || ''); };
+// the whole day, whichever couple's view is showing
+const allEvents = () => dayItems(day, { who: 'all' }).filter((i) => i.type === 'event');
+function whereNow(g, m, p, all = allEvents()) {
+  const ev = all.filter((e) => forCouple(e, g, p) && !skipped(e.id)), sp = (e) => span(e) || [0, 0];
+  if (!ev.length) return null;
+  const air = ev.find(flying);
+  const lastDone = [...ev].reverse().find((e) => done(e.id)), plan = [...ev].reverse().find((e) => sp(e)[0] && sp(e)[0] <= m);
+  let cur = air || lastDone, src = air ? 'air' : 'stamp';
+  if (!air && plan && (!lastDone || (ev.indexOf(plan) > ev.indexOf(lastDone) && sp(plan)[0] - sp(lastDone)[1] > 90))) { cur = plan; src = 'plan'; }
+  const after = cur ? ev.slice(ev.indexOf(cur) + 1) : ev, next = after.find((e) => !done(e.id)) || null;
+  const live = cur && (src !== 'plan' || m < sp(cur)[1]);
+  return { cur, next, src, live };
+}
+function guestNow() {
+  if (!(GUEST && !SANDBOX)) return '';
+  // today, by the clock now (a page can stay open past midnight); or the night after the last day, while anyone is still flying home
+  const date = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), all = allEvents();
+  const homeward = day === lastDay && date === dayAfter(day.date);
+  // (still on their way: a flight in the air, or one still to land, like the Vancouver connection)
+  const onWay = (e) => e.flight && (flying(e) || Date.now() < Date.parse(flView(e).arr || ''));
+  if (date !== day.date && !(homeward && all.some(onWay))) return '';
+  const m = nowMin() + (homeward ? 1440 : 0), tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; } })();
+  const jp = fmt(m % 1440), at = (e) => { const s = span(e); return s ? fmt(s[0]).join(' ') : esc(e.time || ''); };
+  const own = new Date(), same = -own.getTimezoneOffset() === 540; // a guest on Japan time needs no second clock
+  const youT = own.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }), youD = own.toLocaleDateString('en-GB', { weekday: 'short' });
+  const youCity = tz.includes('/') ? tz.split('/').pop().replace(/_/g, ' ') : 'your time';
+  const jpD = new Date(Date.now() + 9 * 3600e3).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const row = (label, c, x) => {
+    if (!x || !x.cur) return x && x.next ? `<div class="gn-row"><span class="gn-tag" style="--c:${c}">${label}</span><div><b class="gn-t">Day starts ${at(x.next)}</b><span class="gn-nx">${esc(x.next.title)}</span></div></div>` : '';
+    const e = x.cur, v = e.flight ? flView(e) : null, tracked = v && v.r && !v.r.missing, cat = catOf(e);
+    const title = x.live || x.src === 'air' ? esc(e.title) : x.next ? `Last stop: ${esc(e.title)}` : `Done for the day`;
+    const src = x.src === 'stamp' ? 'Stamped 済' : 'By the plan';
+    const how = tracked ? `<span class="flpill ${v.cls}"><i></i>${esc(v.label)}</span>` : x.src === 'air' ? 'In the air, by the flight times' : !x.live && !x.next ? `${src} · last stop: ${esc(e.title)}` : src;
+    const k = all.findIndex((y) => y.id === e.id), host = all.slice(0, k + 1).reverse().find((y) => y.place);
+    const pi = placeInfo(host && host.place), ib = pi && pi.story ? `<button class="gn-i press" data-gninfo="${e.id}" aria-label="About this place">i</button>` : '';
+    return `<div class="gn-row"><span class="gn-tag" style="--c:${c}">${label}</span><div><b class="gn-t"><i style="--c:${cat.c}"></i>${title}${ib}</b><span class="gn-s">${how}</span>${x.next ? `<span class="gn-nx">Next: ${esc(x.next.title)}${at(x.next) ? ', ' + at(x.next) : ''}</span>` : ''}</div></div>`;
+  };
+  // a night card only when nobody is in the air (overnight flights say where they are)
+  const night = (m >= 23 * 60 || m < 6 * 60) && !all.some(flying);
+  let body;
+  if (night) {
+    // before 6 AM they're still in last night's beds
+    const nd = m >= 23 * 60 ? DAYS[DAYS.indexOf(day) + 1] : day, sd = m >= 23 * 60 ? day : DAYS[DAYS.indexOf(day) - 1] || day, first = nd && dayItems(nd, { who: 'all' }).find((i) => i.type === 'event' && span(i));
+    const hs = sd.away ? [] : [...new Set([sd.hotel, sd.mmHotel].filter(Boolean))].map((id) => (HOTELS.find((h) => h.id === id) || {}).name).filter(Boolean);
+    body = `<p class="gn-sleep">It's the middle of the night in Japan, so they're probably asleep${hs.length ? ` at ${esc(hs.join(' and '))}` : ''}.</p>${first ? `<div class="gn-row"><span class="gn-tag" style="--c:var(--ink)">NEXT</span><div><b class="gn-t">Day ${nd.n} starts ${at(first)}</b><span class="gn-nx">${esc(first.title)}</span></div></div>` : ''}`;
+  } else {
+    const a = whereNow('nasa', m, null, all), b = whereNow('mm', m, null, all);
+    const one = a && b && a.cur === b.cur && a.next === b.next;
+    // split a couple whose two people are on different flights, or one flying and one not
+    const couple = (g, label, c, x) => { const [p1, p2] = MEMBERS[g], f = (p) => all.find((e) => forCouple(e, g, p) && e.flight && flying(e)) || null;
+      return f(p1) === f(p2) ? row(label, c, x) : [p1, p2].map((p) => row(PNAME[p].toUpperCase(), c, whereNow(g, m, p, all))).join(''); };
+    body = one && !all.some(flying) ? row('ALL FOUR', 'var(--ink)', a) : couple('nasa', 'NASA', '#2c4f86', a) + couple('mm', 'M&amp;M', '#c25350', b);
+  }
+  return `<section class="gnow ${night ? 'night' : ''}" id="gnow" aria-label="Where they are right now"><p class="gn-k"><i></i>Right now · Day ${day.n} of ${DAYS.length}</p>
+    <div class="gn-clock"><div><b>${jp[0]}<small>${jp[1]}</small></b><span>Japan time · ${jpD}</span></div>${same ? '' : `<div class="gn-you"><b>${youT}</b><span>for you · ${youD} · ${esc(youCity)}</span></div>`}</div>${body}</section>`;
+}
+
 /* ═══ bookings on a stop: trains and hotels (a stop's `ticket`, see data/itinerary.js) ═══ */
 // a booking still waiting on its confirmation; "Mark as booked" is the Bookings page's own shared choice
 const bkPending = (e) => { const p = e.ticket && e.ticket.pending; return p && store.getChoice(p.id, '') !== 'booked' ? p : null; };
@@ -1111,6 +1210,7 @@ function bookAct(e, d) {
 /* ═══ shopping: things on the list that are easiest to buy at this stop (see the Shopping page) ═══ */
 const ME_ID = ls.get('trips.me', '');
 function shopStrip(e) {
+  if (GUEST && !SANDBOX) return ''; // the shopping list isn't on a guest's menu
   const its = Object.entries(store.getShop()).filter(([, x]) => x && x.ai && x.ai.at === e.id && (!x.lock || x.lock === ME_ID) && (ui.who === 'all' || x.list === 'all' || x.list === ui.who));
   if (!its.length) return '';
   const left = its.filter(([, x]) => !x.done).length, can = !(GUEST && !SANDBOX);
@@ -1191,7 +1291,7 @@ function sheetHTML() {
     return `<a class="stay press" href="${gmPlace(h)}" target="_blank" rel="noopener" style="${hpi.img ? `background-image:url('${imgUrl(hpi)}')` : 'background-color:#55702f'}">${who ? `<span class="swho">${pills(who)}</span>` : ''}<div><small>${esc(h.city || '')} · ${esc(h.dates || '')}</small><b>${esc(h.name || '')}</b>${pend ? '<span class="htag">Room not confirmed yet</span>' : ''}</div></a>`;
   }).join('');
   const sheet = `<div class="grab" id="grab"></div><p class="mapmax-hint">Swipe up for the day</p>
-    ${flightBanner()}${foldBar()}<div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
+    ${guestNow()}${flightBanner()}${foldBar()}<div class="stack" id="stack">${events.map(passHTML).join('')}<button class="addgap press" id="addgap">${I.plus}Add a stop here</button><p class="pastlbl" id="pastlbl" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>Earlier in the day</p></div>
     <div class="endrow"><button class="addend press" data-addend>${I.plus}Add a stop to day ${day.n}</button>${!(GUEST && !SANDBOX) && events.filter(movable).length > 1 ? `<button class="addend ordb press" data-reorder>${I.order}Reorder</button>` : ''}</div>
     ${notes ? `<p class="sec">Notes &amp; decisions</p><div class="cards">${notes}</div>` : ''}
     ${know ? `<p class="sec">Good to know in ${esc(day.city)}</p><div class="know">${know}</div>` : ''}
@@ -1907,6 +2007,7 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   if (e.target.closest('[data-ordreset]')) { if (!confirm(`Put day ${day.n} back in its first order, with its first times, for everyone?`)) return; store.setCustom('ord-' + day.id, null); return; }
   const j = e.target.closest('[data-jp]'); if (j) { showPhrases(j.dataset.jp); return; }
   const sk = e.target.closest('[data-shtick]'); if (sk) { const x = store.getShop()[sk.dataset.shtick]; if (!x) return; if (x.done) { const { done, doneBy, doneAt, ...rest } = x; store.setShop(sk.dataset.shtick, rest); } else { store.setShop(sk.dataset.shtick, { ...x, done: true, ...(ME_ID && ME_ID !== 'guest' ? { doneBy: ME_ID } : {}), doneAt: Date.now() }); buzz(10); } return; }
+  const gi = e.target.closest('[data-gninfo]'); if (gi) { const id = gi.dataset.gninfo; if (!events.some((x) => x.id === id)) { ui.who = 'all'; ls.set('japan2026.whoMix', 'all'); renderDay({ keepScroll: true }); } stackApi.select(id, { scroll: true }); focusMap(id); const card = document.getElementById('p-' + id); if (card && !card.classList.contains('storyon')) { card.classList.add('storyon'); stackApi.layout(false); } return; } // guests: the story of where they are
   const sy = e.target.closest('[data-story]'); if (sy) { const card = document.getElementById('p-' + sy.dataset.story); card.classList.toggle('storyon'); stackApi.layout(false); return; }
   const ed = e.target.closest('[data-edit]'); if (ed) { openEditor({ mode: 'edit', id: ed.dataset.edit }); return; }
   // Mark as booked: the 予約済 stamp thumps down on all four phones; tapping 予約済 again offers to undo it
@@ -1970,7 +2071,11 @@ let lastSig = customSig();
 const viewChanged = () => { prepare(); if (!hasEvents(day)) return true; const { sheet, dd } = sheetHTML(); return sheet + dd !== shownView || mapKey() !== mapView; };
 store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig !== lastSig) { lastSig = sig; const redraw = viewChanged(); if (redraw) renderDay({ keepScroll: true, keepSel: true }); if (setp.classList.contains('on')) renderSettings(); if (redraw) return; setNav(); } stackApi.refresh(); dialApi.refresh(); syncPins(); });
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });
-setInterval(() => { if (dialApi && dialApi.tickNow) dialApi.tickNow(); }, 60000);
+setInterval(() => { if (dialApi && dialApi.tickNow) dialApi.tickNow(); const g = document.getElementById('gnow');
+  // a guest's page left open past midnight in Japan opens on the new day (without ?d=, which pins the old one)
+  const nd = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  if (g && nd !== todayJST && DAYS.some((d) => d.date === nd)) { location.replace(location.pathname); return; }
+  if (g) g.outerHTML = guestNow(); }, 60000);
 // once a frame at most, when the page is laid out anyway (on every scroll event it could force a layout each time)
 { const sh = document.getElementById('sheet'); let sq = 0; window.addEventListener('scroll', () => { if (!sq) sq = requestAnimationFrame(() => { sq = 0; document.body.classList.toggle('scrolled', sh.getBoundingClientRect().top < 70); }); }, { passive: true }); }
 /* ═══ dial drawer ═══ */
@@ -2073,7 +2178,8 @@ store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) locatio
 // Guests look but don't touch: no stamping, editing, adding stops or making choices (the practice tour still lets them try).
 if (GUEST && !SANDBOX) {
   document.body.classList.add('guest');
-  const exOpt = document.querySelector('.tt-opt[href$="money"]'); if (exOpt) exOpt.remove(); // the money stays between the four of us
+  // the money stays between the four of us, and the planning pages (Shopping, Bookings, Ideas) aren't for guests: Photos and Settings stay
+  document.querySelectorAll('.tt-opt[href$="money"], .tt-opt[href$="v=2"], .tt-opt[href$="v=3"], .tt-opt[href$="v=4"]').forEach((o) => o.remove());
   document.addEventListener('click', (e) => { if (e.target.closest('[data-stamp], [data-edit], [data-addend], [data-choice], #gear, #addgap, [data-sadd], [data-sedit]')) { e.preventDefault(); e.stopPropagation(); } }, true);
 }
 window.__tourEnv = {
