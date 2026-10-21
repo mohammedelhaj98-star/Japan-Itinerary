@@ -131,6 +131,10 @@ const FIX = fs.mkdtempSync(path.join(os.tmpdir(), 'photos-'));
   fs.writeFileSync(FIX + '/before.jpg', exif(await jpeg(400, 500, 200), '2026:10:09 10:30:00'));                   // before the trip → nearest day (Day 1)
   fs.writeFileSync(FIX + '/dinner.mp4', mp4(Date.parse('2026-10-22T09:50:00Z')));                                      // 6:50 PM in Japan → Dinner
   fs.writeFileSync(FIX + '/kyoto.jpg', exif(await jpeg(1300, 1300, 80), '2026:10:23 10:10:00'));                     // for the carry-on test
+  // for the sort (the stand-in Claude answers by shape): tall = one person, wide = a view, square = a selfie of two
+  fs.writeFileSync(FIX + '/gion.jpg', exif(await jpeg(900, 1200, 20), '2026:10:21 15:20:00', [35.0027, 135.7750])); // Day 6, Gion: NASA's stop
+  fs.writeFileSync(FIX + '/view.jpg', exif(await jpeg(1200, 800, 160), '2026:10:22 09:30:00'));
+  fs.writeFileSync(FIX + '/us.jpg', exif(await jpeg(1000, 1000, 100), '2026:10:22 10:20:00'));
   await pg.close();
 }
 const sizeOf = (f) => fs.statSync(FIX + '/' + f).size;
@@ -417,6 +421,94 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   await n.goto(B + '/api/photos/connect?k=6666'); await n.waitForTimeout(800);
   ok('a reconnect Google won\'t name the account of is refused', /didn't say which account/.test(await n.textContent('body')) && kv.get('gdrive') === before);
   aboutUser = { displayName: 'Naf Test', emailAddress: 'naf@example.com' };
+}
+
+// 14 · who's in it: said while uploading, guessed by the sort (Claude counts people, the plan says who was there), checked one by one
+{
+  const { guessWho, sortRequest, SORT_MODEL } = await import(REPO + '/lib/sort-claude.js');
+  const ALL = ['naf', 'sara', 'mariam', 'm'];
+  ok('guess: one person at a NASA-only stop, taken by Naf → Sara', guessWho({ people: 1, selfie: false }, ['naf', 'sara'], 'naf').join() === 'sara');
+  ok('guess: a selfie of two with all four there, by Mo → Mariam & Mo', guessWho({ people: 2, selfie: true }, ALL, 'm').join() === 'mariam,m');
+  ok('guess: three people by Naf with all four there → the other three', guessWho({ people: 3, selfie: false }, ALL, 'naf').join() === 'sara,mariam,m');
+  ok('guess: two people (not a selfie) with all four there → no guess', guessWho({ people: 2, selfie: false }, ALL, 'naf').length === 0);
+  ok('guess: four or more people → all four', guessWho({ people: 6, selfie: false }, ALL, 'sara').join() === ALL.join());
+  ok('guess: a view → no one', guessWho({ people: 0, selfie: false }, ALL, 'naf').length === 0);
+  const rb = JSON.parse(sortRequest('k', 'data:image/jpeg;base64,AAAA').body);
+  ok('sort: one small Haiku request that never asks who anyone is', rb.model === SORT_MODEL && SORT_MODEL === 'claude-haiku-5-5' && rb.thinking.type === 'disabled' && rb.max_tokens <= 400 && /Don't say who anyone is/.test(rb.messages[0].content[1].text) && rb.output_config.format.schema.required.join() === 'people,selfie,kind,words', JSON.stringify(rb).slice(0, 160));
+  ok('sort: off without the Anthropic key', (await (await api('/sort', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', items: [] }) })).json()).off === true);
+
+  const sof = (b) => { for (let i = 2; i < b.length - 9; i++) if (b[i] === 0xff && b[i + 1] >= 0xc0 && b[i + 1] <= 0xc2) return [b.readUInt16BE(i + 7), b.readUInt16BE(i + 5)]; return [0, 0]; };
+  const asked = [];
+  const claude = http.createServer(async (req, res) => {
+    const q = JSON.parse((await body(req)).toString()); const [w, h] = sof(Buffer.from(q.messages[0].content[0].source.data, 'base64')); asked.push({ key: req.headers['x-api-key'], w, h });
+    const a = h > w * 1.1 ? { people: 1, selfie: false, kind: 'us', words: ['Gion', 'street'] } : w > h * 1.1 ? { people: 0, selfie: false, kind: 'place', words: ['view', 'temple'] } : { people: 2, selfie: true, kind: 'us', words: ['selfie'] };
+    res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(a) }] }));
+  });
+  await new Promise((r) => claude.listen(8799, r));
+  env.ANTHROPIC_API_KEY = 'sk-test'; env.SORT_API = 'http://localhost:8799/v1/messages';
+  const ap = (id) => (files.get(id) || {}).appProperties || {};
+
+  await n.goto(B + '/japan/photos'); await n.waitForTimeout(2500); // the photos from before get sorted on the way in
+  const sortedBefore = [...files.values()].filter((f) => f.appProperties && f.appProperties.trip && f.appProperties.ai).length;
+  ok('photos from before (and from the Drive app) get sorted when a member opens the page', sortedBefore >= 6 && asked.every((a) => a.key === 'sk-test'), `${sortedBefore} sorted`);
+  putDelay = 300;
+  await n.tap('[data-upload]'); await n.waitForTimeout(300);
+  await n.setInputFiles('#upfiles', ['gion.jpg', 'view.jpg', 'us.jpg'].map((f) => FIX + '/' + f)); await n.waitForTimeout(200);
+  ok('upload sheet: a row of faces on each photo, and one for all of them', (await n.$$('.uprow .rw button')).length === 12 && await n.isVisible('.upall [data-rwall="naf"]'));
+  await n.tap('.uprow[data-row="2"] [data-rw="naf"]'); await n.tap('.uprow[data-row="2"] [data-rw="sara"]'); // while the first one is still going up
+  await waitRows(n, 3); await n.waitForSelector('.uprow[data-row="0"] .rw.g', { timeout: 8000 }).catch(() => {}); putDelay = 0;
+  await n.screenshot({ path: OUT + 'upload-who.png' });
+  const gion = byName('gion.jpg'), view = byName('view.jpg'), us = byName('us.jpg');
+  ok('tagged while uploading: Naf & Sara saved with the photo, as checked', ap(us.id).in === 'naf,sara' && ap(us.id).ck === '1' && !ap(us.id).ig, JSON.stringify(ap(us.id)));
+  ok('…and the sort leaves a photo someone tagged alone', !ap(us.id).ai);
+  ok('one person at NASA\'s Gion stop, uploaded by Naf → guessed Sara', ap(gion.id).in === 'sara' && ap(gion.id).ig === '1' && ap(gion.id).ai === 'us' && ap(gion.id).np === '1' && /gion/.test(ap(gion.id).aw), JSON.stringify(ap(gion.id)));
+  ok('a view → no one, kind Places, search words', ap(view.id).in === '' && ap(view.id).ai === 'place' && ap(view.id).np === '0' && ap(view.id).aw === 'view temple', JSON.stringify(ap(view.id)));
+  ok('the upload row shows the guess, dotted, to fix with a tap', await n.isVisible('.uprow[data-row="0"] .rw.g [data-rw="sara"].on') && /Guessed/.test(await n.textContent('.uprow[data-row="0"]')));
+  ok('the sort looked at the phone\'s own small copy (≤ 640 px)', asked.slice(-2).every((a) => Math.max(a.w, a.h) <= 640 && a.w > 0), JSON.stringify(asked.slice(-2)));
+  await n.tap('[data-sheetx]'); await n.waitForTimeout(300);
+
+  await n.reload(); await n.waitForTimeout(2500);
+  ok('gallery: a guessed tag is dotted', !!(await n.$(`.grid .th[data-pid="${gion.id}"] .faces.g`)) && !(await n.$(`.grid .th[data-pid="${us.id}"] .faces.g`)));
+  ok('kind filters appear', await n.isVisible('#what [data-what="place"]') && await n.isVisible('#what [data-what="us"]'));
+  await n.tap('#what [data-what="place"]'); await n.waitForTimeout(400);
+  const placeIds = await n.$$eval('.grid .th', (els) => els.map((e) => e.dataset.pid));
+  ok('Places shows only views and sights', placeIds.includes(view.id) && placeIds.every((id) => ap(id).ai === 'place'), placeIds.length + ' shown');
+  await n.screenshot({ path: OUT + 'kind-places.png' });
+  await n.tap('#what [data-what="place"]'); await n.fill('#q', 'gion'); await n.waitForTimeout(500);
+  ok('search finds the sort\'s words', (await n.$$eval('.grid .th', (els) => els.map((e) => e.dataset.pid))).includes(gion.id));
+  await n.fill('#q', ''); await n.waitForTimeout(400);
+  ok('a nudge offers to check who\'s in the rest', await n.isVisible('#nudge [data-check]') && /Who's in these \d+/.test(await n.textContent('#nudge')), await n.textContent('#nudge'));
+  await n.screenshot({ path: OUT + 'nudge.png' });
+  await n.tap('[data-check]'); await n.waitForTimeout(600);
+  const curId = async () => { const src = await n.getAttribute('#tgpic img', 'src').catch(() => ''); return (/thumb\/([\w-]+)=/.exec(src || '') || [])[1]; };
+  const first = await curId();
+  ok('the check starts with the earliest: the Gion guess, "Looks right"', first === gion.id && /^1 of \d+$/.test(await n.textContent('#tgn')) && (await n.textContent('[data-tgnext]')) === 'Looks right' && /Guessed Sara/.test(await n.textContent('#tghint')), `${first} · ${await n.textContent('#tgn')} · ${await n.textContent('#tghint')}`);
+  ok('…people who weren\'t at that stop say so', /wasn't there/.test(await n.textContent('[data-tgp="m"]')));
+  await n.screenshot({ path: OUT + 'check-guess.png' });
+  await n.tap('[data-tgnext]'); await n.waitForTimeout(500);
+  ok('Looks right confirms the guess', ap(gion.id).in === 'sara' && ap(gion.id).ck === '1' && !ap(gion.id).ig, JSON.stringify(ap(gion.id)));
+  const second = await curId();
+  await n.tap('[data-tgp="mariam"]'); await n.waitForTimeout(150);
+  ok('a tap changes it and the button says Next', /^(Next|Done)$/.test(await n.textContent('[data-tgnext]')) && !(await n.$('#tgppl.g')));
+  await n.tap('[data-tgnext]'); await n.waitForTimeout(500);
+  ok('…saved as checked', second && ap(second).in.split(',').includes('mariam') && ap(second).ck === '1' && !ap(second).ig, JSON.stringify(ap(second)));
+  const third = await curId();
+  if (third) { await n.tap('[data-tgnone]'); await n.waitForTimeout(500); ok('No one: no tags, and it isn\'t asked again', ap(third).in === '' && ap(third).ck === '1', JSON.stringify(ap(third))); }
+  await n.tap('[data-tgx]'); await n.waitForTimeout(400);
+  ok('closing the check goes back to the gallery', !(await n.isVisible('#tagr')));
+  // the viewer: a guess says so, and "Looks right" confirms it
+  const g2 = [...files.values()].find((f) => f.appProperties && f.appProperties.ig === '1' && !f.appProperties.hidden && !f.trashed);
+  if (g2) {
+    await n.tap(`.grid .th[data-pid="${g2.id}"]`); await n.waitForTimeout(700); await n.tap('#vcapt'); await n.waitForTimeout(600);
+    ok('viewer Info: the guess is dotted, with Looks right', await n.isVisible('#vinfo .tagrow.g') && await n.isVisible('#vinfo [data-vsure]'));
+    await n.screenshot({ path: OUT + 'viewer-guess.png' });
+    await n.tap('#vinfo [data-vsure]'); await n.waitForTimeout(500);
+    ok('…which saves it as checked', ap(g2.id).ck === '1' && !ap(g2.id).ig && !(await n.$('#vinfo .tagrow.g')));
+    await n.keyboard.press('Escape'); await n.waitForTimeout(500);
+  } else ok('a guessed photo is left for the viewer check', false);
+  await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
+  ok('guests see no nudge and sort nothing', !(await gp.textContent('#nudge')).trim() && !(await gp.$('#what button.on')));
+  claude.close(); delete env.ANTHROPIC_API_KEY; delete env.SORT_API;
 }
 
 for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S]]) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
