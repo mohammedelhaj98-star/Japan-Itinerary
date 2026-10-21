@@ -280,9 +280,12 @@ body.mapmax .mapmax-hint { display:block; }
 .pass.done .a-st { background:rgba(0,0,0,.2); }
 .credit { font-size:10.5px; opacity:.6; margin-top:12px; }
 .credit a { text-decoration:none; }
-.hanko { position:absolute; top:7px; right:66px; width:50px; height:50px; border-radius:50%; border:2.5px solid var(--red); color:var(--red); background:rgba(252,247,238,.95); display:grid; place-items:center; font-family:var(--mincho); font-size:25px; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; z-index:3; }
+.hanko { position:absolute; top:4px; right:66px; width:56px; height:56px; border-radius:50%; border:2.5px solid var(--red); color:var(--red); background:rgba(252,247,238,.95); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mincho); font-size:22px; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; z-index:3; }
 .pass.open .hanko { top:auto; bottom:auto; top:150px; right:16px; }
 .pass.done .hanko { opacity:.96; transform:rotate(-14deg); }
+/* the stamps carry their English under the kanji: 済 Done, 見送 Skipped */
+.hanko b, .mioku b { font-weight:700; line-height:1; }
+.hanko small, .mioku small { font-family:var(--sans); font-size:7.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1; margin-top:3px; }
 .pass.done.stamped .hanko { animation:stamp 380ms cubic-bezier(.2,1.3,.4,1); }
 @keyframes stamp { 0% { opacity:0; transform:scale(1.7) rotate(-30deg); } 60% { opacity:1; transform:scale(.94) rotate(-12deg); } 100% { transform:rotate(-14deg); } }
 /* tickets: transit legs on paper */
@@ -492,7 +495,7 @@ button.ykan { pointer-events:auto; cursor:pointer; }
 .skl { display:inline-block; margin-left:6px; padding:0 6px; border-radius:6px; background:rgba(0,0,0,.28); color:#fff; letter-spacing:.06em; }
 .pass.skip:not(.open) { opacity:.55; filter:saturate(.35); }
 .pass.skip.open .hero { filter:saturate(.35); }
-.mioku { position:absolute; top:7px; right:66px; width:54px; height:54px; border-radius:50%; border:2.5px solid #4b4a45; color:#4b4a45; background:rgba(252,247,238,.95); display:grid; place-items:center; font-family:var(--mincho); font-size:17px; letter-spacing:-.04em; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; z-index:3; transition:opacity 200ms, transform 300ms cubic-bezier(.2,1.3,.4,1); }
+.mioku { position:absolute; top:4px; right:66px; width:56px; height:56px; border-radius:50%; border:2.5px solid #4b4a45; color:#4b4a45; background:rgba(252,247,238,.95); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mincho); font-size:17px; letter-spacing:-.04em; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; z-index:3; transition:opacity 200ms, transform 300ms cubic-bezier(.2,1.3,.4,1); }
 .pass.open .mioku { top:150px; right:16px; }
 .pass.skip .mioku { opacity:.92; transform:rotate(-10deg); }
 .pin.skp { opacity:.45; }
@@ -1103,14 +1106,14 @@ function passHTML(e, i) {
     const v = flView(e);
     const fbody = `<div class="body">${story}${flightStrip(e)}${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
       <div class="acts"><button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>${foldRow(e, false)}</div>`;
-    return `<article class="pass tk fl locked ${d ? 'done' : ''} ${v.past ? 'flpast' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${legHex(e)}">${nav}${flightBand(e, n)}${fbody}<div class="hanko" aria-hidden="true">済</div></article>`;
+    return `<article class="pass tk fl locked ${d ? 'done' : ''} ${v.past ? 'flpast' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${legHex(e)}">${nav}${flightBand(e, n)}${fbody}<div class="hanko" aria-hidden="true"><b>済</b><small>Done</small></div></article>`;
   }
   const pend = bkPending(e), pendL = pend ? `<span class="flst late"><i></i>${esc(pend.label)}</span>` : '';
   const yk = e.ticket && e.ticket.pending ? (pend ? '<span class="ykan spot" aria-hidden="true">not<br>booked</span>' : `<button class="ykan ${bkThump === e.id ? 'ykin' : ''}" data-bkundo="${e.id}" aria-label="Booked. Tap to undo">予約済</button>`) : '';
   const skL = sk ? '<span class="skl">Skipped</span>' : '';
   const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${skL}</small><b>${esc(e.title)}</b>${pendL}</div>${mv ? `<span class="grip" data-grip="${e.id}" aria-label="Drag to move ${esc(e.title)}">${I.grip}</span>` : `<span class="glock" aria-hidden="true">${I.lock}</span>`}${tk && e.ticket && e.ticket.people ? pills(e.ticket.people) : ''}${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
   const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}${skL}</small><b>${esc(e.title)}</b>${pendL}</div></div></div>`;
-  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''} ${sk ? 'skip' : ''} ${mv ? '' : 'locked'}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}${yk}<div class="hanko" aria-hidden="true">済</div><div class="mioku" aria-hidden="true">見送</div></article>`;
+  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''} ${sk ? 'skip' : ''} ${mv ? '' : 'locked'}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}${yk}<div class="hanko" aria-hidden="true"><b>済</b><small>Done</small></div><div class="mioku" aria-hidden="true"><b>見送</b><small>Skipped</small></div></article>`;
 }
 
 // The day's sheet and drawer, as HTML. A sync that would draw exactly the same HTML (a change to another day, a flight
