@@ -19,6 +19,8 @@ const sbGet = () => { try { return JSON.parse(sessionStorage.getItem(SB_KEY)); }
 // per phone with the group's PIN, kept in localStorage and sent with every change; the server checks it.
 export const GUEST = (() => { try { return JSON.parse(localStorage.getItem('trips.me')) === 'guest'; } catch { return false; } })();
 const pinOf = () => { try { return localStorage.getItem('trips.pin') || ''; } catch { return ''; } };
+// who this phone is: the server only sends a secret present on the shopping list to the phone of the person who added it
+const meOf = () => { try { return JSON.parse(localStorage.getItem('trips.me')) || ''; } catch { return ''; } };
 
 function lsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; }
@@ -42,7 +44,7 @@ export function getDisplayName() { return lsGet(LS_NAME, ''); }
 export function setDisplayName(name) { lsSet(LS_NAME, String(name || '').slice(0, 40)); }
 
 // this phone's saved copy of the trip (in practice mode, the practice copy)
-const savedState = () => Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, flights: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {}));
+const savedState = () => Object.assign({ checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, flights: {}, shop: {}, updatedAt: null }, (SANDBOX && sbGet()) || lsGet(LS_KEY, {}));
 
 export const store = {
   state: savedState(),
@@ -65,7 +67,7 @@ export const store = {
     const res = await fetch('/api/' + path, {
       method: body ? 'POST' : 'GET',
       // the PIN goes with reads too: without it the server leaves out the expenses
-      headers: body ? { 'content-type': 'application/json', 'x-trip-pin': pinOf() } : pinOf() ? { 'x-trip-pin': pinOf() } : undefined,
+      headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...(pinOf() ? { 'x-trip-pin': pinOf() } : {}), ...(meOf() ? { 'x-trip-me': meOf() } : {}) },
       body: body ? JSON.stringify(body) : undefined,
       cache: 'no-store',
     });
@@ -187,7 +189,7 @@ export const store = {
     try {
       const remote = await this.api('state');
       if (remote.live) this._liveOk = true;
-      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), money: remote.money || {}, profiles: { ...(remote.profiles || {}), ...this._pfRecent(remote.profiles) }, covers: remote.covers || {}, flights: remote.flights || {}, updatedAt: remote.updatedAt || null };
+      this.state = { checks: remote.checks || {}, choices: remote.choices || {}, suggestions: remote.suggestions || [], custom: remote.custom || {}, expenses: this._overlayExpenses(remote.expenses), money: remote.money || {}, profiles: { ...(remote.profiles || {}), ...this._pfRecent(remote.profiles) }, covers: remote.covers || {}, flights: remote.flights || {}, shop: remote.shop || {}, updatedAt: remote.updatedAt || null };
       this._replay(this.state); // anything changed while the copy was downloading
       this.persist();
       this.setMode(this.mode === 'locked' && !pinOf() ? 'locked' : 'online');
@@ -267,6 +269,18 @@ export const store = {
   getMoney() { return this.state.money || {}; },
   setMoney(id, value) { return this._mutate('money', { id, value: value == null || value === '' ? null : value }); },
 
+  // The shopping list, keyed by id. value null deletes.
+  getShop() { return this.state.shop || {}; },
+  setShop(id, value) { return this._mutate('shop', { id, value: value || null }); },
+  // a list item's photo (a screenshot, a TikTok): sent straight away like a receipt, read back with the PIN as a blob URL
+  async setShopPhoto(id, photo) {
+    if (SANDBOX || GUEST) return false;
+    try { await this.api('shop-photo', { id, photo }); return true; } catch (err) { if (err.pin) this._locked(); return false; }
+  },
+  async shopPhotoUrl(id, v) {
+    try { const res = await fetch('/api/shop-photo/' + encodeURIComponent(id) + (v ? '?v=' + encodeURIComponent(v) : ''), { headers: pinOf() ? { 'x-trip-pin': pinOf() } : undefined }); if (!res.ok) return ''; return URL.createObjectURL(await res.blob()); } catch { return ''; }
+  },
+
   // A receipt photo is sent straight away (too big for the queue). Reading it needs the PIN, so it comes back as a blob URL.
   async setReceipt(id, photo) {
     if (SANDBOX || GUEST) return false;
@@ -333,6 +347,7 @@ function applyOp(s, { path, body, meta }) {
   if (path === 'choices') { if (value) s.choices[id] = value; else delete s.choices[id]; return; }
   if (path === 'custom') { s.custom = s.custom || {}; if (value) s.custom[id] = { ...value, ts: meta.ts }; else delete s.custom[id]; return; }
   if (path === 'expenses') { s.expenses = { ...(s.expenses || {}) }; if (value) s.expenses[id] = { ...value, ts: (s.expenses[id] || {}).ts }; else delete s.expenses[id]; return; } // whole records: an edit can drop a field
+  if (path === 'shop') { s.shop = { ...(s.shop || {}) }; if (value) s.shop[id] = { ...value, ts: (s.shop[id] || {}).ts }; else delete s.shop[id]; return; }
   if (path === 'money') { s.money = { ...(s.money || {}) }; if (value == null || value === '') delete s.money[id]; else s.money[id] = value; return; }
   if (path === 'suggestions') { if (!s.suggestions.some((x) => x.id === meta.temp.id)) s.suggestions.unshift({ ...meta.temp }); return; }
   const m = path.match(/^suggestions\/(.+)\/(vote|delete)$/);

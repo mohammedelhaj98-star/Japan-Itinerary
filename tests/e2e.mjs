@@ -45,7 +45,13 @@ store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store
 // Workers AI stand-in for /api/scan: it "reads" a ramen receipt where the total was mistaken for the cash handed over
 // …and for /api/fill (a question in words rather than a photo): it knows Yanaka Ginza
 const FILL_SAID = { known: true, name: 'Yanaka Ginza shopping street', ja: '谷中銀座商店街', ro: 'Yanaka Ginza Shōtengai', cat: 'shop', kind: 'shop', notes: 'Old-Tokyo shopping street. The menchi-katsu is usually pork and beef: ask for beef only.', cost: '¥500–1,500 per person', minutes: 60, key: 'Since the 1940s · About 60 shops', story: 'It survived the 1923 earthquake and the war, so it still looks like 1950s Tokyo.', dyk: 'Seven wooden cats hide along the street.', wikipedia: 'Yanaka Ginza', search: 'Yanaka Ginza', lat: 35.7277, lng: 139.766 };
-const FAKE_AI = { run: async (m, inp) => typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
+// …and for /api/shop-ai (where on the route to buy something): Tokyo Banana is at Gransta, inside Tokyo Station, on day 12
+const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Banana flavour in one place.', at: 'd12-shinkansen', search: 'Tokyo Banana', ja: '東京ばな奈', halal: 'Check the box for gelatin.', cat: 'sweets' };
+// (sent a photo instead of a name, it sees a box of matcha Kit Kats)
+const said = (c) => typeof c === 'string' ? c : ((c.find((x) => x.type === 'text') || {}).text || '');
+// (asked to sort things into categories: masks, serums and creams are skincare, the rest sweets)
+const sorted = (text) => ({ items: [...text.matchAll(/^([a-z0-9_-]+) \| (.+)$/gim)].map(([, id, name]) => ({ id, cat: /mask|serum|cream/i.test(name) ? 'skincare' : 'sweets' })) });
+const FAKE_AI = { run: async (m, inp) => /^Sort each thing/.test(said(inp.messages[0].content)) ? { response: sorted(said(inp.messages[0].content)) } : /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana', cat: /necklace/i.test(said(inp.messages[0].content)) ? 'fashion' : 'sweets' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
@@ -54,7 +60,7 @@ const server = http.createServer(async (req, res) => {
   if (u.pathname.startsWith('/api/')) {
     const chunks = []; for await (const c of req) chunks.push(c);
     const r = await onRequest({ request: new Request(u, { method: req.method, headers: req.headers, body: req.method === 'POST' ? Buffer.concat(chunks) : undefined }), env: ENV });
-    res.writeHead(r.status, { 'content-type': 'application/json' }); return res.end(await r.text());
+    res.writeHead(r.status, { 'content-type': r.headers.get('content-type') || 'application/json' }); return res.end(Buffer.from(await r.arrayBuffer()));
   }
   let p = decodeURIComponent(u.pathname); if (p === '/japan') { res.writeHead(301, { location: '/japan/' }); return res.end(); }
   let f = path.join(DIST, p); if (p.endsWith('/')) f = path.join(f, 'index.html'); else if (!fs.existsSync(f) && fs.existsSync(f + '.html')) f += '.html';
@@ -219,6 +225,68 @@ await A.page.evaluate((id) => document.querySelector(`.pass[data-id="${id}"] [da
 ok('going back to a stamped stop keeps it faded', (await openPass(A.page)) === first && (await opac(first)) === '0.55', await opac(first));
 await A.page.evaluate(() => document.querySelector('.pass.open [data-stamp]').click()); await A.page.waitForTimeout(700);
 ok('un-stamping it brings it back to full strength', (await opac(first)) === '1', await opac(first));
+
+// 2b · fold, skip, reorder (feedback from the trip: an open stop couldn't be closed, a day couldn't be reordered,
+// and there was no "opposite of stamping" for places we didn't get to)
+const shared = (page) => page.evaluate(() => fetch('/api/state', { cache: 'no-store' }).then((r) => r.json()));
+const bandOrder = (page) => page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((el) => [el.dataset.id, new DOMMatrix(getComputedStyle(el).transform).m42]).sort((a, b) => a[1] - b[1]).map((x) => x[0]));
+const domOrder = (page) => page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((el) => el.dataset.id));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-pick]').click()); await A.page.waitForTimeout(900);
+ok('tapping the top of the open stop folds it: none open, the day in order', !(await openPass(A.page)) && (await A.page.evaluate(() => document.body.classList.contains('folded'))) && (await bandOrder(A.page)).join() === (await domOrder(A.page)).join(), (await bandOrder(A.page)).slice(0, 4).join());
+await A.page.evaluate(() => document.querySelector('.pass[data-id="d07-deer"] .band').click()); await A.page.waitForTimeout(900);
+ok('tapping a stop in the folded list opens it', (await openPass(A.page)) === 'd07-deer' && !(await A.page.evaluate(() => document.body.classList.contains('folded'))));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-fold]').click()); await A.page.waitForTimeout(900);
+ok('Fold up folds it too', !(await openPass(A.page)));
+await A.page.evaluate(() => document.querySelector('.pass[data-id="d07-deer"] .band').click()); await A.page.waitForTimeout(900);
+await A.page.evaluate(() => document.querySelector('.pass.open [data-skip]').click()); await A.page.waitForTimeout(900);
+const sk1 = await shared(A.page);
+ok('Skip it marks the stop skipped for everyone, greys it and points at Ideas → Missed', sk1.choices['sk-d07-deer'] === 'skipped' && (await A.page.$eval('.pass[data-id="d07-deer"]', (e) => e.classList.contains('skip'))) && !!(await A.page.$('.pass.open .sknote[href*="f=missed"]')), JSON.stringify(sk1.choices));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-stamp]').click()); await A.page.waitForTimeout(900);
+const sk2 = await shared(A.page);
+ok('stamping a skipped stop unskips it', !sk2.choices['sk-d07-deer'] && sk2.checks['d07-deer'], JSON.stringify(sk2.choices));
+await A.page.evaluate(() => document.querySelector('.pass.open [data-skip]').click()); await A.page.waitForTimeout(900);
+const sk3 = await shared(A.page);
+ok('skipping a stamped stop unstamps it', sk3.choices['sk-d07-deer'] === 'skipped' && !sk3.checks['d07-deer'], JSON.stringify(sk3.checks));
+ok('no Skip on a journey', await A.page.evaluate(() => !document.querySelector('.pass.tk [data-skip]')));
+// Reorder: drag Nakatanidou mochi above Todai-ji; the run between the bus and the train keeps its start and its end
+await A.page.evaluate(() => document.querySelector('[data-reorder]').click()); await A.page.waitForTimeout(1000);
+ok('Reorder folds the day, shows handles on stops (not on journeys) and moves the + buttons away', !(await openPass(A.page)) && (await A.page.$$('.pass:not(.locked) .grip')).length > 0 && (await A.page.evaluate(() => getComputedStyle(document.querySelector('.pass.locked .grip, .pass.locked .glock')).display !== 'none' && !document.querySelector('.pass.locked .grip') && getComputedStyle(document.querySelector('.tt')).display === 'none')));
+await A.page.evaluate(() => document.querySelector('.pass[data-id="d07-mochi"] .grip').scrollIntoView({ block: 'center' })); await A.page.waitForTimeout(400);
+const gm = await A.page.$eval('.pass[data-id="d07-mochi"] .grip', (e) => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+const gt = await A.page.$eval('.pass[data-id="d07-todaiji"] .grip', (e) => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; });
+await A.page.mouse.move(gm[0], gm[1]); await A.page.mouse.down();
+for (let k = 1; k <= 8; k++) { await A.page.mouse.move(gm[0], gm[1] + (gt[1] - gm[1]) * k / 8); await A.page.waitForTimeout(30); }
+await A.page.mouse.up(); await A.page.waitForTimeout(1500);
+const ord = (await shared(A.page)).custom['ord-d07'] || {};
+const oi = (id) => (ord.order || []).indexOf(id);
+ok('the new order is saved for everyone', oi('d07-mochi') >= 0 && oi('d07-mochi') < oi('d07-todaiji') && oi('d07-todaiji') < oi('d07-deer') && oi('d07-bus') === 1, JSON.stringify(ord.order));
+ok('moved stops keep their own length and the run keeps its start and end', ord.times && ord.times['d07-mochi'] === '8:20–8:30 AM' && ord.times['d07-todaiji'] === '8:30–9:25 AM' && ord.times['d07-deer'] === '9:25–10:25 AM', JSON.stringify(ord.times));
+ok('the day stays folded in Reorder after the save', !(await openPass(A.page)) && (await A.page.evaluate(() => document.body.classList.contains('reordering'))) && (await bandOrder(A.page)).indexOf('d07-mochi') < (await bandOrder(A.page)).indexOf('d07-todaiji'));
+await A.page.screenshot({ path: SH + 'reorder.png' });
+await A.page.reload(); await A.page.waitForTimeout(2200);
+const evs = await A.page.evaluate(() => [...document.querySelectorAll('#stack .pass')].map((el) => el.dataset.id));
+ok('after a reload the day runs in the new order, with the new times', evs.indexOf('d07-mochi') < evs.indexOf('d07-todaiji') && /8:20/.test(await A.page.textContent('.pass[data-id="d07-mochi"] .band small')), evs.slice(0, 5).join());
+A.page.once('dialog', (d) => d.accept());
+await A.page.evaluate(() => document.querySelector('[data-reorder]').click()); await A.page.waitForTimeout(800);
+await A.page.evaluate(() => document.querySelector('[data-ordreset]').click()); await A.page.waitForTimeout(1200);
+ok('Reset puts the day back in its first order and times', !(await shared(A.page)).custom['ord-d07'] && /8:20/.test(await A.page.textContent('.pass[data-id="d07-todaiji"] .band small')));
+await A.page.evaluate(() => document.querySelector('[data-orddone]').click()); await A.page.waitForTimeout(400);
+// the skipped stop is listed under Ideas → Missed, and Add to a day puts a copy at the end of the day picked
+await A.page.goto(B + '/japan/prototypes/tools?v=4&f=missed'); await A.page.waitForTimeout(1500);
+ok('Ideas → Missed lists the skipped stop', /Nara Park deer/.test(await A.page.textContent('#page')) && !!(await A.page.$('[data-missadd="d07-deer"]')));
+await A.page.tap('[data-missadd="d07-deer"]'); await A.page.waitForTimeout(500);
+await A.page.screenshot({ path: SH + 'missed-pick.png' });
+const lastDay = await A.page.$$eval('[data-misspick]', (b) => b[b.length - 1].dataset.misspick);
+await A.page.tap(`[data-misspick="${lastDay}"]`); await A.page.waitForTimeout(1200);
+const cp = Object.entries((await shared(A.page)).custom).find(([, c]) => c.from === 'd07-deer');
+ok('Add to a day saves a copy on that day, with its place, that remembers where it came from', !!cp && cp[1].added && cp[1].day === lastDay && cp[1].place && cp[1].place.name && cp[1].title === 'Nara Park deer', JSON.stringify(cp));
+ok('the Missed row says which day it is on now', /now on Day/.test(await A.page.textContent('#page')));
+await A.page.screenshot({ path: SH + 'missed.png' });
+await A.page.goto(B + `/japan/?d=${lastDay}`); await A.page.waitForTimeout(2000);
+ok('the copy is the last stop of that day', (await domOrder(A.page)).pop() === cp[0]);
+// tidy up for the rest of the run
+await A.page.evaluate(async (id) => { const h = { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }; await fetch('/api/custom', { method: 'POST', headers: h, body: JSON.stringify({ id, value: null }) }); await fetch('/api/choices', { method: 'POST', headers: h, body: JSON.stringify({ id: 'sk-d07-deer', value: '' }) }); }, cp[0]);
+await A.page.goto(B + '/japan/?d=d07'); await A.page.waitForTimeout(1500);
 
 // 3 · money: expenses shared between two phones (the money page, /japan/money)
 const N = await phone();
@@ -512,6 +580,121 @@ ok('undo puts it back', (await N.page.$$eval('.bk.todo', (e) => e.length)) === t
 await N.page.tap('[data-bkwho="mm"]'); await N.page.waitForTimeout(300);
 ok('M&M filter hides NASA-only bookings', !/Yoroniku/.test(await N.page.textContent('#page')));
 await N.page.tap('[data-bkwho="all"]');
+// 3f · shopping: three lists, the helper puts each thing on the route, secret presents, Only in Japan ideas,
+// bought → expenses, a "to buy here" strip on the stop, and taxi details on the phrase cards and travel kit
+{
+  const shOf = () => JSON.parse(store.get('shop') || '{}'), shBy = (name) => Object.entries(shOf()).find(([, x]) => x.name === name) || [];
+  const pickGroup = async (pg, g) => { await pg.tap('[data-shpill="group"]'); await pg.waitForTimeout(250); await pg.tap(`[data-shf="group"][data-v="${g}"]`); await pg.waitForTimeout(400); };
+  const sp = (body, pin = PIN) => fetch(B + '/api/shop', { method: 'POST', headers: { 'content-type': 'application/json', ...(pin ? { 'x-trip-pin': pin } : {}) }, body: JSON.stringify(body) });
+  ok('shopping list changes need the PIN, a real list and a real person', (await sp({ id: 'shx', value: { name: 'X', list: 'all', by: 'naf' } }, null)).status === 403
+    && (await sp({ id: 'shx', value: { name: 'X', list: 'everyone', by: 'naf' } })).status === 400 && (await sp({ id: 'shx', value: { name: 'X', list: 'all', by: 'bob' } })).status === 400 && !shOf().shx);
+  ok('finding a shop needs the PIN', (await fetch(B + '/api/shop-ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Tokyo Banana', stops: [] }) })).status === 403);
+  await N.page.goto(B + '/japan/prototypes/tools?v=3'); await N.page.waitForTimeout(1500);
+  ok("Shopping opens on your own couple's list", /Things to buy/.test(await N.page.textContent('#page')) && (await N.page.textContent('[data-shpill="group"]')).trim().startsWith('NASA'));
+  await N.page.fill('#sh-name', 'Tokyo Banana'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
+  const [tbId, tb] = shBy('Tokyo Banana');
+  ok('added to NASA\'s list, and the helper put it on the route: Gransta, day 12', tb && tb.list === 'nasa' && tb.by === 'naf' && tb.ai && tb.ai.at === 'd12-shinkansen' && tb.ai.date === '2026-10-27' && tb.ai.day === 'd12' && tb.ai.ja === '東京ばな奈' && tb.cat === 'sweets', JSON.stringify(tb));
+  ok('folded, it shows a heading with the day and shop, and its category', /Tue,? 27 Oct · Gransta, inside Tokyo Station/.test(await N.page.textContent('#page')) && /Sweets & snacks/.test(await N.page.textContent(`[data-shrow="${tbId}"]`)) && !/gelatin/.test(await N.page.textContent('.sp-list')));
+  await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300);
+  ok('tapped open: why there, the halal warning, its pills and Ask AI', /Every Tokyo Banana flavour/.test(await N.page.textContent('.sp-list')) && /gelatin/.test(await N.page.textContent('.sp-list')) && /Day 12/.test(await N.page.textContent(`[data-shset="day"][data-id="${tbId}"]`)) && /Ask AI/.test(await N.page.textContent('.sp-list')));
+  await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300);
+  await N.page.fill('#sh-name', 'Pearl necklace'); await N.page.fill('#sh-for', 'Sara'); await N.page.tap('[data-shlock]'); await N.page.tap('[data-shqty="1"]'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
+  const [, pearl] = shBy('Pearl necklace');
+  const spR = await (await sp({ id: 'shy', value: { name: 'Fan', list: 'all', by: 'm' } })).json(); await sp({ id: 'shy', value: null });
+  ok("a change's answer leaves out other people's secret presents", spR.ok && !JSON.stringify(spR.shop).includes('Pearl'));
+  ok('a secret present is kept as only Naf\'s, with who it\'s for and how many', pearl && pearl.lock === 'naf' && pearl.for === 'Sara' && pearl.qty === 2, JSON.stringify(pearl));
+  // just a photo (a screenshot from TikTok): the helper says what it is, and the photo is kept for showing staff
+  await N.page.waitForFunction(() => !document.querySelector('.sp-ai.think'), null, { timeout: 5000 }).catch(() => {}); // the helper has answered for the necklace
+  await N.page.setInputFiles('#sh-file', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForSelector('.sp-prev img', { timeout: 5000 }).catch(() => {});
+  ok('a photo can be added without a name', !!(await N.page.$('.sp-prev img')) && !(await N.page.$eval('[data-shadd]', (b) => b.disabled)));
+  await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(2000);
+  const [picId, pic] = shBy('Matcha Kit Kat');
+  ok('…and the helper names it from the photo and finds where to buy it', pic && pic.photo > 0 && pic.ai && pic.ai.at === 'd12-shinkansen' && /^data:image\/jpeg;base64,/.test(store.get('sp:' + picId) || ''), JSON.stringify(pic));
+  ok('the photo shows on the list', /^(data|blob):/.test(await N.page.getAttribute(`[data-spimg="${picId}"]`, 'src').catch(() => '')));
+  ok('the photo needs the PIN to see', (await fetch(B + '/api/shop-photo/' + picId)).status === 403 && (await fetch(B + '/api/shop-photo/' + picId, { headers: { 'x-trip-pin': PIN } })).headers.get('content-type') === 'image/jpeg');
+  await N.page.tap(`[data-shrow="${picId}"]`); await N.page.waitForTimeout(300); await N.page.tap(`[data-shstaff="${picId}"]`); await N.page.waitForTimeout(500);
+  ok('Show staff shows the photo with "Do you have this?"', /これはありますか/.test(await N.page.textContent('#driver')) && !!(await N.page.$('#driver .sp-big')));
+  await N.page.screenshot({ path: SH + 'shopping-staff.png' });
+  await N.page.tap('#driver [data-dx]'); await N.page.waitForTimeout(400);
+  await N.page.screenshot({ path: SH + 'shopping.png', fullPage: true });
+  ok('a secret present never leaves the server without the PIN', !JSON.stringify((await (await fetch(B + '/api/state')).json()).shop || {}).includes('Pearl'));
+  const shopFor = async (me) => JSON.stringify((await (await fetch(B + '/api/state', { headers: { 'x-trip-pin': PIN, 'x-trip-me': me } })).json()).shop || {});
+  ok("…and goes only to Naf's phone: Mo's and Sara's never get it", /Pearl/.test(await shopFor('naf')) && !/Pearl/.test(await shopFor('m')) && !/Pearl/.test(await shopFor('sara')) && /Tokyo Banana/.test(await shopFor('m')));
+  await A.page.goto(B + '/japan/prototypes/tools?v=3'); await A.page.waitForTimeout(1500);
+  ok("Mo's phone opens on M&M's list", (await A.page.textContent('[data-shpill="group"]')).trim().startsWith('M&M'));
+  await pickGroup(A.page, 'nasa');
+  ok("Mo sees NASA's Tokyo Banana but not Naf's secret present", /Tokyo Banana/.test(await A.page.textContent('#page')) && !/Pearl/.test(await A.page.textContent('#page')));
+  ok("…and the photo Naf added, fetched with the PIN", await A.page.$eval(`[data-spimg="${picId}"]`, (im) => im.src.startsWith('blob:') && im.naturalWidth > 0).catch(() => false));
+  // the filters: Category and Day narrow the list, Everything shows all three lists
+  await N.page.tap('[data-shpill="cat"]'); await N.page.waitForTimeout(250);
+  ok('the Category pill opens the categories in use, with counts', /Sweets & snacks/.test(await N.page.textContent('.sp-opts')) && !/Stationery/.test(await N.page.textContent('.sp-opts')));
+  await N.page.tap('[data-shf="cat"][data-v="sweets"]'); await N.page.waitForTimeout(300);
+  ok('…and picking one shows only those', /Tokyo Banana/.test(await N.page.textContent('#page')) && !/Pearl necklace/.test(await N.page.textContent('#page')) && /Sweets/.test(await N.page.textContent('[data-shpill="cat"]')));
+  await N.page.tap('[data-shpill="day"]'); await N.page.waitForTimeout(250);
+  ok('the Day pill lists only days with something to buy', (await N.page.$$('.sp-opts [data-shf="day"]')).length === 2 && /Tue,? 27 Oct/.test(await N.page.textContent('.sp-opts')));
+  await N.page.tap('[data-shf="day"][data-v="d12"]'); await N.page.waitForTimeout(300);
+  ok('…and picking a day shows that day', /Tokyo Banana/.test(await N.page.textContent('#page')) && /27 Oct/.test(await N.page.textContent('[data-shpill="day"]')));
+  await N.page.tap('[data-shpill="day"]'); await N.page.waitForTimeout(250); await N.page.tap('[data-shf="day"][data-v="any"]'); await N.page.tap('[data-shpill="cat"]'); await N.page.waitForTimeout(250); await N.page.tap('[data-shf="cat"][data-v="any"]'); await N.page.waitForTimeout(300);
+  // an item's pills change it: category, then group (still on the route: keeps its day), then day (AI looks at that stop)
+  await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300); await N.page.tap(`[data-shset="cat"][data-id="${tbId}"]`); await N.page.waitForTimeout(450);
+  await N.page.tap('#sheet [data-shsetv="cat:gadgets"]'); await N.page.waitForTimeout(500);
+  await N.page.tap(`[data-shiq="1"][data-id="${tbId}"]`); await N.page.waitForTimeout(300); await N.page.tap(`[data-shiq="1"][data-id="${tbId}"]`); await N.page.waitForTimeout(300); await N.page.tap(`[data-shiq="-1"][data-id="${tbId}"]`); await N.page.waitForTimeout(400);
+  ok('the quantity counter on an item: ×2 shows on its folded line', shOf()[tbId].qty === 2 && /×2/.test(await N.page.textContent(`[data-shrow="${tbId}"]`)));
+  await N.page.tap(`[data-shiq="-1"][data-id="${tbId}"]`); await N.page.waitForTimeout(300);
+  ok('…and back to one, it drops the count', !('qty' in shOf()[tbId]));
+  ok('tapping its category pill changes the category', shOf()[tbId].cat === 'gadgets' && /Gadgets/.test(await N.page.textContent(`[data-shrow="${tbId}"]`)));
+  await N.page.tap(`[data-shset="list"][data-id="${tbId}"]`); await N.page.waitForTimeout(450); await N.page.tap('#sheet [data-shsetv="list:all"]'); await N.page.waitForTimeout(600);
+  ok('…its group pill moves it to another list, keeping its stop', shOf()[tbId].list === 'all' && shOf()[tbId].ai.at === 'd12-shinkansen' && shOf()[tbId].cat === 'gadgets', JSON.stringify(shOf()[tbId]));
+  await pickGroup(N.page, 'every'); await N.page.tap(`[data-shrow="${tbId}"]`).catch(() => {}); await N.page.waitForTimeout(300);
+  if (!(await N.page.$(`[data-shset="day"][data-id="${tbId}"]`))) { await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300); }
+  await N.page.tap(`[data-shset="day"][data-id="${tbId}"]`); await N.page.waitForTimeout(450);
+  const dayPick = await N.page.$$eval('#sheet [data-shsetv^="day:"]', (b) => b.map((x) => x.dataset.shsetv.slice(4))), newStop = dayPick.find((x) => x !== 'd12-shinkansen');
+  await N.page.tap(`#sheet [data-shsetv="day:${newStop}"]`); await N.page.waitForTimeout(1500);
+  ok('…and its day pill puts it on the stop you pick, with AI asked again for a shop there', shOf()[tbId].ai.at === newStop && shOf()[tbId].cat === 'gadgets' && dayPick.length > 5, newStop + ' ' + JSON.stringify(shOf()[tbId]));
+  await sp({ id: tbId, value: { ...shOf()[tbId], list: 'nasa', cat: 'sweets', ai: { ...shOf()[tbId].ai, at: 'd12-shinkansen', date: '2026-10-27', day: 'd12' } } }); // back as it was, for the checks below
+  // things from before there were categories get sorted by AI when the page opens
+  ok('sorting needs the PIN', (await fetch(B + '/api/shop-cat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ items: [{ id: 'a', name: 'x' }] }) })).status === 403);
+  await sp({ id: 'shold1', value: { name: 'Rice sheet mask', list: 'nasa', by: 'sara', at: 1 } }); await sp({ id: 'shold2', value: { name: 'Mochi', list: 'all', by: 'm', at: 2 } });
+  await N.page.reload(); await N.page.waitForTimeout(2500);
+  ok('…and things added before categories get one when the page opens', shOf().shold1 && shOf().shold1.cat === 'skincare' && shOf().shold2.cat === 'sweets', JSON.stringify([shOf().shold1, shOf().shold2]));
+  await sp({ id: 'shold1', value: null }); await sp({ id: 'shold2', value: null });
+  await N.page.tap('[data-shpill="ideas"]'); await N.page.waitForTimeout(400);
+  ok('Ideas: Only in Japan, by category', /Only in Japan/.test(await N.page.textContent('#page')) && (await N.page.$$('[data-shidea]')).length > 40);
+  await N.page.screenshot({ path: SH + 'shopping-ideas.png' });
+  await N.page.reload(); await N.page.waitForTimeout(1500);
+  ok('coming back, Shopping opens on a list with the box to add things, not on Ideas', !!(await N.page.$('.sp-add #sh-name')) && !(await N.page.$('.sp-fp.on[data-shpill="ideas"]')));
+  await N.page.tap('[data-shpill="ideas"]'); await N.page.waitForTimeout(400);
+  await N.page.tap('[data-shidea]'); await N.page.waitForTimeout(450); await N.page.tap('#sheet [data-shpick="all"]'); await N.page.waitForTimeout(900);
+  const [, kk] = shBy('Regional Kit Kat flavours');
+  ok('an idea goes on All of us with its place on the route already found', kk && kk.list === 'all' && kk.idea === true && kk.ai.at === 'd07-shinsaibashi' && kk.ai.date === '2026-10-22' && kk.cat === 'sweets', JSON.stringify(kk));
+  await pickGroup(N.page, 'nasa');
+  await N.page.tap(`[data-shtick="${tbId}"]`); await N.page.waitForTimeout(500);
+  ok('ticking it bought asks about expenses', /Add it to expenses/.test(await N.page.textContent('#sheet')) && shOf()[tbId].done === true && shOf()[tbId].doneBy === 'naf');
+  const navs = [], onNav = (r) => { if (r.isNavigationRequest()) navs.push(r.url()); }; N.page.on('request', onNav);
+  await N.page.fill('#sh-yen', '1500'); await N.page.tap('[data-shex]'); await N.page.waitForURL(/\/japan\/money/, { timeout: 5000 }).catch(() => {}); N.page.off('request', onNav);
+  const exU = new URL(navs.find((u) => /\/money\?/.test(u)) || N.page.url());
+  ok('…and opens the expense form filled in: Shopping, ¥1,500, split within NASA', exU.searchParams.get('add') === '1' && exU.searchParams.get('c') === 'shopping' && exU.searchParams.get('y') === '1500' && exU.searchParams.get('src') === tbId && /Tokyo Banana/.test(exU.searchParams.get('t') || '') && exU.searchParams.get('s') === 'naf,sara', exU.href);
+  await N.page.waitForTimeout(1200);
+  ok('…where the form is open with the name and Shopping filled in', /Tokyo Banana/.test(await N.page.inputValue('#ftitle').catch(() => '')) || /Tokyo Banana/.test(await N.page.textContent('body')));
+  // the stop's own card: what to buy there; Naf sees the secret present, Mo doesn't
+  await N.page.goto(B + '/japan/?d=d12'); await N.page.waitForTimeout(2500);
+  const strip = await N.page.textContent('#p-d12-shinkansen .buyh').catch(() => '');
+  ok('the stop says what to buy there (two left, one bought)', /2 to buy here/.test(strip) && /Tokyo Banana/.test(strip) && /Pearl necklace/.test(strip), strip);
+  await A.page.goto(B + '/japan/?d=d12'); await A.page.waitForTimeout(2500);
+  ok("Naf's secret present stays off Mo's trip page", !/Pearl/.test(await A.page.textContent('body')));
+  // taxi: every stop's "Please take me here" card has the address; the travel kit has tonight's hotel
+  await N.page.evaluate(() => document.querySelector('#p-d12-shinkansen .say').click()); await N.page.waitForTimeout(600);
+  const card = await N.page.textContent('#jpcard').catch(() => '');
+  ok('a stop\'s first phrase card has the taxi details: postcode, address, phone', /〒\d{3}-\d{4}/.test(card) && /東京都/.test(card) && /Open in Maps/.test(card), card.slice(0, 200));
+  await N.page.evaluate(() => document.querySelector('#jpcard [data-jpx]').click()); await N.page.waitForTimeout(400);
+  await N.page.tap('#kitbtn'); await N.page.waitForTimeout(700); await N.page.tap('#kitb [data-tab="say"]'); await N.page.waitForTimeout(400);
+  ok('the travel kit\'s Phrases start with "take us to the hotel", and the other hotels', /take us to the hotel/.test(await N.page.textContent('#kitb')) && (await N.page.$$('#kitb .kh-o button')).length >= 3);
+  await N.page.tap('#kitb .kh'); await N.page.waitForTimeout(500);
+  ok('…which shows the driver the hotel in Japanese with its address', /このホテルまでお願いします/.test(await N.page.textContent('#jpcard')) && /〒\d{3}-\d{4}/.test(await N.page.textContent('#jpcard')));
+  await N.page.screenshot({ path: SH + 'taxi-hotel.png' });
+  await N.page.evaluate(() => document.querySelector('#jpcard [data-jpx]').click()); await N.page.waitForTimeout(300);
+  ok('no page errors while shopping', !N.errs.length && !A.errs.length, [...N.errs, ...A.errs].join(' | '));
+}
 // 4 · trip day at 4 PM JST: open on the stop happening now; scrub away; Now brings it back
 const C = await phone('2026-10-22T07:00:00Z');
 await C.page.goto(B + '/japan/'); await C.page.waitForURL(/next=japan/); await C.page.tap('[data-me="sara"]'); await enterPin(C.page); await C.page.waitForURL(/\/japan\//); await C.page.waitForTimeout(2500);
@@ -622,7 +805,7 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('guest is welcomed as a guest', /Hi there/.test(await g.textContent('#hi')) && /guest/i.test(await g.textContent('#switch')));
   await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
   ok('guest opens the trip without a PIN', /Day/.test(await g.textContent('#dayp')));
-  ok('guest has no stamp or edit buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear')].every((e) => !e.offsetParent)));
+  ok('guest has no stamp, edit or add-a-stop buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear, #addgap')].every((e) => !e.offsetParent)));
   await g.evaluate(() => { const b = document.querySelector('[data-stamp]'); b && b.click(); }); await g.waitForTimeout(500);
   ok('guest tap on stamp does nothing', !Object.keys(JSON.parse(store.get('checks') || '{}')).some((k) => k.startsWith('d07')));
   await g.tap('#ttBtn'); await g.waitForTimeout(400);
@@ -948,6 +1131,17 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const sparse = F.fromAirLabs(al({ arr_actual_utc: null, arr_estimated_utc: null, arr_baggage: null }), mo), sparseCh = F.changesOf(mo, { st: 'air', dep: { sch: mo.dep }, arr: { sch: mo.arr } }, sparse, Date.now());
   ok('a landing with no landing time says the scheduled one, not a made-up clock', sparse.st === 'landed' && /landed at Narita, 12:55 PM\./.test(sparseCh.map((c) => c.text).join()), JSON.stringify(sparseCh));
   const dep0 = Date.parse(mo.dep);
+  // AirLabs stops answering for a flight once it lands (it moves on to the next day's): it landed, it isn't "not found"
+  const nasaF = F.tripFlights({}).find((f) => f.id === 'd01-land'), nArr = Date.parse(nasaF.arr), none = async () => null;
+  const flying = { st: 'air', delay: 5, dep: { sch: nasaF.dep, est: nasaF.dep, act: nasaF.dep }, arr: { sch: nasaF.arr, est: new Date(nArr + 5 * 60e3).toISOString(), act: null }, to: 'NRT', toTz: 'Asia/Tokyo', gate: 'E81', no: 'AC9', people: ['naf', 'sara'], changes: [] };
+  const lostNow = await F.checkFlights({ flights: { 'd01-land': { ...flying, checkedAt: new Date(nArr).toISOString() } }, now: nArr + 25 * 60e3, look: none, airEvery: 15, lead: 3 });
+  const stuck = await F.checkFlights({ flights: { 'd01-land': { ...flying, missing: true, checkedAt: new Date(nArr + 6 * H).toISOString() } }, now: nArr + 9 * H, look: none, airEvery: 15, lead: 3 });
+  const preDep = await F.checkFlights({ flights: { 'd01-land': { ...flying, st: 'ontime', dep: { sch: nasaF.dep }, checkedAt: new Date(Date.parse(nasaF.dep) - 2 * H).toISOString() } }, now: Date.parse(nasaF.dep) - H, look: none, airEvery: 15, lead: 3 });
+  const ln = lostNow.flights['d01-land'], sk = stuck.flights['d01-land'], er = preDep.flights['d01-land'];
+  ok('a flight AirLabs stops seeing after takeoff has landed (alerted while it\'s news, quietly fixed later); one it loses before takeoff keeps what we knew',
+    ln.st === 'landed' && !ln.missing && lostNow.alerts.length === 1 && /Naf and Sara have landed at Narita, 4:15 PM\./.test(lostNow.alerts[0].text)
+    && sk.st === 'landed' && !sk.missing && sk.nextAt === null && !stuck.alerts.length && er.st === 'ontime' && !er.missing && er.gate === 'E81',
+    JSON.stringify([ln.st, lostNow.alerts, sk.st, sk.missing, sk.nextAt, stuck.alerts, er.st, er.missing]));
   ok('with AirLabs, checks start 3 hours before takeoff, every 15 minutes in the air; FlightAware still wins when both are set', alSvc.lead === 3 && alSvc.airEvery === 15 && F.nextCheck(mo, null, dep0 - 10 * 3600e3, 15, 3) === dep0 - 3 * 3600e3 && F.nextCheck(mo, null, dep0 - 30 * 3600e3) === dep0 - 24 * 3600e3 && F.lookupFor({ AIRLABS_KEY: 'a', FLIGHTAWARE_KEY: 'b' }).lead === 24);
   // what a phone sees: put Mo's flight back to the late, re-gated look and open day 6
   const o = [...objects.values()][0].o, cur = o.get('flights'), late = { ...cur.value };
@@ -960,6 +1154,15 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await P.page.screenshot({ path: SH + 'flights-day6.png' });
   ok('no page errors on the flight phone', !P.errs.length, P.errs.join(' | '));
   await P.ctx.close();
+  // the shopping heads-up: 8 AM Japan time on a day the route passes something on the list, only to phones that turned it on
+  const SA = await import(REPO + '/lib/shop-alert.js');
+  const sa = SA.morningAlerts({ a: { name: 'Tokyo Banana', list: 'nasa', ai: { date: '2026-10-27', stop: 'Gransta', day: 'd12' } }, b: { name: 'Pearl necklace', list: 'nasa', lock: 'naf', ai: { date: '2026-10-27' } }, c: { name: 'Kit Kat', list: 'all', ai: { date: '2026-10-22' } } }, '2026-10-27');
+  ok('morning heads-up: only the couple whose list has something on today\'s route, never a secret present', sa.length === 1 && sa[0].people.join() === 'naf,sara' && /Tokyo Banana/.test(sa[0].text) && !/Pearl/.test(sa[0].text) && /v=3&d=d12/.test(sa[0].url), JSON.stringify(sa));
+  const h3 = await handset(); await post({ id: 'phone-three', sub: sub(3, h3), prefs: { naf: { shop: true } } });
+  await onRequest({ request: new Request(B + '/api/shop', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ id: 'sh-alert', value: { name: 'Matcha Kit Kat', list: 'nasa', by: 'naf', ai: { shop: 'Gransta, inside Tokyo Station', at: 'd12-shinkansen', stop: 'Shinkansen to Tokyo', date: '2026-10-27', day: 'd12' } } }) }), env: ENV });
+  sent.length = 0; const early = await tick('2026-10-26T22:30:00Z'), at8 = await tick('2026-10-26T23:05:00Z'), again = await tick('2026-10-26T23:10:00Z');
+  const shopSent = sent.filter((x) => x.url.includes('phone3')), shopMsg = shopSent[0] ? await open(h3, shopSent[0].init) : {};
+  ok('…sent once, from 8 AM, to the phone that follows NASA\'s list, and not to the others', early.shop === 0 && at8.shop >= 1 && again.shop === 0 && shopSent.length === 1 && sent.length === 1 && /Matcha Kit Kat/.test(shopMsg.body) && !/Pearl/.test(shopMsg.body) && /^shop-2026-10-27-nasa$/.test(shopMsg.tag), JSON.stringify([early, at8, again, sent.length, shopMsg]));
   for (const k of ['FLIGHT_FETCH', 'FLIGHTAWARE_KEY', 'PUSH_FETCH', 'PUSH_RETRY_MS', 'VAPID_PUBLIC', 'VAPID_PRIVATE']) delete DO_ENV[k];
 }
 // 16 · trains and M&M's nights away: tickets with car, seats and reservation; a booking waiting on its confirmation

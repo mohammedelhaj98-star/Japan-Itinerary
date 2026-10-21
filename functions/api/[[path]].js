@@ -6,7 +6,7 @@
 //   GET  /api/version                 → { updatedAt, live }  (one read: phones poll this, and fetch /api/state only when it changes)
 //   GET  /api/live                    a WebSocket: the phone is told { updatedAt } the moment the shared state changes
 //                                     (only with the Durable Object; live:false in /api/version means keep polling)
-//   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, money, profiles, covers, flights, updatedAt }
+//   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, money, profiles, covers, flights, shop, updatedAt }
 //                                       (flights: what the flight checks found, per stop; see lib/flights.js)
 //                                       (expenses and money only with the PIN in x-trip-pin)
 //   POST /api/checks                  { id, value:boolean }
@@ -14,6 +14,13 @@
 //   POST /api/custom                  { id, value:object|null }  (edit, hide or add a stop; null resets/removes)
 //   POST /api/expenses                { id, value:object|null }  (a money record: an expense, or kind pay | cash | ic; null deletes)
 //   POST /api/money                   { id, value:string|number|boolean|null }  (money settings: who sends/receives, budgets, last seen)
+//   POST /api/shop                    { id, value:object|null }  (a thing on the shopping list; null deletes)
+//   POST /api/shop-ai                 { id?, name, note?, who?, today?, stops:[{ id, date, city, title, place? }] }  → where
+//                                     on the route it's easiest to buy: { name, shop, why, at, search, ja, halal }
+//                                     (lib/shop-claude.js); with the item's photo when it has one (name may then be ""); and cat
+//   POST /api/shop-cat                { items:[{ id, name }] }  → { cats: { id: cat } }  (categories for things added before there were any)
+//   POST /api/shop-photo              { id, photo:dataURL|null }  (a list item's photo: a screenshot, a TikTok)
+//   GET  /api/shop-photo/:id          → that photo (with the PIN)
 //   POST /api/receipt                 { id, photo:dataURL|null }  (an expense's receipt photo)
 //   GET  /api/receipt/:id             → the receipt photo (with the PIN)
 //   POST /api/scan                    { photo:dataURL, model? }  → what a receipt says: total, shop, date, type (Workers AI)
@@ -27,7 +34,7 @@
 //   POST /api/suggestions/:id/vote    { voter }           (toggles)
 //   POST /api/suggestions/:id/delete  { author }          (author only)
 //   GET  /api/push                    → { key, tracking }: the public key a phone subscribes to flight alerts with
-//   POST /api/push                    { id, sub:PushSubscription|null, prefs:{ person: { delay, gate, cancel, landed } } }
+//   POST /api/push                    { id, sub:PushSubscription|null, prefs:{ person: { delay, gate, cancel, landed, shop } } }
 //                                       (this phone's alert choices; null sub turns its alerts off)
 //   POST /api/log                     { errors:[…] }  problem reports from the phones (no PIN; a few a day at most; each carries v, the deploy it came from)
 //   GET  /api/log                     → the problem reports (with the PIN)
@@ -42,6 +49,7 @@
 import { handlePhotos } from '../../lib/photos.js';
 import { readReceiptClaude, CLAUDE_MODEL } from '../../lib/scan-claude.js';
 import { fillStop } from '../../lib/fill-claude.js';
+import { pickShop, sortShop, CATS as SHOP_CAT_KEYS } from '../../lib/shop-claude.js';
 import { autoBackup, backupMoney, backupStatus } from '../../lib/backup.js';
 import { stateStore } from '../../lib/state-store.js';
 
@@ -54,6 +62,7 @@ const MAX_NAME = 40;
 const MAX_SUGGESTIONS = 500;
 const MAX_CUSTOM = 800;
 const MAX_EXPENSES = 1500;
+const MAX_SHOP = 600;
 const PEOPLE = ['naf', 'sara', 'mariam', 'm'];
 const MAX_PHOTO = 400000; // a data URL; the app sends ~256px JPEGs, far smaller than this
 const IDEA_KINDS = ['food', 'shop', 'place'];
@@ -62,7 +71,7 @@ const MAX_MONEY = 3000;
 const MAX_RECEIPT = 700000; // a data URL; the app sends ~1200px JPEGs
 const CCYS = ['CAD', 'QAR', 'USD'];
 
-const STATE = { checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, flights: {} };
+const STATE = { checks: {}, choices: {}, suggestions: [], custom: {}, expenses: {}, money: {}, profiles: {}, covers: {}, flights: {}, shop: {} };
 async function readState(store) {
   const got = await store.readMany([...Object.keys(STATE), 'updatedAt']);
   const out = {}; for (const k of Object.keys(STATE)) out[k] = got[k] ?? STATE[k];
@@ -97,6 +106,10 @@ function cleanCustom(v) {
   if (v.info === null) out.info = null;
   else if (v.info && typeof v.info === 'object') { const info = cleanInfo(v.info); if (info) out.info = info; }
   if (v.flight && typeof v.flight === 'object') { const no = String(v.flight.no || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); out.flight = { no }; }
+  // a day put in a new order (key ord-<day>): its stops' ids in order, and the times the moved ones took
+  if (Array.isArray(v.order)) out.order = v.order.filter(isId).slice(0, 120);
+  if (v.times && typeof v.times === 'object' && !Array.isArray(v.times)) { const t = {}; for (const [k, x] of Object.entries(v.times).slice(0, 120)) if (isId(k) && typeof x === 'string') t[k] = clean(x, 40); out.times = t; }
+  if (isId(v.from || '')) out.from = v.from; // an added stop copied from one we skipped (Ideas → Missed)
   if (typeof v.ts === 'string') out.ts = clean(v.ts, 40);
   return Object.keys(out).length ? out : null;
 }
@@ -158,6 +171,35 @@ function cleanExpense(v) {
   if (split.length === 1 && split[0] === v.payer) out.own = true;
   return out;
 }
+// A thing on the shopping list: which list (all four, or one couple), who added it, and, once the helper has looked,
+// where on the route it's easiest to buy (at: a stop id; date: that stop's day, for the 8 AM heads-up). lock: only that
+// person sees it (a present for someone in the group).
+const LISTS = ['all', 'nasa', 'mm'];
+const isDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+function cleanShop(v) {
+  if (!v || typeof v !== 'object') return null;
+  const name = clean(v.name, 90);
+  if (!name || !LISTS.includes(v.list) || !isP(v.by)) return null;
+  const out = { name, list: v.list, by: v.by };
+  for (const [k, max] of Object.entries({ for: 40, note: 200 })) if (clean(v[k], max)) out[k] = clean(v[k], max);
+  if (isP(v.lock)) out.lock = v.lock;
+  if (v.done === true) { out.done = true; if (isP(v.doneBy)) out.doneBy = v.doneBy; if (stamp(v.doneAt) != null) out.doneAt = v.doneAt; }
+  if (v.idea === true) out.idea = true;
+  if (Number.isInteger(v.qty) && v.qty > 1 && v.qty <= 99) out.qty = v.qty; // how many (one when left out)
+  if (SHOP_CAT_KEYS.includes(v.cat)) out.cat = v.cat; // what kind of thing (the helper says; anyone can change it)
+  if (stamp(v.photo) != null) out.photo = v.photo; // when its photo was added (the photo itself: KV 'sp:<id>')
+  if (v.ai && typeof v.ai === 'object' && clean(v.ai.shop, 90)) {
+    const ai = { shop: clean(v.ai.shop, 90) };
+    for (const [k, max] of Object.entries({ why: 200, search: 60, ja: 40, halal: 120, stop: 90 })) if (clean(v.ai[k], max)) ai[k] = clean(v.ai[k], max);
+    if (isId(v.ai.at || '')) ai.at = v.ai.at;
+    if (isDate(v.ai.date)) ai.date = v.ai.date;
+    if (isId(v.ai.day || '')) ai.day = v.ai.day;
+    out.ai = ai;
+  }
+  if (stamp(v.at) != null) out.at = v.at;
+  return out;
+}
+
 // Reading a receipt photo with Workers AI. The model is asked for JSON; whatever comes back is checked and trimmed.
 // Llama 4 Scout read every receipt right in a comparison with Mistral Small 3.1, Gemma 3 and Llama 3.2 Vision
 const SCAN_MODELS = ['@cf/meta/llama-4-scout-17b-16e-instruct'];
@@ -263,6 +305,17 @@ export async function onRequest(ctx) {
     return new Response(bytes, { headers: { 'content-type': m[1], 'cache-control': 'private, max-age=31536000, immutable' } });
   }
 
+  const sph = path.match(/^shop-photo\/([a-z0-9_-]{1,80})$/i);
+  if (request.method === 'GET' && sph && kv) {
+    const pin = env.TRIP_PIN ? String(env.TRIP_PIN) : '';
+    if (pin && request.headers.get('x-trip-pin') !== pin) return new Response('pin required', { status: 403 });
+    const data = await kv.get('sp:' + sph[1]);
+    const m = data && /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/.exec(data);
+    if (!m) return new Response('not found', { status: 404 });
+    const bin = atob(m[2]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Response(bytes, { headers: { 'content-type': m[1], 'cache-control': 'private, max-age=31536000, immutable' } });
+  }
+
   const ph = path.match(/^photo\/([a-z]+)$/);
   if (request.method === 'GET' && ph && kv) {
     const data = await kv.get('ph:' + ph[1]);
@@ -274,7 +327,7 @@ export async function onRequest(ctx) {
   }
 
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type, x-trip-pin, x-photo-token' } });
+    return new Response(null, { status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type, x-trip-pin, x-trip-me, x-photo-token' } });
   }
 
   // the daily site check reads this: no trip data, just whether anything went wrong
@@ -290,6 +343,9 @@ export async function onRequest(ctx) {
 
   const pin = env.TRIP_PIN ? String(env.TRIP_PIN) : '';
   const member = !pin || request.headers.get('x-trip-pin') === pin;
+  // a secret present (lock) goes only to the phone of the person who added it, which says who it is in x-trip-me
+  const me = member && PEOPLE.includes(request.headers.get('x-trip-me')) ? request.headers.get('x-trip-me') : '';
+  const ownShop = (map) => Object.fromEntries(Object.entries(map || {}).filter(([, x]) => !x.lock || x.lock === me));
   try {
     const live = store.kind === 'durable-object';
     if (request.method === 'GET' && path === 'version') {
@@ -304,6 +360,7 @@ export async function onRequest(ctx) {
     if (request.method === 'GET' && path === 'state') {
       const st = await readState(store);
       if (!member) { st.expenses = {}; st.money = {}; }
+      st.shop = ownShop(st.shop);
       return json({ ...st, live });
     }
 
@@ -332,7 +389,7 @@ export async function onRequest(ctx) {
       const sub = body.sub, ok = sub && typeof sub.endpoint === 'string' && /^https:\/\/[^\s]{10,600}$/.test(sub.endpoint) && sub.keys && typeof sub.keys.p256dh === 'string' && typeof sub.keys.auth === 'string';
       if (sub && !ok) return json({ error: 'bad subscription' }, 400);
       const prefs = {};
-      for (const p of PEOPLE) { const x = (body.prefs || {})[p] || {}; prefs[p] = { delay: x.delay !== false, gate: x.gate !== false, cancel: x.cancel !== false, landed: x.landed !== false }; }
+      for (const p of PEOPLE) { const x = (body.prefs || {})[p] || {}; prefs[p] = { delay: x.delay !== false, gate: x.gate !== false, cancel: x.cancel !== false, landed: x.landed !== false, shop: x.shop === true }; }
       const r = await change(store, 'push', (cur) => {
         const next = { ...cur }; if (!sub) delete next[body.id];
         else { next[body.id] = { sub: { endpoint: sub.endpoint, keys: { p256dh: clean(sub.keys.p256dh, 200), auth: clean(sub.keys.auth, 60) } }, prefs, at: Date.now() }; if (Object.keys(next).length > 40) return refuse('too many phones', 400); }
@@ -351,6 +408,19 @@ export async function onRequest(ctx) {
     }
 
     // filling in a new stop from its name (the four of us only)
+    if (path === 'shop-ai') {
+      if (!member) return json({ error: 'pin required', pin: true }, 403);
+      // a photo saved with the item (POST shop-photo first) goes to the helper too: it says what's in it
+      const photo = isId(body.id || '') && kv ? await kv.get('sp:' + body.id) : null;
+      if (!clean(body.name, 90) && !photo) return json({ error: 'name required' }, 400);
+      try { const r = await pickShop(env, { ...body, name: typeof body.name === 'string' ? body.name : '', photo }); return json(r, r.error ? 502 : 200); } catch (err) { return json({ error: String(err && err.message || err) }, 502); }
+    }
+
+    if (path === 'shop-cat') {
+      if (!member) return json({ error: 'pin required', pin: true }, 403);
+      try { const r = await sortShop(env, body); return json(r, r.error ? (r.error === 'items required' ? 400 : 502) : 200); } catch (err) { return json({ error: String(err && err.message || err) }, 502); }
+    }
+
     if (path === 'fill') {
       if (!member) return json({ error: 'pin required', pin: true }, 403);
       if (typeof body.name !== 'string' || !clean(body.name, 90)) return json({ error: 'name required' }, 400);
@@ -417,6 +487,22 @@ export async function onRequest(ctx) {
       return json({ ok: true, expenses: r.value });
     }
 
+    if (path === 'shop') {
+      if (!isId(body.id)) return json({ error: 'bad id' }, 400);
+      const value = body.value === null ? null : cleanShop(body.value);
+      if (body.value !== null && !value) return json({ error: 'bad item' }, 400);
+      const r = await change(store, 'shop', (map) => {
+        if (value === null) delete map[body.id];
+        else {
+          if (!map[body.id] && Object.keys(map).length >= MAX_SHOP) return refuse('too many things on the list', 429);
+          map[body.id] = { ...value, ts: new Date().toISOString() };
+        }
+        return { value: map };
+      });
+      if (r.error) return json({ error: r.error }, r.status);
+      return json({ ok: true, shop: ownShop(r.value) });
+    }
+
     if (path === 'money') {
       if (!isKey(body.id)) return json({ error: 'bad id' }, 400);
       const value = cleanSetting(body.value);
@@ -432,6 +518,14 @@ export async function onRequest(ctx) {
       if (r.error) return json({ error: r.error }, r.status);
       afterMoney();
       return json({ ok: true, money: r.value });
+    }
+
+    if (path === 'shop-photo') {
+      if (!isId(body.id)) return json({ error: 'bad id' }, 400);
+      if (body.photo === null) { await kv.delete('sp:' + body.id); return json({ ok: true }); }
+      if (typeof body.photo !== 'string' || body.photo.length > MAX_RECEIPT || !/^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(body.photo)) return json({ error: 'bad photo' }, 400);
+      await kv.put('sp:' + body.id, body.photo);
+      return json({ ok: true });
     }
 
     if (path === 'receipt') {

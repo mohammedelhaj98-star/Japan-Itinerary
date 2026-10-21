@@ -9,8 +9,9 @@
 //   { op: 'put', key, value, rev? }           → { ok, rev, updatedAt }, or 409 { value, rev } when rev is stale
 //   { op: 'seed', items: { key: value }, updatedAt }  → copies KV's data in, once (keys already present are kept)
 //   { op: 'version' }                         → { updatedAt, seeded }
-//   { op: 'tick', now? }                      → checks the flights that are due (lib/flights.js) and sends alerts;
-//                                               run every 5 minutes by the cron trigger below → { checked, alerts }
+//   { op: 'tick', now? }                      → checks the flights that are due (lib/flights.js) and sends alerts,
+//                                               and at 8 AM Japan time the shopping heads-up (lib/shop-alert.js);
+//                                               run every 5 minutes by the cron trigger below → { checked, alerts, shop }
 //   { op: 'pushkey' }                         → { key, tracking }: the public key phones subscribe to alerts with
 // Flight results live under 'flights' (phones read them with the rest of the state); the phones' alert subscriptions
 // under 'push' (written by the Pages Function, never sent to phones). FLIGHTAWARE_KEY (or AERODATABOX_KEY, or AIRLABS_KEY) and
@@ -22,6 +23,7 @@
 
 import { checkFlights, lookupFor, ALERT_KINDS } from '../../../lib/flights.js';
 import { sendPush } from '../../../lib/webpush.js';
+import { morningAlerts, jstNow, SHOP_HOUR } from '../../../lib/shop-alert.js';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
 
@@ -77,12 +79,24 @@ export class TripState {
 
   // One round of flight checks. Only flights that are due cost a call (see lib/flights.js for the timetable).
   async tick(now) {
-    const env = this.env, svc = lookupFor(env, env.FLIGHT_FETCH || fetch); if (!svc) return { checked: 0, alerts: 0, off: true };
+    const shop = await this.shopTick(now);
+    const env = this.env, svc = lookupFor(env, env.FLIGHT_FETCH || fetch); if (!svc) return { checked: 0, alerts: 0, off: true, shop };
     let checked = 0; const cur = this.get('flights');
     const r = await checkFlights({ custom: this.get('custom').value || {}, flights: cur.value || {}, now, airEvery: svc.airEvery, lead: svc.lead, look: (f) => { checked++; return svc.look(f); } });
     if (r.changed) { this.set('flights', r.flights, cur.rev + 1); this.tell(this.stamp()); }
     if (r.alerts.length) await this.alert(r.alerts);
-    return { checked, alerts: r.alerts.length };
+    return { checked, alerts: r.alerts.length, shop };
+  }
+
+  // The shopping heads-up goes once a day, on the first tick from 8 AM Japan time (until noon: a tick that only comes
+  // in the afternoon, after an outage, sends nothing rather than a stale morning note).
+  async shopTick(now) {
+    const { date, hour } = jstNow(now);
+    if (hour < SHOP_HOUR || hour >= 12 || this.meta('shopSent') === date) return 0;
+    this.set('_shopSent', date, 1);
+    const alerts = morningAlerts(this.get('shop').value || {}, date);
+    if (alerts.length) await this.alert(alerts);
+    return alerts.length;
   }
 
   // Each phone gets an alert when anyone on the flight is someone it follows for that kind of change (Settings).
@@ -93,9 +107,9 @@ export class TripState {
     const subs = this.get('push').value || {}, gone = [];
     for (const [id, s] of Object.entries(subs)) {
       for (const a of alerts) {
-        if (!ALERT_KINDS.includes(a.kind) || !a.people.some((p) => s.prefs && s.prefs[p] && s.prefs[p][a.kind] !== false)) continue;
+        if (!(ALERT_KINDS.includes(a.kind) || a.kind === 'shop') || !a.people.some((p) => s.prefs && s.prefs[p] && (a.kind === 'shop' ? s.prefs[p].shop === true : s.prefs[p][a.kind] !== false))) continue; // the shopping heads-up only where it was turned on (Settings sends it)
         // a busy or failing push service (429, 5xx, no answer) gets one more try a second later
-        const send = () => sendPush(s.sub, { title: 'Japan 2026', body: a.text, tag: 'fl-' + a.id, url: `/japan/?d=${a.day}` }, vapid, env.PUSH_FETCH || fetch).catch(() => 0);
+        const send = () => sendPush(s.sub, { title: 'Japan 2026', body: a.text, tag: a.tag || 'fl-' + a.id, url: a.url || `/japan/?d=${a.day}` }, vapid, env.PUSH_FETCH || fetch).catch(() => 0);
         let st = await send();
         if (st === 0 || st === 429 || st >= 500) { await new Promise((r) => setTimeout(r, env.PUSH_RETRY_MS ?? 1000)); st = await send(); }
         if (st === 404 || st === 410) { gone.push(id); break; } // anything else still failing: this phone misses it, the stop still shows it
@@ -107,7 +121,7 @@ export class TripState {
 }
 
 // The Worker itself has nothing to serve; the Pages Function reaches the object through its binding.
-// Every 5 minutes (the cron in wrangler.toml) the object checks the flights that are due.
+// Every 5 minutes (the cron in wrangler.toml) the object checks the flights that are due, and sends the shopping heads-up.
 export default {
   fetch: () => new Response('japan2026 state: the trip\'s shared state lives in a Durable Object here, reached only by the site\'s API.', { status: 200 }),
   async scheduled(event, env, ctx) {
