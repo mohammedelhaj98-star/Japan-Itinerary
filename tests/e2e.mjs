@@ -872,7 +872,8 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('…and the day starts just under the top bar', await g.evaluate(() => document.getElementById('sheet').getBoundingClientRect().top < 140));
   await g.goto(B + '/japan/prototypes/tools?v=5'); await g.waitForTimeout(1500);
   await g.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: B });
-  await g.evaluate(() => Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })); // no share sheet here: the link is copied await g.tap('[data-share]'); await g.waitForTimeout(600);
+  // no share sheet here: the link is copied
+  await g.evaluate(() => Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })); await g.tap('[data-share]'); await g.waitForTimeout(600);
   ok('Settings has Share with family, which copies the guest link', /Link copied/.test(await g.textContent('#sh-msg')) && /\/\?guest=1&next=japan$/.test(await g.evaluate(() => navigator.clipboard.readText())), await g.textContent('#sh-msg'));
   ok('no page errors G5', !G.errs.length, G.errs.join(' | '));
   await G.ctx.close();
