@@ -46,7 +46,9 @@ store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store
 // …and for /api/fill (a question in words rather than a photo): it knows Yanaka Ginza
 const FILL_SAID = { known: true, name: 'Yanaka Ginza shopping street', ja: '谷中銀座商店街', ro: 'Yanaka Ginza Shōtengai', cat: 'shop', kind: 'shop', notes: 'Old-Tokyo shopping street. The menchi-katsu is usually pork and beef: ask for beef only.', cost: '¥500–1,500 per person', minutes: 60, key: 'Since the 1940s · About 60 shops', story: 'It survived the 1923 earthquake and the war, so it still looks like 1950s Tokyo.', dyk: 'Seven wooden cats hide along the street.', wikipedia: 'Yanaka Ginza', search: 'Yanaka Ginza', lat: 35.7277, lng: 139.766 };
 // …and for /api/shop-ai (where on the route to buy something): Tokyo Banana is at Gransta, inside Tokyo Station, on day 12
-const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Banana flavour in one place.', at: 'd12-shinkansen', search: 'Tokyo Banana', ja: '東京ばな奈', halal: 'Check the box for gelatin.', cat: 'sweets' };
+const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Banana flavour in one place.', at: 'd12-shinkansen', search: 'Tokyo Banana', ja: '東京ばな奈', halal: 'Check the box for gelatin.', cat: 'sweets', lat: 35.6809, lng: 139.7665,
+  // other days to buy it: Asakusa the next day (kept), a second Tokyo Station shop (same day as the first, so dropped) and a made-up stop (dropped)
+  alts: [{ shop: 'Nakamise stalls, Asakusa', why: 'Gift boxes at the stalls too.', at: 'd13-nakamise', lat: 35.7115, lng: 139.7965 }, { shop: 'Daimaru Tokyo', why: 'Same day.', at: 'd12-shinkansen', lat: 35.6815, lng: 139.7675 }, { shop: 'Nowhere', why: 'x', at: 'd99-nope', lat: 0, lng: 0 }] };
 // (sent a photo instead of a name, it sees a box of matcha Kit Kats)
 const said = (c) => typeof c === 'string' ? c : ((c.find((x) => x.type === 'text') || {}).text || '');
 // (asked to sort things into categories: masks, serums and creams are skincare, the rest sweets)
@@ -238,13 +240,16 @@ ok('tapping a stop in the folded list opens it', (await openPass(A.page)) === 'd
 await A.page.evaluate(() => document.querySelector('.pass.open [data-fold]').click()); await A.page.waitForTimeout(900);
 ok('Fold up folds it too', !(await openPass(A.page)));
 await A.page.evaluate(() => document.querySelector('.pass[data-id="d07-deer"] .band').click()); await A.page.waitForTimeout(900);
-await A.page.evaluate(() => document.querySelector('.pass.open [data-skip]').click()); await A.page.waitForTimeout(900);
+const fx1 = await A.page.evaluate(() => { document.querySelector('.pass.open [data-skip]').click(); const p = document.querySelector('.pass[data-id="d07-deer"]'); return { hSlam: !!p.querySelector('.hanko.slam'), mSlam: !!p.querySelector('.mioku.slam'), ring: !!p.querySelector('.sfx .ring'), dust: p.querySelectorAll('.sfx .puff').length, shake: p.classList.contains('thunk'), hLift: !!p.querySelector('.hanko.lifting'), mLift: !!p.querySelector('.mioku.lifting'), rot: p.querySelector('.mioku').style.getPropertyValue('--rot') }; }); await A.page.waitForTimeout(900);
+ok('Skip lands 見送 with a thunk: the stamp slams, an ink ring and dust spread, the card shakes, at the stop\'s own tilt', fx1.mSlam && fx1.ring && fx1.dust === 7 && fx1.shake && /^-?\d+deg$/.test(fx1.rot), JSON.stringify(fx1));
 const sk1 = await shared(A.page);
 ok('Skip it marks the stop skipped for everyone, greys it and points at Ideas → Missed', sk1.choices['sk-d07-deer'] === 'skipped' && (await A.page.$eval('.pass[data-id="d07-deer"]', (e) => e.classList.contains('skip'))) && !!(await A.page.$('.pass.open .sknote[href*="f=missed"]')), JSON.stringify(sk1.choices));
-await A.page.evaluate(() => document.querySelector('.pass.open [data-stamp]').click()); await A.page.waitForTimeout(900);
+const fx2 = await A.page.evaluate(() => { document.querySelector('.pass.open [data-stamp]').click(); const p = document.querySelector('.pass[data-id="d07-deer"]'); return { hSlam: !!p.querySelector('.hanko.slam'), mSlam: !!p.querySelector('.mioku.slam'), ring: !!p.querySelector('.sfx .ring'), dust: p.querySelectorAll('.sfx .puff').length, shake: p.classList.contains('thunk'), hLift: !!p.querySelector('.hanko.lifting'), mLift: !!p.querySelector('.mioku.lifting'), rot: p.querySelector('.mioku').style.getPropertyValue('--rot') }; }); await A.page.waitForTimeout(900);
+ok('stamping a skipped stop lifts 見送 off and thunks 済 down', fx2.hSlam && fx2.mLift && fx2.shake && !fx2.mSlam, JSON.stringify(fx2));
 const sk2 = await shared(A.page);
 ok('stamping a skipped stop unskips it', !sk2.choices['sk-d07-deer'] && sk2.checks['d07-deer'], JSON.stringify(sk2.choices));
-await A.page.evaluate(() => document.querySelector('.pass.open [data-skip]').click()); await A.page.waitForTimeout(900);
+const fx3 = await A.page.evaluate(() => { document.querySelector('.pass.open [data-skip]').click(); const p = document.querySelector('.pass[data-id="d07-deer"]'); return { hSlam: !!p.querySelector('.hanko.slam'), mSlam: !!p.querySelector('.mioku.slam'), ring: !!p.querySelector('.sfx .ring'), dust: p.querySelectorAll('.sfx .puff').length, shake: p.classList.contains('thunk'), hLift: !!p.querySelector('.hanko.lifting'), mLift: !!p.querySelector('.mioku.lifting'), rot: p.querySelector('.mioku').style.getPropertyValue('--rot') }; }); await A.page.waitForTimeout(1500);
+ok('skipping a stamped stop lifts 済 off and thunks 見送 down; nothing is left over after', fx3.mSlam && fx3.hLift && !fx3.hSlam && (await A.page.evaluate(() => !document.querySelector('.sfx, .lifting, .slam, .pass.thunk'))), JSON.stringify(fx3));
 const sk3 = await shared(A.page);
 ok('skipping a stamped stop unstamps it', sk3.choices['sk-d07-deer'] === 'skipped' && !sk3.checks['d07-deer'], JSON.stringify(sk3.checks));
 ok('no Skip on a journey', await A.page.evaluate(() => !document.querySelector('.pass.tk [data-skip]')));
@@ -388,6 +393,32 @@ await N.page.tap('[data-delok]'); await N.page.waitForTimeout(800);
 ok('delete removes it', exN() === 0);
 await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
 ok('undo brings it back', /Fuunji ramen test/.test(await N.page.textContent('#glist')) && exN() === 1);
+// swipe the ramen left: a short swipe shows Delete and opens nothing, a long one deletes it at once (Undo brings it back)
+const nt = await N.ctx.newCDPSession(N.page);
+const rowSwipe = async (dx) => { const b = await N.page.locator('#glist .swr').first().boundingBox(), x = b.x + b.width - 30, y = b.y + b.height / 2;
+  await nt.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let i = 1; i <= 12; i++) { await nt.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (dx * i) / 12, y }] }); await N.page.waitForTimeout(16); }
+  await nt.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await N.page.waitForTimeout(700); };
+const swW = () => N.page.$eval('#glist .swr', (e) => e.style.getPropertyValue('--w'));
+const formOn = () => N.page.$eval('#fpage', (e) => e.classList.contains('on'));
+await rowSwipe(-100);
+ok('a short swipe shows Delete and opens nothing', (await swW()) === '88px' && !(await formOn()) && exN() === 1, await swW());
+await N.page.tap('#glist .xday'); await N.page.waitForTimeout(400);
+ok('a tap elsewhere closes the swiped row', (await swW()) === '0px' && !(await formOn()), await swW());
+await rowSwipe(-100); await N.page.tap('#glist .swdel'); await N.page.waitForTimeout(900);
+ok('tapping the swiped Delete deletes it, no question', exN() === 0 && !(await N.page.$eval('.sheet', (e) => e.classList.contains('on'))) && /Deleted Fuunji ramen test/.test(await N.page.textContent('.toast')));
+await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
+ok('undo after a swipe brings it back', /Fuunji ramen test/.test(await N.page.textContent('#glist')) && exN() === 1);
+await rowSwipe(-330); await N.page.waitForTimeout(400);
+ok('a long swipe deletes it straight away, with 10 s to undo', exN() === 0 && /Deleted Fuunji ramen test/.test(await N.page.textContent('.toast')) && !!(await N.page.$('.toast .tbar')));
+await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
+ok('and undo brings that back too', exN() === 1);
+await N.page.emulateMedia({ reducedMotion: 'reduce' }); await rowSwipe(-100); await N.page.tap('#glist .swdel'); await N.page.waitForTimeout(60);
+ok('with reduced motion the row goes at once, no slide', !(await N.page.$('#glist .swr')) && /Deleted Fuunji ramen test/.test(await N.page.textContent('.toast')));
+await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800); await N.page.emulateMedia({ reducedMotion: 'no-preference' });
+ok('…and Undo brings it back', exN() === 1);
+await N.page.tap('#glist .xrow'); await N.page.waitForTimeout(400);
+ok('a plain tap still opens the expense', await formOn()); await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
 // Mo marks the settle-up paid: it's a payment record, and the row goes
 await A.page.evaluate(() => window.__tourEnv.store.refresh()); await A.page.waitForTimeout(600);
 await A.page.tap('[data-pay]'); await A.page.waitForTimeout(400); await A.page.tap('[data-payok]'); await A.page.waitForTimeout(900);
@@ -571,6 +602,12 @@ await N.page.tap('[data-bkwho="all"]');
   ok('folded, it shows a heading with the day and shop, and its category', /Tue,? 27 Oct · Gransta, inside Tokyo Station/.test(await N.page.textContent('#page')) && /Sweets & snacks/.test(await N.page.textContent(`[data-shrow="${tbId}"]`)) && !/gelatin/.test(await N.page.textContent('.sp-list')));
   await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300);
   ok('tapped open: why there, the halal warning, its pills and Ask AI', /Every Tokyo Banana flavour/.test(await N.page.textContent('.sp-list')) && /gelatin/.test(await N.page.textContent('.sp-list')) && /Day 12/.test(await N.page.textContent(`[data-shset="day"][data-id="${tbId}"]`)) && /Ask AI/.test(await N.page.textContent('.sp-list')));
+  ok('…with how far the shop is from that day\'s stops, and another day to buy it instead (one per day, real stops only)', /Right by Tokyo Station/.test(await N.page.textContent('.sp-list')) && /Or buy it on another day/.test(await N.page.textContent('.sp-list')) && (await N.page.$$(`[data-shalt][data-id="${tbId}"]`)).length === 1 && /Tokyo · .*28 Oct/.test(await N.page.textContent(`[data-shalt="0"][data-id="${tbId}"]`)) && /Nakamise stalls, Asakusa · (Right by|About \d+ min walk from)/.test(await N.page.textContent(`[data-shalt="0"][data-id="${tbId}"]`)), JSON.stringify(shOf()[tbId].ai));
+  await N.page.tap(`[data-shalt="0"][data-id="${tbId}"]`); await N.page.waitForTimeout(400);
+  const tbO = shOf()[tbId];
+  ok('tapping another day moves it there, and the first place becomes the other option', tbO.ai.at === 'd13-nakamise' && tbO.ai.day === 'd13' && tbO.ai.shop === 'Nakamise stalls, Asakusa' && tbO.ai.ja === '東京ばな奈' && tbO.ai.alts.length === 1 && tbO.ai.alts[0].at === 'd12-shinkansen' && /Tokyo · .*27 Oct/.test(await N.page.textContent(`[data-shalt="0"][data-id="${tbId}"]`)), JSON.stringify(tbO.ai));
+  await N.page.tap(`[data-shalt="0"][data-id="${tbId}"]`); await N.page.waitForTimeout(400);
+  ok('…and back again', shOf()[tbId].ai.at === 'd12-shinkansen' && shOf()[tbId].ai.alts[0].at === 'd13-nakamise', JSON.stringify(shOf()[tbId].ai));
   await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300);
   await N.page.fill('#sh-name', 'Pearl necklace'); await N.page.fill('#sh-for', 'Sara'); await N.page.tap('[data-shlock]'); await N.page.tap('[data-shqty="1"]'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
   const [, pearl] = shBy('Pearl necklace');
@@ -782,19 +819,77 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('guest has no stamp, edit or add-a-stop buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear, #addgap')].every((e) => !e.offsetParent)));
   await g.evaluate(() => { const b = document.querySelector('[data-stamp]'); b && b.click(); }); await g.waitForTimeout(500);
   ok('guest tap on stamp does nothing', !Object.keys(JSON.parse(store.get('checks') || '{}')).some((k) => k.startsWith('d07')));
+  // following along from home: where everyone is right now (4 PM in Japan on day 7: all four in Shinsaibashi), Japan time and their own
+  const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  ok('guest sees Right now: all four at Shinsaibashi, Japan time and their own', /Right now · Day 7 of 17/i.test(gn) && /ALL FOUR/.test(gn) && /Shinsaibashi/.test(gn) && /4:00\s*PM/.test(gn) && /Japan time/.test(gn) && /for you/.test(gn) && /Next: Amerika-mura/.test(gn), gn);
+  ok('guest has no Directions, phrases or ¥ kit', await g.evaluate(() => [...document.querySelectorAll('.a-dir, .say, #kitbtn')].every((e) => !e.offsetParent)));
+  await g.evaluate(() => document.querySelector('#gnow [data-gninfo]').click()); await g.waitForTimeout(900);
+  ok('the i on Right now opens that stop with its story', await g.evaluate(() => { const c = document.querySelector('.pass.open'); return !!c && c.id === 'p-d07-shinsaibashi' && c.classList.contains('storyon') && !!c.querySelector('.storyx').offsetParent; }));
+  for (const d of ['d08', 'd09', 'd12', 'd13']) {
+    await g.goto(B + '/japan/?d=' + d); await g.waitForTimeout(1500);
+    const txt = await g.evaluate(() => document.body.innerText + [...document.querySelectorAll('[aria-label],[title]')].map((e) => e.getAttribute('aria-label') + e.getAttribute('title')).join(' '));
+    ok(`guest on ${d}: M&M's night away is a romantic dinner, no hotel name`, !/in the Green|Pasha/i.test(txt) && (d === 'd09' || d === 'd13' || /Romantic dinner/i.test(txt)), (txt.match(/.{40}(in the Green|Pasha).{40}/i) || [''])[0]);
+  }
+  await g.goto(B + '/japan/'); await g.waitForTimeout(1500);
   await g.tap('#ttBtn'); await g.waitForTimeout(400);
-  ok('guest tools have no Expenses', !(await g.$('.tt-opt[href$="money"]')) && !!(await g.$('.tt-opt[href$="v=2"]')));
+  ok('guest tools are just Photos and Settings', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))) === '["Settings","Photos"]', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))));
   await g.screenshot({ path: SH + 'guest-trip.png' });
-  await g.goto(B + '/japan/prototypes/tools?v=1'); await g.waitForTimeout(1500);
-  ok('guest asking for expenses gets Bookings', /Booked & to book/.test(await g.textContent('#page')) && await g.$eval('.proto-picker-item', (e) => e.hidden));
-  ok('guest cannot mark bookings', !(await g.$('[data-bkmark]')));
-  await g.goto(B + '/japan/prototypes/tools?v=4'); await g.waitForTimeout(1500);
-  ok('guest sees ideas but cannot post', /Chibo Diversity/.test(await g.textContent('#page')) && !(await g.$('#sg-text')) && await g.$eval('[data-vote]', (e) => e.disabled));
+  for (const v of [1, 2, 3, 4]) {
+    await g.goto(B + '/japan/prototypes/tools?v=' + v); await g.waitForTimeout(1200);
+    ok(`guest asking for tab ${v} (Expenses, Bookings, Shopping, Ideas) gets Settings`, /You &(amp;)? the trip/.test(await g.textContent('#page')) && (await g.$$eval('.proto-picker-item', (els) => els.map((e) => e.hidden).join())) === 'true,true,true,true,false' && !(await g.$('[data-bkmark]')));
+  }
   await g.goto(B + '/japan/prototypes/tools?v=5'); await g.waitForTimeout(1500);
   ok('guest settings say guest', /Guest/.test(await g.textContent('.me')) && !(await g.$('[data-pcolor]')) && !/Show money in/.test(await g.textContent('#page')));
   await g.screenshot({ path: SH + 'guest-settings.png', fullPage: true });
   ok('guest wrote nothing', store.get('updatedAt') === before);
   ok('no page errors G', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+// guest on Oct 21 (day 6): Mo and Mariam fly in on two different flights, so they get a row each, and no night card while
+// anyone is in the air; a page left open past midnight in Japan moves on to the new day
+{
+  const G = await phone('2026-10-20T20:00:00Z'); const g = G.page;
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  const gnow = () => g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  let gn = await gnow();
+  ok('5 AM in Japan, Mo and Mariam both flying: a row each, not a night card', /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 2 && !/middle of the night/.test(gn), gn);
+  await g.clock.fastForward('09:00:00'); await g.waitForTimeout(1500); gn = await gnow();
+  ok('2 PM: Mo has landed, Mariam is still in the air', /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 1, gn);
+  await g.clock.fastForward('09:30:00'); await g.waitForTimeout(1500); gn = await gnow();
+  ok('11:30 PM, everyone landed: the night card', /middle of the night/.test(gn), gn);
+  await g.clock.fastForward('00:35:00'); await g.waitForTimeout(2500);
+  ok('left open past midnight, the page moves on to day 7', /Day 7 of 17/i.test(await gnow()) && /[?&]d=d07/.test(g.url()), g.url());
+  ok('no page errors G2', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+// the night after the last day: a guest opening the page sees Day 17 while they fly home, and the card goes once all have landed
+{
+  const G = await phone('2026-11-01T15:30:00Z'); const g = G.page;
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  ok('12:30 AM Nov 2: Day 17, with NASA, Mo and Mariam each in the air', /Day 17 of 17/i.test(gn) && /NASA/.test(gn) && /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 3 && !/middle of the night/.test(gn), gn);
+  await g.clock.fastForward('04:45:00'); await g.waitForTimeout(1500);
+  ok('5:15 AM: Mo is home but the others wait in Vancouver, so the card stays', /Day 17 of 17/i.test(await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; })));
+  await g.clock.fastForward('05:45:00'); await g.waitForTimeout(1500);
+  ok('everyone home: the card goes, and the page stays on Day 17', !(await g.$('#gnow')) && /[?&]d=d17/.test(g.url()), g.url());
+  ok('no page errors G4', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+// a guest who picked the NASA view still sees where M&M are (Oct 23, 6:30 PM: their romantic dinner); and at 2 AM the next
+// night, M&M are still away, so the night card names no hotel for everyone
+for (const [t, test] of [
+  ['2026-10-23T09:30:00Z', (gn) => ['guest on the NASA view still sees M&M at their romantic dinner', /M&M/.test(gn) && /Romantic dinner/.test(gn) && /NASA/.test(gn)]],
+  ['2026-10-23T17:00:00Z', (gn) => ['2 AM after M&M\'s night away: asleep, with no one hotel named for all four', /middle of the night/.test(gn) && !/Granbell|in the Green/i.test(gn)]],
+]) {
+  const G = await phone(t); const g = G.page;
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  await g.evaluate(() => localStorage.setItem('japan2026.whoMix', JSON.stringify('nasa')));
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  const [name, pass] = test(gn); ok(name, pass, gn);
+  ok('no page errors G3', !G.errs.length, G.errs.join(' | '));
   await G.ctx.close();
 }
 // one of the four on a phone from before the PIN: asked once, then straight in

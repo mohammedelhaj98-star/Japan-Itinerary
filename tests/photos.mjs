@@ -28,7 +28,7 @@ function query(q) {
   const props = [...q.matchAll(/appProperties has \{ key='([^']+)' and value='([^']*)' \}/g)].map((m) => [m[1], m[2]]);
   return [...files.values()].filter((f) => !f.trashed && (!name || f.name === name) && (!mime || f.mimeType === mime) && (!parent || parents.some((x) => (f.parents || []).includes(x))) && (!media || /^(image|video)\//.test(f.mimeType)) && props.every(([k, v]) => (f.appProperties || {})[k] === v) && !not.some(([k, v]) => (f.appProperties || {})[k] === v));
 }
-const fileJson = (f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents, size: String(f.data ? f.data.length : 0), appProperties: f.appProperties, createdTime: f.createdTime, owners: f.owners,
+const fileJson = (f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents, size: String(f.data ? f.data.length : 0), appProperties: f.appProperties, createdTime: f.createdTime, owners: f.owners, trashed: !!f.trashed,
   thumbnailLink: f.mimeType.startsWith('image/') || f.mimeType.startsWith('video/') ? `${G}/thumb/${f.id}=s220` : undefined,
   imageMediaMetadata: f.mimeType.startsWith('image/') ? { width: 1200, height: 1600, rotation: 0, ...(f.meta || {}) } : undefined, videoMediaMetadata: f.mimeType.startsWith('video/') ? { width: 1080, height: 1920, durationMillis: '4000' } : undefined });
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
@@ -71,7 +71,13 @@ const google = http.createServer(async (req, res) => {
   const fm = /^\/drive\/v3\/files\/([\w-]+)$/.exec(u.pathname);
   if (fm) {
     const f = files.get(fm[1]); if (!f) return send(404, {});
-    if (req.method === 'PATCH') { const m = JSON.parse((await body(req)).toString()); f.appProperties = { ...(f.appProperties || {}), ...(m.appProperties || {}) }; return send(200, { id: f.id }); }
+    if (req.method === 'PATCH') {
+      const m = JSON.parse((await body(req)).toString() || '{}'); f.appProperties = { ...(f.appProperties || {}), ...(m.appProperties || {}) };
+      if (m.name) f.name = m.name; if (m.trashed) f.trashed = true;
+      const add = u.searchParams.get('addParents'), rm = u.searchParams.get('removeParents');
+      if (add || rm) f.parents = [...(f.parents || []).filter((x) => x !== rm), ...(add ? [add] : [])];
+      return send(200, { id: f.id });
+    }
     if (u.searchParams.get('alt') === 'media') {
       const rg = /bytes=(\d+)-(\d*)/.exec(req.headers.range || ''); const all = f.data;
       if (rg) { const a = +rg[1], b = rg[2] ? Math.min(+rg[2], all.length - 1) : all.length - 1; res.writeHead(206, { 'content-type': f.mimeType, 'content-length': b - a + 1, 'content-range': `bytes ${a}-${b}/${all.length}`, 'accept-ranges': 'bytes' }); return res.end(all.slice(a, b + 1)); }
@@ -154,6 +160,11 @@ ok('photos PIN lets the guest in (not set up yet)', /aren't set up yet/.test(awa
 
 // 2 · Google set up: connect the Drive
 env.GOOGLE_CLIENT_ID = 'cid'; env.GOOGLE_CLIENT_SECRET = 'csec';
+// (folders as the older site made them: the money backups inside the trip folder)
+const FOLDER_T = 'application/vnd.google-apps.folder', mkdir = (name, parent) => { const id = newId(); files.set(id, { id, name, mimeType: FOLDER_T, parents: [parent], appProperties: {} }); return id; };
+const OT = mkdir('Our Trips', 'root'), JP = mkdir('Japan 2026', OT), OLDBK = mkdir('Backups', JP);
+const oldMoney = newId(); files.set(oldMoney, { id: oldMoney, name: 'Saved earlier.json', mimeType: 'application/json', parents: [OLDBK], appProperties: {}, data: Buffer.from('{}') });
+kv.set('gfolders', JSON.stringify({ 'root/Our Trips': OT, [`${OT}/Japan 2026`]: JP, [`${JP}/Backups`]: OLDBK }));
 ok('connect needs the member PIN', (await api('/connect?k=0000')).status === 403);
 await n.reload(); await n.waitForTimeout(1200);
 ok('member sees Connect Google Drive', /Connect Google Drive/.test(await n.textContent('#gate')));
@@ -162,6 +173,8 @@ await n.click('#gate a.go'); await n.waitForURL(/\/japan\/photos/, { timeout: 10
 ok('Drive connected and stored', JSON.parse(kv.get('gdrive') || '{}').refresh === 'RT');
 ok('back on the photos page, empty, with Upload', /No photos yet/.test(await n.textContent('#content')) && await n.isVisible('#fab'));
 ok('connected toast', /connected/i.test(await n.textContent('#toast')));
+await n.waitForTimeout(600);
+ok('the old Backups folder moved next to the trip folder as "Japan 2026 backups", with its files', files.get(OLDBK).name === 'Japan 2026 backups' && files.get(OLDBK).parents.join() === OT && files.get(oldMoney).parents[0] === OLDBK && JSON.parse(kv.get('gfolders'))[`${OT}/Japan 2026 backups`] === OLDBK && !JSON.parse(kv.get('gfolders'))[`${JP}/Backups`], JSON.stringify(files.get(OLDBK)));
 
 // 3 · uploads, in 256 KB pieces, with a dropped piece along the way
 failPuts = 1;
@@ -183,7 +196,7 @@ ok('photo with a location → Osaka Castle', byName('castle.jpg').appProperties.
 ok('video dated by its own clock → Dinner', byName('dinner.mp4').appProperties.stop === dinnerId && byName('dinner.mp4').mimeType === 'video/mp4');
 ok('before-the-trip photo → nearest day (Day 1)', byName('before.jpg').appProperties.day === 'd01');
 const folderNames = [...files.values()].filter((f) => f.mimeType === 'application/vnd.google-apps.folder').map((f) => f.name);
-ok('Drive folders: Our Trips / Japan 2026 / Day 07 · …', folderNames.includes('Our Trips') && folderNames.includes('Japan 2026') && folderNames.some((x) => /^Day 07 · /.test(x)) && folderNames.some((x) => /^Day 01 · /.test(x)), folderNames.join(' | '));
+ok('one Drive folder: everything straight in Our Trips / Japan 2026, no day folders', !folderNames.some((x) => /^Day \d/.test(x)) && ['shinsaibashi.jpg', 'castle.jpg', 'before.jpg', 'dinner.mp4'].every((nm) => byName(nm).parents.join() === JP), folderNames.join(' | '));
 ok('uploads were started from the site\'s address (needed for Google\'s CORS)', [...sessions.values()].every((s) => s.origin === B));
 
 // 4 · the same photo again is skipped
@@ -287,7 +300,7 @@ const S = await phone('sara', 375, 667); await S.pg.goto(B + '/japan/photos'); a
 ok('small phone: gallery renders', (await S.pg.$$('.grid .th')).length === 4);
 await S.pg.screenshot({ path: OUT + 'small.png' });
 
-// 12 · money backups to the same Drive: Our Trips / Japan 2026 / Backups
+// 12 · money backups to the same Drive: Our Trips / Japan 2026 backups
 {
   const { resetBackupMemory, japanDay } = await import(REPO + '/lib/backup.js');
   const pend = [];
@@ -299,15 +312,15 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   const photo = 'data:image/jpeg;base64,' + fs.readFileSync(FIX + '/before.jpg').toString('base64');
   ok('receipt saved', (await post('receipt', { id: 'bk1', photo })).ok);
   await post('expenses', { id: 'bk1', value: { title: '=Ramen, "Ichiran"', yen: 4000, payer: 'naf', cat: 'food', day: 'd03', shares: { naf: 1000, sara: 1000, mariam: 1000, m: 1000 }, with: 'card', by: 'naf', at: Date.now(), receipt: 1700000000000 } });
-  const bkDir = folderId('Backups'), js = one(`Money ${today}.json`), cs = one(`Expenses ${today}.csv`), sh = one(`Expenses ${today}`), rc = named(/ bk1\.jpg$/);
+  const bkDir = folderId('Japan 2026 backups'), js = one(`Money ${today}.json`), cs = one(`Expenses ${today}.csv`), sh = one(`Expenses ${today}`), rc = named(/ bk1\.jpg$/);
   ok('first money change of the day backs up by itself', bkDir && js.length === 1 && cs.length === 1 && sh.length === 1 && [js[0], cs[0], sh[0]].every((f) => f.parents[0] === bkDir), `${js.length}/${cs.length}/${sh.length}`);
-  ok('…inside Our Trips / Japan 2026', files.get(bkDir) && files.get(bkDir).parents[0] === folderId('Japan 2026'));
+  ok('…in Our Trips, next to the trip folder', files.get(bkDir) && files.get(bkDir).parents[0] === folderId('Our Trips') && bkDir === OLDBK);
   const J = JSON.parse(js[0].data.toString());
   ok('JSON has every money record', J.expenses.bk1 && J.expenses.bk1.yen === 4000 && J.money && typeof J.money === 'object');
   const csv = cs[0].data.toString();
   ok('CSV: a row per expense, shares by name, formula-safe', /^\ufeffDate,Day,What,Type,Yen,Paid by,Paid with,Naf,Sara,Mariam,Mo,/.test(csv) && csv.includes('2026-10-18,Day 3," =Ramen, ""Ichiran""",Food,4000,Naf,Card,1000,1000,1000,1000'), csv.split('\r\n')[1]);
   ok('Google Sheet made from the CSV', sh[0].mimeType === 'application/vnd.google-apps.spreadsheet' && sh[0].type === 'text/csv' && !sh[0].data.toString().startsWith('\ufeff'));
-  ok('receipt photo copied into Backups / Receipts', rc.length === 1 && rc[0].parents[0] === folderId('Receipts') && rc[0].data.equals(fs.readFileSync(FIX + '/before.jpg')) && rc[0].name === '2026-10-18 =Ramen, Ichiran bk1.jpg', rc[0] && rc[0].name);
+  ok('receipt photo copied into Japan 2026 backups / Receipts', rc.length === 1 && rc[0].parents[0] === folderId('Receipts') && rc[0].data.equals(fs.readFileSync(FIX + '/before.jpg')) && rc[0].name === '2026-10-18 =Ramen, Ichiran bk1.jpg', rc[0] && rc[0].name);
 
   await post('expenses', { id: 'bk2', value: { kind: 'pay', from: 'sara', to: 'naf', yen: 1000, day: 'd03', cash: true, by: 'sara', at: Date.now() } });
   ok('later changes the same day: no second backup', js[0].uploads === 1 && named(/^Money /).length === 1);
@@ -347,8 +360,10 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
 {
   const FOLDER = 'application/vnd.google-apps.folder';
   const fid = (re) => ([...files.values()].find((f) => re.test(f.name || '') && f.mimeType === FOLDER) || {}).id;
-  const tripDir = fid(/^Japan 2026$/), d7 = fid(/^Day 07 · /), d8 = fid(/^Day 08 · /);
-  ok('a folder for every day is ready for the Drive app', tripDir && d7 && d8 && [...files.values()].filter((f) => f.mimeType === FOLDER && (f.parents || [])[0] === tripDir && /^Day \d\d · /.test(f.name)).length >= 15);
+  const tripDir = fid(/^Japan 2026$/);
+  // day folders as the older site made them, one with a photo the site had already filed
+  const d7 = mkdir('Day 07 · Nara + Osaka', tripDir), d8 = mkdir('Day 08 · Arashiyama + samurai', tripDir);
+  const oldFiled = newId(); files.set(oldFiled, { id: oldFiled, name: 'old.jpg', mimeType: 'image/jpeg', parents: [d7], appProperties: { trip: 'japan', day: 'd07', stop: '', t: String(Date.parse('2026-10-22T03:00:00Z')), by: 'naf', in: '', hearts: '' }, data: fs.readFileSync(FIX + '/castle.jpg') });
   const add = (name, mimeType, parents, extra) => { const id = newId(); files.set(id, { id, name, mimeType, parents, appProperties: {}, data: fs.readFileSync(FIX + '/castle.jpg'), ...extra }); return id; };
   const heic = add('IMG_1001.HEIC', 'image/heic', [d7], { meta: { time: '2026:10:22 12:05:00', location: { latitude: 34.6873, longitude: 135.5262 } }, owners: [{ displayName: 'Mariam Q' }], createdTime: '2026-10-22T05:00:00Z' });
   const jpg = add('IMG_1002.JPG', 'image/jpeg', [tripDir], { meta: { time: '2026:10:22 15:42:07' }, owners: [{ displayName: 'Sara' }], createdTime: '2026-10-22T07:00:00Z' });
@@ -389,6 +404,13 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   await n.screenshot({ path: OUT + 'drive-filed.png' });
   const again = await onRequest({ request: new Request(B + '/api/photos/inbox', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: '{"trip":"japan"}' }), env });
   ok('nothing left to file afterwards', (await again.json()).items.length === 0);
+  ok('the old day folders are emptied into the trip folder and binned', files.get(d7).trashed && files.get(d8).trashed && [heic, mov, oldFiled].every((id) => files.get(id).parents.join() === tripDir && !files.get(id).trashed), JSON.stringify([d7, d8].map((id) => files.get(id))));
+  // someone bins the trip folder itself in Drive: the site makes a fresh one rather than uploading into the bin
+  files.get(tripDir).trashed = true; env.FOLDER_CHECK_MS = 0;
+  const fr = await onRequest({ request: new Request(B + '/api/photos/folder', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: '{"trip":"japan"}' }), env });
+  const newTrip = fid(/^Japan 2026$/) === tripDir ? [...files.values()].find((f) => f.name === 'Japan 2026' && f.mimeType === FOLDER && !f.trashed) : null;
+  ok('a binned trip folder is replaced by a fresh one', newTrip && newTrip.id !== tripDir && newTrip.parents.join() === fid(/^Our Trips$/) && (await fr.json()).url.endsWith(newTrip.id), newTrip && newTrip.id);
+  delete env.FOLDER_CHECK_MS;
   const upd = await onRequest({ request: new Request(B + '/api/photos/update', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', ids: [away, pdf], set: { hidden: true } }) }), env });
   ok('changes to files that aren\'t trip photos are refused', upd.status === 400 && !ap(away).hidden && !ap(pdf).hidden);
   const before = kv.get('gdrive'); aboutUser = null;

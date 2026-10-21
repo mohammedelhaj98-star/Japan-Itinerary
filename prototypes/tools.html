@@ -305,6 +305,12 @@ body.practice .sheet { max-height:calc(100vh - 96px); } /* room above it for the
 @media (prefers-reduced-motion: reduce) { .sp-x { animation:none; } }
 .sp-pill.ed { display:inline-flex; align-items:center; gap:4px; background:#faf6f8; box-shadow:inset 0 0 0 1px rgba(185,75,116,.25); color:#8c3a59; padding:4px 10px; text-align:left; }
 .sp-pill.ed svg { flex:none; opacity:.7; }
+.sp-far { font-weight:700; color:#8c3a59 !important; }
+.sp-alth { font-size:12px; font-weight:700; color:var(--ink3); margin:10px 0 5px; }
+.sp-alts { display:flex; flex-direction:column; gap:6px; }
+.sp-alt { text-align:left; border-radius:12px; padding:8px 11px; background:#fff; box-shadow:inset 0 0 0 1px var(--line); display:flex; flex-direction:column; gap:1px; }
+.sp-alt b { font-size:13.5px; }
+.sp-alt span { font-size:12.5px; color:var(--ink2); }
 .sp-act.ai { background:#faf6f8; box-shadow:inset 0 0 0 1px rgba(185,75,116,.25); color:#b94b74; }
 .sp-dayh { font-size:12.5px; font-weight:700; color:var(--ink3); margin:14px 2px 7px; }
 .sp-dayh:first-of-type { margin-top:2px; }
@@ -701,20 +707,22 @@ const shVisible = (x) => !x.lock || x.lock === ME;
 const shItems = () => Object.entries(store.getShop()).map(([id, x]) => ({ id, ...x })).filter((x) => x && x.name && SH_LISTS[x.list] && shVisible(x));
 // every stop on the trip, edited and added ones included, with its day and who it's for (off: on a choice's option
 // that wasn't picked, so it's not on the route, though a thing already placed there still finds it)
+const llOf = (p) => (p && typeof p.lat === 'number' && typeof p.lng === 'number' ? [p.lat, p.lng] : null);
 function allStops() {
   const C = store.state.custom || {}, out = [];
   for (const d of DAYS) for (const it of d.items) {
     const pick = it.type === 'choice' ? store.getChoice(it.id, it.default) : '', on = (o) => o.id === pick || (!it.options.some((y) => y.id === pick) && o === it.options[0]);
     const evs = it.type === 'event' ? [[it, false]] : it.type === 'choice' ? it.options.flatMap((o) => (o.items || []).map((e) => [e, !on(o)])) : [];
-    for (const [e, off] of evs) { const c = C[e.id] || {}; if (c.hidden) continue; out.push({ id: e.id, d, title: c.title || e.title, place: (c.place && c.place.name) || (e.place && e.place.name) || '', who: c.who || e.who || 'all', off }); }
+    for (const [e, off] of evs) { const c = C[e.id] || {}; if (c.hidden) continue; out.push({ id: e.id, d, title: c.title || e.title, place: (c.place && c.place.name) || (e.place && e.place.name) || '', ll: llOf(c.place) || llOf(e.place), who: c.who || e.who || 'all', off }); }
   }
-  for (const [id, c] of Object.entries(C)) if (c && c.added && !c.hidden && dayOf(c.day)) out.push({ id, d: dayOf(c.day), title: c.title || 'New stop', place: (c.place && c.place.name) || '', who: c.who || 'all' });
+  for (const [id, c] of Object.entries(C)) if (c && c.added && !c.hidden && dayOf(c.day)) out.push({ id, d: dayOf(c.day), title: c.title || 'New stop', place: (c.place && c.place.name) || '', ll: llOf(c.place), who: c.who || 'all' });
   return out;
 }
 const stopById = (id) => allStops().find((x) => x.id === id) || null;
 // one look-up of every stop per drawing of the page (the list asks for a stop per row, several times)
 let shStops = null;
 const stopOf = (id) => (shStops || (shStops = new Map(allStops().map((x) => [x.id, x])), queueMicrotask(() => { shStops = null; }), shStops)).get(id) || null;
+const allStopsCached = () => (stopOf(''), [...shStops.values()]);
 const dayOfItem = (x) => { const st = x.ai && x.ai.at ? stopOf(x.ai.at) : null; return st ? st.d : (x.ai && x.ai.day && dayOf(x.ai.day)) || null; };
 // a list's people are on a stop when it's for everyone or for them (All of us: stops for everyone)
 const onRoute = (st, list) => st.who === 'all' || st.who === list;
@@ -738,7 +746,9 @@ async function askShop(id, { at = null } = {}) {
     // someone picked another day while this was asking: this answer is for the old stop, so ask again for the new one
     const moved = cur && cur.ai && cur.ai.at && cur.ai.at !== ((at && at.id) || (x.ai && x.ai.at) || '');
     if (moved) { sh.asking.delete(id); return askShop(id, { at: stopById(cur.ai.at) }); }
-    if (cur && r.shop) store.setShop(id, { ...cur, ...(cur.name === PIC_NAME && r.name ? { name: r.name } : {}), ...(r.cat && !cur.cat ? { cat: r.cat } : {}), ai: { shop: r.shop, why: r.why, search: r.search, ja: r.ja, halal: r.halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
+    // the other places it can be bought (other days), each with its stop and day, so it can be switched to in one tap
+    const alts = (r.alts || []).map((o) => { const s2 = stopById(o.at); return s2 ? { shop: o.shop, why: o.why, at: s2.id, stop: s2.title, date: s2.d.date, day: s2.d.id, ...(o.lat ? { lat: o.lat, lng: o.lng } : {}) } : null; }).filter(Boolean);
+    if (cur && r.shop) store.setShop(id, { ...cur, ...(cur.name === PIC_NAME && r.name ? { name: r.name } : {}), ...(r.cat && !cur.cat ? { cat: r.cat } : {}), ai: { shop: r.shop, why: r.why, search: r.search, ja: r.ja, halal: r.halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}), ...(r.lat ? { lat: r.lat, lng: r.lng } : {}), ...(alts.length ? { alts } : {}) } });
   } catch (err) { sh.msg = err && err.pin ? 'Asking AI needs the PIN.' : navigator.onLine === false ? 'No signal: tap Ask AI once you\'re back online.' : "Couldn't find a shop for that. Tap Ask AI to try again."; }
   sh.asking.delete(id); shRender();
 }
@@ -799,6 +809,17 @@ function addIdea(i, list) {
   store.setShop(newShopId(), { name, list, by: P[ME] ? ME : 'naf', idea: true, cat: SHOP_IDEAS[i][0], at: Date.now(), ai: { shop: where, why, search: where.split(',')[0], ja, halal, ...(st ? { at: st.id, stop: st.title, date: st.d.date, day: st.d.id } : {}) } });
 }
 const MAPS = (q) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+// how far a shop is from the nearest stop we already have that day (straight line, times 1.3 for streets, at 4.8 km/h):
+// an estimate to choose a day by, not a route
+function farFrom(o) {
+  const day = o && (o.day || (o.at && stopOf(o.at) ? stopOf(o.at).d.id : ''));
+  if (!o || !o.lat || !day) return '';
+  const [la, ln] = [o.lat, o.lng], km = (p) => { const r = Math.PI / 180, a = Math.sin((p[0] - la) * r / 2) ** 2 + Math.cos(la * r) * Math.cos(p[0] * r) * Math.sin((p[1] - ln) * r / 2) ** 2; return 12742 * Math.asin(Math.sqrt(a)); };
+  let best = null; for (const st of allStopsCached()) if (st.d.id === day && st.ll && !st.off) { const k = km(st.ll); if (!best || k < best.k) best = { st, k }; }
+  if (!best) return '';
+  const near = best.st.place || best.st.title, min = Math.round(best.k * 1.3 / 4.8 * 60);
+  return min <= 3 ? `Right by ${near}` : best.k <= 2.5 ? `About ${min} min walk from ${near}` : `About ${best.k < 10 ? best.k.toFixed(1) : Math.round(best.k)} km from ${near}`;
+}
 const CHEV = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 // A row is one line (tick, name, category, photo); tapping it opens the rest: where and why, its pills (group,
 // category, day: each can be changed), and the buttons.
@@ -810,7 +831,9 @@ function shopRow(x) {
     : esc([sh.list === 'every' ? SH_LISTS[x.list] : '', x.cat ? catName(x.cat) : sh.sorting.has(x.id) ? 'Sorting…' : '', x.ai ? '' : 'No shop yet'].filter(Boolean).join(' · '));
   const pills = `<div class="sp-when">${VIEW ? `<span class="sp-pill">${esc(SH_LISTS[x.list])}</span><span class="sp-pill">${esc(catName(x.cat))}</span>${st ? `<span class="sp-pill">Day ${st.d.n} · ${dayLabel(st.d)} · ${esc(st.title)}</span>` : ''}`
     : `<button class="sp-pill ed press" data-shset="list" data-id="${x.id}">${esc(SH_LISTS[x.list])} ${CHEV}</button><button class="sp-pill ed press" data-shset="cat" data-id="${x.id}">${esc(x.cat ? catName(x.cat) : 'Category')} ${CHEV}</button><button class="sp-pill ed press" data-shset="day" data-id="${x.id}">${st ? `Day ${st.d.n} · ${esc(st.title)}` : 'Pick a day'} ${CHEV}</button>`}</div>`;
-  const ai = x.ai && !asking ? `<div class="sp-ai"><b>${esc(x.ai.shop)}</b>${x.ai.why ? `<p>${esc(x.ai.why)}</p>` : ''}${x.ai.halal ? `<p class="sp-hl">${esc(x.ai.halal)}</p>` : ''}</div>` : '';
+  const far = x.ai && farFrom(x.ai);
+  const alts = x.ai && !asking && !x.done && !VIEW ? (x.ai.alts || []).map((o, i) => { const d = dayOf(o.day), f = farFrom(o); return d && d.date >= jstToday() ? `<button class="sp-alt press" data-shalt="${i}" data-id="${x.id}"><b>${esc(d.city)} · ${dayLabel(d)}</b><span>${esc(o.shop)}${f ? ` · ${esc(f)}` : o.stop ? ` · near ${esc(o.stop)}` : ''}</span></button>` : ''; }).join('') : '';
+  const ai = x.ai && !asking ? `<div class="sp-ai"><b>${esc(x.ai.shop)}</b>${far ? `<p class="sp-far">${esc(far)}</p>` : ''}${x.ai.why ? `<p>${esc(x.ai.why)}</p>` : ''}${x.ai.halal ? `<p class="sp-hl">${esc(x.ai.halal)}</p>` : ''}</div>${alts ? `<p class="sp-alth">Or buy it on another day</p><div class="sp-alts">${alts}</div>` : ''}` : '';
   const acts = x.done ? (!exd && !VIEW ? `<div class="sp-acts"><a class="sp-act press" href="${esc(shopExHref(x))}">Add to expenses</a></div>` : '')
     : `<div class="sp-acts">${x.ai && x.ai.search ? `<a class="sp-act dark press" href="${MAPS(x.ai.search)}" target="_blank" rel="noopener">Near me</a>` : ''}${(x.ai && x.ai.ja) || x.photo ? `<button class="sp-act press" data-shstaff="${x.id}">Show staff</button>` : ''}${st ? `<a class="sp-act press" href="../?d=${st.d.id}">See the day</a>` : ''}${VIEW ? '' : `<button class="sp-act ai press" data-shfind="${x.id}">Ask AI</button><button class="sp-act del press" data-shdel="${x.id}" aria-label="Remove ${esc(x.name)}">Remove</button>`}</div>`;
   const qty = VIEW || x.done ? '' : `<div class="sp-qty sm"><span>How many</span><button class="press" data-shiq="-1" data-id="${x.id}" aria-label="One fewer" ${(x.qty || 1) <= 1 ? 'disabled' : ''}>−</button><b>${x.qty || 1}</b><button class="press" data-shiq="1" data-id="${x.id}" aria-label="One more">+</button></div>`;
@@ -1345,7 +1368,7 @@ function draw() {
   if (scrollY !== y) window.scrollTo(0, y); // only if it moved: scrolling to where it already is would stop a flick
 }
 // money has its own page now: the old Expenses tab sends you there
-function setTab(i) { if (VIEW && i === 0) i = 1;
+function setTab(i) { if (VIEW && i < 4) i = 4; // guests get Settings: Expenses, Bookings, Shopping and Ideas are the four's
   if (i === 0) { const q = new URLSearchParams(location.search), a = q.get('add') ? `?add=1${q.get('d') ? '&d=' + q.get('d') : ''}` : ''; location.replace('../money' + a); return; }
   if (i !== 4 && sub) { sub = ''; const u0 = new URL(location); u0.searchParams.delete('p'); history.replaceState(null, '', u0); } tab = i; items.forEach((el, j) => el.toggleAttribute('data-active', j === i)); const el = items[i]; hl.style.width = el.offsetWidth + 'px'; hl.style.transform = `translateX(${el.offsetLeft}px)`; const u = new URL(location); u.searchParams.set('v', i + 1); history.replaceState(null, '', u); window.scrollTo(0, 0); render(); }
 items.forEach((el, i) => el.addEventListener('click', () => { if (i === 0) location.href = '../money'; else setTab(i); }));
@@ -1403,6 +1426,10 @@ page.addEventListener('click', (e) => {
   const spp = t('[data-shpill]'); if (spp) { const k = spp.dataset.shpill; if (k === 'ideas') { sh.ideas = !sh.ideas; sh.pill = ''; } else sh.pill = sh.pill === k ? '' : k; sh.msg = ''; return render(); }
   const spf = t('[data-shf]'); if (spf) { const { shf: k, v } = spf.dataset; if (k === 'group') { sh.list = v; sh.ideas = false; ls.set('proto.shlist', v); } else sh[k] = v; sh.pill = ''; return render(); }
   const spr = t('[data-shrow]'); if (spr) { sh.open = sh.open === spr.dataset.shrow ? '' : spr.dataset.shrow; return render(); }
+  const sal = t('[data-shalt]'); if (sal && !VIEW) { const id = sal.dataset.id, x = store.getShop()[id], o = x && x.ai && (x.ai.alts || [])[+sal.dataset.shalt]; if (!o) return;
+    // the picked place becomes the one, and the old one joins the others
+    const { alts, lat, lng, shop, why, at, stop, date, day, ...keep } = x.ai, was = { shop, why, at, stop, date, day, ...(lat ? { lat, lng } : {}) };
+    store.setShop(id, { ...x, ai: { ...keep, ...o, alts: [was, ...alts.filter((y) => y !== o)] } }); render(); return undoable(`Moved to ${dayOf(o.day) ? dayLabel(dayOf(o.day)) : o.shop}`, () => store.setShop(id, x)); }
   const sps = t('[data-shset]'); if (sps && !VIEW) { setShopSheet(sps.dataset.id, sps.dataset.shset); return; }
   if (t('[data-shlock]')) { sh.lock = !sh.lock; return render(); }
   const sq = t('[data-shqty]'); if (sq) { sh.qty = Math.min(99, Math.max(1, sh.qty + +sq.dataset.shqty)); return render(); }
@@ -1432,7 +1459,7 @@ page.addEventListener('change', async (e) => {
   if (e.target.id === 'pf-photo' && P[ME] && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) say(msg, 'Uploading…'); try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) say(msg, err.message); } return; }
  if (e.target.id === 'f-where') { if (e.target.value === 'My location') return; fd.here = null; fd.where = e.target.value; ls.set('proto.fwhere', fd.where); searchFood(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); driver.classList.remove('on'); } });
-if (VIEW) { items[0].hidden = true; document.body.classList.add('guest'); }
+if (VIEW) { items.slice(0, 4).forEach((el) => { el.hidden = true; }); document.body.classList.add('guest'); }
 setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
 if (tab === 2) setTimeout(syncAlerts, 1500);
 // The ¥ button on the trip lands here with ?add=1&d=<day>: straight into a new expense for that day.

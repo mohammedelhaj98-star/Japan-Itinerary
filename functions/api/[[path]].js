@@ -194,6 +194,13 @@ function cleanShop(v) {
     if (isId(v.ai.at || '')) ai.at = v.ai.at;
     if (isDate(v.ai.date)) ai.date = v.ai.date;
     if (isId(v.ai.day || '')) ai.day = v.ai.day;
+    const ll = (x) => (typeof x.lat === 'number' && typeof x.lng === 'number' && Math.abs(x.lat) <= 90 && Math.abs(x.lng) <= 180 ? { lat: x.lat, lng: x.lng } : {});
+    Object.assign(ai, ll(v.ai));
+    // the helper's other places to buy it (other days), so the list can offer a choice
+    if (Array.isArray(v.ai.alts)) {
+      const alts = v.ai.alts.filter((x) => x && typeof x === 'object' && clean(x.shop, 90) && isId(x.at || '')).slice(0, 3).map((x) => ({ shop: clean(x.shop, 90), ...(clean(x.why, 200) ? { why: clean(x.why, 200) } : {}), at: x.at, ...(clean(x.stop, 90) ? { stop: clean(x.stop, 90) } : {}), ...(isDate(x.date) ? { date: x.date } : {}), ...(isId(x.day || '') ? { day: x.day } : {}), ...ll(x) }));
+      if (alts.length) ai.alts = alts;
+    }
     out.ai = ai;
   }
   if (stamp(v.at) != null) out.at = v.at;
