@@ -2193,7 +2193,7 @@ const mapMax = (() => {
   return { set, isOn: () => on };
 })();
 buildMap(); renderDay(); store.start().finally(() => (synced = true)); refreshFx(); drawer.init();
-requestAnimationFrame(() => { drawnMap(); }); // after the first paint of the plan
+requestAnimationFrame(() => { if (!NOMAP) drawnMap(); }); // after the first paint of the plan (guests have no map: no map library, no MapTiler quota)
 // The + bubble: every page of the trip (js/nav.js, the same on every page), Phrases and Help open the travel kit here.
 const navApi = mountNav({ here: 'trip', guest: GUEST && !SANDBOX, onKit: (k) => { kit.tab = k; openKit(); } });
 { const q = document.createElement('a'); q.className = 'tt-quick'; q.id = 'quickex'; q.href = 'money?add=1'; q.setAttribute('aria-label', 'Add an expense'); q.innerHTML = '¥<b>+</b>';
