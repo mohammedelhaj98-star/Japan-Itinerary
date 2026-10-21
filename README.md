@@ -175,10 +175,10 @@ of that, less once the live connection carries the changes; a hibernating WebSoc
 ## Trip photos (Google Drive)
 
 `/japan/photos` (+ menu → Photos) shows everyone's photos and videos by day and stop. Files live in one person's
-Google Drive under `Our Trips / Japan 2026 / Day NN · …`; the site uploads into it as them (`lib/photos.js`).
+Google Drive, all in one folder, `Our Trips / Japan 2026` (the site sorts them by day and stop); the site uploads into it as them (`lib/photos.js`).
 The four can also add photos with the Google Drive app (the Photos page's **Drive** button opens the trip folder; the
 app keeps uploading in the background). The next member to open the Photos page files them by day and stop, from the
-camera time and location, or the day folder they were put in. That needs the full `drive` scope; a Drive connected
+camera time and location. (Older day folders are emptied into the trip folder and binned.) That needs the full `drive` scope; a Drive connected
 with the older `drive.file` scope shows a "Reconnect" banner, and a reconnect must use the same Google account.
 
 One-time setup:
@@ -192,9 +192,9 @@ One-time setup:
 Secrets already set: `TRIP_PIN` (members), `PHOTO_PIN` (guests' viewing PIN), `PHOTO_SECRET` (signs viewing tokens).
 ### Money backups
 
-The money is backed up into the same Drive, in `Our Trips / Japan 2026 / Backups` (`lib/backup.js`): each Japan day
+The money is backed up into the same Drive, in `Our Trips / Japan 2026 backups` (`lib/backup.js`): each Japan day
 gets `Money <date>.json` (every money record and setting), `Expenses <date>.csv` and the same as a Google Sheet, and
-each receipt photo is copied once into `Backups / Receipts`. It runs on the server after the first money change of
+each receipt photo is copied once into `Japan 2026 backups / Receipts`. It runs on the server after the first money change of
 each day (Pages has no schedule), and from Settings → Expenses → **Back up now**, which also shows the last backup.
 
 Tests: `npm run test:photos` runs the photos page, the backups and the API against a stand-in Google.

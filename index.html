@@ -308,10 +308,36 @@ body.mapmax .mapmax-hint { display:block; }
 .pass.done .a-st { background:rgba(0,0,0,.2); }
 .credit { font-size:10.5px; opacity:.6; margin-top:12px; }
 .credit a { text-decoration:none; }
-.hanko { position:absolute; top:7px; right:66px; width:50px; height:50px; border-radius:50%; border:2.5px solid var(--red); color:var(--red); background:rgba(252,247,238,.95); display:grid; place-items:center; font-family:var(--mincho); font-size:25px; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; z-index:3; }
+.hanko { position:absolute; top:4px; right:66px; width:56px; height:56px; border-radius:50%; border:2.5px solid var(--red); color:var(--red); background:rgba(252,247,238,.95); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mincho); font-size:22px; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; z-index:3; }
 .pass.open .hanko { top:auto; bottom:auto; top:150px; right:16px; }
-.pass.done .hanko { opacity:.96; transform:rotate(-14deg); }
-.pass.done.stamped .hanko { animation:stamp 380ms cubic-bezier(.2,1.3,.4,1); }
+.hanko { --rot:-14deg; }
+.pass.done .hanko { opacity:.96; transform:rotate(var(--rot)); }
+/* the stamps carry their English under the kanji: 済 Done, 見送 Skipped */
+.hanko b, .mioku b { font-weight:700; line-height:1; }
+.hanko small, .mioku small { font-family:var(--sans); font-size:7.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; line-height:1; margin-top:3px; }
+/* Stamping lands with a thunk: the stamp slams down (slow enough to watch), a ring of ink and a puff of dust spread out from it,
+   the card shakes, and the phone buzzes as it lands. Un-stamping lifts a copy of the stamp off the card. 見送 Skip lands the same way in grey. */
+.hanko.slam { --o:.96; animation:slam 800ms linear both; }
+.mioku.slam { --o:.92; animation:slam 800ms linear both; }
+@keyframes slam {
+  0% { opacity:0; transform:scale(2.6) rotate(calc(var(--rot) - 8deg)); animation-timing-function:cubic-bezier(.7,0,1,.6); }
+  30% { opacity:1; transform:scale(.84) rotate(var(--rot)); animation-timing-function:cubic-bezier(.2,.9,.3,1); }
+  55% { transform:scale(1.06) rotate(var(--rot)); }
+  78% { transform:scale(.99) rotate(var(--rot)); }
+  100% { opacity:var(--o); transform:rotate(var(--rot)); } }
+.hanko.lifting { --o:.96; animation:unslam 400ms cubic-bezier(.4,0,.8,.6) both; }
+.mioku.lifting { --o:.92; animation:unslam 400ms cubic-bezier(.4,0,.8,.6) both; }
+@keyframes unslam { 0% { opacity:var(--o); transform:rotate(var(--rot)); } 100% { opacity:0; transform:scale(1.45) rotate(calc(var(--rot) - 12deg)) translateY(-6px); } }
+.pass.thunk { animation:thunk 720ms linear 236ms both; }
+@keyframes thunk { 0% { scale:1; translate:0 0; } 15% { scale:.965; translate:-2.5px 2px; } 32% { scale:.99; translate:2px 0; } 50% { scale:1.004; translate:-1.2px 0; } 70% { scale:1; translate:.6px 0; } 100% { scale:1; translate:0 0; } }
+.sfx { position:absolute; top:4px; right:66px; width:56px; height:56px; pointer-events:none; z-index:4; --sc:var(--red); }
+.pass.open .sfx { top:150px; right:16px; }
+.sfx.sk { --sc:#4b4a45; }
+.sfx i { position:absolute; inset:0; border-radius:50%; opacity:0; }
+.sfx .ring { border:3.5px solid var(--sc); animation:sring 840ms var(--ease) 240ms forwards; }
+.sfx .puff { inset:auto; left:50%; top:50%; width:18px; height:18px; margin:-9px; background:rgba(255,250,240,.75); animation:spuff 1040ms var(--ease) 240ms forwards; }
+@keyframes sring { 0% { opacity:.7; transform:scale(.9); } 100% { opacity:0; transform:scale(2.3); } }
+@keyframes spuff { 0% { opacity:0; transform:translate(0,0) scale(.4); } 15% { opacity:.8; } 100% { opacity:0; transform:translate(var(--x),var(--y)) scale(1.5); } }
 @keyframes stamp { 0% { opacity:0; transform:scale(1.7) rotate(-30deg); } 60% { opacity:1; transform:scale(.94) rotate(-12deg); } 100% { transform:rotate(-14deg); } }
 /* tickets: transit legs on paper */
 .pass.tk { color:var(--ink); background:radial-gradient(circle at 0 64px, transparent 10px, #f3eee3 10.5px) left/51% 100% no-repeat, radial-gradient(circle at 100% 64px, transparent 10px, #f3eee3 10.5px) right/51% 100% no-repeat; box-shadow:none; filter:drop-shadow(0 -6px 14px rgba(0,0,0,.28)); }
@@ -520,9 +546,9 @@ button.ykan { pointer-events:auto; cursor:pointer; }
 .skl { display:inline-block; margin-left:6px; padding:0 6px; border-radius:6px; background:rgba(0,0,0,.28); color:#fff; letter-spacing:.06em; }
 .pass.skip:not(.open) { opacity:.55; filter:saturate(.35); }
 .pass.skip.open .hero { filter:saturate(.35); }
-.mioku { position:absolute; top:7px; right:66px; width:54px; height:54px; border-radius:50%; border:2.5px solid #4b4a45; color:#4b4a45; background:rgba(252,247,238,.95); display:grid; place-items:center; font-family:var(--mincho); font-size:17px; letter-spacing:-.04em; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; z-index:3; transition:opacity 200ms, transform 300ms cubic-bezier(.2,1.3,.4,1); }
+.mioku { position:absolute; top:4px; right:66px; width:56px; height:56px; border-radius:50%; border:2.5px solid #4b4a45; color:#4b4a45; background:rgba(252,247,238,.95); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mincho); font-size:17px; letter-spacing:-.04em; opacity:0; transform:scale(1.6) rotate(-30deg); pointer-events:none; z-index:3; --rot:-10deg; }
 .pass.open .mioku { top:150px; right:16px; }
-.pass.skip .mioku { opacity:.92; transform:rotate(-10deg); }
+.pass.skip .mioku { opacity:.92; transform:rotate(var(--rot)); }
 .pin.skp { opacity:.45; }
 .sknote { display:flex; align-items:center; justify-content:center; gap:2px; margin-top:8px; font-size:12.5px; font-weight:700; opacity:.8; text-decoration:none; }
 .sknote svg { width:14px; height:14px; }
@@ -791,6 +817,11 @@ const tracker = () => { const s = []; return { add(v) { const t = performance.no
 const project = (v, d = 0.998) => ((v / 1000) * d) / (1 - d);
 const rubber = (o, dim, c = 0.55) => (o * dim * c) / (dim + c * Math.abs(o));
 const buzz = (ms = 8) => { if (!(navigator.userActivation && navigator.userActivation.hasBeenActive)) return; try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+// iPhones can't vibrate from a web page, but flipping a hidden switch gives a light tick on iOS 18 and later. Its clicks stop here, so no page handler sees them.
+let tickEl = null;
+const iosTick = () => { try { if (!tickEl) { tickEl = document.createElement('label'); tickEl.setAttribute('aria-hidden', 'true'); tickEl.innerHTML = '<input type="checkbox" switch tabindex="-1">'; tickEl.style.cssText = 'position:fixed;left:-99px;top:0;opacity:0;pointer-events:none'; tickEl.addEventListener('click', (e) => e.stopPropagation()); document.body.appendChild(tickEl); } tickEl.click(); } catch {} };
+// A buzz timed to land with the stamp: Android gets the pattern after the wait, iPhone one tick.
+const buzzAt = (wait, pattern) => { if (!(navigator.userActivation && navigator.userActivation.hasBeenActive)) return; try { if (navigator.vibrate) navigator.vibrate([0, wait, ...pattern]); else setTimeout(iosTick, wait); } catch {} };
 const ls = { get(k, f) { try { const v = localStorage.getItem(k); return v == null ? f : JSON.parse(v); } catch { return f; } }, set(k, v) { if (SANDBOX) return; try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 
 /* ═══ helpers ═══ */
@@ -957,6 +988,26 @@ const numOf = (id) => { const s = stops.find((x) => x.ids.includes(id)); return 
 const done = (id) => store.isChecked(id);
 // "Skip it": a stop we didn't get to, kept on the day (faded) and listed under Ideas → Missed. A choice, like Mark as booked.
 const skipped = (id) => store.getChoice('sk-' + id, '') === 'skipped';
+// Each stop's stamp sits at its own slight tilt, like a hand stamp, and keeps it on every phone
+const tilt = (id, base) => { let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) | 0; return base + (Math.abs(h) % 15) - 7; };
+// The stamp thunk (see .slam in the styles). Called after the change is saved, so it finds the pass as it is now drawn.
+function stampFx(id, kind) {
+  buzzAt(240, kind === 'sk' ? [16, 30, 6] : [28, 30, 10]);
+  const el = document.getElementById('p-' + id); if (RM || !el) return;
+  const s = el.querySelector(kind === 'sk' ? '.mioku' : '.hanko'); if (!s) return;
+  el.querySelectorAll('.sfx').forEach((x) => x.remove());
+  let h = '<i class="ring"></i>';
+  for (let i = 0; i < 7; i++) { const a = (i / 7) * Math.PI * 2 + Math.random() * 0.6, r = 30 + Math.random() * 12; h += `<i class="puff" style="--x:${(Math.cos(a) * r).toFixed(1)}px;--y:${(Math.sin(a) * r).toFixed(1)}px"></i>`; }
+  const fx = document.createElement('div'); fx.className = 'sfx ' + kind; fx.innerHTML = h; el.appendChild(fx);
+  s.classList.remove('slam'); el.classList.remove('thunk'); void el.offsetWidth; s.classList.add('slam'); el.classList.add('thunk');
+  clearTimeout(el._fxT); el._fxT = setTimeout(() => { fx.remove(); s.classList.remove('slam'); el.classList.remove('thunk'); }, 1300);
+}
+function stampLift(id, kind) {
+  const el = document.getElementById('p-' + id); if (RM || !el) return;
+  const s = el.querySelector(kind === 'sk' ? '.mioku' : '.hanko'); if (!s) return;
+  clearTimeout(el._fxT); s.classList.remove('slam'); el.classList.remove('thunk'); el.querySelectorAll('.sfx').forEach((x) => x.remove());
+  const g = s.cloneNode(true); g.classList.add('lifting'); el.appendChild(g); setTimeout(() => g.remove(), 450);
+}
 // what Reorder can move: stops, not the journeys between them (trains, buses, flights keep their place and time)
 const movable = (e) => !isTicket(e) && !e.flight;
 // The stop you should be at right now: one in progress (latest start), else the next to start, else the last of the day.
@@ -1201,14 +1252,14 @@ function passHTML(e, i) {
     const v = flView(e);
     const fbody = `<div class="body">${story}${flightStrip(e)}${e.desc ? `<p class="desc">${withFx(e.desc)}</p>` : ''}
       <div class="acts"><button class="a-ed press" data-edit="${e.id}" aria-label="Edit this stop">${I.pen}</button><button class="a-st press" data-stamp="${e.id}">${d ? 'Stamped 済' : 'Stamp 済'}</button></div>${foldRow(e, false)}</div>`;
-    return `<article class="pass tk fl locked ${d ? 'done' : ''} ${v.past ? 'flpast' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${legHex(e)}">${nav}${flightBand(e, n)}${fbody}<div class="hanko" aria-hidden="true">済</div></article>`;
+    return `<article class="pass tk fl locked ${d ? 'done' : ''} ${v.past ? 'flpast' : ''}" id="p-${e.id}" data-id="${e.id}" style="--c:${legHex(e)}">${nav}${flightBand(e, n)}${fbody}<div class="hanko" aria-hidden="true" style="--rot:${tilt(e.id, -14)}deg"><b>済</b><small>Done</small></div></article>`;
   }
   const pend = bkPending(e), pendL = pend ? `<span class="flst late"><i></i>${esc(pend.label)}</span>` : '';
   const yk = e.ticket && e.ticket.pending ? (pend ? '<span class="ykan spot" aria-hidden="true">not<br>booked</span>' : `<button class="ykan ${bkThump === e.id ? 'ykin' : ''}" data-bkundo="${e.id}" aria-label="Booked. Tap to undo">予約済</button>`) : '';
   const skL = sk ? '<span class="skl">Skipped</span>' : '';
   const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${skL}</small><b>${esc(e.title)}</b>${pendL}</div>${mv ? `<span class="grip" data-grip="${e.id}" aria-label="Drag to move ${esc(e.title)}">${I.grip}</span>` : `<span class="glock" aria-hidden="true">${I.lock}</span>`}${tk && e.ticket && e.ticket.people ? pills(e.ticket.people) : ''}${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
   const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}${skL}</small><b>${esc(e.title)}</b>${pendL}</div></div></div>`;
-  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''} ${sk ? 'skip' : ''} ${mv ? '' : 'locked'}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}${yk}<div class="hanko" aria-hidden="true">済</div><div class="mioku" aria-hidden="true">見送</div></article>`;
+  return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''} ${sk ? 'skip' : ''} ${mv ? '' : 'locked'}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}${yk}<div class="hanko" aria-hidden="true" style="--rot:${tilt(e.id, -14)}deg"><b>済</b><small>Done</small></div><div class="mioku" aria-hidden="true" style="--rot:${tilt(e.id, -10)}deg"><b>見送</b><small>Skipped</small></div></article>`;
 }
 
 // The day's sheet and drawer, as HTML. A sync that would draw exactly the same HTML (a change to another day, a flight
@@ -1438,7 +1489,6 @@ function buildStack() {
     refresh() { st.forEach((c) => { const d = done(c.id); c.el.classList.toggle('done', d); const b = c.el.querySelector('[data-stamp]'); if (b) b.textContent = d ? 'Stamped 済' : 'Stamp 済';
       const k = skipped(c.id); c.el.classList.toggle('skip', k); const kb = c.el.querySelector('[data-skip]'); if (kb) { kb.classList.toggle('on', k); kb.textContent = k ? 'Skipped · undo' : 'Skip it'; } }); },
     fold() { ui.sel = null; layout(false); syncPins(); },
-    thump(id) { const c = st.find((x) => x.id === id); if (!c) return; c.el.classList.remove('stamped'); void c.el.offsetWidth; c.el.classList.add('stamped'); c.S.set(0.975); c.S.to(1, { response: 0.32, damping: 0.45 }); },
   };
 }
 
@@ -1945,8 +1995,10 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   if (e.target.closest('.cv-in')) { cycleCur(); buzz(4); return; }
   const sp = e.target.closest('[data-step]'); if (sp) { if (!sp.disabled) step(+sp.dataset.step); return; }
   if (swiped) { swiped = false; return; }
-  const st = e.target.closest('[data-stamp]'); if (st) { const id = st.dataset.stamp; const was = done(id); store.toggleCheck(id); if (!was) { buzz(12); stackApi.thump(id); if (skipped(id)) store.setChoice('sk-' + id, ''); } return; }
-  const skb = e.target.closest('[data-skip]'); if (skb) { const id = skb.dataset.skip; if (skipped(id)) store.setChoice('sk-' + id, ''); else { store.setChoice('sk-' + id, 'skipped'); if (done(id)) store.toggleCheck(id); buzz(8); } return; }
+  const st = e.target.closest('[data-stamp]'); if (st) { const id = st.dataset.stamp; const was = done(id), wasSk = skipped(id); store.toggleCheck(id);
+    if (was) { stampLift(id, 'st'); return; } if (wasSk) { store.setChoice('sk-' + id, ''); stampLift(id, 'sk'); } stampFx(id, 'st'); return; }
+  const skb = e.target.closest('[data-skip]'); if (skb) { const id = skb.dataset.skip; if (skipped(id)) { store.setChoice('sk-' + id, ''); stampLift(id, 'sk'); return; }
+    const wasSt = done(id); store.setChoice('sk-' + id, 'skipped'); if (wasSt) { store.toggleCheck(id); stampLift(id, 'st'); } stampFx(id, 'sk'); return; }
   if (e.target.closest('[data-fold]')) { foldDay(); return; }
   if (e.target.closest('[data-reorder]')) { if (!(GUEST && !SANDBOX)) foldDay(true); return; } // guests can look, not change
   if (e.target.closest('[data-orddone]')) { setFold(true, false); return; }

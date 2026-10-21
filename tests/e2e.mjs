@@ -46,7 +46,9 @@ store.set('checks', JSON.stringify({ 'seeded-before-the-switch': true })); store
 // …and for /api/fill (a question in words rather than a photo): it knows Yanaka Ginza
 const FILL_SAID = { known: true, name: 'Yanaka Ginza shopping street', ja: '谷中銀座商店街', ro: 'Yanaka Ginza Shōtengai', cat: 'shop', kind: 'shop', notes: 'Old-Tokyo shopping street. The menchi-katsu is usually pork and beef: ask for beef only.', cost: '¥500–1,500 per person', minutes: 60, key: 'Since the 1940s · About 60 shops', story: 'It survived the 1923 earthquake and the war, so it still looks like 1950s Tokyo.', dyk: 'Seven wooden cats hide along the street.', wikipedia: 'Yanaka Ginza', search: 'Yanaka Ginza', lat: 35.7277, lng: 139.766 };
 // …and for /api/shop-ai (where on the route to buy something): Tokyo Banana is at Gransta, inside Tokyo Station, on day 12
-const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Banana flavour in one place.', at: 'd12-shinkansen', search: 'Tokyo Banana', ja: '東京ばな奈', halal: 'Check the box for gelatin.', cat: 'sweets' };
+const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Banana flavour in one place.', at: 'd12-shinkansen', search: 'Tokyo Banana', ja: '東京ばな奈', halal: 'Check the box for gelatin.', cat: 'sweets', lat: 35.6809, lng: 139.7665,
+  // other days to buy it: Asakusa the next day (kept), a second Tokyo Station shop (same day as the first, so dropped) and a made-up stop (dropped)
+  alts: [{ shop: 'Nakamise stalls, Asakusa', why: 'Gift boxes at the stalls too.', at: 'd13-nakamise', lat: 35.7115, lng: 139.7965 }, { shop: 'Daimaru Tokyo', why: 'Same day.', at: 'd12-shinkansen', lat: 35.6815, lng: 139.7675 }, { shop: 'Nowhere', why: 'x', at: 'd99-nope', lat: 0, lng: 0 }] };
 // (sent a photo instead of a name, it sees a box of matcha Kit Kats)
 const said = (c) => typeof c === 'string' ? c : ((c.find((x) => x.type === 'text') || {}).text || '');
 // (asked to sort things into categories: masks, serums and creams are skincare, the rest sweets)
@@ -238,13 +240,16 @@ ok('tapping a stop in the folded list opens it', (await openPass(A.page)) === 'd
 await A.page.evaluate(() => document.querySelector('.pass.open [data-fold]').click()); await A.page.waitForTimeout(900);
 ok('Fold up folds it too', !(await openPass(A.page)));
 await A.page.evaluate(() => document.querySelector('.pass[data-id="d07-deer"] .band').click()); await A.page.waitForTimeout(900);
-await A.page.evaluate(() => document.querySelector('.pass.open [data-skip]').click()); await A.page.waitForTimeout(900);
+const fx1 = await A.page.evaluate(() => { document.querySelector('.pass.open [data-skip]').click(); const p = document.querySelector('.pass[data-id="d07-deer"]'); return { hSlam: !!p.querySelector('.hanko.slam'), mSlam: !!p.querySelector('.mioku.slam'), ring: !!p.querySelector('.sfx .ring'), dust: p.querySelectorAll('.sfx .puff').length, shake: p.classList.contains('thunk'), hLift: !!p.querySelector('.hanko.lifting'), mLift: !!p.querySelector('.mioku.lifting'), rot: p.querySelector('.mioku').style.getPropertyValue('--rot') }; }); await A.page.waitForTimeout(900);
+ok('Skip lands 見送 with a thunk: the stamp slams, an ink ring and dust spread, the card shakes, at the stop\'s own tilt', fx1.mSlam && fx1.ring && fx1.dust === 7 && fx1.shake && /^-?\d+deg$/.test(fx1.rot), JSON.stringify(fx1));
 const sk1 = await shared(A.page);
 ok('Skip it marks the stop skipped for everyone, greys it and points at Ideas → Missed', sk1.choices['sk-d07-deer'] === 'skipped' && (await A.page.$eval('.pass[data-id="d07-deer"]', (e) => e.classList.contains('skip'))) && !!(await A.page.$('.pass.open .sknote[href*="f=missed"]')), JSON.stringify(sk1.choices));
-await A.page.evaluate(() => document.querySelector('.pass.open [data-stamp]').click()); await A.page.waitForTimeout(900);
+const fx2 = await A.page.evaluate(() => { document.querySelector('.pass.open [data-stamp]').click(); const p = document.querySelector('.pass[data-id="d07-deer"]'); return { hSlam: !!p.querySelector('.hanko.slam'), mSlam: !!p.querySelector('.mioku.slam'), ring: !!p.querySelector('.sfx .ring'), dust: p.querySelectorAll('.sfx .puff').length, shake: p.classList.contains('thunk'), hLift: !!p.querySelector('.hanko.lifting'), mLift: !!p.querySelector('.mioku.lifting'), rot: p.querySelector('.mioku').style.getPropertyValue('--rot') }; }); await A.page.waitForTimeout(900);
+ok('stamping a skipped stop lifts 見送 off and thunks 済 down', fx2.hSlam && fx2.mLift && fx2.shake && !fx2.mSlam, JSON.stringify(fx2));
 const sk2 = await shared(A.page);
 ok('stamping a skipped stop unskips it', !sk2.choices['sk-d07-deer'] && sk2.checks['d07-deer'], JSON.stringify(sk2.choices));
-await A.page.evaluate(() => document.querySelector('.pass.open [data-skip]').click()); await A.page.waitForTimeout(900);
+const fx3 = await A.page.evaluate(() => { document.querySelector('.pass.open [data-skip]').click(); const p = document.querySelector('.pass[data-id="d07-deer"]'); return { hSlam: !!p.querySelector('.hanko.slam'), mSlam: !!p.querySelector('.mioku.slam'), ring: !!p.querySelector('.sfx .ring'), dust: p.querySelectorAll('.sfx .puff').length, shake: p.classList.contains('thunk'), hLift: !!p.querySelector('.hanko.lifting'), mLift: !!p.querySelector('.mioku.lifting'), rot: p.querySelector('.mioku').style.getPropertyValue('--rot') }; }); await A.page.waitForTimeout(1500);
+ok('skipping a stamped stop lifts 済 off and thunks 見送 down; nothing is left over after', fx3.mSlam && fx3.hLift && !fx3.hSlam && (await A.page.evaluate(() => !document.querySelector('.sfx, .lifting, .slam, .pass.thunk'))), JSON.stringify(fx3));
 const sk3 = await shared(A.page);
 ok('skipping a stamped stop unstamps it', sk3.choices['sk-d07-deer'] === 'skipped' && !sk3.checks['d07-deer'], JSON.stringify(sk3.checks));
 ok('no Skip on a journey', await A.page.evaluate(() => !document.querySelector('.pass.tk [data-skip]')));
@@ -597,6 +602,12 @@ await N.page.tap('[data-bkwho="all"]');
   ok('folded, it shows a heading with the day and shop, and its category', /Tue,? 27 Oct · Gransta, inside Tokyo Station/.test(await N.page.textContent('#page')) && /Sweets & snacks/.test(await N.page.textContent(`[data-shrow="${tbId}"]`)) && !/gelatin/.test(await N.page.textContent('.sp-list')));
   await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300);
   ok('tapped open: why there, the halal warning, its pills and Ask AI', /Every Tokyo Banana flavour/.test(await N.page.textContent('.sp-list')) && /gelatin/.test(await N.page.textContent('.sp-list')) && /Day 12/.test(await N.page.textContent(`[data-shset="day"][data-id="${tbId}"]`)) && /Ask AI/.test(await N.page.textContent('.sp-list')));
+  ok('…with how far the shop is from that day\'s stops, and another day to buy it instead (one per day, real stops only)', /Right by Tokyo Station/.test(await N.page.textContent('.sp-list')) && /Or buy it on another day/.test(await N.page.textContent('.sp-list')) && (await N.page.$$(`[data-shalt][data-id="${tbId}"]`)).length === 1 && /Tokyo · .*28 Oct/.test(await N.page.textContent(`[data-shalt="0"][data-id="${tbId}"]`)) && /Nakamise stalls, Asakusa · (Right by|About \d+ min walk from)/.test(await N.page.textContent(`[data-shalt="0"][data-id="${tbId}"]`)), JSON.stringify(shOf()[tbId].ai));
+  await N.page.tap(`[data-shalt="0"][data-id="${tbId}"]`); await N.page.waitForTimeout(400);
+  const tbO = shOf()[tbId];
+  ok('tapping another day moves it there, and the first place becomes the other option', tbO.ai.at === 'd13-nakamise' && tbO.ai.day === 'd13' && tbO.ai.shop === 'Nakamise stalls, Asakusa' && tbO.ai.ja === '東京ばな奈' && tbO.ai.alts.length === 1 && tbO.ai.alts[0].at === 'd12-shinkansen' && /Tokyo · .*27 Oct/.test(await N.page.textContent(`[data-shalt="0"][data-id="${tbId}"]`)), JSON.stringify(tbO.ai));
+  await N.page.tap(`[data-shalt="0"][data-id="${tbId}"]`); await N.page.waitForTimeout(400);
+  ok('…and back again', shOf()[tbId].ai.at === 'd12-shinkansen' && shOf()[tbId].ai.alts[0].at === 'd13-nakamise', JSON.stringify(shOf()[tbId].ai));
   await N.page.tap(`[data-shrow="${tbId}"]`); await N.page.waitForTimeout(300);
   await N.page.fill('#sh-name', 'Pearl necklace'); await N.page.fill('#sh-for', 'Sara'); await N.page.tap('[data-shlock]'); await N.page.tap('[data-shqty="1"]'); await N.page.tap('[data-shadd]'); await N.page.waitForTimeout(1500);
   const [, pearl] = shBy('Pearl necklace');
