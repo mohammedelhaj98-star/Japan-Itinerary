@@ -1137,7 +1137,9 @@ function guestNow() {
   // today, by the clock now (a page can stay open past midnight); or the night after the last day, while anyone is still flying home
   const date = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), all = allEvents();
   const homeward = day === lastDay && date === dayAfter(day.date);
-  if (date !== day.date && !(homeward && all.some(flying))) return '';
+  // (still on their way: a flight in the air, or one still to land, like the Vancouver connection)
+  const onWay = (e) => e.flight && (flying(e) || Date.now() < Date.parse(flView(e).arr || ''));
+  if (date !== day.date && !(homeward && all.some(onWay))) return '';
   const m = nowMin() + (homeward ? 1440 : 0), tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; } })();
   const jp = fmt(m % 1440), at = (e) => { const s = span(e); return s ? fmt(s[0]).join(' ') : esc(e.time || ''); };
   const own = new Date(), same = -own.getTimezoneOffset() === 540; // a guest on Japan time needs no second clock

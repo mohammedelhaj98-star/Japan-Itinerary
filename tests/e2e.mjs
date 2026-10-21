@@ -870,7 +870,9 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
   const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
   ok('12:30 AM Nov 2: Day 17, with NASA, Mo and Mariam each in the air', /Day 17 of 17/i.test(gn) && /NASA/.test(gn) && /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 3 && !/middle of the night/.test(gn), gn);
-  await g.clock.fastForward('10:30:00'); await g.waitForTimeout(1500);
+  await g.clock.fastForward('04:45:00'); await g.waitForTimeout(1500);
+  ok('5:15 AM: Mo is home but the others wait in Vancouver, so the card stays', /Day 17 of 17/i.test(await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; })));
+  await g.clock.fastForward('05:45:00'); await g.waitForTimeout(1500);
   ok('everyone home: the card goes, and the page stays on Day 17', !(await g.$('#gnow')) && /[?&]d=d17/.test(g.url()), g.url());
   ok('no page errors G4', !G.errs.length, G.errs.join(' | '));
   await G.ctx.close();
