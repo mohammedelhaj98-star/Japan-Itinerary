@@ -11,7 +11,7 @@
 <style>
 @font-face { font-family:'Zen Kaku'; font-weight:500; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku'; font-weight:700; font-display:swap; src:url(vendor/fonts/zen-kaku-gothic-new-latin-700-normal.woff2) format('woff2'); }
-:root { --ink:#141412; --ink2:#4b4a45; --ink3:#86847c; --paper:#f6f4ef; --line:rgba(20,20,10,.08); --blue:#1e6bff; --red:#e23b2e; --ok:#2f9e57; --heart:#ff375f; --ease:cubic-bezier(.23,1,.32,1);
+:root { --nav-r:max(16px, calc(50% - 244px)); --nav-z:50; --ink:#141412; --ink2:#4b4a45; --ink3:#86847c; --paper:#f6f4ef; --line:rgba(20,20,10,.08); --blue:#1e6bff; --red:#e23b2e; --ok:#2f9e57; --heart:#ff375f; --ease:cubic-bezier(.23,1,.32,1);
   --sans:'Zen Kaku','Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',system-ui,sans-serif; --strip:50px; --cell:120px; }
 * { box-sizing:border-box; }
 html,body { margin:0; }
@@ -271,8 +271,9 @@ body.sel .selbar { transform:none; }
 .toast { position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:99; transform:translate(-50%, 20px); opacity:0; pointer-events:none; display:flex; align-items:center; gap:12px; padding:10px 10px 10px 16px; border-radius:16px; background:#141412; color:#fff; font-size:14px; white-space:nowrap; transition:opacity 200ms, transform 260ms var(--ease); }
 .toast.on { opacity:1; transform:translate(-50%, 0); pointer-events:auto; }
 .toast button { height:32px; padding:0 12px; border-radius:10px; background:rgba(255,255,255,.16); color:#fff; font-weight:700; }
-.fab { position:fixed; right:max(16px, calc(50% - 244px)); bottom:calc(20px + env(safe-area-inset-bottom)); z-index:30; height:56px; padding:0 22px 0 18px; border-radius:28px; background:var(--ink); color:#fff; font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow:0 14px 30px -10px rgba(0,0,0,.5); transition:transform 280ms var(--ease); }
+.fab { position:fixed; right:calc(var(--nav-r) + 64px); bottom:calc(20px + env(safe-area-inset-bottom)); z-index:30; height:56px; padding:0 22px 0 18px; border-radius:28px; background:var(--ink); color:#fff; font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow:0 14px 30px -10px rgba(0,0,0,.5); transition:transform 280ms var(--ease); }
 body.sel .fab, body.guest .fab { transform:translateY(160%); }
+body.sel .tt, body.sel .tt-veil { display:none; }
 body.guest [data-select] { display:none; }
 @media (prefers-reduced-motion: reduce) { .sheet, .selbar, .toast, .fab, .vw .track, .info { transition-duration:1ms; } .story .it.on img { animation:none; } }
 /* signing in to the photos (guests) and connecting Google Drive (once) */
@@ -308,7 +309,7 @@ body.guest [data-select] { display:none; }
 </head>
 <body>
 <main class="page">
-  <div class="bar"><a class="tback press" href="./" data-home><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Trip</a><span class="sp"></span><a class="pill press" data-drive href="#" target="_blank" rel="noopener" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2.5h6.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>Drive</a><button class="pill press" data-select hidden>Select</button></div>
+  <div class="bar"><a class="tback press" href="./"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Trip</a><span class="sp"></span><a class="pill press" data-drive href="#" target="_blank" rel="noopener" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2.5h6.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>Drive</a><button class="pill press" data-select hidden>Select</button></div>
   <header class="ph"><small>Japan 2026 · photos</small></header>
   <div id="gate"></div>
   <div id="main" hidden>
@@ -342,6 +343,7 @@ import { CAT } from './js/colors.js?v=9';
 import { forGuests } from './js/guest.js?v=9';
 import { stopsOf, jstOf, matchStop, fmtMin } from './js/plan-time.js?v=9';
 import { readTaken } from './js/exif.js?v=9';
+import { mountNav, backToTrip } from './js/nav.js?v=9';
 
 /* Trip photos, kept in Google Drive. The server (lib/photos.js) lists them, keeps who's in them, hearts and their stop
    as Drive file properties, and starts uploads that the phone sends straight to Google. */
@@ -1033,11 +1035,10 @@ document.addEventListener('click', (e) => {
   const k2 = t('[data-k]'); if (k2) return pinKey(k2.dataset.k);
 });
 let qT = 0; $('#q').addEventListener('input', (e) => { clearTimeout(qT); qT = setTimeout(() => { ui.q = e.target.value.trim(); render(); }, 160); });
-// back to the trip: when we came from it, go back in history so its page is shown as it was
-document.querySelectorAll('[data-home]').forEach((a) => a.addEventListener('click', (e) => {
-  let fromTrip = false; try { const r = new URL(document.referrer); fromTrip = r.origin === location.origin && /\/japan\/(index\.html)?$/.test(r.pathname); } catch {}
-  if (fromTrip && history.length > 1 && !uploading) { e.preventDefault(); history.back(); }
-}));
+// the + bubble, the same as on every page; ‹ Trip goes back to the trip as you left it (js/nav.js), but mid-upload it
+// loads the trip instead, so the page asks first rather than freezing the upload in the back-forward cache
+document.querySelector('.tback').addEventListener('click', (e) => { if (!uploading) { e.preventDefault(); backToTrip(); } });
+mountNav({ here: 'photos', guest: (() => { try { return JSON.parse(localStorage.getItem('trips.me')) === 'guest'; } catch { return false; } })() });
 
 /* ═══ getting in: guests enter the photos PIN; the four of us need Google Drive connected once ═══ */
 let typed = '';

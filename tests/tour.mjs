@@ -100,15 +100,15 @@ for (const sc of scenarios) {
   await pg.waitForURL(/tools/, { timeout: 8000 }).catch(() => bad('step 17: did not go on to the tools page'));
   console.log('  18 Bookings (opens on it)');
   await step(19, '.bk.todo [data-bkmark]', () => pg.tap('.bk.todo [data-bkmark]'), 'marking as booked');
-  await step(20, '.proto-picker-item:nth-of-type(4)', () => pg.tap('.proto-picker-item:nth-of-type(4)'), 'tapping Food');
+  await step(20, '.tt-opt[data-k="ideas"]', () => pg.tap('.tt-opt[data-k="ideas"]'), 'tapping Food');
   await step(21, '.card:has(#sg-text)', async () => { await pg.fill('#sg-text', 'Practice idea'); await pg.tap('[data-sgpost]'); }, 'posting an idea');
   await step(22, '[data-vote]', () => pg.tap('[data-vote]'), 'voting');
   await step(23, '[data-fview="shop"]', () => pg.tap('[data-fview="shop"]'), 'tapping Shops');
   await step(24, '[data-fview="nearby"]', () => pg.tap('[data-fview="nearby"]'), 'tapping Halal');
-  await step(25, '.proto-picker-item:nth-of-type(3)', () => pg.tap('.proto-picker-item:nth-of-type(3)'), 'tapping Shopping');
+  await step(25, '.tt-opt[data-k="shopping"]', () => pg.tap('.tt-opt[data-k="shopping"]'), 'tapping Shopping');
   await step(26, '[data-shpill="ideas"]', () => pg.tap('[data-shpill="ideas"]'), 'tapping Ideas');
   await step(27, '[data-shidea]', async () => { await pg.tap('[data-shidea]'); await pg.waitForTimeout(450); await pg.tap('#sheet [data-shpick="all"]'); }, 'adding an idea to a list');
-  await step(28, '.proto-picker-item:nth-of-type(5)', () => pg.tap('.proto-picker-item:nth-of-type(5)'), 'tapping Settings');
+  await step(28, '.tt-opt[data-k="settings"]', () => pg.tap('.tt-opt[data-k="settings"]'), 'tapping Settings');
   await step(29, '.card:has(.me)');
   await step(30, '[data-sub="stamps"]');
   // last step: back to the real trip
