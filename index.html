@@ -98,6 +98,8 @@ body.guest .a-dir, body.guest .say, body.guest #kitbtn { display:none !important
 .gn-t i { display:inline-block; width:9px; height:9px; border-radius:3px; background:var(--c); margin-right:6px; vertical-align:1px; }
 .gn-nx { color:var(--ink2); }
 .gn-s .flpill { min-height:22px; font-size:12px; padding:2px 9px; }
+.gn-i { display:inline-grid; place-items:center; width:24px; height:24px; margin-left:8px; border-radius:50%; background:rgba(20,20,10,.07); font:italic 400 15px/1 'Instrument Serif', 'Times New Roman', serif; vertical-align:1px; }
+.gnow.night .gn-i { background:rgba(255,255,255,.14); }
 .gn-sleep { font-size:13.5px; padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.08); }
 @media (prefers-reduced-motion: reduce) { .gn-k i { animation:none; } }
 .top { position:fixed; top:var(--top); left:10px; right:10px; z-index:600; display:flex; gap:8px; justify-content:center; max-width:460px; margin:0 auto; }
@@ -754,6 +756,8 @@ import { store, SANDBOX, GUEST } from './js/store.js?v=9';
 import { offline } from './js/offline.js?v=9';
 import { runTour } from './js/tour.js?v=9';
 import { CAT, MODE } from './js/colors.js?v=9';
+import { forGuests } from './js/guest.js?v=9';
+if (GUEST && !SANDBOX) forGuests(DAYS); // M&M's nights away read as a romantic dinner for guests
 
 /* ═══ motion engine: interruptible springs (Apple response/damping) ═══ */
 function recenterNow() {
@@ -1084,13 +1088,14 @@ function guestNow() {
     const title = x.live || x.src === 'air' ? esc(e.title) : x.next ? `Last stop: ${esc(e.title)}` : `Done for the day`;
     const src = x.src === 'stamp' ? 'Stamped 済' : 'By the plan';
     const how = tracked ? `<span class="flpill ${v.cls}"><i></i>${esc(v.label)}</span>` : x.src === 'air' ? 'In the air, by the flight times' : !x.live && !x.next ? `${src} · last stop: ${esc(e.title)}` : src;
-    return `<div class="gn-row"><span class="gn-tag" style="--c:${c}">${label}</span><div><b class="gn-t"><i style="--c:${cat.c}"></i>${title}</b><span class="gn-s">${how}</span>${x.next ? `<span class="gn-nx">Next: ${esc(x.next.title)}, ${at(x.next)}</span>` : ''}</div></div>`;
+    const pi = placeInfo(e.place || placeOfEvent(events.indexOf(e))), ib = pi && pi.story ? `<button class="gn-i press" data-gninfo="${e.id}" aria-label="About this place">i</button>` : '';
+    return `<div class="gn-row"><span class="gn-tag" style="--c:${c}">${label}</span><div><b class="gn-t"><i style="--c:${cat.c}"></i>${title}${ib}</b><span class="gn-s">${how}</span>${x.next ? `<span class="gn-nx">Next: ${esc(x.next.title)}, ${at(x.next)}</span>` : ''}</div></div>`;
   };
   const night = m >= 23 * 60 || m < 6 * 60;
   let body;
   if (night) {
     const nd = m >= 23 * 60 ? DAYS[DAYS.indexOf(day) + 1] : day, first = nd && dayItems(nd).find((i) => i.type === 'event' && span(i));
-    const hs = [...new Set([day.hotel, day.mmHotel].filter(Boolean))].map((id) => (HOTELS.find((h) => h.id === id) || {}).name).filter(Boolean);
+    const hs = day.away ? [] : [...new Set([day.hotel, day.mmHotel].filter(Boolean))].map((id) => (HOTELS.find((h) => h.id === id) || {}).name).filter(Boolean);
     body = `<p class="gn-sleep">It's the middle of the night in Japan, so they're probably asleep${hs.length ? ` at ${esc(hs.join(' and '))}` : ''}.</p>${first ? `<div class="gn-row"><span class="gn-tag" style="--c:var(--ink)">NEXT</span><div><b class="gn-t">Day ${nd.n} starts ${at(first)}</b><span class="gn-nx">${esc(first.title)}</span></div></div>` : ''}`;
   } else {
     const a = whereNow('nasa', m), b = whereNow('mm', m);
@@ -1931,6 +1936,7 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   if (e.target.closest('[data-ordreset]')) { if (!confirm(`Put day ${day.n} back in its first order, with its first times, for everyone?`)) return; store.setCustom('ord-' + day.id, null); return; }
   const j = e.target.closest('[data-jp]'); if (j) { showPhrases(j.dataset.jp); return; }
   const sk = e.target.closest('[data-shtick]'); if (sk) { const x = store.getShop()[sk.dataset.shtick]; if (!x) return; if (x.done) { const { done, doneBy, doneAt, ...rest } = x; store.setShop(sk.dataset.shtick, rest); } else { store.setShop(sk.dataset.shtick, { ...x, done: true, ...(ME_ID && ME_ID !== 'guest' ? { doneBy: ME_ID } : {}), doneAt: Date.now() }); buzz(10); } return; }
+  const gi = e.target.closest('[data-gninfo]'); if (gi) { const id = gi.dataset.gninfo; stackApi.select(id, { scroll: true }); focusMap(id); const card = document.getElementById('p-' + id); if (card && !card.classList.contains('storyon')) { card.classList.add('storyon'); stackApi.layout(false); } return; } // guests: the story of where they are
   const sy = e.target.closest('[data-story]'); if (sy) { const card = document.getElementById('p-' + sy.dataset.story); card.classList.toggle('storyon'); stackApi.layout(false); return; }
   const ed = e.target.closest('[data-edit]'); if (ed) { openEditor({ mode: 'edit', id: ed.dataset.edit }); return; }
   // Mark as booked: the 予約済 stamp thumps down on all four phones; tapping 予約済 again offers to undo it

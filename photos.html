@@ -339,6 +339,7 @@ body.guest [data-select] { display:none; }
 <script type="module">
 import { DAYS } from './data/itinerary.js?v=9';
 import { CAT } from './js/colors.js?v=9';
+import { forGuests } from './js/guest.js?v=9';
 import { stopsOf, jstOf, matchStop, fmtMin } from './js/plan-time.js?v=9';
 import { readTaken } from './js/exif.js?v=9';
 
@@ -355,6 +356,7 @@ const ME = (() => { try { return JSON.parse(lsGet('trips.me')); } catch { return
 const PIN = () => lsGet('trips.pin') || '';
 const MEMBER = !!(PEOPLE[ME] && PIN()); // one of the four, with the PIN on this phone: can upload and change things
 const member = () => MEMBER;
+if (!MEMBER) forGuests(DAYS); // guests with the photos PIN see M&M's nights away as a romantic dinner, like on the trip page
 const JST = 9 * 3600e3;
 const dayById = Object.fromEntries(DAYS.map((d) => [d.id, d]));
 const fmtDate = (d) => new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });

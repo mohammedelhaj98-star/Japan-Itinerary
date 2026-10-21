@@ -786,6 +786,14 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
   ok('guest sees Right now: all four at Shinsaibashi, Japan time and their own', /Right now · Day 7 of 17/i.test(gn) && /ALL FOUR/.test(gn) && /Shinsaibashi/.test(gn) && /4:00\s*PM/.test(gn) && /Japan time/.test(gn) && /for you/.test(gn) && /Next: Amerika-mura/.test(gn), gn);
   ok('guest has no Directions, phrases or ¥ kit', await g.evaluate(() => [...document.querySelectorAll('.a-dir, .say, #kitbtn')].every((e) => !e.offsetParent)));
+  await g.evaluate(() => document.querySelector('#gnow [data-gninfo]').click()); await g.waitForTimeout(900);
+  ok('the i on Right now opens that stop with its story', await g.evaluate(() => { const c = document.querySelector('.pass.open'); return !!c && c.id === 'p-d07-shinsaibashi' && c.classList.contains('storyon') && !!c.querySelector('.storyx').offsetParent; }));
+  for (const d of ['d08', 'd09', 'd12', 'd13']) {
+    await g.goto(B + '/japan/?d=' + d); await g.waitForTimeout(1500);
+    const txt = await g.evaluate(() => document.body.innerText + [...document.querySelectorAll('[aria-label],[title]')].map((e) => e.getAttribute('aria-label') + e.getAttribute('title')).join(' '));
+    ok(`guest on ${d}: M&M's night away is a romantic dinner, no hotel name`, !/in the Green|Pasha/i.test(txt) && (d === 'd09' || d === 'd13' || /Romantic dinner/i.test(txt)), (txt.match(/.{40}(in the Green|Pasha).{40}/i) || [''])[0]);
+  }
+  await g.goto(B + '/japan/'); await g.waitForTimeout(1500);
   await g.tap('#ttBtn'); await g.waitForTimeout(400);
   ok('guest tools are just Photos and Settings', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))) === '["Settings","Photos"]', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))));
   await g.screenshot({ path: SH + 'guest-trip.png' });
