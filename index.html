@@ -903,7 +903,10 @@ const KNOW = {
 const qs = new URLSearchParams(location.search);
 const todayJST = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const tripDay = DAYS.find((d) => d.date === todayJST);
-const ui = SANDBOX ? { dayId: 'd07', who: 'all', sel: null } : { dayId: qs.get('d') || (tripDay ? tripDay.id : DAYS[0].id), who: ls.get('japan2026.whoMix', 'all'), sel: null };
+// the day after the trip, a guest still sees the last day: some of them are flying home overnight
+const dayAfter = (s) => new Date(Date.parse(s + 'T00:00:00Z') + 864e5).toISOString().slice(0, 10), lastDay = DAYS[DAYS.length - 1];
+const homeDay = GUEST && !SANDBOX && !tripDay && todayJST === dayAfter(lastDay.date) ? lastDay : null;
+const ui = SANDBOX ? { dayId: 'd07', who: 'all', sel: null } : { dayId: qs.get('d') || (tripDay || homeDay || DAYS[0]).id, who: ls.get('japan2026.whoMix', 'all'), sel: null };
 let day, events, asides, stops, map, layers = [], pinEls = {}, dialApi = null, stackApi = null, shownDay = null;
 const nowMin = () => { const t = new Date(Date.now() + 9 * 3600e3); return t.getUTCHours() * 60 + t.getUTCMinutes(); };
 
@@ -1079,9 +1082,13 @@ function whereNow(g, m, p, all = allEvents()) {
   return { cur, next, src, live };
 }
 function guestNow() {
-  if (!(GUEST && !SANDBOX) || !isToday()) return '';
-  const m = nowMin(), tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; } })();
-  const all = allEvents(), jp = fmt(m), at = (e) => { const s = span(e); return s ? fmt(s[0]).join(' ') : esc(e.time || ''); };
+  if (!(GUEST && !SANDBOX)) return '';
+  // today, by the clock now (a page can stay open past midnight); or the night after the last day, while anyone is still flying home
+  const date = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), all = allEvents();
+  const homeward = day === lastDay && date === dayAfter(day.date);
+  if (date !== day.date && !(homeward && all.some(flying))) return '';
+  const m = nowMin() + (homeward ? 1440 : 0), tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; } })();
+  const jp = fmt(m % 1440), at = (e) => { const s = span(e); return s ? fmt(s[0]).join(' ') : esc(e.time || ''); };
   const own = new Date(), same = -own.getTimezoneOffset() === 540; // a guest on Japan time needs no second clock
   const youT = own.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }), youD = own.toLocaleDateString('en-GB', { weekday: 'short' });
   const youCity = tz.includes('/') ? tz.split('/').pop().replace(/_/g, ' ') : 'your time';
@@ -1094,7 +1101,7 @@ function guestNow() {
     const how = tracked ? `<span class="flpill ${v.cls}"><i></i>${esc(v.label)}</span>` : x.src === 'air' ? 'In the air, by the flight times' : !x.live && !x.next ? `${src} · last stop: ${esc(e.title)}` : src;
     const k = all.findIndex((y) => y.id === e.id), host = all.slice(0, k + 1).reverse().find((y) => y.place);
     const pi = placeInfo(host && host.place), ib = pi && pi.story ? `<button class="gn-i press" data-gninfo="${e.id}" aria-label="About this place">i</button>` : '';
-    return `<div class="gn-row"><span class="gn-tag" style="--c:${c}">${label}</span><div><b class="gn-t"><i style="--c:${cat.c}"></i>${title}${ib}</b><span class="gn-s">${how}</span>${x.next ? `<span class="gn-nx">Next: ${esc(x.next.title)}, ${at(x.next)}</span>` : ''}</div></div>`;
+    return `<div class="gn-row"><span class="gn-tag" style="--c:${c}">${label}</span><div><b class="gn-t"><i style="--c:${cat.c}"></i>${title}${ib}</b><span class="gn-s">${how}</span>${x.next ? `<span class="gn-nx">Next: ${esc(x.next.title)}${at(x.next) ? ', ' + at(x.next) : ''}</span>` : ''}</div></div>`;
   };
   // a night card only when nobody is in the air (overnight flights say where they are)
   const night = (m >= 23 * 60 || m < 6 * 60) && !all.some(flying);
@@ -2012,7 +2019,8 @@ store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig 
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });
 setInterval(() => { if (dialApi && dialApi.tickNow) dialApi.tickNow(); const g = document.getElementById('gnow');
   // a guest's page left open past midnight in Japan opens on the new day (without ?d=, which pins the old one)
-  if (g && new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) !== todayJST) { location.replace(location.pathname); return; }
+  const nd = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  if (g && nd !== todayJST && DAYS.some((d) => d.date === nd)) { location.replace(location.pathname); return; }
   if (g) g.outerHTML = guestNow(); }, 60000);
 // once a frame at most, when the page is laid out anyway (on every scroll event it could force a layout each time)
 { const sh = document.getElementById('sheet'); let sq = 0; window.addEventListener('scroll', () => { if (!sq) sq = requestAnimationFrame(() => { sq = 0; document.body.classList.toggle('scrolled', sh.getBoundingClientRect().top < 70); }); }, { passive: true }); }

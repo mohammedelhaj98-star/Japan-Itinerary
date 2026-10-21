@@ -848,8 +848,20 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await g.clock.fastForward('09:30:00'); await g.waitForTimeout(1500); gn = await gnow();
   ok('11:30 PM, everyone landed: the night card', /middle of the night/.test(gn), gn);
   await g.clock.fastForward('00:35:00'); await g.waitForTimeout(2500);
-  ok('left open past midnight, the page moves on to day 7', /Day 7 of 17/i.test(await gnow()) && !/[?&]d=/.test(g.url()), g.url());
+  ok('left open past midnight, the page moves on to day 7', /Day 7 of 17/i.test(await gnow()) && /[?&]d=d07/.test(g.url()), g.url());
   ok('no page errors G2', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+// the night after the last day: a guest opening the page sees Day 17 while they fly home, and the card goes once all have landed
+{
+  const G = await phone('2026-11-01T15:30:00Z'); const g = G.page;
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  ok('12:30 AM Nov 2: Day 17, with NASA, Mo and Mariam each in the air', /Day 17 of 17/i.test(gn) && /NASA/.test(gn) && /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 3 && !/middle of the night/.test(gn), gn);
+  await g.clock.fastForward('10:30:00'); await g.waitForTimeout(1500);
+  ok('everyone home: the card goes, and the page stays on Day 17', !(await g.$('#gnow')) && /[?&]d=d17/.test(g.url()), g.url());
+  ok('no page errors G4', !G.errs.length, G.errs.join(' | '));
   await G.ctx.close();
 }
 // a guest who picked the NASA view still sees where M&M are (Oct 23, 6:30 PM: their romantic dinner); and at 2 AM the next
