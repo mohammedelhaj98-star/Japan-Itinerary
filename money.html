@@ -165,7 +165,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .xrow .m .me { color:var(--ink2); font-weight:700; }
 .xrow .r { text-align:right; flex:none; }
 .xrow .r b { display:block; font-family:var(--serif); font-size:20px; font-weight:400; line-height:1.1; }
-.xrow .r small { font-size:12px; color:var(--ink3); }
+.xrow .r small { display:block; font-size:12px; color:var(--ink3); }
 .refund { color:var(--ok-ink); font-weight:700; }
 .new { width:7px; height:7px; border-radius:50%; background:var(--blue); display:inline-block; margin-left:6px; vertical-align:middle; }
 
@@ -191,7 +191,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .cpick { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:6px; font-size:13.5px; color:var(--ink2); min-height:28px; }
 .share { text-align:right; flex:none; }
 .share b { display:block; font-family:var(--serif); font-size:20px; font-weight:400; line-height:1.1; }
-.share small { font-size:12px; color:var(--ink3); }
+.share small { display:block; font-size:12px; color:var(--ink3); }
 .between .tr-m { padding:0; }
 .inlist { margin:0 0 6px 64px; display:grid; gap:2px; font-size:13px; color:var(--ink2); }
 .inlist p { display:flex; justify-content:space-between; gap:10px; }
@@ -753,6 +753,8 @@ const TICK = ico('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
 const WITH = { cash:'Cash', card:'Card', ic:'IC card' };
 const fmtY = (v) => (v < 0 ? '−' : '') + '¥' + NF.format(Math.abs(Math.round(v)));
 const fmtC = (v, c = S.cur) => { const x = Math.abs(v) / RATE[c]; const d = x >= 100 ? 0 : 2; return (v < 0 ? '−' : '') + SYM[c] + (d ? NF2 : NF0).format(x); };
+// an expense in the money you chose in Settings, under its yen: what was typed when it was typed in that money, else converted
+const homeAmt = (x) => (x.orig && x.orig.ccy === S.cur ? (x.yen < 0 ? '−' : '') + SYM[S.cur] + String(x.orig.amt).replace(/^-/, '') : fmtC(x.yen));
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const av = (id, cls = '') => `<span class="av ${cls} ${P[id].photo ? 'ph' : ''}" style="--c:${P[id].c}${P[id].photo ? `;background-image:url('${P[id].photo}')` : ''}" title="${P[id].name}">${P[id].ini}</span>`;
 const uid = () => 'x' + Math.random().toString(36).slice(2, 9);
@@ -1146,7 +1148,7 @@ function listGroup(list) {
     const ml = meLine(x);
     return [x.id, swRow(x.id, `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span>
     <span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}${x.receipt ? `<span class="clip" aria-label="has a receipt">${CLIP}</span>` : ''}${fresh.has(x.title) ? '<i class="new" aria-label="new"></i>' : ''}</b><small>${P[x.payer].name} paid · ${ml || `${splitName(x)}${isOwn(x) ? ' · not shared' : ''}`}${x.nights > 1 ? ` · ${x.nights} nights` : ''}</small></span>
-    <span class="r"><b>${fmtY(x.yen)}</b>${x.orig ? `<small>${SYM[x.orig.ccy]}${x.orig.amt}</small>` : ''}</span></button>`)]; })]), '</div>'];
+    <span class="r"><b>${fmtY(x.yen)}</b><small>${homeAmt(x)}</small>${x.orig && x.orig.ccy !== S.cur && SYM[x.orig.ccy] ? `<small>${SYM[x.orig.ccy]}${x.orig.amt}</small>` : ''}</span></button>`)]; })]), '</div>'];
 }
 
 /* A person's page and a couple's page. The top is a pass in their colour (spent of budget, pace, today);
@@ -1208,7 +1210,7 @@ function renderMine(ids, kind) {
   const list = groupByDay(shown).flatMap(([d, xs]) => [['h:' + d.id, `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>`], ...xs.map((x) => {
     const own = isOwn(x);
     return [x.id, swRow(x.id, `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span><span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}</b><small>${own ? `Only ${P[x.payer].name}` : `${P[x.payer].name} paid · ${splitName(x)}`} · ${WITH[x.with]}</small></span>
-      <span class="share"><b>${fmtY(x.mine)}</b>${own ? '' : `<small>${x.yen < 0 ? `of ${fmtY(-x.yen)} back` : `of ${fmtY(x.yen)}`}</small>`}</span></button>`)]; })]);
+      <span class="share"><b>${fmtY(x.mine)}</b><small>${fmtC(x.mine)}</small>${own ? '' : `<small>${x.yen < 0 ? `of ${fmtY(-x.yen)} back` : `of ${fmtY(x.yen)}`}</small>`}</span></button>`)]; })]);
 
   return [['top', `<div class="top">${viewSeg()}${curSeg()}</div>`], ['hero', hero], ['wallet', wallet], ['pay', `${payments}<p class="sec">Where it went</p>`],
     ['where', '<div class="chart">', [chart, ['types', types]], '</div>'], ['filt', `${filters}\n    `],
