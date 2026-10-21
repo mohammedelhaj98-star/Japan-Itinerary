@@ -779,7 +779,7 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('guest is welcomed as a guest', /Hi there/.test(await g.textContent('#hi')) && /guest/i.test(await g.textContent('#switch')));
   await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
   ok('guest opens the trip without a PIN', /Day/.test(await g.textContent('#dayp')));
-  ok('guest has no stamp or edit buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear')].every((e) => !e.offsetParent)));
+  ok('guest has no stamp, edit or add-a-stop buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear, #addgap')].every((e) => !e.offsetParent)));
   await g.evaluate(() => { const b = document.querySelector('[data-stamp]'); b && b.click(); }); await g.waitForTimeout(500);
   ok('guest tap on stamp does nothing', !Object.keys(JSON.parse(store.get('checks') || '{}')).some((k) => k.startsWith('d07')));
   await g.tap('#ttBtn'); await g.waitForTimeout(400);
