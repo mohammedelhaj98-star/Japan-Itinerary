@@ -2044,9 +2044,9 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   const sp = e.target.closest('[data-step]'); if (sp) { if (!sp.disabled) step(+sp.dataset.step); return; }
   if (swiped) { swiped = false; return; }
   const st = e.target.closest('[data-stamp]'); if (st) { const id = st.dataset.stamp; const was = done(id), wasSk = skipped(id); store.toggleCheck(id);
-    if (was) { stampLift(id, 'st'); return; } if (wasSk) { store.setChoice('sk-' + id, ''); stampLift(id, 'sk'); } stampFx(id, 'st'); return; }
+    if (was) { stampLift(id, 'st'); return; } if (wasSk) { store.setChoice('sk-' + id, ''); stampLift(id, 'sk'); } stampFx(id, 'st'); moveOn(id); return; }
   const skb = e.target.closest('[data-skip]'); if (skb) { const id = skb.dataset.skip; if (skipped(id)) { store.setChoice('sk-' + id, ''); stampLift(id, 'sk'); return; }
-    const wasSt = done(id); store.setChoice('sk-' + id, 'skipped'); if (wasSt) { store.toggleCheck(id); stampLift(id, 'st'); } stampFx(id, 'sk'); return; }
+    const wasSt = done(id); store.setChoice('sk-' + id, 'skipped'); if (wasSt) { store.toggleCheck(id); stampLift(id, 'st'); } stampFx(id, 'sk'); moveOn(id); return; }
   if (e.target.closest('[data-fold]')) { foldDay(); return; }
   if (e.target.closest('[data-reorder]')) { if (!(GUEST && !SANDBOX)) foldDay(true); return; } // guests can look, not change
   if (e.target.closest('[data-orddone]')) { setFold(true, false); return; }
@@ -2102,6 +2102,15 @@ function saveOrder(ids) {
     if (sb && sx && sb[0] === sx[0] && sb[1] === sx[1]) delete times[id]; else times[id] = x;
   }
   store.setCustom('ord-' + day.id, { day: day.id, order, times });
+}
+// Stamped (or skipped) the open stop: once the stamp has landed, open the next stop not done yet, unless you've
+// already moved on yourself. The last stop of the day stays open.
+function moveOn(id) {
+  setTimeout(() => {
+    if (ui.sel !== id || !(done(id) || skipped(id))) return;
+    const i = events.findIndex((x) => x.id === id); const nx = events.slice(i + 1).find((x) => !done(x.id) && !skipped(x.id)); if (!nx) return;
+    stackApi.select(nx.id, { scroll: true }); dialApi.focus(nx.id); focusMap(nx.id);
+  }, RM ? 150 : 900);
 }
 function step(d) { const n = events.length; if (n < 2) return; const i = events.findIndex((x) => x.id === ui.sel); const j = ((i < 0 ? 0 : i + d) % n + n) % n; if (j === i) return; const id = events[j].id; stackApi.select(id, { scroll: true }); dialApi.focus(id); focusMap(id); buzz(4); }
 let swiped = false;
