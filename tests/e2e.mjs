@@ -782,14 +782,17 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('guest has no stamp, edit or add-a-stop buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear, #addgap')].every((e) => !e.offsetParent)));
   await g.evaluate(() => { const b = document.querySelector('[data-stamp]'); b && b.click(); }); await g.waitForTimeout(500);
   ok('guest tap on stamp does nothing', !Object.keys(JSON.parse(store.get('checks') || '{}')).some((k) => k.startsWith('d07')));
+  // following along from home: where everyone is right now (4 PM in Japan on day 7: all four in Shinsaibashi), Japan time and their own
+  const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  ok('guest sees Right now: all four at Shinsaibashi, Japan time and their own', /Right now · Day 7 of 17/i.test(gn) && /ALL FOUR/.test(gn) && /Shinsaibashi/.test(gn) && /4:00\s*PM/.test(gn) && /Japan time/.test(gn) && /for you/.test(gn) && /Next: Amerika-mura/.test(gn), gn);
+  ok('guest has no Directions, phrases or ¥ kit', await g.evaluate(() => [...document.querySelectorAll('.a-dir, .say, #kitbtn')].every((e) => !e.offsetParent)));
   await g.tap('#ttBtn'); await g.waitForTimeout(400);
-  ok('guest tools have no Expenses', !(await g.$('.tt-opt[href$="money"]')) && !!(await g.$('.tt-opt[href$="v=2"]')));
+  ok('guest tools are just Photos and Settings', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))) === '["Settings","Photos"]', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))));
   await g.screenshot({ path: SH + 'guest-trip.png' });
-  await g.goto(B + '/japan/prototypes/tools?v=1'); await g.waitForTimeout(1500);
-  ok('guest asking for expenses gets Bookings', /Booked & to book/.test(await g.textContent('#page')) && await g.$eval('.proto-picker-item', (e) => e.hidden));
-  ok('guest cannot mark bookings', !(await g.$('[data-bkmark]')));
-  await g.goto(B + '/japan/prototypes/tools?v=4'); await g.waitForTimeout(1500);
-  ok('guest sees ideas but cannot post', /Chibo Diversity/.test(await g.textContent('#page')) && !(await g.$('#sg-text')) && await g.$eval('[data-vote]', (e) => e.disabled));
+  for (const v of [1, 2, 3, 4]) {
+    await g.goto(B + '/japan/prototypes/tools?v=' + v); await g.waitForTimeout(1200);
+    ok(`guest asking for tab ${v} (Expenses, Bookings, Shopping, Ideas) gets Settings`, /You &(amp;)? the trip/.test(await g.textContent('#page')) && (await g.$$eval('.proto-picker-item', (els) => els.map((e) => e.hidden).join())) === 'true,true,true,true,false' && !(await g.$('[data-bkmark]')));
+  }
   await g.goto(B + '/japan/prototypes/tools?v=5'); await g.waitForTimeout(1500);
   ok('guest settings say guest', /Guest/.test(await g.textContent('.me')) && !(await g.$('[data-pcolor]')) && !/Show money in/.test(await g.textContent('#page')));
   await g.screenshot({ path: SH + 'guest-settings.png', fullPage: true });

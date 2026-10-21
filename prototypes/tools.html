@@ -1345,7 +1345,7 @@ function draw() {
   if (scrollY !== y) window.scrollTo(0, y); // only if it moved: scrolling to where it already is would stop a flick
 }
 // money has its own page now: the old Expenses tab sends you there
-function setTab(i) { if (VIEW && i === 0) i = 1;
+function setTab(i) { if (VIEW && i < 4) i = 4; // guests get Settings: Expenses, Bookings, Shopping and Ideas are the four's
   if (i === 0) { const q = new URLSearchParams(location.search), a = q.get('add') ? `?add=1${q.get('d') ? '&d=' + q.get('d') : ''}` : ''; location.replace('../money' + a); return; }
   if (i !== 4 && sub) { sub = ''; const u0 = new URL(location); u0.searchParams.delete('p'); history.replaceState(null, '', u0); } tab = i; items.forEach((el, j) => el.toggleAttribute('data-active', j === i)); const el = items[i]; hl.style.width = el.offsetWidth + 'px'; hl.style.transform = `translateX(${el.offsetLeft}px)`; const u = new URL(location); u.searchParams.set('v', i + 1); history.replaceState(null, '', u); window.scrollTo(0, 0); render(); }
 items.forEach((el, i) => el.addEventListener('click', () => { if (i === 0) location.href = '../money'; else setTab(i); }));
@@ -1432,7 +1432,7 @@ page.addEventListener('change', async (e) => {
   if (e.target.id === 'pf-photo' && P[ME] && e.target.files && e.target.files[0]) { const msg = document.getElementById('pf-msg'); if (msg) say(msg, 'Uploading…'); try { const d = await squarePhoto(e.target.files[0]); await store.setProfile(ME, { photo: d }, d); render(); } catch (err) { if (msg) say(msg, err.message); } return; }
  if (e.target.id === 'f-where') { if (e.target.value === 'My location') return; fd.here = null; fd.where = e.target.value; ls.set('proto.fwhere', fd.where); searchFood(); } });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeSheet(); driver.classList.remove('on'); } });
-if (VIEW) { items[0].hidden = true; document.body.classList.add('guest'); }
+if (VIEW) { items.slice(0, 4).forEach((el) => { el.hidden = true; }); document.body.classList.add('guest'); }
 setTab(tab); requestAnimationFrame(() => picker.setAttribute('data-ready', ''));
 if (tab === 2) setTimeout(syncAlerts, 1500);
 // The ¥ button on the trip lands here with ?add=1&d=<day>: straight into a new expense for that day.
