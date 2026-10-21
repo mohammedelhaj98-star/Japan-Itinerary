@@ -797,16 +797,50 @@ await C.page.tap('#ttBtn'); await C.page.waitForTimeout(400); ok('tools bubble o
 await C.page.waitForTimeout(400);
 ok('tools bubble shows the card colours', await C.page.$eval('.tt-key', (e) => getComputedStyle(e).opacity === '1' && /Sight/.test(e.textContent) && /Ticket/.test(e.textContent)));
 await C.page.screenshot({ path: SH + 'tt-key.png' });
-// one-handed way home: from the trip to Ideas and back again
+// one menu on every page (js/nav.js): from the trip to Ideas, Shopping, Expenses and Photos, then back to the trip, on the same day
+const C_DAY = new URL(C.page.url()).searchParams.get('d');
 const hl0 = await C.page.evaluate(() => history.length);
+const navLabels = (pg) => pg.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()));
+const navHere = (pg) => pg.$eval('.tt-opt.tt-here', (e) => e.dataset.k).catch(() => null);
+const navTap = async (pg, k) => { await pg.tap('#ttBtn'); await pg.waitForTimeout(400); await pg.tap(`.tt-opt[data-k="${k}"]`); };
+ok('the + menu has every page, Phrases and Help', JSON.stringify(await navLabels(C.page)) === '["Settings","Help · 110 / 119","Phrases","Shopping","Bookings","Ideas","Photos","Expenses"]', JSON.stringify(await navLabels(C.page)));
 await C.page.tap('.tt-opt[href$="v=4"]'); await C.page.waitForURL(/tools\?v=4/); await C.page.waitForTimeout(1200);
-ok('Ideas tab named Ideas', /Ideas/.test(await C.page.textContent('.proto-picker-item[data-active]')));
-const hb = await C.page.$eval('.homefab', (e) => { const r = e.getBoundingClientRect(); return [r.right, r.bottom, innerWidth, innerHeight]; });
-ok('home button sits low on the right', hb[0] > hb[2] - 40 && hb[1] > hb[3] - 160, hb.join());
-await C.page.screenshot({ path: SH + 'homefab.png' });
-await C.page.tap('.homefab'); await C.page.waitForURL((u) => !/tools/.test(u.toString())); await C.page.waitForTimeout(1500);
-ok('home button goes back to the trip', /\/japan\/(\?|$)/.test(C.page.url()) && /Day/.test(await C.page.textContent('#dayp')));
+ok('Ideas opens with the same + menu, Ideas marked and the trip in it', (await navHere(C.page)) === 'ideas' && (await navLabels(C.page)).at(-1) === 'Trip' && !(await C.page.$('.proto-picker, .homefab')));
+const plusAt = await C.page.$eval('#ttBtn', (e) => { const r = e.getBoundingClientRect(); return [r.right, r.bottom, innerWidth, innerHeight]; });
+ok('the + sits low on the right, as on the trip', plusAt[0] > plusAt[2] - 40 && plusAt[1] > plusAt[3] - 100, plusAt.join());
+await navTap(C.page, 'shopping'); await C.page.waitForTimeout(600);
+ok('Shopping switches in place', /tools\?v=3/.test(C.page.url()) && (await navHere(C.page)) === 'shopping' && (await C.page.evaluate(() => history.length)) === hl0 + 1);
+await navTap(C.page, 'money'); await C.page.waitForURL(/\/money/); await C.page.waitForTimeout(1200);
+ok('Expenses replaces the page instead of stacking it', (await navHere(C.page)) === 'money' && (await C.page.evaluate(() => history.length)) === hl0 + 1);
+await navTap(C.page, 'photos'); await C.page.waitForURL(/\/photos/); await C.page.waitForTimeout(1200);
+ok('so does Photos', (await navHere(C.page)) === 'photos' && (await C.page.evaluate(() => history.length)) === hl0 + 1);
+await C.page.screenshot({ path: SH + 'nav-photos.png' });
+await C.page.tap('.tback'); await C.page.waitForURL((u) => /\/japan\/(\?|$)/.test(u.toString())); await C.page.waitForTimeout(1500);
+ok('‹ Trip goes back to the trip, on the day it showed', new URL(C.page.url()).searchParams.get('d') === C_DAY && /Day/.test(await C.page.textContent('#dayp')));
 ok('it went back in history (no new page)', (await C.page.evaluate(() => history.length)) === hl0 + 1);
+// Help from another page: back to the trip with the emergency numbers open
+await navTap(C.page, 'bookings'); await C.page.waitForURL(/tools\?v=2/); await C.page.waitForTimeout(1000);
+await navTap(C.page, 'sos'); await C.page.waitForURL((u) => /\/japan\/(\?|$)/.test(u.toString())); await C.page.waitForTimeout(1200);
+ok('Help on another page opens the trip on the emergency numbers', /110/.test(await C.page.textContent('#kitb')) && /Police/.test(await C.page.textContent('#kitb')) && (await C.page.evaluate(() => history.length)) === hl0 + 1);
+await C.page.evaluate(() => document.getElementById('scrim').click()); await C.page.waitForTimeout(500);
+// another day: one tap back to today
+ok('no Back to today on today', await C.page.$eval('#todayb', (e) => e.hidden));
+await C.page.tap('#next'); await C.page.waitForTimeout(600);
+ok('Back to today shows on another day', await C.page.$eval('#todayb', (e) => !e.hidden));
+await C.page.screenshot({ path: SH + 'back-to-today.png' });
+await C.page.tap('#todayb'); await C.page.waitForTimeout(800);
+ok('and takes you back to today', new URL(C.page.url()).searchParams.get('d') === 'd07' && await C.page.$eval('#todayb', (e) => e.hidden));
+// swipe the day bar sideways to change day; a plain tap still opens the calendar
+const swipeDay = async (dist) => { const b = await C.page.$eval('#dayp', (e) => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }); await C.page.mouse.move(b[0], b[1]); await C.page.mouse.down(); await C.page.mouse.move(b[0] + dist, b[1] + 3, { steps: 8 }); await C.page.mouse.up(); await C.page.waitForTimeout(700); };
+await swipeDay(-110);
+ok('swiping the day bar left goes to the next day', new URL(C.page.url()).searchParams.get('d') === 'd08' && !(await C.page.$eval('#cal', (e) => e.classList.contains('on'))));
+await swipeDay(110);
+ok('and right goes back', new URL(C.page.url()).searchParams.get('d') === 'd07' && !(await C.page.$eval('#cal', (e) => e.classList.contains('on'))));
+await swipeDay(-20);
+ok('a short drag stays on the day', new URL(C.page.url()).searchParams.get('d') === 'd07');
+await C.page.tap('#dayp'); await C.page.waitForTimeout(500);
+ok('a tap on the day bar still opens the calendar', await C.page.$eval('#cal', (e) => e.classList.contains('on')));
+await C.page.tap('#calbg', { force: true }); await C.page.waitForTimeout(400);
 
 // guest: sees the trip, changes nothing, no money
 {
@@ -836,7 +870,7 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   await g.screenshot({ path: SH + 'guest-trip.png' });
   for (const v of [1, 2, 3, 4]) {
     await g.goto(B + '/japan/prototypes/tools?v=' + v); await g.waitForTimeout(1200);
-    ok(`guest asking for tab ${v} (Expenses, Bookings, Shopping, Ideas) gets Settings`, /You &(amp;)? the trip/.test(await g.textContent('#page')) && (await g.$$eval('.proto-picker-item', (els) => els.map((e) => e.hidden).join())) === 'true,true,true,true,false' && !(await g.$('[data-bkmark]')));
+    ok(`guest asking for tab ${v} (Expenses, Bookings, Shopping, Ideas) gets Settings`, /You &(amp;)? the trip/.test(await g.textContent('#page')) && JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))) === '["Settings","Photos","Trip"]' && (await g.$eval('.tt-opt.tt-here', (e) => e.dataset.k)) === 'settings' && !(await g.$('[data-bkmark]')));
   }
   await g.goto(B + '/japan/prototypes/tools?v=5'); await g.waitForTimeout(1500);
   ok('guest settings say guest', /Guest/.test(await g.textContent('.me')) && !(await g.$('[data-pcolor]')) && !/Show money in/.test(await g.textContent('#page')));

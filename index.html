@@ -27,7 +27,7 @@ try { if (JSON.parse(localStorage.getItem('trips.me') || 'null') === 'guest' && 
 <link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
 <!-- the page's own code, fetched while the page is still arriving (the imports at the bottom are only found once it has) -->
 <link rel="modulepreload" href='./data/itinerary.js?v=9'><link rel="modulepreload" href='./data/places.js?v=9'><link rel="modulepreload" href='./js/store.js?v=9'>
-<link rel="modulepreload" href='./js/offline.js?v=9'><link rel="modulepreload" href='./js/tour.js?v=9'><link rel="modulepreload" href='./js/colors.js?v=9'>
+<link rel="modulepreload" href='./js/offline.js?v=9'><link rel="modulepreload" href='./js/tour.js?v=9'><link rel="modulepreload" href='./js/colors.js?v=9'><link rel="modulepreload" href='./js/nav.js?v=9'>
 <style>
 @font-face { font-family:'Zen Kaku'; font-weight:400; font-display:swap; src:url(./vendor/fonts/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'); }
 @font-face { font-family:'Zen Kaku'; font-weight:500; font-display:swap; src:url(./vendor/fonts/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'); }
@@ -116,8 +116,13 @@ html.gv .sheet { background:var(--paper); -webkit-backdrop-filter:none; backdrop
 .unsynced.ok { opacity:1; visibility:visible; transform:translate3d(-50%,0,0); transition-delay:0s; background:#e3f4e8; color:#1f7a45; }
 .tb { height:48px; min-width:48px; border-radius:24px; display:grid; place-items:center; }
 .tb:disabled { opacity:.35; }
-.dayp { flex:1 1 0; width:0; min-width:0; overflow:hidden; max-width:250px; padding:6px 16px; text-align:center; line-height:1.15; display:block; }
+.dayp { flex:1 1 0; width:0; min-width:0; overflow:hidden; max-width:250px; padding:6px 16px; text-align:center; line-height:1.15; display:block; touch-action:pan-y; }
 .dayp small { display:block; font-size:11.5px; color:var(--ink3); font-weight:500; }
+/* on any other day: one tap back to today, right where you'd look for it (under the day bar) */
+.backtoday { position:absolute; top:56px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:5px; height:32px; padding:0 13px 0 10px; border-radius:999px; font-size:13px; font-weight:700; color:var(--red); white-space:nowrap; animation:todayIn 260ms var(--ease); }
+.backtoday[hidden] { display:none; }
+@keyframes todayIn { from { opacity:0; transform:translate(-50%,-6px) scale(.94); } }
+@media (prefers-reduced-motion: reduce) { .backtoday { animation:none; } }
 /* mini calendar from the day bar */
 .cal-bg { position:fixed; inset:0; z-index:940; background:rgba(20,16,10,.18); opacity:0; pointer-events:none; transition:opacity 180ms ease; }
 .cal-bg.on { opacity:1; pointer-events:auto; }
@@ -731,21 +736,12 @@ body.reordering .tt { display:none; } /* the + buttons would sit over the handle
 }
 
 /* trip tools bubble */
-.tt { transition:transform 320ms var(--ease); position:fixed; right:max(16px, calc(50% - 214px)); bottom:calc(18px + env(safe-area-inset-bottom)); z-index:890; display:flex; flex-direction:column; align-items:flex-end; gap:10px; pointer-events:none; }
-.tt-btn { pointer-events:auto; width:54px; height:54px; border-radius:50%; display:grid; place-items:center; color:#fff; background:rgba(20,20,18,.86); -webkit-backdrop-filter:blur(14px) saturate(1.5); backdrop-filter:blur(14px) saturate(1.5); box-shadow:0 0 0 1px rgba(255,255,255,.1) inset, 0 10px 26px -8px rgba(0,0,0,.5); transition:transform 220ms var(--ease); -webkit-tap-highlight-color:transparent; }
-.tt-btn:active { transform:scale(.92); }
-.tt-btn svg { transition:transform 260ms var(--ease); }
-.tt.open .tt-btn svg { transform:rotate(135deg); }
 /* ¥+ : one tap from the plan to a new expense (hidden while the tools are open, and for guests) */
 .tt-quick { pointer-events:auto; width:46px; height:46px; margin-right:4px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink); font-size:18px; font-weight:700; text-decoration:none; background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); box-shadow:0 10px 26px -10px rgba(0,0,0,.4), 0 0 0 1px var(--line); transition:transform 220ms var(--ease), opacity 160ms ease; -webkit-tap-highlight-color:transparent; }
 .tt-quick b { font-size:12px; margin:-8px 0 0 1px; }
 .tt-quick:active { transform:scale(.92); }
 .tt.open .tt-quick { display:none; }
 body.guest .tt-quick { display:none; }
-.tt-opt { pointer-events:none; display:flex; align-items:center; gap:10px; height:46px; padding:0 18px 0 8px; border-radius:999px; background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); color:var(--ink); font-size:15px; font-weight:700; text-decoration:none; box-shadow:0 10px 30px -10px rgba(0,0,0,.35), 0 0 0 1px var(--line); opacity:0; transform:translate3d(0,14px,0) scale(.9); transform-origin:right center; transition:opacity 160ms ease, transform 260ms var(--ease); -webkit-tap-highlight-color:transparent; }
-.tt-opt i { width:32px; height:32px; border-radius:50%; display:grid; place-items:center; background:var(--ink); color:#fff; font-style:normal; }
-.tt.open .tt-opt { pointer-events:auto; opacity:1; transform:none; }
-.tt.open .tt-opt:nth-of-type(6) { transition-delay:0ms; } .tt.open .tt-opt:nth-of-type(5) { transition-delay:12ms; } .tt.open .tt-opt:nth-of-type(4) { transition-delay:25ms; } .tt.open .tt-opt:nth-of-type(3) { transition-delay:50ms; } .tt.open .tt-opt:nth-of-type(2) { transition-delay:75ms; } .tt.open .tt-opt:nth-of-type(1) { transition-delay:100ms; }
 /* the card colours at a glance, on top of the tools */
 .tt-key { pointer-events:none; width:226px; padding:11px 14px 12px; border-radius:20px; background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); color:var(--ink); box-shadow:0 10px 30px -10px rgba(0,0,0,.35), 0 0 0 1px var(--line); opacity:0; transform:translate3d(0,14px,0) scale(.9); transform-origin:right bottom; transition:opacity 160ms ease, transform 260ms var(--ease); }
 .tt.open .tt-key { pointer-events:auto; opacity:1; transform:none; transition-delay:125ms; }
@@ -755,11 +751,8 @@ body.guest .tt-quick { display:none; }
 .tt-key i { width:12px; height:12px; flex:none; border-radius:4px; background:var(--c); }
 .tt-key .tk { grid-column:1 / -1; }
 .tt-key .tk i { width:16px; height:7px; border-radius:2px; }
-@media (max-height: 620px) { .tt-key { display:none; } } /* short phones: room for the six tools first */
-.tt-opt:active { transform:scale(.96); }
-.tt-veil { position:fixed; inset:0; z-index:885; background:rgba(20,16,10,.18); opacity:0; pointer-events:none; transition:opacity 200ms ease; }
-.tt-veil.on { opacity:1; pointer-events:auto; }
-@media (prefers-reduced-motion: reduce) { .tt-key, .tt-opt, .tt-btn svg { transition:opacity 120ms ease; transform:none !important; } }
+@media (max-height: 780px) { .tt-key { display:none; } } /* shorter phones: room for the pages first */
+@media (prefers-reduced-motion: reduce) { .tt-key { transition:opacity 120ms ease; transform:none !important; } }
 </style>
 </head>
 <body>
@@ -770,6 +763,7 @@ body.guest .tt-quick { display:none; }
   <button class="tb glass dayp press" id="dayp" aria-haspopup="dialog" aria-expanded="false"><small id="dayp-s"></small><b id="dayp-b"></b></button>
   <button class="tb glass press" id="next" aria-label="Next day"></button>
   <button class="tb glass press yen" id="kitbtn" aria-label="Currency and travel kit">¥</button>
+  <button class="backtoday glass press" id="todayb" hidden><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg>Back to today</button>
 </div>
 <div class="unsynced" id="unsynced" role="status" aria-live="polite"></div>
 <div class="wrap"><div class="spacer"></div><main class="sheet" id="sheet"></main></div>
@@ -791,6 +785,7 @@ import { offline } from './js/offline.js?v=9';
 import { runTour } from './js/tour.js?v=9';
 import { CAT, MODE } from './js/colors.js?v=9';
 import { forGuests } from './js/guest.js?v=9';
+import { mountNav } from './js/nav.js?v=9';
 if (GUEST && !SANDBOX) forGuests(DAYS); // M&M's nights away read as a romantic dinner for guests
 
 /* ═══ motion engine: interruptible springs (Apple response/damping) ═══ */
@@ -1079,6 +1074,7 @@ function renderTop(enter) {
   const dt = new Date(day.date + 'T00:00:00');
   document.getElementById('dayp-s').textContent = `Day ${day.n} · ${dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`;
   document.getElementById('dayp-b').textContent = day.title;
+  document.getElementById('todayb').hidden = !tripDay || isToday();
   // the day bar's title slides the same way as the day below it
   if (!RM && (enter === 'fwd' || enter === 'back')) { const dx = enter === 'fwd' ? 12 : -12; ['dayp-s', 'dayp-b'].forEach((id, k) => document.getElementById(id).animate([{ opacity: 0, transform: `translateX(${dx}px)` }, { opacity: 1, transform: 'none' }], { duration: 260, delay: k * 20, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'backwards' })); }
 }
@@ -1999,6 +1995,15 @@ function renderDay({ keepScroll, keepSel, selId } = {}) {
 function go(delta) { let i = DAYS.indexOf(day) + delta; while (i >= 0 && i < DAYS.length && !hasEvents(DAYS[i])) i += delta; if (i < 0 || i >= DAYS.length) return; ui.dayId = DAYS[i].id; renderDay(); }
 document.getElementById('prev').addEventListener('click', () => go(-1));
 document.getElementById('next').addEventListener('click', () => go(1));
+// Swipe the day bar sideways for the next or previous day (a tap still opens the calendar): the title follows the finger.
+{ const bar = document.getElementById('dayp'); let x0 = 0, y0 = 0, dx = 0, on = false, swiped = false;
+  const inner = () => [document.getElementById('dayp-s'), document.getElementById('dayp-b')];
+  const follow = (x) => inner().forEach((el) => { el.style.transform = x ? `translateX(${x}px)` : ''; el.style.opacity = x ? String(Math.max(0.35, 1 - Math.abs(x) / 160)) : ''; });
+  bar.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; dx = 0; on = true; swiped = false; });
+  bar.addEventListener('pointermove', (e) => { if (!on) return; dx = e.clientX - x0; if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(e.clientY - y0)) return; swiped = true; try { bar.setPointerCapture(e.pointerId); } catch {} follow(Math.max(-60, Math.min(60, dx * 0.5))); });
+  const end = () => { if (!on) return; on = false; follow(0); if (swiped && Math.abs(dx) > 40) { go(dx < 0 ? 1 : -1); buzz(); } };
+  bar.addEventListener('pointerup', end); bar.addEventListener('pointercancel', () => { on = false; follow(0); });
+  bar.addEventListener('click', (e) => { if (swiped) { swiped = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true); }
 /* ═══ mini calendar: tap the day bar, jump to any day ═══ */
 const CITY_C = { Tokyo: '#2c4f86', Hakone: '#2f9e57', Kyoto: '#b94b74', Osaka: '#d7731a' };
 const cal = document.getElementById('cal'), calBg = document.getElementById('calbg');
@@ -2028,6 +2033,7 @@ cal.addEventListener('click', (e) => {
   if (!go2) return; calOpen(false); if (go2 !== day.id) { ui.dayId = go2; renderDay(); buzz(6); }
 });
 document.getElementById('kitbtn').addEventListener('click', openKit);
+document.getElementById('todayb').addEventListener('click', recenterNow);
 document.getElementById('dd').addEventListener('click', (e) => {
   if (e.target.closest('#nowb')) { recenterNow(); return; }
   if (e.target.closest('#gear')) { openSettings(); return; }
@@ -2197,6 +2203,19 @@ const mapMax = (() => {
 })();
 buildMap(); renderDay(); store.start().finally(() => (synced = true)); refreshFx(); drawer.init();
 requestAnimationFrame(() => { if (!NOMAP) drawnMap(); }); // after the first paint of the plan (guests have no map: no map library, no MapTiler quota)
+// The + bubble: every page of the trip (js/nav.js, the same on every page), Phrases and Help open the travel kit here.
+const navApi = mountNav({ here: 'trip', guest: GUEST && !SANDBOX, onKit: (k) => { kit.tab = k; openKit(); } });
+{ const q = document.createElement('a'); q.className = 'tt-quick'; q.id = 'quickex'; q.href = 'money?add=1'; q.setAttribute('aria-label', 'Add an expense'); q.innerHTML = '¥<b>+</b>';
+  navApi.btn.before(q); }
+// Float up out of the way when the open pass's arrows pass under the bubble.
+{ const tb = navApi.el, btn = navApi.btn; let raf = 0;
+  const dodge = () => { raf = 0; const nb = document.querySelector('.pass.open .pnav [data-step="1"]'); let dy = 0;
+    if (nb && !tb.classList.contains('open')) { const r = nb.getBoundingClientRect(), b = btn.getBoundingClientRect(); const base = b.top - (parseFloat(tb.dataset.dy) || 0), bottom = base + b.height;
+      if (r.bottom + 8 > base && r.top - 8 < bottom && r.right > b.left - 8) dy = -(bottom - r.top + 12); }
+    tb.dataset.dy = dy; tb.style.transform = dy ? `translate3d(0,${dy}px,0)` : ''; };
+  const q = () => { if (!raf) raf = requestAnimationFrame(dodge); };
+  addEventListener('scroll', q, { passive: true }); addEventListener('resize', q);
+  document.addEventListener('click', () => setTimeout(q, 450)); setInterval(q, 800); q(); }
 // The card colour key sits on top of the tools bubble, so nobody has to go to Settings to remember it.
 { const key = document.createElement('div'); key.className = 'tt-key'; key.setAttribute('aria-label', 'Card colours');
   key.innerHTML = `<b>Card colours</b><span class="g">${keyItems(true)}</span>`;
@@ -2218,8 +2237,7 @@ store.subscribe(() => { if (store.mode === 'locked' && navigator.onLine) locatio
 // Guests look but don't touch: no stamping, editing, adding stops or making choices (the practice tour still lets them try).
 if (GUEST && !SANDBOX) {
   document.body.classList.add('guest');
-  // the money stays between the four of us, and the planning pages (Shopping, Bookings, Ideas) aren't for guests: Photos and Settings stay
-  document.querySelectorAll('.tt-opt[href$="money"], .tt-opt[href$="v=2"], .tt-opt[href$="v=3"], .tt-opt[href$="v=4"]').forEach((o) => o.remove());
+  // (the + bubble leaves out the money and the planning pages for guests: see mountNav)
   document.addEventListener('click', (e) => { if (e.target.closest('[data-stamp], [data-edit], [data-addend], [data-choice], #gear, #addgap, [data-sadd], [data-sedit]')) { e.preventDefault(); e.stopPropagation(); } }, true);
 }
 window.__tourEnv = {
@@ -2236,36 +2254,6 @@ function saveAhead() {
   if (urls.size) navigator.serviceWorker.ready.then((reg) => reg.active && reg.active.postMessage({ type: 'precache', urls: [...urls] })).catch(() => {});
 }
 setTimeout(saveAhead, 4000);
-</script>
-<div class="tt-veil" id="ttVeil"></div>
-<nav class="tt" id="tt" aria-label="Trip tools">
-  <a class="tt-opt" href="prototypes/tools?v=5"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.6 4-5.4 7-5.4s5.8 1.8 7 5.4"/></svg></i><span>Settings</span></a>
-  <a class="tt-opt" href="prototypes/tools?v=3"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 016 0v2"/></svg></i><span>Shopping</span></a>
-  <a class="tt-opt" href="prototypes/tools?v=2"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/></svg></i><span>Bookings</span></a>
-  <a class="tt-opt" href="prototypes/tools?v=4"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0012 3z"/></svg></i><span>Ideas</span></a>
-  <a class="tt-opt" href="photos"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 016.5 6h1.7l1.5-2h4.6l1.5 2h1.7A2.5 2.5 0 0120 8.5v8a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5z"/><circle cx="12" cy="12.5" r="3.4"/></svg></i><span>Photos</span></a>
-  <a class="tt-opt" href="money"><i><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 4l5 7 5-7M12 11v9M7 12h10M7 16h10"/></svg></i><span>Expenses</span></a>
-  <a class="tt-quick" id="quickex" href="money?add=1" aria-label="Add an expense">¥<b>+</b></a>
-  <button class="tt-btn" id="ttBtn" aria-expanded="false" aria-label="Trip tools"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-</nav>
-<script>
-(() => {
-  const tb = document.getElementById('tt'), btn = document.getElementById('ttBtn'), veil = document.getElementById('ttVeil');
-  const set = (on) => { tb.classList.toggle('open', on); veil.classList.toggle('on', on); btn.setAttribute('aria-expanded', String(on)); };
-  btn.addEventListener('click', () => set(!tb.classList.contains('open')));
-  veil.addEventListener('click', () => set(false));
-  addEventListener('keydown', (e) => { if (e.key === 'Escape') set(false); });
-  addEventListener('pageshow', () => set(false));
-  // Float up out of the way when the open pass's arrows pass under the bubble.
-  let raf = 0;
-  const dodge = () => { raf = 0; const nb = document.querySelector('.pass.open .pnav [data-step="1"]'); let dy = 0;
-    if (nb && !tb.classList.contains('open')) { const r = nb.getBoundingClientRect(), b = btn.getBoundingClientRect(); const base = b.top - (parseFloat(tb.dataset.dy) || 0), bottom = base + b.height;
-      if (r.bottom + 8 > base && r.top - 8 < bottom && r.right > b.left - 8) dy = -(bottom - r.top + 12); }
-    tb.dataset.dy = dy; tb.style.transform = dy ? `translate3d(0,${dy}px,0)` : ''; };
-  const q = () => { if (!raf) raf = requestAnimationFrame(dodge); };
-  addEventListener('scroll', q, { passive: true }); addEventListener('resize', q);
-  document.addEventListener('click', () => setTimeout(q, 450)); setInterval(q, 800); q();
-})();
 </script>
 <script>if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>
