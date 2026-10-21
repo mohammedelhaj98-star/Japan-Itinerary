@@ -244,7 +244,9 @@ document.addEventListener('click', (e) => {
 addEventListener('keydown', (e) => { if (!$('#s-pin').classList.contains('on')) return; if (/^[0-9]$/.test(e.key)) key(e.key); else if (e.key === 'Backspace') key('del'); });
 
 const meNow = ls.get('trips.me');
-if (new URLSearchParams(location.search).has('switch')) renderWho();
+// the "Share with family" link (/?guest=1&next=japan): straight into the trip as a guest, unless this phone is one of the four
+if (new URLSearchParams(location.search).has('guest') && !byId[meNow]) { try { localStorage.removeItem('trips.pin'); } catch {} choose('guest'); }
+else if (new URLSearchParams(location.search).has('switch')) renderWho();
 else if (byId[meNow] && !hasPin()) showPin(meNow); // one of the four on a phone that hasn't had the PIN yet
 else if (byId[meNow] || meNow === 'guest') renderTrips();
 else renderWho();

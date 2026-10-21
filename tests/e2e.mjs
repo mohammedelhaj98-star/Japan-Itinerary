@@ -863,6 +863,28 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('no page errors G2', !G.errs.length, G.errs.join(' | '));
   await G.ctx.close();
 }
+// "Share with family": the link opens the trip straight in the guest view, with no map or day-dial drawer; the four keep theirs
+{
+  const G = await phone('2026-10-22T07:00:00Z'); const g = G.page;
+  await g.goto(B + '/?guest=1&next=japan'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  ok('the family link opens the trip as a guest', (await g.evaluate(() => localStorage.getItem('trips.me'))) === '"guest"' && !!(await g.$('#gnow')));
+  ok('guests get no map and no day-dial drawer', await g.evaluate(() => !document.getElementById('map').offsetParent && !document.getElementById('ddtab').offsetParent && !document.querySelector('.dd-in').offsetParent));
+  ok('…and the day starts just under the top bar', await g.evaluate(() => document.getElementById('sheet').getBoundingClientRect().top < 140));
+  await g.goto(B + '/japan/prototypes/tools?v=5'); await g.waitForTimeout(1500);
+  await g.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: B });
+  // no share sheet here: the link is copied
+  await g.evaluate(() => Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })); await g.tap('[data-share]'); await g.waitForTimeout(600);
+  ok('Settings has Share with family, which copies the guest link', /Link copied/.test(await g.textContent('#sh-msg')) && /\/\?guest=1&next=japan$/.test(await g.evaluate(() => navigator.clipboard.readText())), await g.textContent('#sh-msg'));
+  ok('no page errors G5', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+{
+  const M = await phone(); const m = M.page;
+  await m.goto(B + '/'); await m.evaluate(() => { localStorage.setItem('trips.me', '"m"'); localStorage.setItem('trips.pin', '"' + 'x' + '"'); });
+  await m.goto(B + '/?guest=1&next=japan'); await m.waitForTimeout(1200);
+  ok('the family link on one of the four phones keeps them who they are', (await m.evaluate(() => localStorage.getItem('trips.me'))) === '"m"');
+  await M.ctx.close();
+}
 // the night after the last day: a guest opening the page sees Day 17 while they fly home, and the card goes once all have landed
 {
   const G = await phone('2026-11-01T15:30:00Z'); const g = G.page;

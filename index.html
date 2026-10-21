@@ -9,6 +9,8 @@
 try { if (/^\/japan(\/|$)/.test(location.pathname)) { var me0 = JSON.parse(localStorage.getItem('trips.me') || 'null'); if (!me0 || (me0 !== 'guest' && !localStorage.getItem('trips.pin') && navigator.onLine && !/[?&]tour=1/.test(location.search) && sessionStorage.getItem('tour.on') !== '1')) location.replace('/?next=japan'); } } catch (e) {}
 // ?tour=1 (from Settings) starts the practice tour: practice mode on, step 1, and a fresh practice copy.
 try { var tq = new URLSearchParams(location.search); if (tq.get('tour') === '1') { sessionStorage.setItem('tour.on', '1'); sessionStorage.setItem('tour.step', '0'); sessionStorage.removeItem('tour.state'); tq.delete('tour'); history.replaceState(null, '', location.pathname + (tq.toString() ? '?' + tq : '')); } } catch (e) {}
+// a guest (family following along) gets the plan without the map or the day-dial drawer
+try { if (JSON.parse(localStorage.getItem('trips.me') || 'null') === 'guest' && sessionStorage.getItem('tour.on') !== '1') document.documentElement.classList.add('gv'); } catch (e) {}
 </script>
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -76,6 +78,10 @@ body.guest [data-stamp], body.guest [data-edit], body.guest [data-addend], body.
 body.guest [data-choice] { pointer-events:none; }
 /* guests follow along from home: no buttons that only help in Japan (directions, phrases, the ¥ kit) */
 body.guest .a-dir, body.guest .say, body.guest #kitbtn { display:none !important; }
+/* guests: no map, no day-dial drawer; the day starts under the top bar */
+html.gv #map, html.gv .dd, html.gv .dd-scrim, html.gv .sheet .grab, html.gv .mapmax-hint { display:none !important; }
+html.gv body { background:var(--paper); } html.gv .spacer { height:calc(var(--top) + 58px); }
+html.gv .sheet { background:var(--paper); -webkit-backdrop-filter:none; backdrop-filter:none; box-shadow:none; border-radius:0; padding-top:4px; }
 /* "Right now" (guests only): where each couple is, Japan time and the guest's own */
 .gnow { margin:0 10px 12px; padding:16px 16px 14px; border-radius:22px; background:#fff; display:grid; gap:12px; box-shadow:0 14px 30px -24px rgba(20,20,10,.5); }
 .gnow.night { background:#1d2440; color:#eef0f8; }
@@ -1558,7 +1564,9 @@ async function drawnMap() {
 }
 function mapPad() { return { paddingTopLeft: [30, 80], paddingBottomRight: [30, document.body.classList.contains('mapmax') ? 170 : Math.round(VH * 0.6)] }; }
 let dayPts = [];
-const fitDay = (animate) => { if (dayPts.length) map.fitBounds(dayPts, { ...mapPad(), maxZoom: 15, animate: !!animate && !RM }); };
+// guests have no map (it's hidden, so it has no size to fit or fly to)
+const NOMAP = GUEST && !SANDBOX;
+const fitDay = (animate) => { if (dayPts.length && !NOMAP) map.fitBounds(dayPts, { ...mapPad(), maxZoom: 15, animate: !!animate && !RM }); };
 let mapView = '';
 // the pins and legs on show: redrawn in place with the same ones (another phone's change, a flight check), the map is
 // left exactly as it is, rather than jumping back to the whole day and drawing its legs in again
@@ -1573,7 +1581,7 @@ function renderMap(enter) {
   const lines = [];
   for (let i = 1; i < stops.length; i++) { const a = stops[i - 1].e.place, b = stops[i].e.place, e = stops[i].e; const pl = L.polyline([[a.lat, a.lng], [b.lat, b.lng]], { color: legHex(e), weight: 5, opacity: 0.9, lineCap: 'round' }).addTo(map); layers.push(pl); lines.push({ pl, dashed: e.travel && !/walk|taxi|drive/.test(e.travel.mode) }); }
   const pts = stops.map((s) => [s.e.place.lat, s.e.place.lng]); if (h0.lat && pts.length < 2) pts.push([h0.lat, h0.lng]);
-  dayPts = pts; if (pts.length) map.fitBounds(pts, { ...mapPad(), maxZoom: 15, animate: false });
+  dayPts = pts; if (pts.length && !NOMAP) map.fitBounds(pts, { ...mapPad(), maxZoom: 15, animate: false });
   setTimeout(() => {
     stops.forEach((s) => (pinEls[s.n] = document.querySelector(`.pin[data-pin="${s.n}"]`))); syncPins(); declutter();
     // the legs draw in one after another: every length read first, then every start, then one style flush for them all
@@ -1601,7 +1609,7 @@ function syncPins() { const nx = nextEv(); stops.forEach((s) => { const el = pin
 let synced = false;
 function popPin(el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); el.addEventListener('animationend', (e) => { if (e.animationName === 'pinpop') el.classList.remove('pop'); }); }
 function focusMap(id) {
-  const i = events.findIndex((e) => e.id === id); if (i < 0) return; const pl = placeOfEvent(i) || hotel(); if (!pl || !pl.lat) return;
+  const i = events.findIndex((e) => e.id === id); if (i < 0 || NOMAP) return; const pl = placeOfEvent(i) || hotel(); if (!pl || !pl.lat) return;
   const z = Math.max(map.getZoom(), 14); const visibleH = Math.max(140, innerHeight * 0.42 - Math.max(0, scrollY));
   const pt = map.project([pl.lat, pl.lng], z).add([0, innerHeight / 2 - (visibleH / 2 + 30)]);
   map.flyTo(map.unproject(pt, z), z, { duration: RM ? 0 : 0.8 });
@@ -2117,7 +2125,7 @@ function lastCheckpoint(now = Date.now()) {
   const j = new Date(now + 9 * 3600e3); const dayStart = Date.UTC(j.getUTCFullYear(), j.getUTCMonth(), j.getUTCDate()) - 9 * 3600e3;
   return [0, 12, 15, 18, 21].map((h) => dayStart + h * 3600e3).filter((t) => t <= now).pop();
 }
-function autoOpen() { if (SANDBOX) return; const seen = +ls.get(DD_SEEN, 0); if (seen >= lastCheckpoint()) return; ls.set(DD_SEEN, Date.now()); if (!drawer.isOpen()) setTimeout(() => drawer.open(), RM ? 0 : 380); }
+function autoOpen() { if (SANDBOX || GUEST) return; const seen = +ls.get(DD_SEEN, 0); if (seen >= lastCheckpoint()) return; ls.set(DD_SEEN, Date.now()); if (!drawer.isOpen()) setTimeout(() => drawer.open(), RM ? 0 : 380); }
 const drawer = (() => {
   const dd = document.getElementById('dd'), tab = document.getElementById('ddtab'), scrim = document.getElementById('ddscrim');
   // measured once (again after a resize): read on every frame of the slide, it forced a layout each time
@@ -2133,7 +2141,7 @@ const drawer = (() => {
   dd.addEventListener('pointerdown', (e) => { if (!open || e.target.closest('#ddtab, .dial, .facts, button, a')) return; start(e, 'body'); });
   document.addEventListener('pointerdown', (e) => {
     if (dd.contains(e.target) || e.target.closest('.tour')) return;
-    if (!open && e.clientX < 18 && e.pointerType !== 'mouse' && e.target.closest('#map')) { start(e, 'edge'); return; }
+    if (!open && !(GUEST && !SANDBOX) && e.clientX < 18 && e.pointerType !== 'mouse' && e.target.closest('#map')) { start(e, 'edge'); return; }
     if (open && !e.target.closest('.kit, .setp, .scrim, .jpcard, .tt, .tt-veil')) { set(false); if (e.target === scrim) { e.preventDefault(); e.stopPropagation(); } }
   }, true);
   window.addEventListener('pointermove', (e) => {
@@ -2172,7 +2180,7 @@ const mapMax = (() => {
     if (v) { drawer.close(); setTimeout(() => fitDay(true), 60); } else setTimeout(() => ui.sel && focusMap(ui.sel), 120);
   };
   const sheetEl = document.getElementById('sheet'); const T = tracker(); let t = null;
-  sheetEl.addEventListener('touchstart', (e) => { if (e.touches.length !== 1) return; if (on && scrollY) window.scrollTo(0, 0); if (!on && scrollY > 2) return; const p = e.touches[0]; t = { x0: p.clientX, y0: p.clientY, on: false, base: Y.x }; T.reset(); }, { passive: true });
+  sheetEl.addEventListener('touchstart', (e) => { if (e.touches.length !== 1 || (GUEST && !SANDBOX)) return; if (on && scrollY) window.scrollTo(0, 0); if (!on && scrollY > 2) return; const p = e.touches[0]; t = { x0: p.clientX, y0: p.clientY, on: false, base: Y.x }; T.reset(); }, { passive: true });
   sheetEl.addEventListener('touchmove', (e) => {
     if (!t) return; const p = e.touches[0]; const dx = p.clientX - t.x0, dy = p.clientY - t.y0;
     if (!t.on) { if (Math.abs(dy) < 8 || Math.abs(dx) > Math.abs(dy)) { if (Math.abs(dx) > 10) t = null; return; } if (!on && dy < 0) { t = null; return; } t.on = true; Y.stop(); }
@@ -2183,7 +2191,7 @@ const mapMax = (() => {
   const end = () => { if (!t) return; const was = t; t = null; if (!was.on) return; const v = T.vel(); const to = Y.x + project(v, 0.99); set(to > travel() / 2, { velocity: v }); buzz(5); };
   sheetEl.addEventListener('touchend', end); sheetEl.addEventListener('touchcancel', end);
   // tap the handle (or the strip while the map is big) to switch; mouse users get the same with a click
-  sheetEl.addEventListener('click', (e) => { if (e.target.closest('#grab, .mapmax-hint') || (on && !e.target.closest('button, a'))) { e.stopPropagation(); set(!on); } }, true);
+  sheetEl.addEventListener('click', (e) => { if (GUEST && !SANDBOX) return; if (e.target.closest('#grab, .mapmax-hint') || (on && !e.target.closest('button, a'))) { e.stopPropagation(); set(!on); } }, true);
   addEventListener('resize', () => { if (on) Y.set(travel()); });
   return { set, isOn: () => on };
 })();
