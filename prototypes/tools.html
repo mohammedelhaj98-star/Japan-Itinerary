@@ -1096,6 +1096,14 @@ function renderBookings() {
 }
 
 /* ═══════════ 4 · SETTINGS ═══════════ */
+// the phone's own share sheet (WhatsApp, Messages…), or the link copied where there isn't one
+async function shareWithFamily() {
+  const url = location.origin + '/?guest=1&next=japan', msg = document.getElementById('sh-msg');
+  const data = { title: 'Japan 2026', text: 'Follow our Japan trip: where we are right now, and every day of the plan.', url };
+  if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); if (msg) msg.textContent = 'Link copied. Paste it in WhatsApp or a message.'; }
+  catch { if (msg) msg.textContent = url; }
+}
 function renderSettings() {
   const me = P[ME];
   const mine = me ? `<div class="card scard"><div class="me"><span class="av ${me.photo ? 'ph' : ''}" style="${avStyle(me)}">${me.ini}</span><div><b>${me.name}</b><small>${me.couple === 'nasa' ? 'NASA' : 'M&amp;M'} · this phone</small>
@@ -1118,9 +1126,11 @@ function renderSettings() {
   const alertsSec = GUEST || VIEW ? '' : `<p class="sec">Flight alerts</p>${part('al', alertsCard())}`;
   const nSt = Object.keys(store.state.checks || {}).length;
   const stamps = `<button class="card scard navrow" data-sub="stamps"><span><b>Stamped stops</b><small>${nSt ? `${nSt} stamped · see and unstamp them` : 'Nothing stamped yet'}</small></span><span class="cnt">${nSt || ''}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>`;
+  // family at home: a link that opens the trip straight in the guest view (where we are now, the plan and the stories)
+  const share = `<div class="card scard"><p class="sub" style="margin-bottom:12px">A link that opens the trip for family at home: where we are right now, each day's plan and the stories. No money, bookings or map, and nothing can be changed.</p><button class="bigb" data-share>Share with family</button><p class="sub" id="sh-msg" style="margin-top:10px"></p></div>`;
   const exp = `<div class="card scard"><p class="sub" style="margin-bottom:12px">A Word file laid out like the original itinerary, with everything as it is now: edited and added stops, choices made, bookings marked, stamps${VIEW ? '' : ' and expenses'}.</p><button class="bigb" data-export>Download Word file (.docx)</button><p class="sub" id="ex-msg" style="margin-top:10px"></p></div>`;
   return `<header class="ph"><small>Settings</small><h1>You &amp; the trip</h1><p>Your profile, what the colours mean, and how money is shown.</p></header>
-    ${homeCard()}${mine}${alertsSec}<p class="sec">Offline</p>${part('off', offlineRow())}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}${VIEW ? '' : `<p class="sec">Expenses</p>${prefs}`}<p class="sec">Export the trip</p>${exp}`;
+    ${homeCard()}${mine}<p class="sec">Family at home</p>${share}${alertsSec}<p class="sec">Offline</p>${part('off', offlineRow())}<p class="sec">Everyone</p>${everyone}<p class="sec">What the colours mean</p>${key}<p class="sec">Stamped stops</p>${stamps}${VIEW ? '' : `<p class="sec">Expenses</p>${prefs}`}<p class="sec">Export the trip</p>${exp}`;
 }
 // Add to Home Screen: an iPhone only shows alerts for a site on the Home Screen (iOS 16.4+), and can't be asked from a
 // page, so it gets the two taps; Android Chrome offers its own install prompt, which the button opens.
@@ -1409,6 +1419,7 @@ page.addEventListener('click', (e) => {
   const us = t('[data-unstamp]'); if (us) { const id = us.dataset.unstamp; store.toggleCheck(id); render(); return undoable('Unstamped', () => { if (!store.isChecked(id)) store.toggleCheck(id); }); }
   if (t('[data-unstampall]')) { const ids = Object.keys(store.state.checks || {}); return askConfirm('Unstamp everything?', `${ids.length} stamped stop${ids.length === 1 ? '' : 's'} go back to not done, on all four phones.`, 'Unstamp all', () => { ids.forEach((id) => store.isChecked(id) && store.toggleCheck(id)); render(); undoable(`Unstamped ${ids.length}`, () => ids.forEach((id) => !store.isChecked(id) && store.toggleCheck(id))); }); }
   if (t('[data-export]')) { exportDocx(); return; }
+  if (t('[data-share]')) { shareWithFamily(); return; }
   if (t('[data-backup]')) { backupNow(); return; }
   if (t('[data-saveall]')) { saveAll(); return; }
   if (t('[data-homedone]')) { al.home = true; ls.set('japan2026.homeDone', true); return render(); }
