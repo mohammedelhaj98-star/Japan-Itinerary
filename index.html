@@ -1117,7 +1117,8 @@ function passHTML(e, i) {
   if (e.who && e.who !== 'all') chips.push(`<span class="chip">${e.who === 'nasa' ? 'NASA' : 'M&amp;M'} only</span>`);
   if (FILLING.has(e.id)) chips.push(`<span class="chip">${I.spark}Filling in…</span>`);
   if (e._added) chips.push('<span class="chip">Added</span>'); else if (e._edited) chips.push('<span class="chip">Edited</span>');
-  const hw = e.place && !tk ? hoursWarn(e, pi, day.date) : ''; if (hw) chips.push(`<span class="chip hwarn">${I.clock}${esc(hw)}</span>`);
+  // a meal "in the area" of a shop or sight isn't bound by that place's hours
+  const hw = e.place && !tk && !(c.key === 'food' && pi && pi.kind !== 'food') ? hoursWarn(e, pi, day.date) : ''; if (hw) chips.push(`<span class="chip hwarn">${I.clock}${esc(hw)}</span>`);
   const extra = !e.place || tk || !pi ? '' : `${pi.hours ? `<div class="dykx"><b>Opening hours</b>${esc(hoursLine(pi.hours, pi.kind))}</div>` : ''}${pi.try ? `<div class="dykx"><b>Try here</b>${esc(pi.try)}</div>` : ''}${MANNERS[pi.kind] ? `<div class="dykx"><b>${pi.kind === 'shrine' ? 'Shrine' : 'Temple'} manners</b>${esc(MANNERS[pi.kind])}</div>` : ''}`;
   const story = pi && pi.story ? `<div class="storyx"><b>${e.place || own ? 'The story' : 'About ' + esc(host.name)}</b>${esc(pi.story)}${pi.dyk ? `<div class="dykx"><b>Did you know?</b>${esc(pi.dyk)}</div>` : ''}${extra}</div>` : '';
   const tkt = e.ticket ? ticketHTML(e) : '';
