@@ -2196,7 +2196,7 @@ const mapMax = (() => {
   return { set, isOn: () => on };
 })();
 buildMap(); renderDay(); store.start().finally(() => (synced = true)); refreshFx(); drawer.init();
-requestAnimationFrame(() => { drawnMap(); }); // after the first paint of the plan
+requestAnimationFrame(() => { if (!NOMAP) drawnMap(); }); // after the first paint of the plan (guests have no map: no map library, no MapTiler quota)
 // The card colour key sits on top of the tools bubble, so nobody has to go to Settings to remember it.
 { const key = document.createElement('div'); key.className = 'tt-key'; key.setAttribute('aria-label', 'Card colours');
   key.innerHTML = `<b>Card colours</b><span class="g">${keyItems(true)}</span>`;
