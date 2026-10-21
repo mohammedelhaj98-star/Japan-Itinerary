@@ -865,10 +865,12 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
 }
 // "Share with family": the link opens the trip straight in the guest view, with no map or day-dial drawer; the four keep theirs
 {
-  const G = await phone('2026-10-22T07:00:00Z'); const g = G.page;
+  const G = await phone('2026-10-22T07:00:00Z'); const g = G.page; const mapAsked = [];
+  g.on('request', (r) => { if (/maplibre|maptiler|tile\.openstreetmap/.test(r.url())) mapAsked.push(r.url()); });
   await g.goto(B + '/?guest=1&next=japan'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
   ok('the family link opens the trip as a guest', (await g.evaluate(() => localStorage.getItem('trips.me'))) === '"guest"' && !!(await g.$('#gnow')));
   ok('guests get no map and no day-dial drawer', await g.evaluate(() => !document.getElementById('map').offsetParent && !document.getElementById('ddtab').offsetParent && !document.querySelector('.dd-in').offsetParent));
+  ok('…nor fetch the map library or any map tiles', !mapAsked.length, mapAsked.join(' '));
   ok('…and the day starts just under the top bar', await g.evaluate(() => document.getElementById('sheet').getBoundingClientRect().top < 140));
   await g.goto(B + '/japan/prototypes/tools?v=5'); await g.waitForTimeout(1500);
   await g.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: B });
