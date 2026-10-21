@@ -116,7 +116,7 @@ html.gv .sheet { background:var(--paper); -webkit-backdrop-filter:none; backdrop
 .unsynced.ok { opacity:1; visibility:visible; transform:translate3d(-50%,0,0); transition-delay:0s; background:#e3f4e8; color:#1f7a45; }
 .tb { height:48px; min-width:48px; border-radius:24px; display:grid; place-items:center; }
 .tb:disabled { opacity:.35; }
-.dayp { flex:1 1 0; width:0; min-width:0; overflow:hidden; max-width:250px; padding:6px 16px; text-align:center; line-height:1.15; display:block; }
+.dayp { flex:1 1 0; width:0; min-width:0; overflow:hidden; max-width:250px; padding:6px 16px; text-align:center; line-height:1.15; display:block; touch-action:pan-y; }
 .dayp small { display:block; font-size:11.5px; color:var(--ink3); font-weight:500; }
 /* on any other day: one tap back to today, right where you'd look for it (under the day bar) */
 .backtoday { position:absolute; top:56px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:5px; height:32px; padding:0 13px 0 10px; border-radius:999px; font-size:13px; font-weight:700; color:var(--red); white-space:nowrap; animation:todayIn 260ms var(--ease); }
@@ -1995,6 +1995,15 @@ function renderDay({ keepScroll, keepSel, selId } = {}) {
 function go(delta) { let i = DAYS.indexOf(day) + delta; while (i >= 0 && i < DAYS.length && !hasEvents(DAYS[i])) i += delta; if (i < 0 || i >= DAYS.length) return; ui.dayId = DAYS[i].id; renderDay(); }
 document.getElementById('prev').addEventListener('click', () => go(-1));
 document.getElementById('next').addEventListener('click', () => go(1));
+// Swipe the day bar sideways for the next or previous day (a tap still opens the calendar): the title follows the finger.
+{ const bar = document.getElementById('dayp'); let x0 = 0, y0 = 0, dx = 0, on = false, swiped = false;
+  const inner = () => [document.getElementById('dayp-s'), document.getElementById('dayp-b')];
+  const follow = (x) => inner().forEach((el) => { el.style.transform = x ? `translateX(${x}px)` : ''; el.style.opacity = x ? String(Math.max(0.35, 1 - Math.abs(x) / 160)) : ''; });
+  bar.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; dx = 0; on = true; swiped = false; });
+  bar.addEventListener('pointermove', (e) => { if (!on) return; dx = e.clientX - x0; if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(e.clientY - y0)) return; swiped = true; try { bar.setPointerCapture(e.pointerId); } catch {} follow(Math.max(-60, Math.min(60, dx * 0.5))); });
+  const end = () => { if (!on) return; on = false; follow(0); if (swiped && Math.abs(dx) > 40) { go(dx < 0 ? 1 : -1); buzz(); } };
+  bar.addEventListener('pointerup', end); bar.addEventListener('pointercancel', () => { on = false; follow(0); });
+  bar.addEventListener('click', (e) => { if (swiped) { swiped = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true); }
 /* ═══ mini calendar: tap the day bar, jump to any day ═══ */
 const CITY_C = { Tokyo: '#2c4f86', Hakone: '#2f9e57', Kyoto: '#b94b74', Osaka: '#d7731a' };
 const cal = document.getElementById('cal'), calBg = document.getElementById('calbg');

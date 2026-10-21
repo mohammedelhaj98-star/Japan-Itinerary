@@ -830,6 +830,17 @@ ok('Back to today shows on another day', await C.page.$eval('#todayb', (e) => !e
 await C.page.screenshot({ path: SH + 'back-to-today.png' });
 await C.page.tap('#todayb'); await C.page.waitForTimeout(800);
 ok('and takes you back to today', new URL(C.page.url()).searchParams.get('d') === 'd07' && await C.page.$eval('#todayb', (e) => e.hidden));
+// swipe the day bar sideways to change day; a plain tap still opens the calendar
+const swipeDay = async (dist) => { const b = await C.page.$eval('#dayp', (e) => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }); await C.page.mouse.move(b[0], b[1]); await C.page.mouse.down(); await C.page.mouse.move(b[0] + dist, b[1] + 3, { steps: 8 }); await C.page.mouse.up(); await C.page.waitForTimeout(700); };
+await swipeDay(-110);
+ok('swiping the day bar left goes to the next day', new URL(C.page.url()).searchParams.get('d') === 'd08' && !(await C.page.$eval('#cal', (e) => e.classList.contains('on'))));
+await swipeDay(110);
+ok('and right goes back', new URL(C.page.url()).searchParams.get('d') === 'd07' && !(await C.page.$eval('#cal', (e) => e.classList.contains('on'))));
+await swipeDay(-20);
+ok('a short drag stays on the day', new URL(C.page.url()).searchParams.get('d') === 'd07');
+await C.page.tap('#dayp'); await C.page.waitForTimeout(500);
+ok('a tap on the day bar still opens the calendar', await C.page.$eval('#cal', (e) => e.classList.contains('on')));
+await C.page.tap('#calbg', { force: true }); await C.page.waitForTimeout(400);
 
 // guest: sees the trip, changes nothing, no money
 {
