@@ -391,6 +391,32 @@ await N.page.tap('[data-delok]'); await N.page.waitForTimeout(800);
 ok('delete removes it', exN() === 0);
 await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
 ok('undo brings it back', /Fuunji ramen test/.test(await N.page.textContent('#glist')) && exN() === 1);
+// swipe the ramen left: a short swipe shows Delete and opens nothing, a long one deletes it at once (Undo brings it back)
+const nt = await N.ctx.newCDPSession(N.page);
+const rowSwipe = async (dx) => { const b = await N.page.locator('#glist .swr').first().boundingBox(), x = b.x + b.width - 30, y = b.y + b.height / 2;
+  await nt.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let i = 1; i <= 12; i++) { await nt.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (dx * i) / 12, y }] }); await N.page.waitForTimeout(16); }
+  await nt.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await N.page.waitForTimeout(700); };
+const swW = () => N.page.$eval('#glist .swr', (e) => e.style.getPropertyValue('--w'));
+const formOn = () => N.page.$eval('#fpage', (e) => e.classList.contains('on'));
+await rowSwipe(-100);
+ok('a short swipe shows Delete and opens nothing', (await swW()) === '88px' && !(await formOn()) && exN() === 1, await swW());
+await N.page.tap('#glist .xday'); await N.page.waitForTimeout(400);
+ok('a tap elsewhere closes the swiped row', (await swW()) === '0px' && !(await formOn()), await swW());
+await rowSwipe(-100); await N.page.tap('#glist .swdel'); await N.page.waitForTimeout(900);
+ok('tapping the swiped Delete deletes it, no question', exN() === 0 && !(await N.page.$eval('.sheet', (e) => e.classList.contains('on'))) && /Deleted Fuunji ramen test/.test(await N.page.textContent('.toast')));
+await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
+ok('undo after a swipe brings it back', /Fuunji ramen test/.test(await N.page.textContent('#glist')) && exN() === 1);
+await rowSwipe(-330); await N.page.waitForTimeout(400);
+ok('a long swipe deletes it straight away, with 10 s to undo', exN() === 0 && /Deleted Fuunji ramen test/.test(await N.page.textContent('.toast')) && !!(await N.page.$('.toast .tbar')));
+await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800);
+ok('and undo brings that back too', exN() === 1);
+await N.page.emulateMedia({ reducedMotion: 'reduce' }); await rowSwipe(-100); await N.page.tap('#glist .swdel'); await N.page.waitForTimeout(60);
+ok('with reduced motion the row goes at once, no slide', !(await N.page.$('#glist .swr')) && /Deleted Fuunji ramen test/.test(await N.page.textContent('.toast')));
+await N.page.tap('.toast [data-undo]'); await N.page.waitForTimeout(800); await N.page.emulateMedia({ reducedMotion: 'no-preference' });
+ok('…and Undo brings it back', exN() === 1);
+await N.page.tap('#glist .xrow'); await N.page.waitForTimeout(400);
+ok('a plain tap still opens the expense', await formOn()); await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
 // Mo marks the settle-up paid: it's a payment record, and the row goes
 await A.page.evaluate(() => window.__tourEnv.store.refresh()); await A.page.waitForTimeout(600);
 await A.page.tap('[data-pay]'); await A.page.waitForTimeout(400); await A.page.tap('[data-payok]'); await A.page.waitForTimeout(900);
@@ -782,7 +808,7 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('guest is welcomed as a guest', /Hi there/.test(await g.textContent('#hi')) && /guest/i.test(await g.textContent('#switch')));
   await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
   ok('guest opens the trip without a PIN', /Day/.test(await g.textContent('#dayp')));
-  ok('guest has no stamp or edit buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear')].every((e) => !e.offsetParent)));
+  ok('guest has no stamp, edit or add-a-stop buttons', await g.evaluate(() => [...document.querySelectorAll('[data-stamp], [data-edit], [data-addend], #gear, #addgap')].every((e) => !e.offsetParent)));
   await g.evaluate(() => { const b = document.querySelector('[data-stamp]'); b && b.click(); }); await g.waitForTimeout(500);
   ok('guest tap on stamp does nothing', !Object.keys(JSON.parse(store.get('checks') || '{}')).some((k) => k.startsWith('d07')));
   await g.tap('#ttBtn'); await g.waitForTimeout(400);

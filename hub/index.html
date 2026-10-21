@@ -138,7 +138,7 @@ const PEOPLE = [
 ];
 // Trips, newest plan first. Add the next one here when it is planned.
 const TRIPS = [
-  { id: 'japan', name: 'Japan', year: 2026, ja: '日本', start: '2026-10-16', end: '2026-11-01', href: '/japan/', img: '/japan/img/places/fushimi-inari-taisha.webp', blurb: 'Tokyo · Hakone · Kyoto · Osaka' },
+  { id: 'japan', name: 'Japan', year: 2026, ja: '日本', start: '2026-10-16', end: '2026-11-01', tz: 'Asia/Tokyo', href: '/japan/', img: '/japan/img/places/fushimi-inari-taisha.webp', blurb: 'Tokyo · Hakone · Kyoto · Osaka' },
 ];
 const ls = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 const $ = (s) => document.querySelector(s);
@@ -207,7 +207,8 @@ function renderWho() {
 }
 
 function status(t) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  // count the days on the trip's own clock, so someone following from home sees the same day as the trip page
+  const today = new Date(new Date().toLocaleDateString('en-CA', { timeZone: t.tz || undefined }) + 'T00:00:00');
   const s = new Date(t.start + 'T00:00:00'), e = new Date(t.end + 'T00:00:00');
   const days = Math.round((s - today) / 864e5);
   if (today > e) return 'Done';
