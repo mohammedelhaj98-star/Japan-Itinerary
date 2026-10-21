@@ -808,6 +808,39 @@ ok('it went back in history (no new page)', (await C.page.evaluate(() => history
   ok('no page errors G', !G.errs.length, G.errs.join(' | '));
   await G.ctx.close();
 }
+// guest on Oct 21 (day 6): Mo and Mariam fly in on two different flights, so they get a row each, and no night card while
+// anyone is in the air; a page left open past midnight in Japan moves on to the new day
+{
+  const G = await phone('2026-10-20T20:00:00Z'); const g = G.page;
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  const gnow = () => g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  let gn = await gnow();
+  ok('5 AM in Japan, Mo and Mariam both flying: a row each, not a night card', /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 2 && !/middle of the night/.test(gn), gn);
+  await g.clock.fastForward('09:00:00'); await g.waitForTimeout(1500); gn = await gnow();
+  ok('2 PM: Mo has landed, Mariam is still in the air', /MO\b/.test(gn) && /MARIAM/.test(gn) && (gn.match(/In the air/g) || []).length === 1, gn);
+  await g.clock.fastForward('09:30:00'); await g.waitForTimeout(1500); gn = await gnow();
+  ok('11:30 PM, everyone landed: the night card', /middle of the night/.test(gn), gn);
+  await g.clock.fastForward('00:35:00'); await g.waitForTimeout(2500);
+  ok('left open past midnight, the page moves on to day 7', /Day 7 of 17/i.test(await gnow()) && !/[?&]d=/.test(g.url()), g.url());
+  ok('no page errors G2', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
+// a guest who picked the NASA view still sees where M&M are (Oct 23, 6:30 PM: their romantic dinner); and at 2 AM the next
+// night, M&M are still away, so the night card names no hotel for everyone
+for (const [t, test] of [
+  ['2026-10-23T09:30:00Z', (gn) => ['guest on the NASA view still sees M&M at their romantic dinner', /M&M/.test(gn) && /Romantic dinner/.test(gn) && /NASA/.test(gn)]],
+  ['2026-10-23T17:00:00Z', (gn) => ['2 AM after M&M\'s night away: asleep, with no one hotel named for all four', /middle of the night/.test(gn) && !/Granbell|in the Green/i.test(gn)]],
+]) {
+  const G = await phone(t); const g = G.page;
+  await g.goto(B + '/'); await g.waitForTimeout(600); await g.tap('[data-guest]'); await g.waitForTimeout(600);
+  await g.evaluate(() => localStorage.setItem('japan2026.whoMix', JSON.stringify('nasa')));
+  await g.tap('[data-trip="japan"]'); await g.waitForURL(/\/japan\//); await g.waitForTimeout(2500);
+  const gn = await g.evaluate(() => { const c = document.getElementById('gnow'); return c ? c.innerText : ''; });
+  const [name, pass] = test(gn); ok(name, pass, gn);
+  ok('no page errors G3', !G.errs.length, G.errs.join(' | '));
+  await G.ctx.close();
+}
 // one of the four on a phone from before the PIN: asked once, then straight in
 {
   const O = await phone(); const o = O.page;

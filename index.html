@@ -1058,14 +1058,18 @@ function flightBanner() {
 
 /* ═══ guests: "Right now", for family following along from home ═══ */
 // Where each couple is on today's plan: their last stamped stop, unless the plan has moved well past it (a stamp
-// forgotten), else the stop the plan says; a flight in the air wins. Both couples on the same stop → one "All four" row.
-const COUPLE = { naf: 'nasa', sara: 'nasa', mariam: 'mm', m: 'mm' };
-const forCouple = (e, g) => (e.flight ? (e.flight.people || []).some((p) => COUPLE[p] === g) : !e.who || e.who === 'all' || e.who === g);
-function whereNow(g, m) {
-  const ev = events.filter((e) => forCouple(e, g) && !skipped(e.id)), sp = (e) => span(e) || [0, 0];
+// forgotten), else the stop the plan says; a flight in the air wins. Both couples on the same stop → one "All four" row;
+// a couple on two different flights (or one flying, one not) → a row each.
+const COUPLE = { naf: 'nasa', sara: 'nasa', mariam: 'mm', m: 'mm' }, MEMBERS = { nasa: ['naf', 'sara'], mm: ['mariam', 'm'] };
+// for a couple (g) or just one of them (p)
+const forCouple = (e, g, p) => (e.flight ? (e.flight.people || []).some((x) => (p ? x === p : COUPLE[x] === g)) : !e.who || e.who === 'all' || e.who === g);
+// in the air: the tracker says so, or (before its first check) the flight's own times say it has taken off and not landed
+const flying = (e) => { if (!e.flight) return false; const v = flView(e), now = Date.now(); if (v.st === 'air') return true; if (['landed', 'cancelled', 'diverted'].includes(v.st)) return false; return Date.parse(v.dep || '') <= now && now < Date.parse(v.arr || ''); };
+// the whole day, whichever couple's view is showing
+const allEvents = () => dayItems(day, { who: 'all' }).filter((i) => i.type === 'event');
+function whereNow(g, m, p, all = allEvents()) {
+  const ev = all.filter((e) => forCouple(e, g, p) && !skipped(e.id)), sp = (e) => span(e) || [0, 0];
   if (!ev.length) return null;
-  // in the air: the tracker says so, or (before its first check) the flight's own times say it has taken off and not landed
-  const flying = (e) => { if (!e.flight) return false; const v = flView(e), now = Date.now(); if (v.st === 'air') return true; if (['landed', 'cancelled', 'diverted'].includes(v.st)) return false; return Date.parse(v.dep || '') <= now && now < Date.parse(v.arr || ''); };
   const air = ev.find(flying);
   const lastDone = [...ev].reverse().find((e) => done(e.id)), plan = [...ev].reverse().find((e) => sp(e)[0] && sp(e)[0] <= m);
   let cur = air || lastDone, src = air ? 'air' : 'stamp';
@@ -1077,7 +1081,7 @@ function whereNow(g, m) {
 function guestNow() {
   if (!(GUEST && !SANDBOX) || !isToday()) return '';
   const m = nowMin(), tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { return ''; } })();
-  const jp = fmt(m), at = (e) => { const s = span(e); return s ? fmt(s[0]).join(' ') : esc(e.time || ''); };
+  const all = allEvents(), jp = fmt(m), at = (e) => { const s = span(e); return s ? fmt(s[0]).join(' ') : esc(e.time || ''); };
   const own = new Date(), same = -own.getTimezoneOffset() === 540; // a guest on Japan time needs no second clock
   const youT = own.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }), youD = own.toLocaleDateString('en-GB', { weekday: 'short' });
   const youCity = tz.includes('/') ? tz.split('/').pop().replace(/_/g, ' ') : 'your time';
@@ -1088,19 +1092,25 @@ function guestNow() {
     const title = x.live || x.src === 'air' ? esc(e.title) : x.next ? `Last stop: ${esc(e.title)}` : `Done for the day`;
     const src = x.src === 'stamp' ? 'Stamped 済' : 'By the plan';
     const how = tracked ? `<span class="flpill ${v.cls}"><i></i>${esc(v.label)}</span>` : x.src === 'air' ? 'In the air, by the flight times' : !x.live && !x.next ? `${src} · last stop: ${esc(e.title)}` : src;
-    const pi = placeInfo(e.place || placeOfEvent(events.indexOf(e))), ib = pi && pi.story ? `<button class="gn-i press" data-gninfo="${e.id}" aria-label="About this place">i</button>` : '';
+    const k = all.findIndex((y) => y.id === e.id), host = all.slice(0, k + 1).reverse().find((y) => y.place);
+    const pi = placeInfo(host && host.place), ib = pi && pi.story ? `<button class="gn-i press" data-gninfo="${e.id}" aria-label="About this place">i</button>` : '';
     return `<div class="gn-row"><span class="gn-tag" style="--c:${c}">${label}</span><div><b class="gn-t"><i style="--c:${cat.c}"></i>${title}${ib}</b><span class="gn-s">${how}</span>${x.next ? `<span class="gn-nx">Next: ${esc(x.next.title)}, ${at(x.next)}</span>` : ''}</div></div>`;
   };
-  const night = m >= 23 * 60 || m < 6 * 60;
+  // a night card only when nobody is in the air (overnight flights say where they are)
+  const night = (m >= 23 * 60 || m < 6 * 60) && !all.some(flying);
   let body;
   if (night) {
-    const nd = m >= 23 * 60 ? DAYS[DAYS.indexOf(day) + 1] : day, first = nd && dayItems(nd).find((i) => i.type === 'event' && span(i));
-    const hs = day.away ? [] : [...new Set([day.hotel, day.mmHotel].filter(Boolean))].map((id) => (HOTELS.find((h) => h.id === id) || {}).name).filter(Boolean);
+    // before 6 AM they're still in last night's beds
+    const nd = m >= 23 * 60 ? DAYS[DAYS.indexOf(day) + 1] : day, sd = m >= 23 * 60 ? day : DAYS[DAYS.indexOf(day) - 1] || day, first = nd && dayItems(nd, { who: 'all' }).find((i) => i.type === 'event' && span(i));
+    const hs = sd.away ? [] : [...new Set([sd.hotel, sd.mmHotel].filter(Boolean))].map((id) => (HOTELS.find((h) => h.id === id) || {}).name).filter(Boolean);
     body = `<p class="gn-sleep">It's the middle of the night in Japan, so they're probably asleep${hs.length ? ` at ${esc(hs.join(' and '))}` : ''}.</p>${first ? `<div class="gn-row"><span class="gn-tag" style="--c:var(--ink)">NEXT</span><div><b class="gn-t">Day ${nd.n} starts ${at(first)}</b><span class="gn-nx">${esc(first.title)}</span></div></div>` : ''}`;
   } else {
-    const a = whereNow('nasa', m), b = whereNow('mm', m);
+    const a = whereNow('nasa', m, null, all), b = whereNow('mm', m, null, all);
     const one = a && b && a.cur === b.cur && a.next === b.next;
-    body = one ? row('ALL FOUR', 'var(--ink)', a) : row('NASA', '#2c4f86', a) + row('M&amp;M', '#c25350', b);
+    // split a couple whose two people are on different flights, or one flying and one not
+    const couple = (g, label, c, x) => { const [p1, p2] = MEMBERS[g], f = (p) => all.find((e) => forCouple(e, g, p) && e.flight && flying(e)) || null;
+      return f(p1) === f(p2) ? row(label, c, x) : [p1, p2].map((p) => row(PNAME[p].toUpperCase(), c, whereNow(g, m, p, all))).join(''); };
+    body = one && !all.some(flying) ? row('ALL FOUR', 'var(--ink)', a) : couple('nasa', 'NASA', '#2c4f86', a) + couple('mm', 'M&amp;M', '#c25350', b);
   }
   return `<section class="gnow ${night ? 'night' : ''}" id="gnow" aria-label="Where they are right now"><p class="gn-k"><i></i>Right now · Day ${day.n} of ${DAYS.length}</p>
     <div class="gn-clock"><div><b>${jp[0]}<small>${jp[1]}</small></b><span>Japan time · ${jpD}</span></div>${same ? '' : `<div class="gn-you"><b>${youT}</b><span>for you · ${youD} · ${esc(youCity)}</span></div>`}</div>${body}</section>`;
@@ -1936,7 +1946,7 @@ document.getElementById('sheet').addEventListener('click', (e) => {
   if (e.target.closest('[data-ordreset]')) { if (!confirm(`Put day ${day.n} back in its first order, with its first times, for everyone?`)) return; store.setCustom('ord-' + day.id, null); return; }
   const j = e.target.closest('[data-jp]'); if (j) { showPhrases(j.dataset.jp); return; }
   const sk = e.target.closest('[data-shtick]'); if (sk) { const x = store.getShop()[sk.dataset.shtick]; if (!x) return; if (x.done) { const { done, doneBy, doneAt, ...rest } = x; store.setShop(sk.dataset.shtick, rest); } else { store.setShop(sk.dataset.shtick, { ...x, done: true, ...(ME_ID && ME_ID !== 'guest' ? { doneBy: ME_ID } : {}), doneAt: Date.now() }); buzz(10); } return; }
-  const gi = e.target.closest('[data-gninfo]'); if (gi) { const id = gi.dataset.gninfo; stackApi.select(id, { scroll: true }); focusMap(id); const card = document.getElementById('p-' + id); if (card && !card.classList.contains('storyon')) { card.classList.add('storyon'); stackApi.layout(false); } return; } // guests: the story of where they are
+  const gi = e.target.closest('[data-gninfo]'); if (gi) { const id = gi.dataset.gninfo; if (!events.some((x) => x.id === id)) { ui.who = 'all'; ls.set('japan2026.whoMix', 'all'); renderDay({ keepScroll: true }); } stackApi.select(id, { scroll: true }); focusMap(id); const card = document.getElementById('p-' + id); if (card && !card.classList.contains('storyon')) { card.classList.add('storyon'); stackApi.layout(false); } return; } // guests: the story of where they are
   const sy = e.target.closest('[data-story]'); if (sy) { const card = document.getElementById('p-' + sy.dataset.story); card.classList.toggle('storyon'); stackApi.layout(false); return; }
   const ed = e.target.closest('[data-edit]'); if (ed) { openEditor({ mode: 'edit', id: ed.dataset.edit }); return; }
   // Mark as booked: the 予約済 stamp thumps down on all four phones; tapping 予約済 again offers to undo it
@@ -2000,7 +2010,10 @@ let lastSig = customSig();
 const viewChanged = () => { prepare(); if (!hasEvents(day)) return true; const { sheet, dd } = sheetHTML(); return sheet + dd !== shownView || mapKey() !== mapView; };
 store.subscribe(() => { if (!stackApi) return; const sig = customSig(); if (sig !== lastSig) { lastSig = sig; const redraw = viewChanged(); if (redraw) renderDay({ keepScroll: true, keepSel: true }); if (setp.classList.contains('on')) renderSettings(); if (redraw) return; setNav(); } stackApi.refresh(); dialApi.refresh(); syncPins(); });
 window.addEventListener('resize', () => { stackApi && stackApi.layout(true); });
-setInterval(() => { if (dialApi && dialApi.tickNow) dialApi.tickNow(); const g = document.getElementById('gnow'); if (g) g.outerHTML = guestNow(); }, 60000);
+setInterval(() => { if (dialApi && dialApi.tickNow) dialApi.tickNow(); const g = document.getElementById('gnow');
+  // a guest's page left open past midnight in Japan opens on the new day (without ?d=, which pins the old one)
+  if (g && new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) !== todayJST) { location.replace(location.pathname); return; }
+  if (g) g.outerHTML = guestNow(); }, 60000);
 // once a frame at most, when the page is laid out anyway (on every scroll event it could force a layout each time)
 { const sh = document.getElementById('sheet'); let sq = 0; window.addEventListener('scroll', () => { if (!sq) sq = requestAnimationFrame(() => { sq = 0; document.body.classList.toggle('scrolled', sh.getBoundingClientRect().top < 70); }); }, { passive: true }); }
 /* ═══ dial drawer ═══ */
