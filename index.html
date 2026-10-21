@@ -818,12 +818,15 @@ function hoursWarn(e, pi, date) {
   const wd = WD[new Date(date + 'T12:00:00Z').getUTCDay()], closed = h.closed || [];
   if (closed.includes(date)) return 'Closed that day';
   if (closed.includes(wd)) return 'Closed ' + WDL[wd];
-  const sp = span(e), o = hm(h.open); let c = hm(h.last || h.close); if (!sp || c == null) return '';
-  if (o != null && c <= o) c += 24 * 60; // closes after midnight
-  const lbl = h.last ? (pi.kind === 'food' ? 'Last order' : 'Last entry') : h.always ? 'Shops close' : 'Closes';
-  if (sp[0] >= c) return `${lbl} ${clock(c)}`;
+  // last entry / last order is a deadline for arriving; closing is the deadline for leaving
+  const sp = span(e), o = hm(h.open); let c = hm(h.close), la = hm(h.last); if (!sp || (c == null && la == null)) return '';
+  if (o != null && c != null && c <= o) c += 24 * 60; // closes after midnight
+  if (o != null && la != null && la <= o) la += 24 * 60;
+  const shut = h.always ? 'Shops close' : 'Closes', lastL = pi.kind === 'food' ? 'Last order' : 'Last entry';
+  if (c != null && sp[0] >= c) return `${shut} ${clock(c)}`;
+  if (la != null && sp[0] > la) return `${lastL} ${clock(la)}`;
   if (o != null && sp[1] < o - 15) return `Opens ${clock(o)}`; // queuing for the opening is fine
-  if (sp[1] > c + 15) return `${lbl} ${clock(c)}`;
+  if (c != null && sp[1] > c + 15) return `${shut} ${clock(c)}`;
   return '';
 }
 const hoursLine = (h, kind) => [h.d, h.last && !/last/i.test(h.d) ? `${kind === 'food' ? 'last order' : 'last entry'} ${clock(hm(h.last))}` : '', (h.closed || []).filter((x) => WDL[x]).map((x) => 'closed ' + WDL[x]).join(', ')].filter(Boolean).join(' · ') + (h.note ? `. ${h.note}` : '');
