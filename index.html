@@ -814,18 +814,19 @@ const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], WDL = { Sun: 'Sund
 const hm = (t) => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? +m[1] * 60 + +m[2] : null; };
 const clock = (m) => { const [t, ap] = fmt(m); return (t.endsWith(':00') ? t.slice(0, -3) : t) + ' ' + ap; };
 function hoursWarn(e, pi, date) {
-  const h = pi && pi.hours; if (!h || h.always) return '';
+  const h = pi && pi.hours; if (!h || (h.always && !h.close)) return ''; // a street that's always open still warns when its shops close
   const wd = WD[new Date(date + 'T12:00:00Z').getUTCDay()], closed = h.closed || [];
   if (closed.includes(date)) return 'Closed that day';
   if (closed.includes(wd)) return 'Closed ' + WDL[wd];
   const sp = span(e), o = hm(h.open); let c = hm(h.last || h.close); if (!sp || c == null) return '';
   if (o != null && c <= o) c += 24 * 60; // closes after midnight
-  if (sp[0] >= c) return `${h.last ? 'Last entry' : 'Closes'} ${clock(c)}`;
-  if (o != null && sp[0] < o && sp[1] <= o + 15) return `Opens ${clock(o)}`;
-  if (sp[1] > c + 15) return `${h.last ? 'Last entry' : 'Closes'} ${clock(c)}`;
+  const lbl = h.last ? (pi.kind === 'food' ? 'Last order' : 'Last entry') : h.always ? 'Shops close' : 'Closes';
+  if (sp[0] >= c) return `${lbl} ${clock(c)}`;
+  if (o != null && sp[1] < o - 15) return `Opens ${clock(o)}`; // queuing for the opening is fine
+  if (sp[1] > c + 15) return `${lbl} ${clock(c)}`;
   return '';
 }
-const hoursLine = (h) => [h.d, h.last && !/last/i.test(h.d) ? `last entry ${clock(hm(h.last))}` : '', (h.closed || []).filter((x) => WDL[x]).map((x) => 'closed ' + WDL[x]).join(', ')].filter(Boolean).join(' · ') + (h.note ? `. ${h.note}` : '');
+const hoursLine = (h, kind) => [h.d, h.last && !/last/i.test(h.d) ? `${kind === 'food' ? 'last order' : 'last entry'} ${clock(hm(h.last))}` : '', (h.closed || []).filter((x) => WDL[x]).map((x) => 'closed ' + WDL[x]).join(', ')].filter(Boolean).join(' · ') + (h.note ? `. ${h.note}` : '');
 const MANNERS = {
   temple: 'Bow once at the gate. No clapping at a temple: put your hands together quietly. Take shoes off where there are shoe racks or a step up, and look for no-photo signs inside the halls.',
   shrine: "Bow at the torii and walk at the side of the path; the middle is for the god. At the water basin rinse your left hand, right hand, then your mouth from your cupped left hand. To pray: bow twice, clap twice, bow once.",
@@ -1114,7 +1115,7 @@ function passHTML(e, i) {
   if (FILLING.has(e.id)) chips.push(`<span class="chip">${I.spark}Filling in…</span>`);
   if (e._added) chips.push('<span class="chip">Added</span>'); else if (e._edited) chips.push('<span class="chip">Edited</span>');
   const hw = e.place && !tk ? hoursWarn(e, pi, day.date) : ''; if (hw) chips.push(`<span class="chip hwarn">${I.clock}${esc(hw)}</span>`);
-  const extra = !e.place || tk || !pi ? '' : `${pi.hours ? `<div class="dykx"><b>Opening hours</b>${esc(hoursLine(pi.hours))}</div>` : ''}${pi.try ? `<div class="dykx"><b>Try here</b>${esc(pi.try)}</div>` : ''}${MANNERS[pi.kind] ? `<div class="dykx"><b>${pi.kind === 'shrine' ? 'Shrine' : 'Temple'} manners</b>${esc(MANNERS[pi.kind])}</div>` : ''}`;
+  const extra = !e.place || tk || !pi ? '' : `${pi.hours ? `<div class="dykx"><b>Opening hours</b>${esc(hoursLine(pi.hours, pi.kind))}</div>` : ''}${pi.try ? `<div class="dykx"><b>Try here</b>${esc(pi.try)}</div>` : ''}${MANNERS[pi.kind] ? `<div class="dykx"><b>${pi.kind === 'shrine' ? 'Shrine' : 'Temple'} manners</b>${esc(MANNERS[pi.kind])}</div>` : ''}`;
   const story = pi && pi.story ? `<div class="storyx"><b>${e.place || own ? 'The story' : 'About ' + esc(host.name)}</b>${esc(pi.story)}${pi.dyk ? `<div class="dykx"><b>Did you know?</b>${esc(pi.dyk)}</div>` : ''}${extra}</div>` : '';
   const tkt = e.ticket ? ticketHTML(e) : '';
   const body = `<div class="body">${story}${e.ticket && e.ticket.from ? '' : tk && routeOf(e, i) ? `<div class="route"><div><small>From</small><b>${esc(routeOf(e, i)[0])}</b></div><span class="arr">${I.arrow}</span><div><small>To</small><b>${esc(routeOf(e, i)[1])}</b></div></div>` : ''}

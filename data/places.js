@@ -1,4 +1,5 @@
 // Photos (Wikimedia Commons, credited), Japanese names (Wikidata) with romaji, key info, background story, a "did you know?" and place kind.
+// Opening hours (`hours`, for Oct 21 – Nov 1, 2026) and a food to try nearby (`try`, pork- and alcohol-free) researched Oct 21, 2026.
 export const PLACES = {
  "Narita Airport Terminal 1": {
   "ja": "成田空港 第1ターミナル",
@@ -352,7 +353,14 @@ export const PLACES = {
   "key": "3F watch dealers · Cash + passport",
   "story": "Nakano Broadway opened in 1966 as an upmarket shopping centre with luxury flats on top. Over the decades collector shops took over: manga, figures, retro games and, on the third floor, vintage watch dealers. It sits at the end of the Sun Mall, a 225 m covered arcade from Nakano Station's north exit.",
   "dyk": "Pop star Kenji Sawada once lived in the flats upstairs. Mandarake opened a second-hand manga shop here in 1980 and now runs more than 25 shops in the building.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "Shops ~10 AM–8 PM (varies by shop)",
+   "open": "10:00",
+   "close": "20:00",
+   "note": "Each shop sets own hours; some open 11 AM or later"
+  },
+  "try": "Daily Chico's towering eight-flavour soft serve in the basement"
  },
  "Takashimaya Times Square": {
   "ja": "タカシマヤタイムズスクエア",
@@ -363,7 +371,13 @@ export const PLACES = {
   "key": "Opened 1996 · Restaurant floors",
   "story": "Takashimaya Times Square opened in 1996 just south of Shinjuku Station, linked by walkway. Besides the department store there is a big Hands (once Tokyu Hands) craft and household store, plus Restaurants Park on floors 12 to 14 with city views. The basement food hall is good for takeaway sweets and bento.",
   "dyk": "Takashimaya began in Kyoto in 1831 as a tiny shop of about 3.6 square metres. The name was borrowed from the founder's father-in-law's rice shop.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "Department store 10:30 AM–7:30 PM; Hands and Uniqlo to 9 PM",
+   "open": "10:30",
+   "close": "19:30",
+   "note": "The eyewear floors are in the department store"
+  }
  },
  "Odakyu Shinjuku Station": {
   "ja": "小田急新宿駅",
@@ -491,7 +505,13 @@ export const PLACES = {
   "key": "Gion's teahouse street · Photo rules",
   "story": "Gion's main street of wooden teahouses, where geiko and maiko still entertain. At the Shijo end, red Ichiriki Chaya is over 300 years old; Oishi Kuranosuke, leader of the 47 Ronin, partied there to fool spies while plotting revenge. Photos are fine on the main road, but private side lanes are off limits, with fines up to 10,000 yen.",
   "dyk": "Ichiriki's name is a disguise: a famous play split the character of its real name, Yorozuya, in two to hide it. The teahouse kept it.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Open all day",
+   "always": true,
+   "note": "Public street; no photos on private side lanes (fines)"
+  },
+  "try": "Matcha parfaits at the tea salons on Shijo-dori, at the street's north end"
  },
  "Tatsumi Bridge": {
   "ja": "巽橋",
@@ -524,7 +544,12 @@ export const PLACES = {
   "key": "Lantern alley · Geiko district",
   "story": "A long, narrow lane running from Shijo to Sanjo, one block from the Kamo River. Its odd name is thought to come from the Portuguese 'ponte', bridge. Geiko have worked here since at least the 16th century, the plover on the lanterns is the district's crest, and in summer river-side restaurants build platforms over the water.",
   "dyk": "In the 1970s American anthropologist Liza Dalby trained in Pontocho as 'Ichigiku', unofficially the first Western woman to become a geisha, all for her PhD.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Alley open all day; restaurants ~5–11 PM",
+   "always": true,
+   "note": "Most restaurants open for dinner from ~5 PM"
+  }
  },
  "Nishiki Market": {
   "ja": "錦市場",
@@ -535,7 +560,14 @@ export const PLACES = {
   "key": "Kyoto's Kitchen · 400 years · 130 shops",
   "story": "Kyoto's Kitchen: about 130 shops in a roughly 400 m covered arcade. Fish was sold here as early as the 8th century because cold groundwater kept it fresh, and the shogunate licensed the market in 1615. Look for pickles, tamagoyaki and Kyoto knives, and note many stalls ask you not to eat while walking.",
   "dyk": "The 18th-century painter Ito Jakuchu, famous for his roosters, grew up in a Nishiki produce business and later negotiated to reopen the market after officials suspended it.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "Most stalls ~10 AM–6 PM",
+   "open": "10:00",
+   "close": "18:00",
+   "note": "No market-wide holiday; some stalls shut Wed or Sun"
+  },
+  "try": "Freshly fried soy-milk doughnuts from Konnamonja, run by tofu maker Kyo Tofu Fujino"
  },
  "Kintetsu-Nara Station": {
   "ja": "近鉄奈良駅",
@@ -557,7 +589,14 @@ export const PLACES = {
   "key": "Buddha cast 752 · UNESCO · Allow 1 hr",
   "story": "Emperor Shomu's Great Buddha was dedicated in 752 before 10,000 monks, and it used much of Japan's bronze. The 1709 hall is about 30% smaller than the original, yet was the world's largest wooden building until 1998. Legend says squeezing through the nostril-sized hole in one pillar brings enlightenment.",
   "dyk": "In 855 the Great Buddha's head fell clean off. The one you see today is a much later replacement, made in the Edo period.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "Great Buddha Hall 7:30 AM–5:30 PM",
+   "open": "07:30",
+   "close": "17:30",
+   "note": "Apr–Oct hours; Nov–Mar 8 AM–5 PM. Grounds always open"
+  },
+  "try": "Kakinoha-zushi, Nara's pressed salmon or mackerel sushi wrapped in persimmon leaf"
  },
  "Nara Park": {
   "ja": "奈良公園",
@@ -568,7 +607,12 @@ export const PLACES = {
   "key": "1,000+ deer · Natural Monument · Free",
   "story": "About 1,400 wild deer roam the park. Legend says the god of Kasuga Taisha arrived riding a white deer, so they were treated as sacred, and today they are a protected Natural Monument. Many bow for crackers, but they also nip and head-butt when impatient, so hold the senbei up and keep bags closed.",
   "dyk": "Killing one of Nara's sacred deer was once a capital crime. The last recorded case under that law was in 1637.",
-  "kind": "park"
+  "kind": "park",
+  "hours": {
+   "d": "Open all day",
+   "always": true,
+   "note": "Deer-cracker stalls daytime only (~¥200)"
+  }
  },
  "Nakatanidou": {
   "ja": "中谷堂",
@@ -580,7 +624,14 @@ export const PLACES = {
   "key": "Speed mochi pounding · Yomogi mochi",
   "story": "This little mochi shop won Japan's national high-speed mochi pounding championship in 2005 and 2006, and the show is real: up to three strikes a second, with rhythmic shouts keeping the mallet and the hands in sync. The prize is yomogi mochi, green with mugwort, filled with sweet bean paste and dusted with kinako. Eat it warm.",
   "dyk": "In Japanese folklore the shape on the full moon is a rabbit pounding mochi, so this shop's real competition is lunar.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "10 AM–7 PM (may close early if sold out)",
+   "open": "10:00",
+   "close": "19:00",
+   "note": "Some listings say closed Tue; pounding shows at irregular times"
+  },
+  "try": "Freshly pounded yomogi (mugwort) mochi filled with sweet red bean"
  },
  "Katsuo-ji Temple": {
   "ja": "勝尾寺",
@@ -588,7 +639,14 @@ export const PLACES = {
   "key": "Temple of winning · Daruma dolls",
   "story": "A mountain temple in Minoh, north of Osaka, traditionally founded in 727 and known as the temple of winning since the Heian period. Visitors buy red daruma with 'win' painted on the belly, make a wish, and bring them back once it comes true, so thousands now sit on walls, steps and lanterns. Maples turn red in autumn.",
   "dyk": "After its monks' prayers cured Emperor Seiwa, it was named 'temple that beat the king'. Tactfully, they swapped 'king' for a soundalike meaning 'tail'.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "8 AM–5 PM (Sat to 6 PM)",
+   "open": "08:00",
+   "close": "17:00",
+   "last": "16:30",
+   "note": "Weekdays & Sun 8–5, Sat 8–6; entry fee charged"
+  }
  },
  "Kuromon Ichiba Market": {
   "ja": "黒門市場",
@@ -599,7 +657,14 @@ export const PLACES = {
   "key": "Osaka's Kitchen · About 200 years",
   "story": "Osaka's Kitchen stretches about 580 m, with around 150 stalls. It grew from fish traders at the end of the Edo period and was first called Enmyoji Market, after a temple with a big black gate, kuromon, that burned down in 1912. Long a chefs' market, it now leans to ready-to-eat seafood and wagyu, so prices run high.",
   "dyk": "Look out for fugu, the poisonous pufferfish, a Kuromon speciality. Chefs need a special licence to cut it, and serving its deadly liver has been banned since 1984.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "Stalls ~9 AM–6 PM; many close by 4:30 PM",
+   "open": "09:00",
+   "close": "18:00",
+   "note": "Hours vary by stall; some closed Sundays"
+  },
+  "try": "Fresh tuna sashimi, uni cups and grilled scallops from the seafood stalls"
  },
  "Tsutenkaku Tower": {
   "ja": "通天閣",
@@ -610,7 +675,14 @@ export const PLACES = {
   "key": "Rebuilt 1956 · 103 m · Billiken",
   "story": "The first Tsutenkaku, 'tower reaching heaven', went up in 1912 as an Eiffel Tower perched on an Arc de Triomphe. After a 1943 fire it was scrapped for war steel; this one opened in 1956. Inside sits Billiken, Osaka's lucky charm: rub his soles for luck. The light on top forecasts tomorrow's weather by colour.",
   "dyk": "Billiken was patented in 1908 by an American art teacher, and he's also the mascot of Saint Louis University in Missouri. Lucky feet, international career.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "9 AM–9:45 PM",
+   "open": "09:00",
+   "close": "21:45",
+   "last": "21:15",
+   "note": "Timed entry reservation needed; outdoor deck closes in bad weather"
+  }
  },
  "Komehyo Shinsaibashi": {
   "img": "komehyo-shinsaibashi.webp",
@@ -620,7 +692,13 @@ export const PLACES = {
   "key": "Pre-owned luxury · Bags and watches",
   "story": "A big branch of Komehyo, one of Japan's best-known resale chains, selling authenticated second-hand bags, watches and jewellery. The area is named after a bridge built in 1622 by merchant Okada Shinsai over the Nagahori canal; the canal was filled in 1964. Bring your passport for tax-free purchases.",
   "dyk": "Komehyo started in 1947 as a humble second-hand clothes shop in Nagoya's Osu district, a long way from designer handbags.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "11 AM–8 PM",
+   "open": "11:00",
+   "close": "20:00",
+   "note": "Open daily"
+  }
  },
  "Amerikamura Triangle Park": {
   "ja": "アメリカ村",
@@ -631,7 +709,13 @@ export const PLACES = {
   "key": "Youth fashion hub · Vintage shops",
   "story": "In 1969 this was a district of warehouses and lumber yards, until designer Mariko Higiri opened a late-night cafe called Loop by the little triangle park. Creative types followed, warehouses became shops selling American used clothes and records, and the name America Village stuck. Triangle Park is still the hangout.",
   "dyk": "A small replica of the Statue of Liberty peers down on the streets from a rooftop. She seems to have settled in nicely.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "Park open all day; shops ~11 AM–8 PM",
+   "always": true,
+   "note": "Shop hours vary; most open by late morning"
+  },
+  "try": "Kogaryu takoyaki with mesh-drizzled mayo, right across from the park"
  },
  "Dotonbori Glico Sign": {
   "ja": "道頓堀グリコサイン",
@@ -642,7 +726,12 @@ export const PLACES = {
   "key": "Since 1935 · Sixth version",
   "story": "The running man has watched over the canal since 1935, and today's LED version, from 2014, is the sixth. He advertises Glico caramels, named after glycogen, which the founder learned was in oysters. Copying his arms-up pose from Ebisubashi bridge is the classic Osaka photo.",
   "dyk": "The runner was picked by a vote at local elementary schools, and the slogan still claims one caramel gives you energy to run 300 m.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Open all day; best after dusk when signs light up",
+   "always": true,
+   "note": "Street never closes; many food stalls open late"
+  }
  },
  "Don Quijote Dotonbori": {
   "ja": "ドン・キホーテ道頓堀店",
@@ -653,7 +742,14 @@ export const PLACES = {
   "key": "Ebisu Tower · Open late",
   "story": "A branch of Japan's famously crammed discount chain, with goods stacked floor to ceiling and open late. The yellow oval Ferris wheel on the front, Ebisu Tower, rises 77 m and opened in 2005, broke down in 2008, then sat still for almost ten years before restarting in 2018. Its gondolas turn to face the canal.",
   "dyk": "Donki's maddeningly catchy in-store theme song, 'Miracle Shopping', is sung by a former store employee. Good luck getting it out of your head.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "Store 24 h; Ferris wheel 11 AM–10 PM",
+   "open": "11:00",
+   "close": "22:00",
+   "last": "21:30",
+   "note": "Store open 24 h; wheel times shown (Tue opens 1 PM)"
+  }
  },
  "Hozenji Yokocho": {
   "ja": "法善寺横丁",
@@ -664,7 +760,13 @@ export const PLACES = {
   "key": "Mossy Fudo statue · Lantern alley",
   "story": "Two stone-paved alleys, each about 80 m long and 3 m wide, packed with tiny restaurants beside Hozen-ji temple. The temple burned in the 1945 air raids, but its Fudo Myoo statue survived, and people have splashed it with water as they pray for so long that it's now furry with moss. A calm pocket steps from Dotonbori's neon.",
   "dyk": "The west gate sign was brushed by comedy actor Kanbi Fujiyama, and one character is missing a stroke. Nobody agrees why, which feels right for a comedian.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Alley and temple open all day",
+   "always": true,
+   "note": "Restaurants mostly lunch–10 PM; Meoto Zenzai 10 AM–10 PM"
+  },
+  "try": "Sweet red-bean zenzai at Meoto Zenzai, served as a pair of bowls"
  },
  "Osaka Castle": {
   "ja": "大阪城",
@@ -675,7 +777,12 @@ export const PLACES = {
   "key": "Founded 1583 · Tower rebuilt 1931",
   "story": "Toyotomi Hideyoshi began the castle in 1583. It fell to the Tokugawa in 1615, and their rebuilt keep burned after a lightning strike in 1665. It then went without a main tower for over 250 years, until public donations paid for today's 1931 concrete keep, with a lift and museum inside. The huge stone walls are original.",
   "dyk": "The biggest stone in the walls, the 'Octopus Stone', weighs about 108 tonnes and was hauled over 100 km from Okayama. It's named for an octopus-shaped stain.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "Park open all day; castle tower 9 AM–6 PM",
+   "always": true,
+   "note": "Grounds always open; tower 9 AM–6 PM, last entry 5:30"
+  }
  },
  "Arashiyama Bamboo Grove": {
   "ja": "竹林の小径",
@@ -686,7 +793,12 @@ export const PLACES = {
   "key": "Open 24 hrs · Free · Allow 30 min",
   "story": "A path through towering moso bamboo between Nonomiya Shrine and Okochi Sanso, passing Tenryu-ji's north gate. Japan's Ministry of the Environment lists the sound of wind in the stalks among the country's 100 soundscapes worth preserving. It's open all hours and free, so come early to hear it without the crowds.",
   "dyk": "Moso bamboo has been recorded growing 119 cm in 24 hours. Once a stalk stops growing, though, it never grows another centimetre.",
-  "kind": "park"
+  "kind": "park",
+  "hours": {
+   "d": "Open all day",
+   "always": true,
+   "note": "Free public path; quietest before 8 AM"
+  }
  },
  "Arashiyama Park observation deck": {
   "ja": "嵐山公園",
@@ -720,7 +832,14 @@ export const PLACES = {
   "key": "Founded 1339 · UNESCO",
   "story": "Shogun Ashikaga Takauji founded Tenryu-ji in 1339 to honour the late Emperor Go-Daigo, and it was named 'Heavenly Dragon' after his brother reportedly dreamed of a golden dragon over the river. Every original building has since burned, but Muso Soseki's pond garden, which borrows the hills behind as scenery, keeps its old layout.",
   "dyk": "To pay for construction, the shogunate sent trading ships to China in 1342, nicknamed Tenryu-ji ships. A temple funded by a trade voyage.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "8:30 AM–5 PM (last entry 4:50 PM)",
+   "open": "08:30",
+   "close": "17:00",
+   "last": "16:50",
+   "note": "Buildings closed Oct 29–30; Dharma Hall weekends/special periods"
+  }
  },
  "Otagi Nenbutsu-ji": {
   "ja": "愛宕念仏寺",
@@ -731,7 +850,17 @@ export const PLACES = {
   "key": "1,200 rakan statues · Quiet",
   "story": "Founded in 766 near Gion, this temple was washed away by floods, wrecked by war and typhoons, and moved to this hillside in 1922. In 1955 a statue restorer took charge, and from 1981 ordinary visitors carved 1,200 stone rakan under his guidance, each with its own face. Now mossy, some pray, some laugh and some show off their hobbies.",
   "dyk": "Most of the 1,200 statues were carved by everyday visitors who came to learn, not professional sculptors, which explains the very relaxed expressions.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "9 AM–4 PM",
+   "open": "09:00",
+   "close": "16:00",
+   "closed": [
+    "Wed",
+    "Sat"
+   ],
+   "note": "Some listings say 4:15 PM; ¥1,000, under-10s free"
+  }
  },
  "Togetsukyo Bridge (boat pier, south bank)": {
   "ja": "渡月橋",
@@ -742,7 +871,14 @@ export const PLACES = {
   "key": "Moon-crossing bridge · Katsura River",
   "story": "Legend has it Emperor Kameyama, boating under a full moon in the 1200s, thought the moon was strolling across, hence 'moon-crossing bridge'. A bridge has stood here since 836. Today's 155 m version from 1934 is reinforced concrete in disguise: only the railings are cypress.",
   "dyk": "Kyoto 13-year-olds who pray for wisdom at nearby Horin-ji are warned not to look back while crossing this bridge home, or they hand the wisdom straight back.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Boats 9 AM–3:30 PM",
+   "open": "09:00",
+   "close": "15:30",
+   "note": "Ticket sales end 3:30 PM; cash only; cancelled in high wind/flooding"
+  },
+  "try": "Mitarashi dango or grilled squid from the floating snack boat (ask about mirin)"
  },
  "Itsukichaya Arashiyama Honten": {
   "ja": "いつきちゃや",
@@ -754,7 +890,13 @@ export const PLACES = {
   "key": "Kyoto set meals · Cash only",
   "story": "A teahouse-style restaurant gazing across the Katsura River at the Arashiyama hills, a nationally designated place of scenic beauty. Expect Kyoto-style set meals and matcha sweets, and bring cash. Ask about ingredients: some stocks and dishes contain pork, and real mirin is about 14% alcohol.",
   "dyk": "Japan's favourite poetry card game, Hyakunin Isshu, grew from 100 poems Fujiwara no Teika chose to decorate the sliding doors of a villa near Mount Ogura, just upriver.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "10 AM–7:35 PM (food last order 6:30 PM)",
+   "open": "10:00",
+   "close": "19:35",
+   "note": "No regular closing day listed; walk-in seats kept"
+  }
  },
  "Samurai Kenbu Theater": {
   "img": "samurai-kenbu-theater.webp",
@@ -764,7 +906,17 @@ export const PLACES = {
   "key": "Sword class · Iaido basics",
   "story": "Kenbu is sword dance performed to shigin, chanted classical poetry. Its modern stage form took shape after 1868, when fencing troupes began touring Japan with crowd-pleasing shows. Here you learn its moves plus iaido basics, the art of drawing the sword, dressed in hakama, the pleated trousers of the samurai.",
   "dyk": "After the Second World War swords were banned for about seven years, so kenbu schools danced with folding fans instead, and many kept the fans afterwards.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "9:30 AM–6:30 PM (booked lessons/shows)",
+   "open": "09:30",
+   "close": "18:30",
+   "closed": [
+    "Thu",
+    "Sun"
+   ],
+   "note": "Kyoto studio lists Mon–Wed, Fri–Sat as open days"
+  }
  },
  "Dotonbori": {
   "ja": "道頓堀",
@@ -775,7 +927,13 @@ export const PLACES = {
   "key": "Canal dug from 1612 · Street food",
   "story": "Named after Doton, who started digging this canal in 1612; he died in the 1615 siege of Osaka and others finished it that year. By 1662 it had six kabuki and five puppet theatres. Today the show is food: takoyaki, okonomiyaki and the arms-up Glico runner, lit up here since 1935.",
   "dyk": "In 1985 jubilant Hanshin Tigers fans threw a Colonel Sanders statue into the canal. His 'curse' was blamed for a 38-year title drought; divers fished him out in 2009.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Open all day; eateries ~11 AM–11 PM",
+   "always": true,
+   "note": "Street never closes; best after dark"
+  },
+  "try": "Takoyaki (octopus balls) from the street stalls, Osaka's signature snack"
  },
  "Fushimi Inari Taisha": {
   "ja": "伏見稲荷大社",
@@ -786,7 +944,13 @@ export const PLACES = {
   "key": "Founded 711 · Open 24 hrs · Free",
   "story": "The head shrine of Inari, kami of rice and business, founded by tradition in 711 by the Hata clan. Around 10,000 torii, each given by a person or business with their name on the back, climb 233 m Mount Inari; the full loop takes about two hours. It is open 24 hours and free, so dawn is your friend.",
   "dyk": "Shigeru Miyamoto has said Star Fox was partly inspired by this shrine: the foxes, and those endless gates, which became the arches your spaceship flies through.",
-  "kind": "shrine"
+  "kind": "shrine",
+  "hours": {
+   "d": "Open all day",
+   "always": true,
+   "note": "Grounds 24 h; shops and offices daytime only"
+  },
+  "try": "Fox-face kitsune senbei crackers at Hogyokudo by the station (opens 7:30 AM)"
  },
  "Sanjusangen-do": {
   "ja": "三十三間堂",
@@ -797,7 +961,14 @@ export const PLACES = {
   "key": "1,001 Kannon · 120 m hall",
   "story": "Built in 1164 for the retired emperor Go-Shirakawa, burned in 1249 and rebuilt by 1266, this 120 m hall is named for the 33 bays between its pillars. Inside, 1,000 life-size Kannon stand in ranks around a big seated one; only 124 survived the fire. Wind and Thunder gods and 28 guardians keep watch.",
   "dyk": "In 1686 the archer Wasa Daihachiro shot 13,053 arrows along the veranda in 24 hours, and 8,133 flew the full length. Nobody ever beat it.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "8:30 AM–5 PM",
+   "open": "08:30",
+   "close": "17:00",
+   "last": "16:30",
+   "note": "Winter hours (9–4) start Nov 16"
+  }
  },
  "Nanzen-ji": {
   "ja": "南禅寺",
@@ -808,7 +979,15 @@ export const PLACES = {
   "key": "Zen head temple · 1890 aqueduct",
   "story": "Emperor Kameyama turned his villa into this temple in 1291, and it was later ranked above Kyoto's five great Zen temples, in a class of its own. The red-brick aqueduct of 1890, carrying Lake Biwa water through the grounds, still flows. Climb the 1628 Sanmon gate for a view over the city.",
   "dyk": "Kabuki's outlaw Ishikawa Goemon stands on this gate rating the view above a thousand gold pieces. The real Goemon was executed in 1594, decades before it was built.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "8:40 AM–5:15 PM (Sat)",
+   "open": "08:40",
+   "close": "17:15",
+   "last": "16:55",
+   "note": "Grounds free/always open; Nanzen-in sub-temple closed for works"
+  },
+  "try": "Yudofu (simmered tofu), Nanzen-ji's centuries-old specialty (ask about mirin)"
  },
  "Nijo Castle": {
   "ja": "二条城",
@@ -819,7 +998,14 @@ export const PLACES = {
   "key": "Built 1603 · UNESCO · Allow 1.5 hr",
   "story": "Tokugawa Ieyasu built this as his Kyoto base in the early 1600s, and it was enlarged by 1626 for an emperor's visit. Kano school artists painted the palace walls. In 1867 the last shogun announced the return of power to the emperor here, ending over 260 years of Tokugawa rule. Allow 1.5 hours.",
   "dyk": "The chirping 'nightingale floors' may not be a clever alarm: a sign at the castle says the sound comes from clamps rubbing on nails as the floor wears.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "8:45 AM–5 PM (last entry 4 PM)",
+   "open": "08:45",
+   "close": "17:00",
+   "last": "16:00",
+   "note": "Honmaru Palace closed Oct 19–20 only"
+  }
  },
  "Nishiki Orizuruya": {
   "img": "nishiki-orizuruya.webp",
@@ -829,7 +1015,11 @@ export const PLACES = {
   "key": "Tea ceremony · Calligraphy",
   "story": "A small culture studio near Nishiki Market, the 400 m strip known as Kyoto's kitchen. Tea ceremony grew out of Zen and was shaped in the 1500s by Sen no Rikyu, who fixed every movement. Calligraphy works the same way: set stroke order, full attention and no going back to touch up a line.",
   "dyk": "Many tea rooms have a tiny crawl-in door, the nijiriguchi, so samurai and merchants alike had to bow low to get in. Inside, everyone was meant to be equal.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "Reservation-only sessions, listed as available daily",
+   "note": "Session times set at booking; confirm your slot, check locally. Check locally"
+  }
  },
  "GEAR Theatre (Art Complex 1928)": {
   "img": "gear-theatre-art-complex-1928.webp",
@@ -839,7 +1029,11 @@ export const PLACES = {
   "key": "Non-verbal show · Since 2012",
   "story": "GEAR is a wordless show of mime, breakdance, juggling, magic and projection mapping, running in Kyoto since 2012. Its home is a 1928 building on Sanjo-dori designed by Goichi Takeda as the Kyoto office of the Mainichi newspaper, now a registered cultural property of the city.",
   "dyk": "When the newspaper moved out in 1998, the building was nearly demolished. Artists rallied, and it reopened in 1999 as an arts space. Not bad for an old office.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "Sat shows usually 1 PM & 6 PM",
+   "note": "Doors 30 min before; about 90 min; check the ticket time"
+  }
  },
  "Kiyomizu-dera": {
   "ja": "清水寺",
@@ -850,7 +1044,13 @@ export const PLACES = {
   "key": "Founded 778 · UNESCO · Opens 6 AM",
   "story": "Founded in 778 and named for the pure water of the Otowa waterfall, where three streams are said to grant long life, love or success. The main hall dates from 1633, and its stage juts about 13 m above the slope, built without a single nail. It opens at 6 AM, the best time to beat the crowds.",
   "dyk": "'Jumping off the stage at Kiyomizu' means taking a bold plunge. People really did it: 234 jumps were recorded in the Edo period, about 85% survived. Banned in 1872.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "6 AM–6 PM",
+   "open": "06:00",
+   "close": "18:00",
+   "note": "Autumn night viewing is Nov 21–30 only"
+  }
  },
  "Ninenzaka": {
   "ja": "二寧坂",
@@ -861,7 +1061,13 @@ export const PLACES = {
   "key": "Old stone lane · Preserved district",
   "story": "A stepped stone lane of old wooden shops in the protected district below Kiyomizu-dera. The name may come from the year 807, or simply because it leads to Sannenzaka. Locals warn a tumble here means two years of bad luck. The Starbucks, opened in 2017 in a townhouse over 100 years old, has tatami rooms upstairs.",
   "dyk": "In 1916 the painter Takehisa Yumeji lodged on this lane, waiting for his lover Hikono to join him from Tokyo. A stone marker remembers the romance.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Street open all day; shops ~10 AM–5/6 PM",
+   "always": true,
+   "note": "Few shops open before 9–10 AM"
+  },
+  "try": "Nama yatsuhashi, Kyoto's soft cinnamon mochi sweets, sold along the slopes"
  },
  "Momo Kimono": {
   "img": "momo-kimono.webp",
@@ -871,7 +1077,13 @@ export const PLACES = {
   "key": "Kimono rental · Hair styling",
   "story": "Gion grew up in front of Yasaka Shrine as a district of teahouses for visitors, and its geiko and maiko still wear kimono for work, so you are dressing up in the right place. Women's kimono go on in layers, tied with an obi, so allow time; men's hakama are the pleated trousers once worn by samurai.",
   "dyk": "Always wrap a kimono left side over right. Right over left is reserved for dressing the dead, a rule traced back to a law code of 718.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "9 AM–5 PM",
+   "open": "09:00",
+   "close": "17:00",
+   "note": "Gion store; return by closing, late fee ¥1,000/10 min"
+  }
  },
  "Yasaka Pagoda (Hokan-ji)": {
   "ja": "八坂の塔",
@@ -882,7 +1094,13 @@ export const PLACES = {
   "key": "Rebuilt 1440 · 46 m · Five storeys",
   "story": "Five storeys and about 46 m tall, the current pagoda was rebuilt in 1440 under shogun Ashikaga Yoshinori. It is the last surviving building of Hokan-ji, which tradition links to Prince Shotoku, though excavated roof tiles point to the late 600s. Framed by sloping lanes and wooden houses, it is Kyoto's postcard pagoda.",
   "dyk": "On the occasional days it opens, you can climb a steep, narrow stair inside to the second storey, a rare chance to stand inside a working pagoda.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "Exterior any time; interior ~10 AM–3 PM, irregular",
+   "always": true,
+   "note": "Interior opens irregularly; no children under 13 inside"
+  },
+  "try": "Matcha soft serve and sweets from the Ninenzaka/Sannenzaka shops"
  },
  "Maruyama Park": {
   "ja": "円山公園",
@@ -916,7 +1134,16 @@ export const PLACES = {
   "key": "Charcoal-grilled beef · Tableside",
   "story": "The name means 'minced meat and rice', and the menu sticks to exactly that. The house rule is three kinds of fresh: beef ground each morning, patties charcoal-grilled in front of you and served one at a time, and rice just cooked in a traditional hagama pot. Ask staff about halal status if needed.",
   "dyk": "Hagama means 'winged pot'. The 'wing' is the flange round its middle, which let it sit snugly in an old wood-fired stove and helps catch frothy boil-overs.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "Lunch 11 AM–3 PM, dinner 5–9 PM; weekend breakfast 8–11 AM",
+   "open": "11:00",
+   "close": "15:00",
+   "closed": [
+    "Wed"
+   ],
+   "note": "Registration required (web or in-store from ~9 AM); cashless only"
+  }
  },
  "Sannenzaka": {
   "ja": "三年坂",
@@ -927,7 +1154,14 @@ export const PLACES = {
   "key": "Stone steps · Preserved district",
   "story": "Its old name, Sanneizaka, is read as 'safe childbirth slope', since pregnant women climbed it to pray at Kiyomizu-dera. The legend is grimmer: trip here and you will die within three years, perhaps first meant as a stern 'watch your step'. The stone stairs and wooden shops are protected.",
   "dyk": "A gourd shop halfway up sells the antidote. Gourds are old lucky charms, and six of them, 'mubyo', sounds just like the Japanese for 'no illness'.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Shops ~10 AM–5/6 PM",
+   "open": "10:00",
+   "close": "17:30",
+   "always": true,
+   "note": "Street always open; shops close early evening"
+  }
  },
  "Kodai-ji": {
   "ja": "高台寺",
@@ -938,7 +1172,14 @@ export const PLACES = {
   "key": "Built 1606 · Zen garden",
   "story": "Hideyoshi's widow, known as Nene, founded this temple in 1606 to pray for his soul, with Tokugawa Ieyasu helping to pay. Her memorial hall glitters with gold 'Kodaiji' lacquerwork, the gardens are credited to Kobori Enshu, and a path climbs through bamboo to the teahouses. Autumn evening illuminations light the maples.",
   "dyk": "Since 2019 some sermons here come from Mindar, a 1.95 m android Kannon built with Osaka University. It preaches the Heart Sutra; the robot alone cost 25 million yen.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "9 AM–5:30 PM; autumn light-up until 10 PM",
+   "open": "09:00",
+   "close": "22:00",
+   "last": "21:30",
+   "note": "Night illumination Oct 23–Dec 13, 2026; lights from 5 PM"
+  }
  },
  "Universal Studios Japan": {
   "ja": "ユニバーサル・スタジオ・ジャパン",
@@ -949,7 +1190,12 @@ export const PLACES = {
   "key": "Opened 2001 · Super Nintendo World",
   "story": "Opened on 31 March 2001, it was Universal's third park and its first outside the United States. The Wizarding World of Harry Potter arrived in 2014, Super Nintendo World in 2021 and Donkey Kong Country in late 2024. Timed entry for the Nintendo area goes fast, so check the official app early.",
   "dyk": "In 2011 the park's Christmas tree set a Guinness World Record for the most lights: 260,498 of them. Somebody had to check every bulb.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "8 AM–10 PM",
+   "close": "22:00",
+   "note": "Gates often open about 7:15–7:30 AM"
+  }
  },
  "Kennin-ji": {
   "ja": "建仁寺",
@@ -960,7 +1206,14 @@ export const PLACES = {
   "key": "Founded 1202 · Kyoto's oldest Zen",
   "story": "Founded in 1202 by the monk Eisai, Kyoto's oldest Zen temple is also where he is buried. Look up in the Hatto hall: the twin dragons, painted in 2002 for the 800th anniversary, span about 108 tatami mats and were painted in a school gym in Hokkaido. The famous Wind God and Thunder God originals live at the Kyoto National Museum.",
   "dyk": "Eisai promoted tea as medicine. A medieval chronicle says he treated the shogun Sanetomo, poorly after too much sake, with a cup of tea. History's classiest hangover cure.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "10 AM–5 PM",
+   "open": "10:00",
+   "close": "17:00",
+   "last": "16:30",
+   "note": "Outer grounds free; halls ¥800 (fee revised 2026)"
+  }
  },
  "Onitsuka Tiger Kyoto": {
   "img": "onitsuka-tiger-kyoto.webp",
@@ -970,7 +1223,13 @@ export const PLACES = {
   "key": "Founded 1949 · Kobe brand",
   "story": "Kihachiro Onitsuka began making sports shoes in Kobe in 1949. In 1977 his firm merged into ASICS, a Latin acronym for 'a sound mind in a sound body', and the Tiger name slept until a 2002 fashion revival; Uma Thurman's Kill Bill shoes helped. The shop is by Shijo-Kawaramachi, Kyoto's main shopping crossroads.",
   "dyk": "In the 1960s a young Phil Knight imported Onitsuka running shoes to the US. The partnership soured, and his company launched its own brand instead: Nike.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "11 AM–9 PM",
+   "open": "11:00",
+   "close": "21:00",
+   "note": "On Kawaramachi just north of Shijo"
+  }
  },
  "Kyoto Railway Museum": {
   "ja": "京都鉄道博物館",
@@ -978,7 +1237,16 @@ export const PLACES = {
   "key": "Opened 2016 · 1914 roundhouse · 2 hrs",
   "story": "Opened in 2016 on the site of a 1972 steam locomotive museum, it is Japan's largest railway museum by floor space and number of trains, with over 50 on show, including 0 Series bullet train cars. For about 300 yen a real steam engine pulls you on a 1 km round trip. Allow 2 hours.",
   "dyk": "The 1914 Umekoji roundhouse, 20 tracks fanned round a turntable, is Japan's oldest surviving reinforced-concrete engine shed, and steam locomotives still live in it.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "10 AM–5 PM",
+   "open": "10:00",
+   "close": "17:00",
+   "last": "16:30",
+   "closed": [
+    "Wed"
+   ]
+  }
  },
  "Tokyo Station": {
   "ja": "東京駅",
@@ -1010,7 +1278,15 @@ export const PLACES = {
   "key": "Car-free weekend afternoons",
   "story": "Ginza means 'silver mint', after the one set up here in 1612. After a fire in 1872 the Meiji government rebuilt it as a Western-style brick shopping street. On weekend afternoons Chuo-dori closes to cars and becomes a 'pedestrian paradise'. The Wako clock tower at the 4-chome crossing is the landmark.",
   "dyk": "Japan's first McDonald's opened inside the Mitsukoshi store here in 1971, and weekend strollers munching burgers on the car-free street made the news.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Shops ~10 AM–8 PM",
+   "open": "10:00",
+   "close": "20:00",
+   "always": true,
+   "note": "Car-free only Sat/Sun noon–5 PM; not on Tuesdays"
+  },
+  "try": "Fruit parfaits at Ginza Sembikiya, the historic fruit parlour"
  },
  "Marunouchi Naka-dori": {
   "img": "marunouchi-naka-dori.webp",
@@ -1020,7 +1296,12 @@ export const PLACES = {
   "key": "Tree-lined · Between station & palace",
   "story": "Marunouchi means 'inside the moat', as feudal lords kept mansions here around Edo Castle. Mitsubishi bought the land in 1890 and built red-brick offices so London-like the area was nicknamed 'Itcho London'. Naka-dori is its tree-lined street of designer shops, and Mitsubishi Ichigokan, an 1894 office rebuilt in 2009, is just off it.",
   "dyk": "Nobody bid for this old army ground, so Mitsubishi paid about 1.28 million yen in 1890, roughly three times Tokyo's budget, for a weedy plot nicknamed 'Mitsubishi-ga-hara'.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Street open all day; shops 11 AM–9 PM",
+   "always": true,
+   "note": "Shops close 9 PM; winter lights start Nov 12"
+  }
  },
  "Yoroniku Ebisu": {
   "img": "yoroniku-ebisu.webp",
@@ -1030,7 +1311,14 @@ export const PLACES = {
   "key": "Yakiniku · Ebisu",
   "story": "Ebisu is a neighbourhood named after a beer named after a god. Yebisu beer was first brewed here in 1890, a freight stop opened in 1901 to ship it, and the station and district took the name. Now it is a grown-up dining area. At yakiniku you grill the meat yourself: seconds a side for well-marbled wagyu.",
   "dyk": "On an 'A5' wagyu label, A is yield, how much usable meat the carcass gave, and 5 is quality: marbling, colour, texture and fat. Five is top.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "Dinner 5 PM–midnight (last order 11 PM)",
+   "open": "17:00",
+   "close": "24:00",
+   "last": "23:00",
+   "note": "Last order 11 PM; listing is 蕃 YORONIKU, GEMS Ebisu 8F"
+  }
  },
  "Senso-ji": {
   "ja": "浅草寺",
@@ -1041,7 +1329,13 @@ export const PLACES = {
   "key": "Tokyo's oldest temple · Allow 1 hr",
   "story": "Tokyo's oldest temple. Legend says two fishermen netted a golden Kannon statue from the Sumida River in 628, and the temple grew around it. The main hall was rebuilt after the 1945 air raids. The giant 700 kg lantern on the Kaminarimon gate came courtesy of Panasonic's founder. Waft the incense smoke over yourself for good health.",
   "dyk": "Senso-ji's paper fortunes are famously blunt. One reporter bought 100 in a day and got 26 marked 'kyo', bad luck. Draw at your own risk.",
-  "kind": "temple"
+  "kind": "temple",
+  "hours": {
+   "d": "Main hall 6:30 AM–5 PM",
+   "open": "06:30",
+   "close": "17:00",
+   "note": "Grounds always open; Nakamise shops ~9/10 AM–7 PM"
+  }
  },
  "Asakusa Shrine": {
   "ja": "浅草神社",
@@ -1063,7 +1357,14 @@ export const PLACES = {
   "key": "About 250 m · About 90 shops",
   "story": "About 250 m and some 90 shops long, it runs from the Kaminarimon gate to the Hozomon gate. It began in the early 1700s, when locals who swept the temple grounds were allowed to set up stalls. In 1885 the city evicted them and rebuilt the street in brick, and it has been rebuilt again since, after the 1923 quake and the 1945 bombing.",
   "dyk": "Come after closing time: the shop shutters are painted with scenes of Asakusa's history and festivals, turning the street into a picture scroll you can only see after hours.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "Shops ~9 AM–6 PM (varies by shop)",
+   "open": "09:00",
+   "close": "18:00",
+   "note": "Senso-ji main hall 6:30 AM–5 PM in October"
+  },
+  "try": "Kibi dango or fresh ningyo-yaki red-bean cakes from Nakamise stalls"
  },
  "Hoppy Street": {
   "ja": "ホッピー通り",
@@ -1071,13 +1372,27 @@ export const PLACES = {
   "key": "Standing bars · Afternoon to late",
   "story": "Named after Hoppy, a beer-flavoured drink of about 0.8% alcohol launched in 1948. Mixed with shochu it was a cheap stand-in when real beer was beyond most budgets. The lane's open-fronted bars serve stew and skewers, and nearby Hanayashiki, begun as a flower garden in 1853, is often called Japan's oldest amusement park.",
   "dyk": "Hanayashiki's roller coaster, opened in 1953, is Japan's oldest still running. It's gentle on paper, but it skims so close to the houses that it feels much faster.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "Izakaya ~11 AM–11 PM, varies by shop",
+   "open": "11:00",
+   "close": "23:00",
+   "note": "Izakaya lane; menus heavy on alcohol and offal stews"
+  },
+  "try": "Jumbo melon pan from Asakusa Kagetsudo at Senso-ji's west approach"
  },
  "Zen Craft Chopsticks Workshop": {
   "key": "Hands-on · About 1 hr",
   "story": "A small hands-on workshop in Asakusa where you shape your own chopsticks. The classic wood is hinoki, Japanese cypress: pale, lemon-scented and highly rot-resistant, which is why it built Horyu-ji and Ise Shrine and still lines Noh stages and baths. A pair you made yourself is the souvenir that travels best.",
   "dyk": "Japanese chopsticks are usually shorter than Chinese ones, partly because Japanese meals came in individual portions, so nobody had to reach across a shared platter.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "9 AM–7 PM (by booking)",
+   "open": "09:00",
+   "close": "19:00",
+   "last": "18:00",
+   "note": "Asakusa Tosei Bldg 9F–10F; 1-hour sessions"
+  }
  },
  "Kappabashi Kitchen Town": {
   "ja": "かっぱ橋道具街",
@@ -1085,7 +1400,16 @@ export const PLACES = {
   "key": "Chefs' supply street · About 170 shops",
   "story": "Tokyo's trade street for kitchenware, with over 170 shops along about 800 m, where merchants first gathered around 1912 selling old tools. This is where restaurants buy the plastic food samples, sampuru, in their windows, and you can buy them too. A giant chef's head marks the southern end, and kappa mascots pop up everywhere.",
   "dyk": "Merchant Kappaya Kihachi paid for local flood works in the early 1800s; legend says river kappa helped dig. His temple, Kappa-dera, is said to keep a mummified kappa hand.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "Shops ~10 AM–5 PM",
+   "open": "10:00",
+   "close": "17:00",
+   "closed": [
+    "Sun"
+   ],
+   "note": "Many shops also closed public holidays"
+  }
  },
  "Okachimachi Jewelry Town": {
   "img": "okachimachi-jewelry-town.webp",
@@ -1095,7 +1419,13 @@ export const PLACES = {
   "key": "Wholesale gold & jewellery",
   "story": "Okachimachi is named after the okachi, low-ranking foot soldiers who guarded the shogun in the Edo period. Metalworkers making altar fittings for Kan'ei-ji and Senso-ji settled here, then switched to jewellery in the Meiji era; over 1,000 firms now cluster here. Gold is priced by weight at the daily rate, so check the board.",
   "dyk": "Those foot soldiers were poorly paid, so many grew morning glories on the side and sold them at the Iriya market. Samurai with a flower hustle.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "Shops ~10:30 AM–7 PM",
+   "open": "10:30",
+   "close": "19:00",
+   "note": "Some shops closed Thu or Sun; many wholesalers closed weekends"
+  }
  },
  "Shinobazu Pond": {
   "ja": "不忍池",
@@ -1106,7 +1436,12 @@ export const PLACES = {
   "key": "Ueno Park · Lotus pond · Free",
   "story": "The pond is what is left of a marsh from when Tokyo Bay reached this far inland. In the 1620s the monk Tenkai made it echo Lake Biwa near Kyoto, with Benten-do on its island for the goddess of music and fortune. In WWII it was drained for rice paddies, and by late October the summer lotus leaves are fading.",
   "dyk": "From 1884 to 1892 a horse racing track ran around the pond, and the Emperor attended the very first race. The ducks have since reclaimed it.",
-  "kind": "park"
+  "kind": "park",
+  "hours": {
+   "d": "Open all day",
+   "always": true,
+   "note": "Park paths 24 h; boat rental ~9 AM–5 PM"
+  }
  },
  "Ameyoko Market": {
   "ja": "アメヤ横丁",
@@ -1117,7 +1452,14 @@ export const PLACES = {
   "key": "Post-war market · About 500 m",
   "story": "Ameyoko began as a post-war black market, when sugar was rationed and stalls sold sweet-potato candy, ame, to people waiting for trains. After 1950 it filled with US army goods, so some say the name means America too. Today over 250 shops line the tracks between Ueno and Okachimachi: fish, snacks, cheap clothes and standing bars.",
   "dyk": "Post-war traders from northern Japan sold goods here, stuffed their bags with candy, then resold it back home for three or four times the price. Sweet business.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "Shops ~10 AM–8 PM (varies by shop)",
+   "open": "10:00",
+   "close": "20:00",
+   "note": "Many shops close on selected Wednesdays"
+  },
+  "try": "Fresh-cut fruit skewers and seafood rice bowls (kaisendon) from the stalls"
  },
  "Akihabara Electric Town": {
   "ja": "秋葉原",
@@ -1128,7 +1470,13 @@ export const PLACES = {
   "key": "Electronics, anime & games",
   "story": "After WWII, vendors huddled under the tracks here selling radio parts on the black market. By the 1950s it was Electric Town, full of TVs and washing machines; home computers came in the 1980s, and anime and games followed. The narrow buildings stack a different hobby on each floor, so take the lift to the top and walk down.",
   "dyk": "The name comes from a fire-prevention shrine built after an 1869 blaze. Locals nicknamed the area Akibagahara, 'Akiba's field', which got squashed into Akihabara.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Most shops ~11 AM–8 PM; Yodobashi to 10 PM",
+   "open": "11:00",
+   "close": "20:00",
+   "note": "Most shops close 8 PM; Don Quijote open 24h"
+  }
  },
  "Tokyo DisneySea": {
   "ja": "東京ディズニーシー",
@@ -1139,7 +1487,13 @@ export const PLACES = {
   "key": "Opened 2001 · Only one in the world",
   "story": "Opened in 2001 beside Tokyo Disneyland, this is the only DisneySea in the world, and it cost 335 billion yen to build. It belongs to Japan's Oriental Land Company, which licenses the characters from Disney. Mount Prometheus, the smoking volcano, is the centrepiece, and Fantasy Springs, the newest area, opened in June 2024.",
   "dyk": "DisneySea reached 10 million visitors in just 307 days, a record for any theme park in the world. That is a lot of people in mouse ears.",
-  "kind": "attraction"
+  "kind": "attraction",
+  "hours": {
+   "d": "9 AM–9 PM",
+   "open": "09:00",
+   "close": "21:00",
+   "note": "Gates may open early without notice"
+  }
  },
  "Meiji Jingu": {
   "ja": "明治神宮",
@@ -1150,7 +1504,13 @@ export const PLACES = {
   "key": "Built 1920 · About 100,000 trees",
   "story": "Built for Emperor Meiji and Empress Shoken, the shrine was dedicated in 1920, burned in the 1945 air raids and rebuilt in 1958. Its forest grew from about 100,000 trees donated from all over Japan and planted by young volunteers. The great wooden torii, 12 m tall, is cut from a 1,500-year-old cypress from Taiwan.",
   "dyk": "Facing the sake barrels sits a stack of Burgundy wine barrels, given by French wineries since 2006. Emperor Meiji loved Western food and liked wine with it.",
-  "kind": "shrine"
+  "kind": "shrine",
+  "hours": {
+   "d": "5:40 AM–4:40 PM (October)",
+   "open": "05:40",
+   "close": "16:40",
+   "note": "Some inner areas only 9 AM–4 PM"
+  }
  },
  "Takeshita Street": {
   "ja": "竹下通り",
@@ -1161,7 +1521,14 @@ export const PLACES = {
   "key": "Harajuku · About 350 m",
   "story": "Harajuku's youth-fashion heart since the 1970s, this narrow lane runs about 350 m downhill from Harajuku Station to Meiji-dori. It is wall-to-wall crepe stands, sweet shops, cheap fashion and the famous giant rainbow candy floss. Go early on a weekday if you can: weekends are a slow shuffle.",
   "dyk": "In the late 1970s and early 80s, Sunday crowds watched teen dance troupes called takenoko-zoku, the 'bamboo shoot tribe'. Their outfits came from Boutique Takenoko, still on the street.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "Shops ~11 AM–8 PM",
+   "open": "11:00",
+   "close": "20:00",
+   "note": "Quiet before 11 AM; Daiso opens 9:30"
+  },
+  "try": "Rolled crepes from the street's classic crepe stands like Marion Crepes"
  },
  "Cat Street": {
   "ja": "キャットストリート",
@@ -1194,7 +1561,13 @@ export const PLACES = {
   "key": "Reopened 2019 · Nintendo + Pokémon",
   "story": "Parco has been a Shibuya fashion landmark since 1973 and reopened in a new building in November 2019. Beside the designer floors, the 6th floor is pure pop culture, with Nintendo Tokyo, Japan's first official Nintendo store, and a Pokémon Center. The 10th-floor rooftop park is free and open into the evening.",
   "dyk": "Parco is simply Italian for 'park'. The company says each building is meant to be a place to wander and relax, like a park, just with more shopping bags.",
-  "kind": "shop"
+  "kind": "shop",
+  "hours": {
+   "d": "Shops 11 AM–9 PM",
+   "open": "11:00",
+   "close": "21:00",
+   "note": "6F Nintendo/Pokémon from 10 AM; restaurants to 11 PM"
+  }
  },
  "Shibuya Hikarie": {
   "ja": "渋谷ヒカリエ",
@@ -1216,7 +1589,11 @@ export const PLACES = {
   "key": "Up to 3,000 per crossing",
   "story": "When every car light turns red at once, walkers pour across in all directions, around 1,000 per change and up to 3,000 at peak. It has become the postcard image of busy Tokyo. For the classic view from above, head to the Shibuya Sky rooftop on Scramble Square; evenings and weekends are busiest.",
   "dyk": "Netflix's Alice in Borderland did not film its empty-crossing scenes here: they were shot on a full-size replica built on a former racetrack in Ashikaga, about 90 km away.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Open all day",
+   "always": true
+  }
  },
  "Kabukicho (Godzilla head)": {
   "ja": "歌舞伎町",
@@ -1227,7 +1604,12 @@ export const PLACES = {
   "key": "Godzilla since 2015 · Neon district",
   "story": "Kabukicho is named after a kabuki theatre planned here in the late 1940s that was never built: the money ran out, but the name stuck in 1948. Long before, the area was a swamp. Since 2015 an 80-tonne Godzilla head has glared over the Toho building, with glowing eyes and smoky breath at set times.",
   "dyk": "In 2015 Shinjuku Ward made Godzilla an official resident, complete with a special residency certificate, and named him tourism ambassador. Nobody has dared send him a tax bill.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Open all day (view from street)",
+   "always": true,
+   "note": "Godzilla roars on the hour, ~12–8 PM (unofficial)"
+  }
  },
  "Lumine 1": {
   "ja": "ルミネ新宿",
@@ -1259,7 +1641,14 @@ export const PLACES = {
   "key": "Free · 202 m up · Kenzo Tange, 1991",
   "story": "Kenzo Tange designed Tokyo's city hall to evoke both a Gothic cathedral and a computer chip, and it was Japan's tallest building from 1990 to 1993. The free 45th-floor observatories sit 202 m up, with Mt Fuji on clear days. After dark the facade hosts a Guinness-record projection-mapping show.",
   "dyk": "The South Observatory has a grand piano decorated under Yayoi Kusama's direction, polka dots and all. Anyone can play it, but only for five minutes each.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "South deck 9:30 AM–10 PM",
+   "open": "09:30",
+   "close": "22:00",
+   "last": "21:30",
+   "note": "Free; North deck to 5:30 PM, closed 2026-10-26"
+  }
  },
  "Omoide Yokocho": {
   "ja": "思い出横丁",
@@ -1270,7 +1659,13 @@ export const PLACES = {
   "key": "Post-war lane · 1940s",
   "story": "This lane of tiny grill bars grew out of a black market by the tracks in the late 1940s, serving cheap drinks and yakitori. Most stalls seat fewer than ten, elbow to elbow round the grill. After a fire in 1999 the damaged section was rebuilt to keep its old Showa look, lanterns and smoke included.",
   "dyk": "Its old nickname is Piss Alley, from days when there were no toilets and drinkers used the street. A toilet arrived after the fire; the nickname stayed.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "Stalls mostly ~5 PM–midnight (some from afternoon)",
+   "open": "17:00",
+   "close": "24:00",
+   "note": "Each stall sets its own hours"
+  }
  },
  "Shinjuku East Exit": {
   "ja": "新宿駅東口",
@@ -1292,7 +1687,14 @@ export const PLACES = {
   "key": "Old-town shopping lane",
   "story": "Yanaka sits on slightly higher ground and was largely spared by the 1945 air raids, so its lanes still feel like pre-war Tokyo. Yanaka Ginza is a short lane, about 170 m, with around 70 family shops selling croquettes, sweets and snacks. Arrive down the Yuyake Dandan, the 'sunset steps', named in a local contest in 1990.",
   "dyk": "Seven wooden lucky cats are hidden along the street. Local lore says spot all seven and your wish comes true, so it doubles as a very cute scavenger hunt.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Shops ~10 AM–6/7 PM",
+   "open": "10:00",
+   "close": "18:00",
+   "note": "Many shops shut Mon (some Tue/Wed); mostly cash"
+  },
+  "try": "Cat-tail shaped baked doughnuts from Yanaka Shippoya"
  },
  "Nezu Shrine": {
   "ja": "根津神社",
@@ -1314,7 +1716,14 @@ export const PLACES = {
   "key": "Zelkova avenue · Since 1920",
   "story": "Omotesando was laid out in the Taisho era as the grand approach to Meiji Jingu, and its zelkova-lined avenue is now a showcase of flagship stores by star architects. Omotesando Hills, designed by Tadao Ando, stands on the site of the Dojunkai Aoyama Apartments, early concrete flats that symbolised modern Showa living.",
   "dyk": "Ando kept Omotesando Hills no taller than the zelkova trees outside, so much of it sits below street level. A shopping mall that politely ducks for the trees.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Shops ~11 AM–8 PM",
+   "open": "11:00",
+   "close": "20:00",
+   "always": true,
+   "note": "Boulevard always open; cafes open earlier"
+  }
  },
  "Sunshine 60 Street": {
   "ja": "サンシャイン60通り",
@@ -1325,7 +1734,12 @@ export const PLACES = {
   "key": "Ikebukuro's main street",
   "story": "Ikebukuro's main shopping street leads to Sunshine City and its 60-storey tower, finished in 1978 and the tallest building in Asia until 1985. It stands on the site of Sugamo Prison, where Hideki Tojo and other wartime leaders were executed in 1948. Today the street is cinemas, arcades, chain shops and cheap eats.",
   "dyk": "When the tower opened, its observation lifts climbed 600 m a minute, the fastest in the world until 1993. Hold on to your ears.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Street open all day; shops ~11 AM–9 PM",
+   "always": true,
+   "note": "Restaurants and arcades open later"
+  }
  },
  "Naka-Ikebukuro Park": {
   "ja": "中池袋公園",
@@ -1343,7 +1757,14 @@ export const PLACES = {
   "key": "Halal · Wagyu shabu-shabu",
   "story": "Shabu-shabu means 'swish-swish', the sound of paper-thin meat dipped in simmering broth for a few seconds, then into sesame or ponzu sauce. On a wagyu grade such as A5, the letter rates how much usable meat the animal gave and the number rates quality, marbling included. Halal-certified wagyu is rare, so this is a find.",
   "dyk": "Shabu-shabu is younger than you might think: an Osaka restaurant, Suehiro, registered the name as a trademark in 1952, and it only reached Tokyo menus around 1955.",
-  "kind": "food"
+  "kind": "food",
+  "hours": {
+   "d": "11 AM–11 PM (lunch to 3 PM; food LO 9 PM)",
+   "open": "11:00",
+   "close": "23:00",
+   "last": "21:00",
+   "note": "Irregular closures follow building; book ahead"
+  }
  },
  "Otome Road": {
   "ja": "乙女ロード",
@@ -1354,7 +1775,14 @@ export const PLACES = {
   "key": "'Maiden Road' · Anime & manga",
   "story": "Otome means 'maiden', and this stretch beside Sunshine City is lined with anime, manga and character-goods shops aimed mainly at women fans, the counterpart to male-leaning Akihabara. Look for fan-made comics and character goods; second-hand shops here are good for older series and books.",
   "dyk": "Swallowtail, Japan's first butler café, opened here in 2005. At butler cafés, staff in tailcoats greet women as ojousama, 'milady', and men as 'master'.",
-  "kind": "sight"
+  "kind": "sight",
+  "hours": {
+   "d": "Shops ~10/11 AM–8 PM",
+   "open": "10:00",
+   "close": "20:00",
+   "always": true,
+   "note": "Street always open; Animate closes 8 PM on weekends"
+  }
  },
  "Keisei Ueno Station": {
   "ja": "京成上野駅",
