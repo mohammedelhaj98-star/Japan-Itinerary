@@ -85,7 +85,7 @@ h1,h2,h3,p { margin:0; }
 /* gallery laid out like the plan */
 .day { margin-top:14px; scroll-margin-top:var(--strip); }
 .dh { position:sticky; top:var(--strip); z-index:5; padding:8px 16px 8px 20px; background:rgba(246,244,239,.94); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); display:flex; align-items:center; gap:8px; }
-.dh .tt { min-width:0; flex:1; display:flex; align-items:baseline; gap:8px; }
+.dh .dt { min-width:0; flex:1; display:flex; align-items:baseline; gap:8px; }
 .dh b { font-size:20px; letter-spacing:-.02em; white-space:nowrap; }
 .dh small { font-size:13px; color:var(--ink3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .relive { flex:none; height:32px; padding:0 12px 0 10px; border-radius:999px; background:var(--ink); color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:5px; }
@@ -106,6 +106,17 @@ html.c2 .th.big { grid-column:span 1; grid-row:span 1; } /* two a row: every pho
 .faces { position:absolute; left:5px; bottom:5px; z-index:1; display:flex; }
 .faces i { width:18px; height:18px; border-radius:50%; background:var(--c, #555); color:#fff; font-style:normal; font-size:8.5px; font-weight:700; display:grid; place-items:center; box-shadow:0 0 0 1.5px #fff; margin-right:-4px; }
 .faces i.more { background:#141412; }
+.faces.g i { box-shadow:none; outline:1.5px dashed #fff; outline-offset:-1.5px; opacity:.9; }
+.what { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; margin:0 -16px; padding:0 16px; }
+.what::-webkit-scrollbar { display:none; }
+.what button { flex:none; height:32px; padding:0 12px; border-radius:999px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:13px; font-weight:700; color:var(--ink2); white-space:nowrap; }
+.what button.on { background:var(--ink); color:#fff; box-shadow:none; }
+.what[hidden] { display:none; }
+.nudge { margin:12px 16px 0; padding:12px 14px; border-radius:16px; background:#fff; box-shadow:0 0 0 1px var(--line); display:flex; align-items:center; gap:12px; }
+.nudge .fc { display:flex; flex:none; }
+.nudge .fc i { width:26px; height:26px; border-radius:50%; background:var(--c); color:#fff; font-style:normal; font-size:10px; font-weight:700; display:grid; place-items:center; box-shadow:0 0 0 2px #fff; margin-right:-7px; }
+.nudge span { flex:1; min-width:0; font-size:13.5px; color:var(--ink2); line-height:1.3; } .nudge span b { display:block; color:var(--ink); font-size:14.5px; }
+.nudge button { flex:none; height:36px; padding:0 14px; border-radius:999px; background:var(--ink); color:#fff; font-weight:700; font-size:14px; }
 .th .hrt { position:absolute; right:6px; top:5px; z-index:1; color:#fff; font-size:13px; text-shadow:0 1px 4px rgba(0,0,0,.5); }
 .th .new { position:absolute; left:5px; top:5px; z-index:1; padding:2px 6px; border-radius:6px; background:var(--ok); color:#fff; font-size:10.5px; font-weight:700; }
 .th .ck { display:none; position:absolute; right:6px; top:6px; z-index:2; width:22px; height:22px; border-radius:50%; box-shadow:inset 0 0 0 2px #fff, 0 1px 4px rgba(0,0,0,.4); }
@@ -173,6 +184,15 @@ body.sel .selbar { transform:none; }
 .prog { height:4px; border-radius:2px; background:rgba(0,0,0,.08); margin-top:6px; overflow:hidden; }
 .prog i { display:block; height:100%; width:0; background:var(--blue); transition:width 200ms linear; }
 .uprow.done .prog i { background:var(--ok); }
+.rw { display:flex; gap:5px; margin-top:6px; }
+.rw button { width:30px; height:30px; border-radius:50%; background:var(--c); color:#fff; font-size:11px; font-weight:700; opacity:.28; transition:opacity 140ms, box-shadow 140ms; }
+.rw button.on { opacity:1; box-shadow:0 0 0 2px #fff, 0 0 0 3.5px var(--c); }
+.rw.g button.on { box-shadow:none; outline:2px dashed var(--c); outline-offset:2px; }
+.rw .gl { align-self:center; margin-left:4px; font-size:11.5px; font-weight:700; color:var(--ink3); }
+.upall { padding:12px 0 10px; border-top:1px solid var(--line); display:flex; align-items:center; gap:10px; }
+.upall > span { flex:1; font-size:13.5px; font-weight:700; } .upall > span small { display:block; font-weight:500; color:var(--ink3); font-size:12px; }
+.upall .rw { margin:0; } .upall .rw button { width:36px; height:36px; font-size:12px; }
+.upall .rw button.some { opacity:.6; }
 .honest { font-size:12.5px; color:var(--ink3); margin-top:12px; }
 
 /* full-screen viewer */
@@ -232,6 +252,26 @@ body.sel .selbar { transform:none; }
 .info .tagrow button i { width:42px; height:42px; border-radius:50%; background:var(--c); color:#fff; font-style:normal; display:grid; place-items:center; opacity:.35; transition:opacity 160ms, box-shadow 160ms; }
 .info .tagrow button.on { color:#fff; } .info .tagrow button.on i { opacity:1; box-shadow:0 0 0 2px #1b1a18, 0 0 0 4px var(--c); }
 .info .tagrow[disabled] button { pointer-events:none; }
+.info .tagrow.g button.on i { box-shadow:none; outline:2px dashed var(--c); outline-offset:2px; }
+.info .guessed { display:flex; align-items:center; gap:10px; margin-top:8px; font-size:12.5px; color:rgba(255,255,255,.6); }
+.info .guessed button { color:#9cc0ff; font-weight:700; font-size:13px; }
+.tagr { position:fixed; inset:0; z-index:85; background:#0d0d0c; color:#fff; display:none; flex-direction:column; }
+.tagr.on { display:flex; }
+.tagr .tg-top { display:flex; align-items:center; justify-content:space-between; padding:calc(12px + env(safe-area-inset-top)) 16px 10px; font-weight:700; }
+.tagr .tg-top button { color:rgba(255,255,255,.7); font-weight:700; padding:6px 0; }
+.tagr .tg-top span { font-size:13.5px; color:rgba(255,255,255,.6); }
+.tagr .tg-pic { flex:1; min-height:0; position:relative; margin:0 12px; border-radius:18px; overflow:hidden; background:#1c1c1a; }
+.tagr .tg-pic img, .tagr .tg-pic video { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+.tagr .tg-pic .where { position:absolute; left:10px; top:10px; padding:5px 10px; border-radius:999px; background:rgba(0,0,0,.55); font-size:12px; font-weight:700; }
+.tagr .tg-bot { padding:14px 16px calc(16px + env(safe-area-inset-bottom)); display:grid; gap:12px; }
+.tagr .tg-hint { margin:0; font-size:13px; color:rgba(255,255,255,.65); text-align:center; min-height:19px; }
+.tagr .tagppl button { background:#1c1c1a; box-shadow:none; color:rgba(255,255,255,.6); }
+.tagr .tagppl button i { opacity:.35; }
+.tagr .tagppl button.all { color:#fff; box-shadow:0 0 0 2px var(--c); } .tagr .tagppl button.all i { opacity:1; }
+.tagr .tagppl.g button.all { box-shadow:none; outline:2px dashed var(--c); outline-offset:-2px; }
+.tagr .tg-go { display:flex; gap:10px; }
+.tagr .tg-go button { flex:1; height:50px; border-radius:16px; font-weight:700; font-size:15.5px; background:#1c1c1a; color:#fff; }
+.tagr .tg-go button.go { flex:2; background:#fff; color:var(--ink); }
 .info .vmap { height:150px; border-radius:16px; overflow:hidden; margin-top:4px; background:#2a2926; }
 .info .row { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
 .info .row button.chosen { background:#fff; color:#141412; }
@@ -317,10 +357,12 @@ body.guest [data-select] { display:none; }
       <div><p class="lbl">Who's in it</p><div class="who-row"><div class="ppl" id="ppl"></div><button class="clr" data-clrppl hidden>Clear</button></div></div>
       <div class="kind-row"><span class="seg" id="kindseg"><button data-kind="all" class="on">All</button><button data-kind="photo">Photos</button><button data-kind="video">Videos</button><button data-kind="fav">♥ Favourites</button></span>
         <button class="size press" data-size aria-label="Photo size"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button></div>
+      <div class="what" id="what" hidden></div>
       <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><input id="q" type="search" placeholder="Search a stop, like Nara or Dotonbori" autocomplete="off" enterkeyhint="search"><button data-clrq hidden>Clear</button></label>
       <p class="fsum" id="fsum"></p>
     </div>
     <div id="resume"></div>
+    <div id="nudge"></div>
     <div id="drivebanner"></div>
     <nav class="dstrip" id="dstrip" aria-label="Jump to a day"></nav>
     <div id="content"></div>
@@ -336,6 +378,8 @@ body.guest [data-select] { display:none; }
   <div class="cap"><button class="hfab" data-heart aria-label="Love this photo" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-7.6-10.4A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.6 2.7c0 5.8-7.6 10.4-7.6 10.4z"/></svg><span class="n" id="hcount"></span></button><div class="capt" id="vcapt"></div><div class="fs" id="fs"></div></div>
   <section class="info" id="vinfo"></section></div>
 <div class="story" id="story"><div class="stage" id="stage"></div><div class="bars" id="sbars"></div><div class="shead" id="shead"></div></div>
+<div class="tagr" id="tagr" role="dialog" aria-label="Who's in these photos"><div class="tg-top"><button data-tgx>Close</button><span id="tgn"></span><button data-tgskip>Skip</button></div>
+  <div class="tg-pic" id="tgpic"></div><div class="tg-bot"><p class="tg-hint" id="tghint"></p><div class="tagppl" id="tgppl"></div><div class="tg-go"><button data-tgnone>No one</button><button class="go" data-tgnext>Next</button></div></div></div>
 <div class="toast" id="toast" role="status"></div>
 <script type="module">
 import { DAYS } from './data/itinerary.js?v=9';
@@ -365,7 +409,7 @@ const fmtDate = (d) => new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB'
 const kindColor = (s) => { const k = /dinner|lunch|breakfast|market|ramen|sushi|food|cafe|izakaya|okonomiyaki/i.test(s.title) ? 'food' : /shop|vintage|streetwear|don quijote|mall|arcade|ginza|uniqlo|street/i.test(s.title) ? 'shop' : /train|bus|subway|walk|→|keihan|shinkansen|transfer|taxi|flight/i.test(s.title) ? 'transit' : /hotel|check/i.test(s.title) ? 'hotel' : 'sight'; return CAT[k][0]; };
 const stopCache = {}; const stopsOfDay = (id) => (stopCache[id] = stopCache[id] || (dayById[id] ? stopsOf(dayById[id]) : []));
 const stopOf = (p) => (p.stop ? stopsOfDay(p.day).find((s) => s.id === p.stop) || null : null);
-const faces = (ids) => (ids && ids.length ? `<span class="faces">${ids.slice(0, 3).map((id) => `<i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>`).join('')}${ids.length > 3 ? `<i class="more">+${ids.length - 3}</i>` : ''}</span>` : '');
+const faces = (ids, guess) => (ids && ids.length ? `<span class="faces${guess ? ' g' : ''}">${ids.slice(0, 3).map((id) => `<i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>`).join('')}${ids.length > 3 ? `<i class="more">+${ids.length - 3}</i>` : ''}</span>` : '');
 const isVid = (p) => !!p.isVideo;
 const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
 const names = (ids) => { const n = ids.map((id) => PEOPLE[id].name); return n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' & ' + n[n.length - 1]; };
@@ -392,6 +436,7 @@ document.addEventListener('error', (e) => { const im = e.target; if (im.tagName 
 
 let photos = [], covers = {};
 const norm = (x) => ({ id: x.id, name: x.name, mime: x.mime, day: x.day, stop: x.stop || null, takenAt: x.t, by: x.by, in: x.in || [], hearts: x.hearts || [], hidden: !!x.hidden,
+  guess: !!x.guess, checked: !!x.checked, kind: x.kind || null, np: x.np ?? null, words: x.words || '',
   ar: x.w && x.h ? x.w / x.h : null, thumb: x.thumb, isVideo: /^video\//.test(x.mime || ''), dur: x.dur });
 async function load() {
   const d = await api('?trip=' + TRIP);
@@ -403,14 +448,25 @@ const failed = (e) => { toast(e && e.status === 403 ? 'The PIN on this phone was
 const save = (body) => api('/update', { trip: TRIP, ...body }).catch(failed);
 
 /* ── state ── */
-const ui = { people: new Set(), kind: 'all', q: '', sel: new Set(), cols: 3 };
+const ui = { people: new Set(), kind: 'all', what: '', q: '', sel: new Set(), cols: 3 };
+// what's in a photo, from the sort (lib/sort-claude.js)
+const WHAT = { us: 'Us', food: 'Food', place: 'Places', shop: 'Shopping', move: 'On the move' };
+// who could be in a photo: whoever was at that stop (a split day's stop is one couple's), and whoever took it
+const COUPLES = { mm: ['mariam', 'm'], nasa: ['naf', 'sara'] };
+function couldOf(day, stop, by) {
+  const ss = stopsOfDay(day), s = stop ? ss.find((x) => x.id === stop) : null;
+  const w = s ? [s.who] : ss.map((x) => x.who); const c = new Set(w.flatMap((x) => COUPLES[x] || PIDS)); if (PEOPLE[by]) c.add(by);
+  return c.size ? PIDS.filter((x) => c.has(x)) : PIDS;
+}
+// a photo that wants someone to say who's in it: a guess to confirm, or people in it and no one tagged
+const toCheck = (p) => !p.hidden && !!dayById[p.day] && !p.checked && (p.guess || (!p.in.length && p.np !== 0));
 const isCover = (p) => p.stop && covers[p.stop] === p.id;
-const qOk = (p) => { if (!ui.q) return true; const s = stopOf(p), d = dayById[p.day]; const hay = `${s ? s.title : 'other moments'} ${d ? d.title + ' day ' + d.n : ''}`.toLowerCase(); return ui.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w)); };
+const qOk = (p) => { if (!ui.q) return true; const s = stopOf(p), d = dayById[p.day]; const hay = `${s ? s.title : 'other moments'} ${d ? d.title + ' day ' + d.n : ''} ${p.words} ${p.kind ? WHAT[p.kind] || '' : ''}`.toLowerCase(); return ui.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w)); };
 const visible = () => photos.filter((p) => !p.hidden && dayById[p.day]
-  && (ui.kind === 'all' || (ui.kind === 'video' ? isVid(p) : ui.kind === 'photo' ? !isVid(p) : p.hearts.length))
+  && (ui.kind === 'all' || (ui.kind === 'video' ? isVid(p) : ui.kind === 'photo' ? !isVid(p) : p.hearts.length)) && (!ui.what || p.kind === ui.what)
   && [...ui.people].every((id) => p.in.includes(id)) && qOk(p));
 // a photo's tile: its picture (m), then what's drawn over it (o)
-const over = (p) => `${isVid(p) ? `<span class="vd"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>${dur(p.dur)}</span>` : ''}${faces(p.in)}${p.hearts.length ? '<span class="hrt">♥</span>' : ''}${isCover(p) ? '<span class="cov">★ Plan photo</span>' : ''}${p.fresh ? '<span class="new">New</span>' : ''}<span class="ck"></span>`;
+const over = (p) => `${isVid(p) ? `<span class="vd"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>${dur(p.dur)}</span>` : ''}${faces(p.in, p.guess)}${p.hearts.length ? '<span class="hrt">♥</span>' : ''}${isCover(p) ? '<span class="cov">★ Plan photo</span>' : ''}${p.fresh ? '<span class="new">New</span>' : ''}<span class="ck"></span>`;
 const tileOf = (p, ix, big) => ({ id: p.id, ix, big, m: imgTag(p, big ? 800 : 400, true), o: over(p) });
 const thumb = (t) => `<button class="th ${t.big ? 'big' : ''}" data-pid="${t.id}" data-ix="${t.ix}" aria-label="Photo">${t.m}${t.o}</button>`;
 
@@ -420,6 +476,10 @@ function syncFilters() {
   document.querySelectorAll('[data-pp]').forEach((b) => { const on = ui.people.has(b.dataset.pp); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
   $('[data-clrppl]').hidden = !ui.people.size;
   document.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('on', b.dataset.kind === ui.kind));
+  const kinds = Object.keys(WHAT).filter((k) => photos.some((p) => p.kind === k && !p.hidden));
+  const wh = kinds.length ? kinds.map((k) => `<button data-what="${k}" class="${ui.what === k ? 'on' : ''}">${WHAT[k]}</button>`).join('') : '';
+  if (drawn.get($('#what')) !== wh) noted($('#what'), wh).innerHTML = wh; $('#what').hidden = !wh;
+  renderNudge();
   $('[data-clrq]').hidden = !ui.q;
 }
 
@@ -486,7 +546,7 @@ function render() {
   const vis = visible(); const byDay = {};
   for (const p of vis) (byDay[p.day] = byDay[p.day] || []).push(p);
   const total = photos.filter((p) => !p.hidden).length;
-  const sum = !total ? '' : `${vis.length} ${vis.length === 1 ? 'photo' : 'photos'}${ui.people.size ? ` with ${names([...ui.people])}` : ''}${ui.kind === 'video' ? ' (videos)' : ui.kind === 'photo' ? ' (no videos)' : ui.kind === 'fav' ? ' marked ♥' : ''}${ui.q ? ` matching “${ui.q}”` : ''}`;
+  const sum = !total ? '' : `${vis.length} ${vis.length === 1 ? 'photo' : 'photos'}${ui.what ? ` · ${WHAT[ui.what]}` : ''}${ui.people.size ? ` with ${names([...ui.people])}` : ''}${ui.kind === 'video' ? ' (videos)' : ui.kind === 'photo' ? ' (no videos)' : ui.kind === 'fav' ? ' marked ♥' : ''}${ui.q ? ` matching “${ui.q}”` : ''}`;
   if ($('#fsum').textContent !== sum) $('#fsum').textContent = sum;
   const tripDays = DAYS.filter((d) => photos.some((p) => p.day === d.id && !p.hidden));
   const strip = tripDays.map((d) => `<button data-jump="${d.id}" class="${byDay[d.id] ? '' : 'none'}">Day ${d.n}<small>${(byDay[d.id] || []).length}</small></button>`).join('');
@@ -501,7 +561,7 @@ function render() {
       const sh = `<div class="sh"><i style="--c:${c}"></i><span><b>${esc(title)}</b> ${small ? `<small>${esc(small)}</small>` : ''}</span><span class="n">${list.length}</span>${sid ? `<a class="plan" href="./?d=${d.id}">Plan ›</a>` : ''}</div>`;
       return { k: sid || '', sh, open: `<div class="stop ${sid ? '' : 'other'}">${sh}\n        <div class="grid">`, tiles: list.map((p, i) => tileOf(p, start + i, big.has(p.id))) }; };
     const others = ps.filter((p) => !stopOf(p));
-    return { k: 'day-' + d.id, head: `<section class="day" id="day-${d.id}" data-day="${d.id}"><div class="dh"><span class="tt"><b>Day ${d.n}</b><small>${fmtDate(d)} · ${esc(d.title)}</small></span><button class="relive press" data-relive="${d.id}"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>Relive</button></div>`,
+    return { k: 'day-' + d.id, head: `<section class="day" id="day-${d.id}" data-day="${d.id}"><div class="dh"><span class="dt"><b>Day ${d.n}</b><small>${fmtDate(d)} · ${esc(d.title)}</small></span><button class="relive press" data-relive="${d.id}"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>Relive</button></div>`,
       stops: stops.map((s) => block(s.title, s.time, kindColor(s), ps.filter((p) => p.stop === s.id), s.id)), other: others.length ? block('Other moments', 'between stops', '#c9c4b8', others, null) : null };
   });
   const nHidden = photos.filter((p) => p.hidden).length;
@@ -598,7 +658,7 @@ function renderTag() {
 }
 function toggleTag(id) {
   const ps = tagIds.map(byIdP); const all = ps.every((p) => p.in.includes(id));
-  ps.forEach((p) => { p.in = all ? p.in.filter((x) => x !== id) : PIDS.filter((x) => x === id || p.in.includes(x)); });
+  ps.forEach((p) => { p.in = all ? p.in.filter((x) => x !== id) : PIDS.filter((x) => x === id || p.in.includes(x)); p.guess = false; p.checked = true; });
   save({ ids: tagIds, tag: { who: id, on: !all } });
   renderTag(); render();
 }
@@ -664,7 +724,55 @@ function openUpload() {
     <a class="up-drive press" data-drive href="${esc(driveUrl || '#')}" target="_blank" rel="noopener"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2.5h6.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg><span><b>Or use the Google Drive app</b>It keeps uploading in the background, even with this page closed. Opens our Japan 2026 folder: tap + and upload. ${driveWide === false ? 'They show here once Google Drive is reconnected.' : 'They show up here too, sorted by day and stop.'}</span><i class="go-arrow">›</i></a>
     <div id="uplist"></div>
     <p class="honest">They go into Google Drive, in Our Trips / Japan 2026, and are sorted here by day and stop. Keep this page open while it uploads (the screen stays on). If it stops, choose the same photos again and it carries on where it left off. Photos taken outside the trip days go to the nearest day; fix it with Assign.</p>`);
-  const list = $('#uplist'); rows.forEach((r) => list.appendChild(r.el));
+  const list = $('#uplist'); rows.forEach((r) => list.appendChild(r.el)); paintUpAll();
+}
+/* who's in each one, said while it uploads: a tap on a face; the whole batch at once from the row on top */
+const rowFaces = (r) => `<span class="rw${r.guess ? ' g' : ''}">${PIDS.map((id) => `<button data-rw="${id}" class="${r.in.includes(id) ? 'on' : ''}" style="--c:${PEOPLE[id].c}" aria-label="${PEOPLE[id].name}" aria-pressed="${r.in.includes(id)}">${PEOPLE[id].ini}</button>`).join('')}${r.guess ? '<span class="gl">Guessed · tap to fix</span>' : ''}</span>`;
+const paintRow = (r) => { const el = r.el.querySelector('.rw'); if (el) el.outerHTML = rowFaces(r); };
+const upAll = document.createElement('div'); upAll.className = 'upall';
+function paintUpAll() {
+  const live = rows.filter((r) => !r.failed && !r.dup);
+  upAll.hidden = live.length < 2;
+  upAll.innerHTML = `<span>Who's in all of these?<small>Or tap faces on each one below</small></span><span class="rw">${PIDS.map((id) => { const n = live.filter((r) => r.in.includes(id)).length; return `<button data-rwall="${id}" class="${n && n === live.length ? 'on' : n ? 'some' : ''}" style="--c:${PEOPLE[id].c}" aria-label="${PEOPLE[id].name} in all">${PEOPLE[id].ini}</button>`; }).join('')}</span>`;
+  const list = $('#uplist'); if (list && upAll.parentNode !== list) list.prepend(upAll);
+}
+function setRowIn(r, ids) {
+  r.in = PIDS.filter((x) => ids.includes(x)); r.guess = false; r.touched = true; paintRow(r);
+  const p = r.id && byIdP(r.id); if (p) { p.in = r.in.slice(); p.guess = false; p.checked = true; render(); }
+  if (r.id) save({ ids: [r.id], set: { in: r.in } }); else if (r.started) r.dirty = true; // not started yet: it goes with the upload
+}
+// a small copy of a photo for the sort to look at (a few dozen KB), made on the phone so it needn't wait for Google's
+async function smallCopy(f) {
+  try { const bm = await createImageBitmap(f); const k = Math.min(1, 640 / Math.max(bm.width, bm.height)); const c = document.createElement('canvas'); c.width = Math.round(bm.width * k); c.height = Math.round(bm.height * k); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); if (bm.close) bm.close(); return c.toDataURL('image/jpeg', 0.72); } catch { return null; }
+}
+/* ── the sort: Claude says what's in each photo and how many people; with who was there, that's a guess at who ── */
+let sortOff = false, sorting = false; const sortTried = new Set();
+function applySort(d) {
+  if (!d || d.later) return; const p = byIdP(d.id); if (!p) return;
+  p.kind = d.kind || null; p.np = d.np ?? null; p.words = d.words || '';
+  if (d.in && !p.in.length) { p.in = d.in; p.guess = true; }
+}
+async function sortAfterUpload(r) {
+  if (sortOff || !r.id || r.touched) return; sortTried.add(r.id);
+  const img = r.isVideo ? null : await smallCopy(r.f); if (!img) return; // a video waits for Google's picture of it (the next visit sorts it)
+  try {
+    const d = await api('/sort', { trip: TRIP, items: [{ id: r.id, could: couldOf(r.day.id, r.stop, ME), img }] }); if (d.off) { sortOff = true; return; }
+    const x = (d.done || [])[0]; applySort(x);
+    if (x && x.in && !r.touched) { r.in = x.in; r.guess = true; paintRow(r); paintUpAll(); }
+    render();
+  } catch {}
+}
+async function sortBacklog() { // photos from before, and from the Drive app: a few at a time, once each per visit
+  if (!member() || sorting || sortOff) return; sorting = true;
+  try {
+    const todo = photos.filter((p) => !p.kind && !p.hidden && !sortTried.has(p.id) && dayById[p.day]);
+    for (let i = 0; i < todo.length; i += 6) {
+      const batch = todo.slice(i, i + 6); batch.forEach((p) => sortTried.add(p.id));
+      const d = await api('/sort', { trip: TRIP, items: batch.map((p) => ({ id: p.id, could: couldOf(p.day, p.stop, p.by) })) });
+      if (d.off) { sortOff = true; break; }
+      (d.done || []).forEach(applySort); render();
+    }
+  } catch {} finally { sorting = false; }
 }
 const rowState = (r, txt, cls) => { r.el.querySelector('.st').textContent = txt; r.el.classList.remove('done', 'err'); if (cls) r.el.classList.add(cls); };
 const setProg = (r, f) => { r.el.querySelector('.prog i').style.width = Math.round(f * 100) + '%'; };
@@ -681,21 +789,21 @@ async function handleFiles(files) {
     let { day, min } = jstOf(t.takenAt, DAYS); let outside = false;
     if (!day) { day = nearestDay(t.takenAt); outside = true; }
     const m = matchStop(day, min, t.lat, t.lng);
-    const r = { f, key: fileKey(f), day, stop: m ? m.stop.id : null, takenAt: t.takenAt, how: m ? m.how : null, local: URL.createObjectURL(f), isVideo: /^video\//.test(f.type) || /\.(mov|mp4|m4v)$/i.test(f.name), resume: q[fileKey(f)] || null };
+    const r = { f, key: fileKey(f), day, stop: m ? m.stop.id : null, takenAt: t.takenAt, how: m ? m.how : null, local: URL.createObjectURL(f), isVideo: /^video\//.test(f.type) || /\.(mov|mp4|m4v)$/i.test(f.name), resume: q[fileKey(f)] || null, in: [], guess: false, touched: false };
     const where = `Day ${day.n} · ${m ? m.stop.title : 'Other moments'}`;
     const how = m ? { location: 'by location', time: 'by time', near: 'closest in time' }[m.how] : 'no stop at that time';
     r.el = document.createElement('div'); r.el.className = 'uprow';
-    r.el.innerHTML = `<span class="pt">${r.isVideo ? `<video src="${r.local}#t=0.1" muted playsinline preload="metadata"></video>` : `<img draggable="false" src="${r.local}" alt="" decoding="async">`}</span><div class="m"><b>${esc(f.name)}</b><small>${fmtMin(min)}${outside ? ' (outside the trip days)' : ''} → <em>${esc(where)}</em> · ${how}</small><div class="prog"><i></i></div><span class="st">${r.resume ? 'Carries on where it stopped' : 'Waiting'}</span></div>`;
-    if (list) list.appendChild(r.el); rows.push(r);
+    r.el.innerHTML = `<span class="pt">${r.isVideo ? `<video src="${r.local}#t=0.1" muted playsinline preload="metadata"></video>` : `<img draggable="false" src="${r.local}" alt="" decoding="async">`}</span><div class="m"><b>${esc(f.name)}</b><small>${fmtMin(min)}${outside ? ' (outside the trip days)' : ''} → <em>${esc(where)}</em> · ${how}</small><div class="prog"><i></i></div><span class="st">${r.resume ? 'Carries on where it stopped' : 'Waiting'}</span>${rowFaces(r)}</div>`;
+    r.el.dataset.row = rows.length; if (list) list.appendChild(r.el); rows.push(r);
   }
-  pump();
+  paintUpAll(); pump();
 }
 async function pump() {
   if (uploading) return; uploading = true;
   try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch {}
   for (const r of rows) {
     if (r.done || r.failed) continue;
-    try { await uploadOne(r); } catch (e) { r.failed = true; rowState(r, 'Didn\'t upload: ' + (e.message || 'error') + '. Choose it again to retry.', 'err'); }
+    try { await uploadOne(r); } catch (e) { r.failed = true; rowState(r, 'Didn\'t upload: ' + (e.message || 'error') + '. Choose it again to retry.', 'err'); paintUpAll(); }
     updBar();
   }
   uploading = false; updBar();
@@ -713,8 +821,9 @@ async function uploadOne(r) {
   }
   if (!s) {
     rowState(r, 'Starting…');
-    const d = await api('/session', { trip: TRIP, name: r.f.name, mime: r.f.type || (r.isVideo ? 'video/quicktime' : 'image/jpeg'), size, day: r.day.id, stop: r.stop, t: Math.round(r.takenAt), by: ME });
-    if (d.dup) { r.done = r.dup = true; setProg(r, 1); rowState(r, 'Already uploaded', 'done'); return; }
+    const d = await api('/session', { trip: TRIP, name: r.f.name, mime: r.f.type || (r.isVideo ? 'video/quicktime' : 'image/jpeg'), size, day: r.day.id, stop: r.stop, t: Math.round(r.takenAt), by: ME, in: r.in });
+    r.started = true;
+    if (d.dup) { r.done = r.dup = true; setProg(r, 1); rowState(r, 'Already uploaded', 'done'); paintUpAll(); return; }
     s = { url: d.url, offset: 0 }; q[r.key] = s; qSet(q);
   }
   let off = s.offset || 0; setProg(r, off / size); rowState(r, 'Uploading…');
@@ -741,8 +850,10 @@ async function probe(url, size) {
 }
 function finish(r, id) {
   const q = qGet(); delete q[r.key]; qSet(q);
-  r.done = true; setProg(r, 1); rowState(r, 'Uploaded', 'done');
-  if (id) photos.push({ id, name: r.f.name, mime: r.f.type, day: r.day.id, stop: r.stop, takenAt: r.takenAt, by: ME, in: [], hearts: [], hidden: false, ar: null, thumb: null, isVideo: r.isVideo, local: r.local, fresh: true });
+  r.done = true; r.started = true; r.id = id; setProg(r, 1); rowState(r, 'Uploaded', 'done');
+  if (id) photos.push({ id, name: r.f.name, mime: r.f.type, day: r.day.id, stop: r.stop, takenAt: r.takenAt, by: ME, in: r.in.slice(), hearts: [], hidden: false, guess: false, checked: r.touched, kind: null, np: null, words: '', ar: null, thumb: null, isVideo: r.isVideo, local: r.local, fresh: true });
+  if (id && r.dirty) save({ ids: [id], set: { in: r.in } }); // changed while it was uploading
+  sortAfterUpload(r);
   if (!r.isVideo) { const im = new Image(); im.onload = () => { const p = byIdP(id); if (p) p.ar = im.naturalWidth / im.naturalHeight; }; im.src = r.local; }
   render();
 }
@@ -763,8 +874,51 @@ sheet.addEventListener('click', (e) => {
   const ad = t('[data-aday]'); if (ad) { assignDay = ad.dataset.aday; return renderAssign(); }
   const as = t('[data-astop]'); if (as) return assign(assignIds, assignDay, as.dataset.astop);
   const tp = t('[data-tagp]'); if (tp) return toggleTag(tp.dataset.tagp);
+  const rw = t('[data-rw]'); if (rw) { const r = rows[+rw.closest('.uprow').dataset.row], id = rw.dataset.rw; return setRowIn(r, r.in.includes(id) ? r.in.filter((x) => x !== id) : [...r.in, id]); }
+  const ra = t('[data-rwall]'); if (ra) { const id = ra.dataset.rwall, live = rows.filter((r) => !r.failed && !r.dup), all = live.every((r) => r.in.includes(id));
+    live.forEach((r) => setRowIn(r, all ? r.in.filter((x) => x !== id) : [...r.in, id])); return paintUpAll(); }
 });
 addEventListener('beforeunload', (e) => { if (uploading) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ═══ who's in these: one photo at a time, a tap on each face, then Next ═══ */
+const tagr = $('#tagr'); let tq = [], ti = 0, tEdited = false;
+function renderNudge() {
+  const n = member() ? photos.filter(toCheck).length : 0; const el = $('#nudge');
+  const h = n ? `<div class="nudge"><span class="fc">${PIDS.map((id) => `<i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>`).join('')}</span><span><b>Who's in ${n === 1 ? 'this one' : `these ${n}`}?</b>${photos.some((p) => toCheck(p) && p.guess) ? 'Some are guessed. A tap each to check.' : 'A tap each, then the next one.'}</span><button class="press" data-check>Check</button></div>` : '';
+  if (drawn.get(el) !== h) noted(el, h).innerHTML = h;
+}
+function openCheck() {
+  tq = photos.filter(toCheck).sort((a, b) => a.takenAt - b.takenAt); ti = 0; if (!tq.length) return;
+  tagr.classList.add('on'); history.pushState({ tagr: 1 }, ''); drawCheck();
+}
+function drawCheck() {
+  if (ti >= tq.length) { closeCheck(); return toast('All checked. Thank you!'); }
+  const p = tq[ti], s = stopOf(p), d = dayById[p.day]; tEdited = false;
+  $('#tgn').textContent = `${ti + 1} of ${tq.length}`;
+  $('#tgpic').innerHTML = `${p.isVideo ? `<video src="${p.local || media(p, 'file')}" autoplay muted loop playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1200)}<span class="where">Day ${d.n} · ${esc(s ? s.title : 'Other moments')}</span>`;
+  drawCheckFaces();
+}
+function drawCheckFaces() {
+  const p = tq[ti]; const could = couldOf(p.day, p.stop, p.by);
+  $('#tgppl').className = 'tagppl' + (p.guess ? ' g' : '');
+  $('#tgppl').innerHTML = PIDS.map((id) => `<button data-tgp="${id}" class="${p.in.includes(id) ? 'all' : ''}" style="--c:${PEOPLE[id].c}"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}<small>${could.includes(id) ? (p.in.includes(id) ? 'in it' : 'not in it') : 'wasn\'t there'}</small></button>`).join('');
+  $('#tghint').textContent = p.guess ? `Guessed ${names(p.in)}. Tap to fix, or Next if it's right.` : p.np ? `${p.np === 1 ? 'One person' : p.np + ' people'} in it. Who?` : 'Tap whoever is in it.';
+  $('[data-tgnext]').textContent = p.guess && !tEdited ? 'Looks right' : ti + 1 < tq.length ? 'Next' : 'Done';
+}
+function checkSave(none) {
+  const p = tq[ti]; if (none) p.in = [];
+  p.guess = false; p.checked = true; save({ ids: [p.id], set: { in: p.in, sure: true } }); render();
+}
+function closeCheck(fromPop) { tagr.classList.remove('on'); $('#tgpic').innerHTML = ''; render(); if (!fromPop && history.state && history.state.tagr) history.back(); }
+addEventListener('popstate', () => { if (tagr.classList.contains('on')) closeCheck(true); });
+tagr.addEventListener('click', (e) => {
+  const t = (s) => e.target.closest(s);
+  if (t('[data-tgx]')) { if (tEdited) checkSave(); return closeCheck(); }
+  if (t('[data-tgskip]')) { if (tEdited) checkSave(); ti++; return drawCheck(); }
+  const b = t('[data-tgp]'); if (b) { const p = tq[ti], id = b.dataset.tgp; p.in = p.in.includes(id) ? p.in.filter((x) => x !== id) : PIDS.filter((x) => x === id || p.in.includes(x)); p.guess = false; tEdited = true; return drawCheckFaces(); }
+  if (t('[data-tgnone]')) { checkSave(true); ti++; return drawCheck(); }
+  if (t('[data-tgnext]')) { checkSave(); ti++; return drawCheck(); }
+});
 
 /* ═══ full-screen viewer ═══ */
 const vw = $('#vw'), track = $('#track');
@@ -833,7 +987,7 @@ function drawViewer() {
   $('#vtitle').innerHTML = `<b>${esc(s ? s.title : 'Other moments')}</b><small>Day ${d.n} · ${fmtMin(jstOf(p.takenAt, DAYS).min)} · ${vi + 1} of ${vlist.length}</small>`;
   const mine = p.hearts.includes(ME); const hb = $('[data-heart]'); hb.classList.toggle('on', mine); hb.setAttribute('aria-pressed', mine); hb.hidden = !member();
   $('#hcount').textContent = p.hearts.length > 1 || (p.hearts.length && !mine) ? p.hearts.length : '';
-  $('#vcapt').innerHTML = `${p.in.length ? faces(p.in) : ''}<span><b>${p.in.length ? names(p.in) : 'No one tagged'}</b><small>${p.hearts.length ? `♥ ${names(p.hearts)}` : who ? `Taken by ${who.name}` : ''}</small></span><span class="up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 14l6-6 6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Info</span>`;
+  $('#vcapt').innerHTML = `${p.in.length ? faces(p.in, p.guess) : ''}<span><b>${p.in.length ? names(p.in) + (p.guess ? '?' : '') : 'No one tagged'}</b><small>${p.hearts.length ? `♥ ${names(p.hearts)}` : who ? `Taken by ${who.name}` : ''}</small></span><span class="up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 14l6-6 6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Info</span>`;
   drawFilmstrip();
   if (vw.classList.contains('showinfo')) drawInfo();
 }
@@ -856,7 +1010,8 @@ function drawInfo() {
   const ev = s ? d.items.flatMap((it) => (it.type === 'event' ? [it] : it.type === 'choice' ? it.options.flatMap((o) => o.items || []) : [])).find((x) => x.id === s.id) : null;
   $('#vinfo').innerHTML = `<div class="grab"></div><h3>${esc(s ? s.title : 'Other moments')}</h3><p class="meta">Day ${d.n} · ${fmtDate(d)} · ${esc(s && s.time ? s.time : 'between stops')}</p>
     ${ev && ev.desc ? `<p class="desc">${esc(ev.desc).slice(0, 260)}${ev.desc.length > 260 ? '…' : ''}</p>` : ''}
-    <p class="lbl">Who's in it</p><div class="tagrow" ${member() ? '' : 'disabled'}>${PIDS.map((id) => `<button data-vtag="${id}" class="${p.in.includes(id) ? 'on' : ''}"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}</button>`).join('')}</div>
+    <p class="lbl">Who's in it</p><div class="tagrow${p.guess ? ' g' : ''}" ${member() ? '' : 'disabled'}>${PIDS.map((id) => `<button data-vtag="${id}" class="${p.in.includes(id) ? 'on' : ''}"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}</button>`).join('')}</div>
+    ${p.guess && member() ? '<p class="guessed"><span>A guess from the photo.</span><button data-vsure>Looks right</button></p>' : ''}
     ${s && s.place ? `<p class="lbl">Where</p><div class="vmap" id="vmap"></div>` : ''}
     <p class="lbl">Details</p><div class="kv"><span>Taken</span><span>${fmtMin(jstOf(p.takenAt, DAYS).min)}, ${fmtDate(d)}</span><span>By</span><span>${PEOPLE[p.by] ? PEOPLE[p.by].name : '—'}</span><span>Loved by</span><span>${p.hearts.length ? names(p.hearts) : 'no one yet'}</span>${p.name ? `<span>File</span><span>${esc(p.name)}</span>` : ''}</div>
     <div class="row">${member() && s ? (isCover(p) ? '<button class="chosen" data-vcover>★ The photo for this stop</button>' : '<button data-vcover>★ Use as this stop\'s photo</button>') : ''}<a href="./?d=${d.id}">Open on the plan</a>${p.local ? '' : `<a href="${media(p, 'file', '&dl=1')}" download>Download original</a>`}${member() ? '<button data-vassign>Move to another stop</button><button data-vhide>Hide</button>' : ''}</div>`;
@@ -927,7 +1082,8 @@ vw.addEventListener('click', (e) => {
     toast(next ? `Now the photo for ${s.title} on the plan` : `${s.title} is back to its usual picture`, () => { if (prev) covers[s.id] = prev; else delete covers[s.id]; api('/cover', { stop: s.id, id: prev }).catch(failed); if (vw.classList.contains('on')) drawInfo(); }); return; }
   const fsb = t('[data-fs]'); if (fsb) { vi = +fsb.dataset.fs; return drawViewer(); }
   if (t('.capt')) { setInfo(true); setTrack(0, true); return; }
-  const vt = t('[data-vtag]'); if (vt && member()) { const p = vlist[vi], id = vt.dataset.vtag; const on = !p.in.includes(id); p.in = on ? PIDS.filter((x) => x === id || p.in.includes(x)) : p.in.filter((x) => x !== id); drawViewer(); render(); save({ ids: [p.id], tag: { who: id, on } }); return; }
+  const vt = t('[data-vtag]'); if (vt && member()) { const p = vlist[vi], id = vt.dataset.vtag; const on = !p.in.includes(id); p.in = on ? PIDS.filter((x) => x === id || p.in.includes(x)) : p.in.filter((x) => x !== id); p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], tag: { who: id, on } }); return; }
+  if (t('[data-vsure]') && member()) { const p = vlist[vi]; p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], set: { sure: true } }); return; }
   if (t('[data-vassign]')) return openAssign([vlist[vi].id]);
   if (t('[data-vhide]')) { hide([vlist[vi].id]); return drawViewer(); }
 });
@@ -976,7 +1132,7 @@ function openStory(dayId) {
 }
 const itemDur = (it) => DUR[it.kind];
 function itemHtml(it) {
-  if (it.kind === 'photo' || it.kind === 'video') { const p = it.p; return `<div class="it" style="--dur:${DUR.photo + 600}ms">${p.isVideo ? `<video src="${p.local || media(p, 'file')}" autoplay muted playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1400)}<div class="cap2">${faces(p.in)}<span>${fmtMin(jstOf(p.takenAt, DAYS).min)}${p.hearts.length ? ' · ♥' : ''}</span></div></div>`; }
+  if (it.kind === 'photo' || it.kind === 'video') { const p = it.p; return `<div class="it" style="--dur:${DUR.photo + 600}ms">${p.isVideo ? `<video src="${p.local || media(p, 'file')}" autoplay muted playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1400)}<div class="cap2">${faces(p.in, p.guess)}<span>${fmtMin(jstOf(p.takenAt, DAYS).min)}${p.hearts.length ? ' · ♥' : ''}</span></div></div>`; }
   return `<div class="it"><div class="card2" style="--c:${it.c}"><small>${esc(it.small)}</small><h2>${esc(it.h)}</h2><p>${esc(it.p)}</p>${it.kind === 'end' && it.next ? `<button class="go" data-snext="${it.next.id}">Next: Day ${it.next.n} ▶</button>` : it.kind === 'end' ? '<button class="go" data-sclose>Back to the photos</button>' : ''}</div></div>`;
 }
 function showItem(k) {
@@ -1016,7 +1172,7 @@ addEventListener('keydown', (e) => { if (!story.classList.contains('on')) return
 /* ── page clicks ── */
 document.addEventListener('click', (e) => {
   const t = (s) => e.target.closest(s);
-  if (e.target.closest('#vw, #story, #sheet')) return;
+  if (e.target.closest('#vw, #story, #sheet, #tagr')) return;
   if (t('[data-upload]')) return openUpload();
   if (t('[data-select]')) return setSel(true);
   if (t('[data-selx]')) return setSel(false);
@@ -1026,6 +1182,8 @@ document.addEventListener('click', (e) => {
   const pp = t('[data-pp]'); if (pp) { const id = pp.dataset.pp; if (ui.people.has(id)) ui.people.delete(id); else ui.people.add(id); return render(); }
   if (t('[data-clrppl]')) { ui.people.clear(); return render(); }
   const k = t('[data-kind]'); if (k) { ui.kind = k.dataset.kind; return render(); }
+  const wb = t('[data-what]'); if (wb) { ui.what = ui.what === wb.dataset.what ? '' : wb.dataset.what; return render(); }
+  if (t('[data-check]')) return openCheck();
   if (t('[data-size]')) { setCols(ui.cols === 3 ? 5 : ui.cols === 5 ? 2 : 3, document.elementFromPoint(innerWidth / 2, innerHeight / 2)); return toast(`${ui.cols} photos a row`); }
   if (t('[data-clrq]')) { ui.q = ''; $('#q').value = ''; return render(); }
   const j = t('[data-jump]'); if (j) { const el = document.getElementById('day-' + j.dataset.jump); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
@@ -1080,12 +1238,12 @@ async function start(retried) {
   }
   $('#gate').innerHTML = ''; $('#main').hidden = false;
   $('[data-select]').hidden = !member(); $('#fab').hidden = !member(); $('[data-drive]').hidden = !member(); document.body.classList.toggle('guest', !member());
-  render(); renderResume();
-  if (member()) getDrive().catch(() => {}).then(sweepDrive).then((n) => { if (n) { toast(`${n} from the Drive app added`); load().then(render).catch(() => {}); } }); // one after the other: the first time, both make the same folders
+  render(); renderResume(); sortBacklog();
+  if (member()) getDrive().catch(() => {}).then(sweepDrive).then((n) => { if (n) { toast(`${n} from the Drive app added`); load().then(render).then(sortBacklog).catch(() => {}); } }); // one after the other: the first time, both make the same folders
   const cq = new URLSearchParams(location.search).get('connect');
   if (cq === 'ok') toast('Google Drive connected. Upload away!'); if (cq) history.replaceState(null, '', location.pathname);
   // keep up with the others' uploads while the page is open
-  setInterval(() => { if (document.visibilityState === 'visible' && !uploading && !vw.classList.contains('on') && !story.classList.contains('on') && !document.body.classList.contains('sel')) sweepDrive().then(load).then(render).catch(() => {}); }, 60000);
+  setInterval(() => { if (document.visibilityState === 'visible' && !uploading && !vw.classList.contains('on') && !story.classList.contains('on') && !document.body.classList.contains('sel')) sweepDrive().then(load).then(render).then(sortBacklog).catch(() => {}); }, 60000);
 }
 start();
 window.__photos = { get photos() { return photos; }, get order() { return order; }, ui, get covers() { return covers; } };
