@@ -452,7 +452,7 @@ document.addEventListener('error', (e) => { const im = e.target; if (im.tagName 
 
 let photos = [], covers = {};
 const norm = (x) => ({ id: x.id, name: x.name, mime: x.mime, day: x.day, stop: x.stop || null, takenAt: x.t, by: x.by, in: x.in || [], hearts: x.hearts || [], hidden: !!x.hidden,
-  guess: !!x.guess, checked: !!x.checked, kind: x.kind || null, np: x.np ?? null, words: x.words || '', rot: x.rot || 0,
+  guess: !!x.guess, checked: !!x.checked, faced: !!x.faced, kind: x.kind || null, np: x.np ?? null, words: x.words || '', rot: x.rot || 0,
   ar: x.w && x.h ? x.w / x.h : null, thumb: x.thumb, isVideo: /^video\//.test(x.mime || ''), dur: x.dur });
 async function load() {
   const d = await api('?trip=' + TRIP);
@@ -970,11 +970,16 @@ async function facePass() {
   try {
     const F = await fxMod();
     if (!fp) { setFaceMsg('Getting face recognition ready (8 MB, the first time)…'); await F.ready(); await prints(); }
+    if ((fp.v || 1) < F.VERSION) { // it learns a better way now: forget what it learned, and take back the names it guessed
+      await prints({ reset: F.VERSION });
+      const undo = []; for (const p of photos) if (p.guess && !p.checked && F.hasFaces(await F.seen(p.id + (p.rot ? '@' + p.rot : '')))) { p.in = []; p.guess = p.faced = false; undo.push(p.id); }
+      if (undo.length) { save({ ids: undo, set: { unguess: true } }); render(); }
+    }
     // prints from a photo whose tags changed since (that person isn't in it after all) are dropped, and it's learned again
     const drop = new Set(); for (const [who, l] of Object.entries(fp.by)) for (const x of l) { const p = byIdP(x.id); if (p && p.checked && !p.in.includes(who)) drop.add(x.id); }
     if (drop.size) await prints({ drop: [...drop] });
     const used = new Set(fp.used || []);
-    const teach = photos.filter((p) => p.checked && p.in.length && !p.isVideo && !used.has(p.id)).sort((a, b) => a.in.length - b.in.length); // one person first: they teach the rest
+    const teach = photos.filter((p) => p.checked && p.in.length === 1 && !p.isVideo && !p.hidden && !used.has(p.id)); // photos of one person: they're the sure ones
     for (let round = 0, grew = true; grew && round < 4; round++) {
       grew = false; let add = [], ids = [], i = 0;
       for (const p of teach) {
@@ -987,6 +992,7 @@ async function facePass() {
       }
       if (add.length) { await prints({ add, used: ids }); grew = true; }
     }
+    const odd = F.suspects(fp); if (odd.length) await prints({ reject: odd }); // a print that looks like someone else: forgotten
     // name the faces in photos no one has checked (the sort said there are people in them, or hasn't looked yet)
     const look = photos.filter((p) => !p.checked && !p.hidden && !p.isVideo && dayById[p.day] && p.np !== 0); let named = 0, i = 0;
     if (Object.keys(fpv).length) for (const p of look) {
@@ -994,11 +1000,12 @@ async function facePass() {
       const faces = await facesOf(p); if (!faces) continue;
       const q = byIdP(p.id); if (!q || q.checked) continue; // (someone checked it meanwhile)
       const g = F.nameFaces(faces, fpv, couldOf(q.day, q.stop, q.by), q.in);
-      if (g && !sameSet(g, q.in)) { q.in = g; q.guess = true; named++; save({ ids: [q.id], set: { guess: g } }); render(); }
+      if (g && !sameSet(g, q.in)) { q.in = g; q.guess = q.faced = true; named++; save({ ids: [q.id], set: { guess: g } }); render(); }
+      else if (!g && q.faced && q.guess) { q.in = []; q.guess = q.faced = false; save({ ids: [q.id], set: { unguess: true } }); render(); } // no longer sure
       await sleep(30);
     }
     const k = knows(), not = PIDS.filter((id) => !k.includes(id)), n = k.reduce((s, id) => s + fp.by[id].length, 0);
-    setFaceMsg(!k.length ? 'Tag a few photos of just one person each: it learns from those first.'
+    setFaceMsg(!k.length ? 'It learns only from photos of one person: tag a few of each of you.'
       : `Recognises ${names(k)} (from ${n} tagged face${n > 1 ? 's' : ''}).${not.length ? ` Tag photos of just ${not.map((id) => PEOPLE[id].name).join(' or ')} to teach it.` : ''}${named ? ` Named ${named} photo${named > 1 ? 's' : ''}: check them above.` : ''}`);
   } catch (e) { setFaceMsg(e && e.status ? 'Couldn\'t reach the trip\'s server. It tries again later.' : 'Face recognition couldn\'t start on this phone.'); }
   finally { faceBusy = false; if (faceAgain) { faceAgain = false; faceSoon(); } }

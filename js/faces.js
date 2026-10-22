@@ -1,13 +1,14 @@
 // Who's who in a photo, worked out on Mo's phone (and only there; nobody else's phone downloads any of this).
 // face-api (vendor/face-api, MIT) finds the faces in a picture and turns each into 128 numbers, a face print: two photos
 // of the same person give prints close together (a distance of about 0.3), two people far apart (about 0.8). The four
-// of us are learned from photos someone tagged; the prints are kept by the server (/api/photos/prints in lib/photos.js),
+// of us are learned from photos of one person that someone tagged; the prints are kept by the server (/api/photos/prints in lib/photos.js),
 // a few numbers a face and never the photos. A new face close enough to one person's prints is guessed as them, shown
 // dotted until someone confirms it, like the other guesses. The model (~8 MB) downloads once, when it's switched on.
-const MATCH = 0.5;  // a face this close to someone's prints is them
-const LEARN = 0.45; // stricter when it's used to tell faces apart in a photo of several people we're learning from
-const MARGIN = 0.04; // ...and clearly closer to them than to anyone else
-const BIG = 0.04;   // a face narrower than this share of the photo is someone in the background: left out
+export const VERSION = 2; // how it learns; a newer one starts learning again (v2: one-person photos only, surer matches)
+const MATCH = 0.42;  // a face this close to someone's prints (the mean of the nearest three) is them
+const MARGIN = 0.08; // ...and clearly closer to them than to anyone else
+const BIG = 0.04;    // a face narrower than this share of the photo is someone in the background: left out
+const TEACH = 0.07;  // a face it learns from is at least this wide: the photo is of them
 const K = 200;      // prints are stored as whole numbers: value × K, in -127…127 (values stay within ±0.6)
 
 let fa = null;
@@ -42,13 +43,16 @@ const dist = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += (a[i
 // the server's prints { by: { who: [{ id, q }] } } as numbers, ready to compare
 export const vectors = (fp) => Object.fromEntries(Object.entries((fp && fp.by) || {}).map(([who, l]) => [who, l.map((x) => unpack(x.q))]));
 const big = (f) => f.w >= BIG;
+export const hasFaces = (faces) => !!faces && faces.some(big);
+// how like someone a face is: the mean distance to their nearest three prints (one odd print can't sway it)
+const score = (v, ps) => { const d = ps.map((x) => dist(v, x)).sort((a, b) => a - b).slice(0, 3); return d.reduce((a, b) => a + b, 0) / d.length; };
 
 // each face given to at most one person (of who), closest first: [{ i (the face), who, d }]
 export function assign(faces, prints, who, max = MATCH) {
   const pairs = [];
   faces.forEach((f, i) => {
     const v = unpack(f.q);
-    const ds = who.filter((p) => prints[p] && prints[p].length).map((p) => ({ i, who: p, d: Math.min(...prints[p].map((x) => dist(v, x))) })).sort((a, b) => a.d - b.d);
+    const ds = who.filter((p) => prints[p] && prints[p].length).map((p) => ({ i, who: p, d: score(v, prints[p]) })).sort((a, b) => a.d - b.d);
     if (ds[0] && ds[0].d < max && (!ds[1] || ds[1].d - ds[0].d >= MARGIN)) pairs.push(ds[0]);
   });
   pairs.sort((a, b) => a.d - b.d); const fi = new Set(), pi = new Set(), out = [];
@@ -56,16 +60,27 @@ export function assign(faces, prints, who, max = MATCH) {
   return out;
 }
 
-// what a tagged photo teaches: whose face is whose, when that's certain. The one face when one person's tagged; with
-// several, only when there are as many faces as people tagged and everyone but one at most is recognised already.
+// what a tagged photo teaches: only a photo of one person, with one face big enough to be theirs, and not a face that
+// looks more like someone else we know (a stranger in front, or the wrong person tagged)
 export function learnFrom(faces, tagged, prints) {
-  const F = faces.filter(big); if (!F.length || F.length !== tagged.length) return [];
-  if (F.length === 1) return [{ who: tagged[0], q: F[0].q }];
-  const got = assign(F, prints, tagged, LEARN);
-  if (got.length < F.length - 1) return [];
-  const out = got.map((x) => ({ who: x.who, q: F[x.i].q }));
-  if (got.length === F.length - 1) out.push({ who: tagged.find((p) => !got.some((x) => x.who === p)), q: F.find((_, i) => !got.some((x) => x.i === i)).q });
-  return out;
+  if (tagged.length !== 1) return [];
+  const F = faces.filter(big); if (F.length !== 1 || F[0].w < TEACH) return [];
+  const who = tagged[0], v = unpack(F[0].q);
+  const own = (prints[who] || []).length >= 2 ? score(v, prints[who]) : null;
+  const other = Math.min(Infinity, ...Object.entries(prints).filter(([p, ps]) => p !== who && ps.length).map(([, ps]) => score(v, ps)));
+  if (other < MATCH && (own === null || other < own)) return [];
+  return [{ who, q: F[0].q }];
+}
+
+// prints that look more like someone else than the person they were learned as: the photo ids, to forget
+export function suspects(fp) {
+  const V = Object.fromEntries(Object.entries((fp && fp.by) || {}).map(([who, l]) => [who, l.map((x) => ({ id: x.id, v: unpack(x.q) }))])), out = new Set();
+  for (const [who, l] of Object.entries(V)) for (const x of l) {
+    const rest = l.filter((y) => y !== x).map((y) => y.v); const own = rest.length ? score(x.v, rest) : Infinity;
+    const other = Math.min(Infinity, ...Object.entries(V).filter(([p, m]) => p !== who && m.length).map(([, m]) => score(x.v, m.map((y) => y.v))));
+    if (other < MATCH && other < own) out.add(x.id);
+  }
+  return [...out];
 }
 
 // who's in a photo no one has checked, from its faces and who could be in it (who was at that stop). null: nothing to say.
