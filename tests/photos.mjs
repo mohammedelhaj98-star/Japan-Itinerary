@@ -613,6 +613,45 @@ let M = null;
   ok('Turn off puts the offer back', /Recognise faces/.test(await m.textContent('#facebox')) && !(await m.evaluate(() => localStorage.getItem('photos.faces'))));
 }
 
+// 16 · turning a photo: a quarter turn a tap in the viewer, saved for everyone; a turned plan photo shows turned on the plan
+{
+  const ap = (id) => (files.get(id) || {}).appProperties || {};
+  const tp = [...files.values()].find((f) => f.data && /^image\//.test(f.mimeType) && f.appProperties && f.appProperties.trip && !f.appProperties.hidden && f.appProperties.stop && !f.trashed && f.name !== 'group.jpg');
+  const tok = await n.evaluate(() => localStorage.getItem('trips.photok'));
+  await n.goto(B + '/japan/photos'); await n.waitForTimeout(2000);
+  await n.tap(`.grid .th[data-pid="${tp.id}"]`); await n.waitForTimeout(800);
+  const box = () => n.$eval('#track .slide:nth-child(2) .frame', (f) => [f.offsetWidth, f.offsetHeight]);
+  const [w0, h0] = await box();
+  ok('viewer: a Turn button for members', await n.isVisible('[data-vrot]'));
+  await n.tap('[data-vrot]'); await n.waitForTimeout(300);
+  const [w1, h1] = await box();
+  ok('one tap: a quarter turn, the frame takes the turned shape', Math.abs(w0 / h0 - h1 / w1) < 0.05 && await n.$eval('#track .slide:nth-child(2) .frame img', (im) => im.classList.contains('q') && getComputedStyle(im).rotate === '90deg'), `${w0}x${h0} → ${w1}x${h1}`);
+  await n.screenshot({ path: OUT + 'turned-viewer.png' });
+  await n.tap('[data-vrot]'); await n.waitForTimeout(1300);
+  ok('taps are saved once they stop: half a turn', ap(tp.id).rot === '180', JSON.stringify(ap(tp.id)));
+  await n.tap('[data-vrot]'); await n.waitForTimeout(1300);
+  await n.keyboard.press('Escape'); await n.waitForTimeout(500);
+  ok('the gallery tile is turned too', await n.$eval(`.grid .th[data-pid="${tp.id}"] img`, (im) => im.classList.contains('q') && im.style.getPropertyValue('--rot') === '270deg'));
+  const list = await (await api('?trip=japan', { headers: { 'x-photo-token': tok } })).json();
+  ok('the list says how it\'s turned, for every phone', list.photos.find((p) => p.id === tp.id).rot === 270);
+  await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
+  ok('a guest sees it turned, and has no Turn button', await gp.$eval(`.grid .th[data-pid="${tp.id}"] img`, (im) => im.style.getPropertyValue('--rot') === '270deg') && !(await gp.isVisible('[data-vrot]')));
+  // the plan photo: turned on the trip page too
+  const pin = { 'content-type': 'application/json', 'x-trip-pin': '6666' };
+  await api('/cover', { method: 'POST', headers: pin, body: JSON.stringify({ stop: ap(tp.id).stop, id: tp.id }) });
+  let cv = (await (await api('?trip=japan', { headers: { 'x-photo-token': tok } })).json()).covers;
+  ok('made the plan photo: its turn goes with it', cv['~rot'] && cv['~rot'][tp.id] === 270, JSON.stringify(cv));
+  await api('/update', { method: 'POST', headers: pin, body: JSON.stringify({ trip: 'japan', ids: [tp.id], set: { rot: 90 } }) });
+  cv = (await (await api('?trip=japan', { headers: { 'x-photo-token': tok } })).json()).covers;
+  ok('turned again: the plan photo follows', cv['~rot'][tp.id] === 90 && ap(tp.id).rot === '90');
+  await n.goto(B + `/japan/?d=${ap(tp.id).day}`); await n.waitForTimeout(2500);
+  ok('the trip page draws the plan photo turned', await n.$eval(`.hero[data-pick="${ap(tp.id).stop}"]`, (h) => h.classList.contains('turned') && !!h.querySelector('.hturn.q')).catch(() => false));
+  await api('/update', { method: 'POST', headers: pin, body: JSON.stringify({ trip: 'japan', ids: [tp.id], set: { rot: 0 } }) });
+  await api('/cover', { method: 'POST', headers: pin, body: JSON.stringify({ stop: ap(tp.id).stop, id: null }) });
+  cv = (await (await api('?trip=japan', { headers: { 'x-photo-token': tok } })).json()).covers;
+  ok('turned back and unpicked: nothing left over', ap(tp.id).rot === '' && !Object.keys(cv['~rot'] || {}).length, JSON.stringify(cv));
+}
+
 for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S], ['mo', M]]) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
 console.log(fails ? `\n${fails} failed` : '\nall photo checks passed');
 await browser.close(); site.close(); google.close(); fs.rmSync(FIX, { recursive: true, force: true });

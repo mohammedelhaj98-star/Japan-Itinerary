@@ -102,6 +102,10 @@ h1,h2,h3,p { margin:0; }
 .th.big { grid-column:span 2; grid-row:span 2; }
 html.c2 .th.big { grid-column:span 1; grid-row:span 1; } /* two a row: every photo is already big */
 .th img, .th video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; -webkit-user-drag:none; }
+/* a photo someone turned: drawn turned inside its box; a quarter turn swaps its width and height */
+.th, .vw .frame, .flyer, .tagr .tg-pic, .story .it, .fs button { container-type:size; }
+.rt { rotate:var(--rot); }
+.rt.q { position:absolute !important; inset:auto !important; left:50% !important; top:50% !important; width:100cqh !important; height:100cqw !important; translate:-50% -50%; }
 .th .vd { position:absolute; right:6px; bottom:5px; z-index:1; color:#fff; font-size:11.5px; font-weight:700; text-shadow:0 1px 4px rgba(0,0,0,.6); display:flex; align-items:center; gap:3px; }
 .faces { position:absolute; left:5px; bottom:5px; z-index:1; display:flex; }
 .faces i { width:18px; height:18px; border-radius:50%; background:var(--c, #555); color:#fff; font-style:normal; font-size:8.5px; font-weight:700; display:grid; place-items:center; box-shadow:0 0 0 1.5px #fff; margin-right:-4px; }
@@ -213,6 +217,7 @@ body.sel .selbar { transform:none; }
 .vw .top .mid { text-align:center; flex:1; min-width:0; line-height:1.2; }
 .vw .top .mid b { display:block; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .vw .top .mid small { font-size:12px; opacity:.7; }
+.vw .rbs { width:40px; flex:none; } .vw [data-vrot]:not([hidden]) + .rbs { display:none; }
 .vw .rb { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.14); display:grid; place-items:center; flex:none; color:#fff; }
 /* the heart: a floating button under the right thumb, just above Info */
 .vw .hfab { position:absolute; right:14px; bottom:calc(100% + 4px); width:58px; height:58px; border-radius:50%; background:rgba(255,255,255,.16); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); display:grid; place-items:center; color:#fff; box-shadow:0 10px 26px -12px rgba(0,0,0,.7); }
@@ -378,7 +383,7 @@ body.guest [data-select] { display:none; }
 <div class="scrim" id="scrim"></div>
 <section class="sheet" id="sheet" aria-modal="true" role="dialog"></section>
 <div class="vw" id="vw" role="dialog" aria-label="Photo viewer"><div class="track" id="track"></div>
-  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><span style="width:40px"></span></div>
+  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><button class="rb" data-vrot aria-label="Turn the photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button><span class="rbs"></span></div>
   <div class="cap"><button class="hfab" data-heart aria-label="Love this photo" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-7.6-10.4A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.6 2.7c0 5.8-7.6 10.4-7.6 10.4z"/></svg><span class="n" id="hcount"></span></button><div class="capt" id="vcapt"></div><div class="fs" id="fs"></div></div>
   <section class="info" id="vinfo"></section></div>
 <div class="story" id="story"><div class="stage" id="stage"></div><div class="bars" id="sbars"></div><div class="shead" id="shead"></div></div>
@@ -432,19 +437,22 @@ async function api(path, body) {
   if (!r.ok) { const e = new Error(d.error || 'HTTP ' + r.status); e.status = r.status; e.d = d; throw e; }
   return d;
 }
+// a photo someone turned (p.rot, clockwise): its picture is drawn turned, and a quarter turn swaps its shape
+const rotA = (p) => (p.rot ? ` class="rt${p.rot % 180 ? ' q' : ''}" style="--rot:${p.rot}deg"` : '');
+const arOf = (p) => (p.ar && p.rot % 180 ? 1 / p.ar : p.ar);
 const media = (p, kind, extra = '') => `/api/photos/${kind}/${p.id}?k=${encodeURIComponent(TOKEN)}${extra}`;
 // a picture of a photo at a size: Google's own rendition when we have its link (fast, and it turns HEIC into JPEG), our proxy otherwise
 const pic = (p, s) => (p.thumb ? p.thumb.replace(/=s\d+(-[a-z0-9-]+)?$/i, '') + '=s' + s : media(p, 'thumb', '&s=' + s));
 // tile: in the gallery, a full-size photo just uploaded from this phone is decoded off the main thread (it doesn't hold up scrolling)
 const imgTag = (p, s = 600, tile) => p.local
-  ? (p.isVideo ? `<video src="${p.local}#t=0.1" muted playsinline preload="metadata"></video>` : `<img draggable="false" src="${p.local}" alt="" loading="lazy"${tile ? ' decoding="async"' : ''}>`)
-  : (p.thumb || !p.isVideo ? `<img draggable="false" src="${pic(p, s)}" data-fb="${media(p, 'thumb', '&s=' + s)}" alt="" loading="lazy">` : '<span class="ph0">Video<br>(picture coming)</span>');
+  ? (p.isVideo ? `<video${rotA(p)} src="${p.local}#t=0.1" muted playsinline preload="metadata"></video>` : `<img${rotA(p)} draggable="false" src="${p.local}" alt="" loading="lazy"${tile ? ' decoding="async"' : ''}>`)
+  : (p.thumb || !p.isVideo ? `<img${rotA(p)} draggable="false" src="${pic(p, s)}" data-fb="${media(p, 'thumb', '&s=' + s)}" alt="" loading="lazy">` : '<span class="ph0">Video<br>(picture coming)</span>');
 // Google's links expire after a while: fall back to our own copy of the picture
 document.addEventListener('error', (e) => { const im = e.target; if (im.tagName === 'IMG' && im.dataset.fb && im.src !== location.origin + im.dataset.fb && !im.src.endsWith(im.dataset.fb)) im.src = im.dataset.fb; }, true);
 
 let photos = [], covers = {};
 const norm = (x) => ({ id: x.id, name: x.name, mime: x.mime, day: x.day, stop: x.stop || null, takenAt: x.t, by: x.by, in: x.in || [], hearts: x.hearts || [], hidden: !!x.hidden,
-  guess: !!x.guess, checked: !!x.checked, kind: x.kind || null, np: x.np ?? null, words: x.words || '',
+  guess: !!x.guess, checked: !!x.checked, kind: x.kind || null, np: x.np ?? null, words: x.words || '', rot: x.rot || 0,
   ar: x.w && x.h ? x.w / x.h : null, thumb: x.thumb, isVideo: /^video\//.test(x.mime || ''), dur: x.dur });
 async function load() {
   const d = await api('?trip=' + TRIP);
@@ -907,7 +915,7 @@ function drawCheck() {
   if (ti >= tq.length) { closeCheck(); return toast('All checked. Thank you!'); }
   const p = tq[ti], s = stopOf(p), d = dayById[p.day]; tEdited = false;
   $('#tgn').textContent = `${ti + 1} of ${tq.length}`;
-  $('#tgpic').innerHTML = `${p.isVideo ? `<video src="${p.local || media(p, 'file')}" autoplay muted loop playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1200)}<span class="where">Day ${d.n} · ${esc(s ? s.title : 'Other moments')}</span>`;
+  $('#tgpic').innerHTML = `${p.isVideo ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" autoplay muted loop playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1200)}<span class="where">Day ${d.n} · ${esc(s ? s.title : 'Other moments')}</span>`;
   drawCheckFaces();
 }
 function drawCheckFaces() {
@@ -949,10 +957,10 @@ const knows = () => PIDS.filter((id) => (fp && fp.by[id] || []).length);
 async function prints(body) { fp = await api('/prints', body); fpv = (await fxMod()).vectors(fp); return fp; }
 // the faces in a photo: from this phone's notes, or found in a picture of it (its own file, just uploaded, or ours)
 async function facesOf(p) {
-  const F = await fxMod(); const had = await F.seen(p.id); if (had) return had;
+  const F = await fxMod(); const key = p.id + (p.rot ? '@' + p.rot : ''); const had = await F.seen(key); if (had) return had; // (turned: looked at again)
   try {
     const r = await fetch(p.local || media(p, 'thumb', '&s=800')); if (!r.ok) return null;
-    const faces = await F.facesIn(await r.blob()); await F.remember(p.id, faces); return faces;
+    const faces = await F.facesIn(await r.blob(), p.rot); await F.remember(key, faces); return faces;
   } catch { return null; } // no picture yet (Google's still making it), or one the phone can't read
 }
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
@@ -1012,8 +1020,8 @@ let faceRows = Promise.resolve(); const queueFaceRow = (r) => { faceRows = faceR
 
 /* ═══ full-screen viewer ═══ */
 const vw = $('#vw'), track = $('#track');
-let vlist = [], vi = 0, zoom = null;
-const fit = (p) => { const W = innerWidth, H = innerHeight; const ar = p.ar || (p.isVideo ? 0.5625 : 0.75); let w = W, h = W / ar; if (h > H) { h = H; w = H * ar; } return { w, h, x: (W - w) / 2, y: (H - h) / 2 }; };
+let vlist = [], vi = 0, zoom = null; const rotT = {};
+const fit = (p) => { const W = innerWidth, H = innerHeight; const ar = arOf(p) || (p.isVideo ? 0.5625 : 0.75); let w = W, h = W / ar; if (h > H) { h = H; w = H * ar; } return { w, h, x: (W - w) / 2, y: (H - h) / 2 }; };
 const thumbEl = (p) => document.querySelector(`.grid .th[data-pid="${p.id}"]`);
 function fly(p, from, to, ms) {
   const f = document.createElement('div'); f.className = 'flyer' + (p.ar ? '' : ' real'); f.innerHTML = imgTag(p, 800);
@@ -1057,7 +1065,7 @@ const curFrame = () => track.children[1] && track.children[1].querySelector('.fr
 function slideHtml(p) {
   if (!p) return '<div class="slide"></div>';
   const r = fit(p);
-  const body = p.isVideo ? `<video src="${p.local || media(p, 'file')}" controls playsinline preload="metadata" ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1600);
+  const body = p.isVideo ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" controls playsinline preload="metadata" ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1600);
   return `<div class="slide"><div class="frame ${p.ar && !p.isVideo ? '' : 'real'}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px">${body}</div></div>`;
 }
 function drawViewer() {
@@ -1082,7 +1090,7 @@ function drawViewer() {
   if (vw.classList.contains('showinfo')) drawInfo();
 }
 function drawFilmstrip() {
-  const fs = $('#fs'); const sig = vlist.length + ':' + vlist[0].id + ':' + vlist[vlist.length - 1].id;
+  const fs = $('#fs'); const sig = vlist.length + ':' + vlist[0].id + ':' + vlist[vlist.length - 1].id + ':' + vlist.filter((p) => p.rot).map((p) => p.id + p.rot).join();
   if (fs.dataset.list !== sig) { fs.dataset.list = sig; fs.innerHTML = vlist.map((p, k) => `<button data-fs="${k}" aria-label="Photo ${k + 1}">${imgTag(p, 200)}</button>`).join(''); }
   fs.querySelectorAll('button.on').forEach((b) => b.classList.remove('on'));
   const on = fs.children[vi]; if (on) { on.classList.add('on'); fs.scrollTo({ left: on.offsetLeft - fs.clientWidth / 2 + 29, behavior: 'smooth' }); }
@@ -1173,6 +1181,7 @@ vw.addEventListener('click', (e) => {
   const fsb = t('[data-fs]'); if (fsb) { vi = +fsb.dataset.fs; return drawViewer(); }
   if (t('.capt')) { setInfo(true); setTrack(0, true); return; }
   const vt = t('[data-vtag]'); if (vt && member()) { const p = vlist[vi], id = vt.dataset.vtag; const on = !p.in.includes(id); p.in = on ? PIDS.filter((x) => x === id || p.in.includes(x)) : p.in.filter((x) => x !== id); p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], tag: { who: id, on } }); faceSoon(); return; }
+  if (t('[data-vrot]') && member()) { const p = vlist[vi]; p.rot = ((p.rot || 0) + 90) % 360; zoom = null; drawViewer(); render(); clearTimeout(rotT[p.id]); rotT[p.id] = setTimeout(() => { delete rotT[p.id]; save({ ids: [p.id], set: { rot: p.rot } }); if (covers['~rot'] && isCover(p)) covers['~rot'][p.id] = p.rot; faceSoon(); }, 700); return; } // a tap a quarter turn; saved once the taps stop
   if (t('[data-vsure]') && member()) { const p = vlist[vi]; p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], set: { sure: true } }); faceSoon(); return; }
   if (t('[data-vassign]')) return openAssign([vlist[vi].id]);
   if (t('[data-vhide]')) { hide([vlist[vi].id]); return drawViewer(); }
@@ -1222,7 +1231,7 @@ function openStory(dayId) {
 }
 const itemDur = (it) => DUR[it.kind];
 function itemHtml(it) {
-  if (it.kind === 'photo' || it.kind === 'video') { const p = it.p; return `<div class="it" style="--dur:${DUR.photo + 600}ms">${p.isVideo ? `<video src="${p.local || media(p, 'file')}" autoplay muted playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1400)}<div class="cap2">${faces(p.in, p.guess)}<span>${fmtMin(jstOf(p.takenAt, DAYS).min)}${p.hearts.length ? ' · ♥' : ''}</span></div></div>`; }
+  if (it.kind === 'photo' || it.kind === 'video') { const p = it.p; return `<div class="it" style="--dur:${DUR.photo + 600}ms">${p.isVideo ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" autoplay muted playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1400)}<div class="cap2">${faces(p.in, p.guess)}<span>${fmtMin(jstOf(p.takenAt, DAYS).min)}${p.hearts.length ? ' · ♥' : ''}</span></div></div>`; }
   return `<div class="it"><div class="card2" style="--c:${it.c}"><small>${esc(it.small)}</small><h2>${esc(it.h)}</h2><p>${esc(it.p)}</p>${it.kind === 'end' && it.next ? `<button class="go" data-snext="${it.next.id}">Next: Day ${it.next.n} ▶</button>` : it.kind === 'end' ? '<button class="go" data-sclose>Back to the photos</button>' : ''}</div></div>`;
 }
 function showItem(k) {
@@ -1329,7 +1338,7 @@ async function start(retried) {
     $('#gate').innerHTML = `<div class="gate"><h2>Couldn't load the photos</h2><p>${esc(e.status === 409 || e.status === 502 ? e.message : 'Check your connection and try again.')}</p><button class="go press" onclick="location.reload()">Try again</button></div>`; return;
   }
   $('#gate').innerHTML = ''; $('#main').hidden = false;
-  $('[data-select]').hidden = !member(); $('#fab').hidden = !member(); $('[data-drive]').hidden = !member(); document.body.classList.toggle('guest', !member());
+  $('[data-select]').hidden = !member(); $('[data-vrot]').hidden = !member(); $('#fab').hidden = !member(); $('[data-drive]').hidden = !member(); document.body.classList.toggle('guest', !member());
   render(); renderResume(); sortBacklog(); renderFaces(); faceSoon(1500);
   if (member()) getDrive().catch(() => {}).then(sweepDrive).then((n) => { if (n) { toast(`${n} from the Drive app added`); load().then(render).then(sortBacklog).catch(() => {}); } }); // one after the other: the first time, both make the same folders
   const cq = new URLSearchParams(location.search).get('connect');

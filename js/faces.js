@@ -23,12 +23,14 @@ export function ready() {
   return fa;
 }
 
-// the faces in a picture (a file or a downloaded one): where each is, as shares of the width and height, and its print
-export async function facesIn(blob) {
+// the faces in a picture (a file or a downloaded one), turned the way someone turned it (rot, clockwise): where each is,
+// as shares of the width and height, and its print
+export async function facesIn(blob, rot = 0) {
   const m = await ready();
   const bm = await createImageBitmap(blob);
   const k = Math.min(1, 800 / Math.max(bm.width, bm.height)), c = document.createElement('canvas');
-  c.width = Math.round(bm.width * k); c.height = Math.round(bm.height * k); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); if (bm.close) bm.close();
+  const w = Math.round(bm.width * k), h = Math.round(bm.height * k), q = rot % 180 !== 0; c.width = q ? h : w; c.height = q ? w : h;
+  const g = c.getContext('2d'); g.translate(c.width / 2, c.height / 2); g.rotate((rot * Math.PI) / 180); g.drawImage(bm, -w / 2, -h / 2, w, h); if (bm.close) bm.close();
   const size = Math.max(160, Math.min(800, Math.ceil(Math.max(c.width, c.height) / 32) * 32)); // (the detector's own size, a multiple of 32)
   const found = await m.detectAllFaces(c, new m.TinyFaceDetectorOptions({ inputSize: size, scoreThreshold: 0.35 })).withFaceLandmarks().withFaceDescriptors();
   return found.map((f) => { const b = f.detection.box; return { x: +(b.x / c.width).toFixed(3), y: +(b.y / c.height).toFixed(3), w: +(b.width / c.width).toFixed(3), h: +(b.height / c.height).toFixed(3), q: pack(f.descriptor) }; });

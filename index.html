@@ -282,6 +282,10 @@ body.mapmax .mapmax-hint { display:block; }
 .pass.open .hero { display:block; }
 .hero .wm { position:absolute; inset:0; display:grid; place-items:center; font-family:var(--mincho); font-size:64px; color:rgba(255,255,255,.18); letter-spacing:.06em; padding:0 20px 40px; text-align:center; line-height:1.1; }
 .thumb.wm { display:grid; place-items:center; font-family:var(--mincho); font-size:18px; color:rgba(255,255,255,.75); }
+/* a plan photo someone turned on the Photos page: drawn turned (a quarter turn swaps its width and height) */
+.hero.turned { container-type:size; overflow:hidden; }
+.hturn { position:absolute; left:50%; top:50%; width:100cqw; height:100cqh; translate:-50% -50%; rotate:var(--rot); background:center/cover no-repeat; }
+.hturn.q { width:100cqh; height:100cqw; }
 .hero::after { content:''; position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.25) 0, rgba(0,0,0,0) 32%, rgba(0,0,0,0) 48%, rgba(0,0,0,.72) 100%); }
 .hero-in { position:absolute; left:16px; right:16px; bottom:14px; z-index:1; display:flex; align-items:flex-end; gap:12px; }
 .hero-in .pn { font-size:40px; }
@@ -1261,6 +1265,7 @@ function passHTML(e, i) {
   const host = e.place || placeOfEvent(i); const pi0 = own || placeInfo(host); const pi = pi0 && !e.place && !own ? { ...pi0, area: pi0.area || host.name, key: null } : pi0;
   // a photo one of us chose for this stop (Photos → Use as this stop's photo) replaces the stock picture
   const cover = (store.state.covers || {})[e.id]; const photo = cover ? `/api/photos/thumb/${encodeURIComponent(cover)}?s=780` : imgUrl(pi);
+  const turn = cover ? +(((store.state.covers || {})['~rot'] || {})[cover] || 0) : 0; // turned on the Photos page
   const color = tk ? legHex(e) : c.c;
   const kind = tk ? (e.travel ? (MODE[e.travel.mode] || [0, 0, 'Transit'])[2] : 'Transit') : c.label;
   const chips = [`<span class="chip">${esc(e.time || 'Any time')}</span>`];
@@ -1294,7 +1299,7 @@ function passHTML(e, i) {
   const yk = e.ticket && e.ticket.pending ? (pend ? '<span class="ykan spot" aria-hidden="true">not<br>booked</span>' : `<button class="ykan ${bkThump === e.id ? 'ykin' : ''}" data-bkundo="${e.id}" aria-label="Booked. Tap to undo">予約済</button>`) : '';
   const skL = sk ? '<span class="skl">Skipped</span>' : '';
   const band = `<div class="band" data-pick="${e.id}"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${skL}</small><b>${esc(e.title)}</b>${pendL}</div>${mv ? `<span class="grip" data-grip="${e.id}" aria-label="Drag to move ${esc(e.title)}">${I.grip}</span>` : `<span class="glock" aria-hidden="true">${I.lock}</span>`}${tk && e.ticket && e.ticket.people ? pills(e.ticket.people) : ''}${tk ? `<span class="tkic">${modeIcon(e)}</span>` : `<span class="thumb ${photo ? '' : 'wm'}" style="${photo ? `background-image:url('${thumbUrl(pi)}')` : ''}">${!photo && pi && pi.ja ? esc(pi.ja.slice(0, 1)) : ''}</span>`}</div>`;
-  const hero = tk ? '' : `<div class="hero" data-pick="${e.id}" style="${photo ? `background-image:url('${photo}')` : ''}">${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}${skL}</small><b>${esc(e.title)}</b>${pendL}</div></div></div>`;
+  const hero = tk ? '' : `<div class="hero${turn ? ' turned' : ''}" data-pick="${e.id}" style="${photo && !turn ? `background-image:url('${photo}')` : ''}">${turn ? `<i class="hturn${turn % 180 ? ' q' : ''}" style="background-image:url('${photo}');--rot:${turn}deg"></i>` : ''}${!photo ? `<span class="wm" aria-hidden="true">${esc((pi && pi.ja) || '')}</span>` : ''}${nav}<div class="hero-in"><span class="pn">${n ? String(n).padStart(2, '0') : ''}</span><div class="pt"><small>${esc(kind)} · ${esc(startTime(e.time) || '—')}${pi && pi.area && photo ? ` · ${esc(pi.area)} area` : ''}${skL}</small><b>${esc(e.title)}</b>${pendL}</div></div></div>`;
   return `<article class="pass ${tk ? 'tk' : ''} ${d ? 'done' : ''} ${sk ? 'skip' : ''} ${mv ? '' : 'locked'}" id="p-${e.id}" data-id="${e.id}" style="--c:${color}">${tk ? nav : ''}${band}${hero}${body}${yk}<div class="hanko" aria-hidden="true" style="--rot:${tilt(e.id, -14)}deg"><b>済</b><small>Done</small></div><div class="mioku" aria-hidden="true" style="--rot:${tilt(e.id, -10)}deg"><b>見送</b><small>Skipped</small></div></article>`;
 }
 
