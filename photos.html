@@ -452,7 +452,7 @@ document.addEventListener('error', (e) => { const im = e.target; if (im.tagName 
 
 let photos = [], covers = {};
 const norm = (x) => ({ id: x.id, name: x.name, mime: x.mime, day: x.day, stop: x.stop || null, takenAt: x.t, by: x.by, in: x.in || [], hearts: x.hearts || [], hidden: !!x.hidden,
-  guess: !!x.guess, checked: !!x.checked, faced: !!x.faced, kind: x.kind || null, np: x.np ?? null, words: x.words || '', rot: x.rot || 0,
+  guess: !!x.guess, checked: !!x.checked, faced: !!x.faced, tagsOk: x.tagsOk || '', kind: x.kind || null, np: x.np ?? null, words: x.words || '', rot: x.rot || 0,
   ar: x.w && x.h ? x.w / x.h : null, thumb: x.thumb, isVideo: /^video\//.test(x.mime || ''), dur: x.dur });
 async function load() {
   const d = await api('?trip=' + TRIP);
@@ -872,7 +872,7 @@ function finish(r, id) {
   if (id) photos.push({ id, name: r.f.name, mime: r.f.type, day: r.day.id, stop: r.stop, takenAt: r.takenAt, by: ME, in: r.in.slice(), hearts: [], hidden: false, guess: !r.touched && r.guess, checked: r.touched, kind: null, np: null, words: '', ar: null, thumb: null, isVideo: r.isVideo, local: r.local, fresh: true });
   if (id && r.dirty) save({ ids: [id], set: { in: r.in } }); // changed while it was uploading
   else if (id && r.faced && !r.touched) save({ ids: [id], set: { guess: r.in } }); // named from its faces while it went up
-  if (id && r.faces) fxMod().then((F) => F.remember(id, r.faces)).catch(() => {});
+  if (id && r.look) fxMod().then((F) => F.remember(lookKey(id), r.look)).catch(() => {});
   sortAfterUpload(r);
   if (!r.isVideo) { const im = new Image(); im.onload = () => { const p = byIdP(id); if (p) p.ar = im.naturalWidth / im.naturalHeight; }; im.src = r.local; }
   render();
@@ -906,9 +906,12 @@ function renderNudge() {
   const n = member() ? photos.filter(toCheck).length : 0; const el = $('#nudge');
   const h = n ? `<div class="nudge"><span class="fc">${PIDS.map((id) => `<i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>`).join('')}</span><span><b>Who's in ${n === 1 ? 'this one' : `these ${n}`}?</b>${photos.some((p) => toCheck(p) && p.guess) ? 'Some are guessed. A tap each to check.' : 'A tap each, then the next one.'}</span><button class="press" data-check>Check</button></div>` : '';
   if (drawn.get(el) !== h) noted(el, h).innerHTML = h;
+  renderFaces();
 }
-function openCheck() {
-  tq = photos.filter(toCheck).sort((a, b) => a.takenAt - b.takenAt); ti = 0; if (!tq.length) return;
+// one at a time: the photos to say who's in, or (list) tags the faces question
+let tDoubt = false;
+function openCheck(list) {
+  tq = (list || photos.filter(toCheck)).sort((a, b) => a.takenAt - b.takenAt); tDoubt = !!list; ti = 0; if (!tq.length) return;
   tagr.classList.add('on'); history.pushState({ tagr: 1 }, ''); drawCheck();
 }
 function drawCheck() {
@@ -922,11 +925,13 @@ function drawCheckFaces() {
   const p = tq[ti]; const could = couldOf(p.day, p.stop, p.by);
   $('#tgppl').className = 'tagppl' + (p.guess ? ' g' : '');
   $('#tgppl').innerHTML = PIDS.map((id) => `<button data-tgp="${id}" class="${p.in.includes(id) ? 'all' : ''}" style="--c:${PEOPLE[id].c}"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}<small>${could.includes(id) ? (p.in.includes(id) ? 'in it' : 'not in it') : 'wasn\'t there'}</small></button>`).join('');
-  $('#tghint').textContent = p.guess ? `Guessed ${names(p.in)}. Tap to fix, or Next if it's right.` : p.np ? `${p.np === 1 ? 'One person' : p.np + ' people'} in it. Who?` : 'Tap whoever is in it.';
-  $('[data-tgnext]').textContent = p.guess && !tEdited ? 'Looks right' : ti + 1 < tq.length ? 'Next' : 'Done';
+  const dq = tDoubt && !tEdited && doubtOf(p);
+  $('#tghint').textContent = dq ? `${doubtText(p)} Tap to fix the tags.` : p.guess ? `Guessed ${names(p.in)}. Tap to fix, or Next if it's right.` : p.np ? `${p.np === 1 ? 'One person' : p.np + ' people'} in it. Who?` : 'Tap whoever is in it.';
+  $('[data-tgnext]').textContent = dq ? 'Tags are right' : p.guess && !tEdited ? 'Looks right' : ti + 1 < tq.length ? 'Next' : 'Done';
 }
 function checkSave(none) {
-  const p = tq[ti]; if (none) p.in = [];
+  const p = tq[ti]; if (none) p.in = []; doubt.delete(p.id);
+  if (tDoubt && !none && !tEdited) { p.tagsOk = tagsKey(p); save({ ids: [p.id], set: { tagsok: true } }); render(); return; } // the tags were right: not asked again
   p.guess = false; p.checked = true; save({ ids: [p.id], set: { in: p.in, sure: true } }); render(); faceSoon();
 }
 function closeCheck(fromPop) { tagr.classList.remove('on'); $('#tgpic').innerHTML = ''; render(); if (!fromPop && history.state && history.state.tagr) history.back(); }
@@ -948,28 +953,39 @@ let facesOn = FACES_HERE && lsGet('photos.faces') === 'on', faceBusy = false, fa
 const fxMod = () => import('./js/faces.js?v=9');
 function renderFaces() {
   const el = $('#facebox'); let h = '';
-  if (FACES_HERE && !facesOn) h = `<div class="nudge"><svg class="fi" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="9.5" cy="10" r=".6" fill="currentColor"/><circle cx="14.5" cy="10" r=".6" fill="currentColor"/><path d="M9.5 14.5c1.4 1.2 3.6 1.2 5 0"/></svg><span><b>Recognise faces</b>Learns the four of you from photos you've tagged, then names who's in the rest. Only on your phone: 8 MB, once.</span><button class="press" data-faceson>Turn on</button></div>`;
-  else if (facesOn) h = `<p class="fline"><span>${esc(faceMsg || 'Recognising faces')}</span><button data-facesoff>Turn off</button></p>`;
+  if (FACES_HERE && !facesOn) h = `<div class="nudge"><svg class="fi" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="9.5" cy="10" r=".6" fill="currentColor"/><circle cx="14.5" cy="10" r=".6" fill="currentColor"/><path d="M9.5 14.5c1.4 1.2 3.6 1.2 5 0"/></svg><span><b>Recognise faces</b>Learns the four of you from photos you've tagged, then names who's in the rest. Only on your phone: 26 MB, once.</span><button class="press" data-faceson>Turn on</button></div>`;
+  const nd = facesOn ? photos.filter(doubtOf).length : 0;
+  if (nd) h += `<div class="nudge"><svg class="fi" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17h.01"/></svg><span><b>Check ${nd === 1 ? 'this tag' : `these ${nd} tags`}?</b>A face looks like someone else.</span><button class="press" data-doubts>Check</button></div>`;
+  if (facesOn) h += `<p class="fline"><span>${esc(faceMsg || 'Recognising faces')}</span><button data-facesoff>Turn off</button></p>`;
   if (drawn.get(el) !== h) noted(el, h).innerHTML = h;
 }
 const setFaceMsg = (m) => { faceMsg = m; renderFaces(); };
 const knows = () => PIDS.filter((id) => (fp && fp.by[id] || []).length);
 async function prints(body) { fp = await api('/prints', body); fpv = (await fxMod()).vectors(fp); return fp; }
-// the faces in a photo: from this phone's notes, or found in a picture of it (its own file, just uploaded, or ours)
-async function facesOf(p) {
-  const F = await fxMod(); const key = p.id + (p.rot ? '@' + p.rot : ''); const had = await F.seen(key); if (had) return had; // (turned: looked at again)
+// the faces and people in a photo: from this phone's notes, or found in a picture of it (its own file, just uploaded, or ours)
+const lookKey = (id, rot) => 'v2:' + id + (rot ? '@' + rot : ''); // (turned: looked at again)
+async function looksOf(p) {
+  const F = await fxMod(); const key = lookKey(p.id, p.rot); const had = await F.seen(key); if (had) return had;
   try {
     const r = await fetch(p.local || media(p, 'thumb', '&s=800')); if (!r.ok) return null;
-    const faces = await F.facesIn(await r.blob(), p.rot); await F.remember(key, faces); return faces;
+    const L = await F.look(await r.blob(), p.rot); await F.remember(key, L); return L;
   } catch { return null; } // no picture yet (Google's still making it), or one the phone can't read
 }
+// what each of us wore each day: { day: { who: [outfits] } }, from the last go (for photos being uploaded meanwhile)
+let worn = {};
+// photos one of us tagged where a face looks like someone else: id → { seen, instead } (on this phone, from the last go)
+let doubt = new Map();
+const tagsKey = (p) => p.in.join(',') || '-';
+const doubtOf = (p) => { const d = doubt.get(p.id); return d && p.checked && p.tagsOk !== tagsKey(p) ? d : null; };
+const doubtText = (p) => { const d = doubtOf(p); if (!d) return ''; const s = names(d.seen); return d.instead ? `Looks like ${s}, not ${PEOPLE[d.instead].name}.` : !p.in.length ? `Looks like ${s} ${d.seen.length > 1 ? 'are' : 'is'} in it.` : `Looks like ${s} ${d.seen.length > 1 ? 'are' : 'is'} in it too.`; };
+const wear = (W, day, l) => l.forEach(({ who, o }) => ((W[day] = W[day] || {})[who] = W[day][who] || []).push(o));
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 // one go: learn from tagged photos not learned from yet, then name the faces in the ones no one has checked
 async function facePass() {
   if (!facesOn || !photos.length) return; if (faceBusy) { faceAgain = true; return; } faceBusy = true;
   try {
     const F = await fxMod();
-    if (!fp) { setFaceMsg('Getting face recognition ready (8 MB, the first time)…'); await F.ready(); await prints(); }
+    if (!fp) { setFaceMsg('Getting face recognition ready (26 MB, the first time)…'); await F.ready(); await prints(); }
     if ((fp.v || 1) < F.VERSION) { // it learns a better way now: forget what it learned, and take back the names it guessed
       await prints({ reset: F.VERSION });
       const undo = []; for (const p of photos) if (p.guess && !p.checked && F.hasFaces(await F.seen(p.id + (p.rot ? '@' + p.rot : '')))) { p.in = []; p.guess = p.faced = false; undo.push(p.id); }
@@ -984,8 +1000,8 @@ async function facePass() {
       grew = false; let add = [], ids = [], i = 0;
       for (const p of teach) {
         if (used.has(p.id)) continue; i++; if (!round) setFaceMsg(`Learning faces from your tagged photos · ${i} of ${teach.length}`);
-        const faces = await facesOf(p); if (!faces) continue;
-        const got = F.learnFrom(faces, p.in, fpv); if (!got.length) continue;
+        const L = await looksOf(p); if (!L) continue;
+        const got = F.learnFrom(L.f, p.in, fpv); if (!got.length) continue;
         add.push(...got.map((g) => ({ ...g, id: p.id }))); ids.push(p.id); used.add(p.id);
         if (add.length >= 12) { await prints({ add, used: ids }); add = []; ids = []; grew = true; }
         await sleep(30);
@@ -993,16 +1009,27 @@ async function facePass() {
       if (add.length) { await prints({ add, used: ids }); grew = true; }
     }
     const odd = F.suspects(fp); if (odd.length) await prints({ reject: odd }); // a print that looks like someone else: forgotten
-    // name the faces in photos no one has checked (the sort said there are people in them, or hasn't looked yet)
-    const look = photos.filter((p) => !p.checked && !p.hidden && !p.isVideo && dayById[p.day] && p.np !== 0); let named = 0, i = 0;
+    // what each of us wore each day: from photos we tagged, and from faces it recognises
+    // ...and tags whose faces say otherwise
+    const W = {}, D = new Map(), sure = photos.filter((p) => p.checked && !p.isVideo && !p.hidden && dayById[p.day]); let i = 0;
+    for (const p of sure) {
+      setFaceMsg(`Learning what you wore each day · ${++i} of ${sure.length}`); const L = await looksOf(p); await sleep(10); if (!L) continue;
+      const d = F.doubts(L, fpv, p.in, PIDS); if (d) D.set(p.id, d); else wear(W, p.day, F.outfitsIn(L, fpv, p.in, true)); // (tags in doubt teach no outfits)
+    }
+    doubt = D;
+    // name the people in photos no one has checked (the sort said there are people in them, or hasn't looked yet)
+    const look = photos.filter((p) => !p.checked && !p.hidden && !p.isVideo && dayById[p.day] && p.np !== 0), seenL = new Map(); let named = 0; i = 0;
     if (Object.keys(fpv).length) for (const p of look) {
       setFaceMsg(`Looking for faces · ${++i} of ${look.length}`);
-      const faces = await facesOf(p); if (!faces) continue;
-      const q = byIdP(p.id); if (!q || q.checked) continue; // (someone checked it meanwhile)
-      const g = F.nameFaces(faces, fpv, couldOf(q.day, q.stop, q.by), q.in);
+      const L = await looksOf(p); if (!L) continue; seenL.set(p.id, L);
+      wear(W, p.day, F.outfitsIn(L, fpv, couldOf(p.day, p.stop, p.by), false)); await sleep(30);
+    }
+    worn = W;
+    for (const [id, L] of seenL) {
+      const q = byIdP(id); if (!q || q.checked) continue; // (someone checked it meanwhile)
+      const g = F.nameAll(L, fpv, couldOf(q.day, q.stop, q.by), q.in, W[q.day] || {});
       if (g && !sameSet(g, q.in)) { q.in = g; q.guess = q.faced = true; named++; save({ ids: [q.id], set: { guess: g } }); render(); }
       else if (!g && q.faced && q.guess) { q.in = []; q.guess = q.faced = false; save({ ids: [q.id], set: { unguess: true } }); render(); } // no longer sure
-      await sleep(30);
     }
     const k = knows(), not = PIDS.filter((id) => !k.includes(id)), n = k.reduce((s, id) => s + fp.by[id].length, 0);
     setFaceMsg(!k.length ? 'It learns only from photos of one person: tag a few of each of you.'
@@ -1016,9 +1043,9 @@ async function faceRow(r) {
   if (!facesOn || r.isVideo) return;
   try {
     const F = await fxMod(); await F.ready(); if (!fp) await prints();
-    r.faces = await F.facesIn(r.f); if (r.id) F.remember(r.id, r.faces);
+    r.look = await F.look(r.f); if (r.id) F.remember(lookKey(r.id), r.look);
     if (r.touched) return;
-    const g = F.nameFaces(r.faces, fpv, couldOf(r.day.id, r.stop, ME), r.in); if (!g || sameSet(g, r.in)) return;
+    const g = F.nameAll(r.look, fpv, couldOf(r.day.id, r.stop, ME), r.in, worn[r.day.id] || {}); if (!g || sameSet(g, r.in)) return;
     r.in = g; r.guess = r.faced = true; paintRow(r); paintUpAll();
     const p = r.id && byIdP(r.id); if (p && !p.checked) { p.in = g.slice(); p.guess = true; save({ ids: [r.id], set: { guess: g } }); render(); }
   } catch {}
@@ -1290,7 +1317,8 @@ document.addEventListener('click', (e) => {
   const k = t('[data-kind]'); if (k) { ui.kind = k.dataset.kind; return render(); }
   const wb = t('[data-what]'); if (wb) { ui.what = ui.what === wb.dataset.what ? '' : wb.dataset.what; return render(); }
   if (t('[data-check]')) return openCheck();
-  if (t('[data-faceson]')) { facesOn = true; lsSet('photos.faces', 'on'); setFaceMsg('Getting face recognition ready (8 MB, the first time)…'); return facePass(); }
+  if (t('[data-doubts]')) return openCheck(photos.filter(doubtOf));
+  if (t('[data-faceson]')) { facesOn = true; lsSet('photos.faces', 'on'); setFaceMsg('Getting face recognition ready (26 MB, the first time)…'); return facePass(); }
   if (t('[data-facesoff]')) { facesOn = false; lsSet('photos.faces', null); clearTimeout(faceT); return renderFaces(); }
   if (t('[data-size]')) { setCols(ui.cols === 3 ? 5 : ui.cols === 5 ? 2 : 3, document.elementFromPoint(innerWidth / 2, innerHeight / 2)); return toast(`${ui.cols} photos a row`); }
   if (t('[data-clrq]')) { ui.q = ''; $('#q').value = ''; return render(); }
@@ -1354,7 +1382,7 @@ async function start(retried) {
   setInterval(() => { if (document.visibilityState === 'visible' && !uploading && !vw.classList.contains('on') && !story.classList.contains('on') && !document.body.classList.contains('sel')) sweepDrive().then(load).then(render).then(sortBacklog).then(() => faceSoon()).catch(() => {}); }, 60000);
 }
 start();
-window.__photos = { get photos() { return photos; }, get order() { return order; }, ui, get covers() { return covers; }, couldOf, facePass, get faceBusy() { return faceBusy; }, get faceMsg() { return faceMsg; } };
+window.__photos = { get photos() { return photos; }, get order() { return order; }, ui, get covers() { return covers; }, couldOf, facePass, get faceBusy() { return faceBusy; }, get faceMsg() { return faceMsg; }, get worn() { return worn; } };
 </script>
 </body>
 </html>
