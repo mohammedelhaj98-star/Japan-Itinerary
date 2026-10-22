@@ -308,6 +308,10 @@ ok('money page has Add expense and a way back to the trip', await N.page.$eval('
 await N.page.tap('#addfab'); await N.page.waitForTimeout(500);
 ok('who-is-in presets read Only Naf · Naf + Sara · All four', (await N.page.$$eval('[data-preset]', (els) => els.map((e) => e.textContent).join('|'))) === 'Only Naf|Naf + Sara|All four');
 await N.page.fill('#famt', '4400'); await N.page.fill('#ftitle', 'Fuunji ramen test'); await N.page.tap('[data-preset="all"]'); await N.page.waitForTimeout(200);
+ok('next to the yen: the amount before 10% tax', (await N.page.textContent('#fpre')) === '(¥4,000 before 10% tax)', await N.page.textContent('#fpre'));
+await N.page.tap('[data-pretax]'); await N.page.waitForTimeout(100);
+ok('tapping it switches to 8% (takeaway, konbini) and leaves the amount alone', (await N.page.textContent('#fpre')) === '(¥4,074 before 8% tax)' && (await N.page.inputValue('#famt')) === '4400', await N.page.textContent('#fpre'));
+await N.page.tap('[data-pretax]'); await N.page.waitForTimeout(100);
 await N.page.screenshot({ path: SH + 'ex-form.png' });
 await N.page.tap('#fsave'); await N.page.waitForTimeout(1200);
 ok('Naf sees own expense', /Fuunji ramen test/.test(await N.page.textContent('#glist')));
