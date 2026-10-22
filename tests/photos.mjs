@@ -110,7 +110,7 @@ const api = async (p, opts = {}) => { const r = await onRequest({ request: new R
 
 /* ── test files: JPEGs with camera dates (and one with a location), and a phone-style video ── */
 const browser = await chromium.launch({ ...(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}), args: ['--no-sandbox'] });
-const FIX = fs.mkdtempSync(path.join(os.tmpdir(), 'photos-'));
+const FIX = fs.mkdtempSync(path.join(os.tmpdir(), 'photos-')); let exifOf = null;
 {
   const pg = await browser.newPage();
   const jpeg = async (w, h, hue) => Buffer.from((await pg.evaluate(([w, h, hue]) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); const im = x.createImageData(w, h); for (let i = 0; i < im.data.length; i += 4) { im.data[i] = (Math.random() * 255) | 0; im.data[i + 1] = (hue + Math.random() * 60) | 0; im.data[i + 2] = 120; im.data[i + 3] = 255; } x.putImageData(im, 0, 0); return c.toDataURL('image/jpeg', 0.9).split(',')[1]; }, [w, h, hue])), 'base64');
@@ -125,6 +125,7 @@ const FIX = fs.mkdtempSync(path.join(os.tmpdir(), 'photos-'));
     const len = tiff.length + 8;
     return Buffer.concat([jpg.slice(0, 2), Buffer.from([0xff, 0xe1, len >> 8, len & 255]), Buffer.from('Exif\0\0', 'latin1'), tiff, jpg.slice(2)]);
   };
+  exifOf = exif;
   const mp4 = (ms) => { const box = (t, b) => { const h = Buffer.alloc(8); h.writeUInt32BE(8 + b.length); h.write(t, 4, 'latin1'); return Buffer.concat([h, b]); }; const mv = Buffer.alloc(100); const s = Math.floor(ms / 1000) + 2082844800; mv.writeUInt32BE(s, 4); mv.writeUInt32BE(s, 8); mv.writeUInt32BE(1000, 12); mv.writeUInt32BE(4000, 16); return Buffer.concat([box('ftyp', Buffer.from('isom\0\0\x02\0isomiso2mp41', 'latin1')), box('mdat', Buffer.alloc(300000, 7)), box('moov', box('mvhd', mv))]); };
   fs.writeFileSync(FIX + '/shinsaibashi.jpg', exif(await jpeg(1400, 1400, 40), '2026:10:22 15:42:07'));            // Day 7, 3:42 PM → Shinsaibashi, by time
   fs.writeFileSync(FIX + '/castle.jpg', exif(await jpeg(500, 600, 120), '2026:10:22 12:05:00', [34.6873, 135.5262])); // GPS at Osaka Castle → by location
@@ -511,7 +512,108 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   claude.close(); delete env.ANTHROPIC_API_KEY; delete env.SORT_API;
 }
 
-for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S]]) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
+// 15 · faces: on Mo's phone only, the face matcher learns the four from tagged photos and names who's in new ones
+let M = null;
+{
+  const F = await import(REPO + '/js/faces.js'); const ap = (id) => (files.get(id) || {}).appProperties || {};
+  const vec = (seed) => { const v = new Float32Array(128); for (let i = 0; i < 128; i++) v[i] = Math.sin(seed * 7.3 + i * 1.7) * 0.12; return v; };
+  const near = (v, k) => v.map((x, i) => x + Math.cos(i * k) * 0.012); // the same face in another photo (distance ~0.1)
+  const face = (v, w = 0.1) => ({ x: 0.3, y: 0.3, w, h: 0.08, q: F.pack(v) });
+  const A = vec(1), Bv = vec(2), C = vec(3);
+  const pr = { naf: [A], sara: [Bv] };
+  ok('faces: prints survive being stored as whole numbers', Math.abs(F.unpack(F.pack(A))[5] - A[5]) < 0.003 && F.pack(A).length === 172);
+  ok('faces: one person tagged, one face → their print', F.learnFrom([face(C)], ['mariam'], {}).map((x) => x.who).join() === 'mariam');
+  ok('faces: a tiny face in the background isn\'t counted', F.learnFrom([face(C), face(A, 0.02)], ['mariam'], {}).length === 1);
+  ok('faces: two tagged, one recognised → the other face is the other person', F.learnFrom([face(near(A, 3)), face(C)], ['naf', 'mariam'], pr).map((x) => x.who).sort().join() === 'mariam,naf');
+  ok('faces: two tagged, neither known → nothing learned', F.learnFrom([face(A), face(C)], ['naf', 'mariam'], {}).length === 0);
+  ok('faces: more faces than people tagged → nothing learned', F.learnFrom([face(A), face(C)], ['naf'], pr).length === 0);
+  ok('faces: a known face is named, among who was there', F.nameFaces([face(near(Bv, 5))], pr, ['naf', 'sara']).join() === 'sara' && F.nameFaces([face(near(Bv, 5))], pr, ['naf', 'mariam']) === null);
+  ok('faces: a stranger isn\'t named', F.nameFaces([face(C)], pr, ['naf', 'sara']) === null);
+  ok('faces: one known of two faces keeps an earlier guess that fits', F.nameFaces([face(near(A, 2)), face(C)], pr, ['naf', 'sara', 'mariam'], ['mariam']).join() === 'naf,mariam' && F.nameFaces([face(near(A, 2)), face(C)], pr, ['naf', 'sara', 'mariam'], ['sara', 'mariam']).join() === 'naf');
+
+  // the server keeps the prints: members only, checked, and dropped when a photo's tags change
+  const tok = await n.evaluate(() => localStorage.getItem('trips.photok')), gtok = await gp.evaluate(() => localStorage.getItem('trips.photok'));
+  ok('prints: a guest can\'t read them', (await api('/prints', { headers: { 'x-photo-token': gtok } })).status === 403);
+  const post = (b, pin = '6666') => api('/prints', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': pin }, body: JSON.stringify(b) });
+  ok('prints: saving needs the member PIN', (await post({ add: [] }, '0000')).status === 403);
+  await post({ add: [{ who: 'naf', id: 'fileid99999999', q: F.pack(A) }, { who: 'nobody', id: 'fileid99999999', q: F.pack(A) }, { who: 'sara', id: 'fileid99999999', q: '<script>' }], used: ['fileid99999999'] });
+  let fp = await (await api('/prints', { headers: { 'x-photo-token': tok } })).json();
+  ok('prints: only good ones are kept', fp.by.naf.length === 1 && !fp.by.nobody && !(fp.by.sara || []).length && fp.used.includes('fileid99999999'), JSON.stringify(fp).slice(0, 120));
+  await post({ drop: ['fileid99999999'] }); fp = await (await api('/prints', { headers: { 'x-photo-token': tok } })).json();
+  ok('prints: dropping a photo takes its prints and lets it be learned again', !fp.by.naf.length && !fp.used.includes('fileid99999999'));
+
+  // real faces: the group photo on the trips page, cut up so each of the four has a photo of their own (it isn't in the
+  // repo: the copy the deploy fetched, or the live one)
+  const GROUP = REPO + '/hub/img/group.webp';
+  const groupPic = fs.existsSync(GROUP) ? fs.readFileSync(GROUP) : await fetch('https://ourtrips.date/img/group.webp', { headers: { 'user-agent': 'Mozilla/5.0' } }).then(async (r) => (r.ok ? Buffer.from(await r.arrayBuffer()) : null)).catch(() => null);
+  if (!groupPic) { ok('the group photo for the face checks (hub/img/group.webp, or ourtrips.date/img/group.webp)', false); throw new Error('no group photo'); }
+  const pg = await browser.newPage();
+  const cuts = await pg.evaluate(async (src) => {
+    const im = new Image(); im.src = src; await im.decode();
+    const box = [[372, 666, 122, 101], [680, 755, 113, 96], [791, 622, 100, 85], [667, 478, 86, 80]]; // (where face-api finds them)
+    const out = (c) => c.toDataURL('image/jpeg', 0.9).split(',')[1];
+    const cut = (i, k, px) => { const [x, y, w, h] = box[i], cx = x + w / 2, cy = y + h / 2, side = w * k; const c = document.createElement('canvas'); c.width = c.height = px; const g = c.getContext('2d'); const s = px / side;
+      g.drawImage(im, cx - side / 2, cy - side / 2, side, side, 0, 0, px, px); g.fillStyle = '#888';
+      box.forEach(([bx, by, bw, bh], j) => { if (j !== i) g.fillRect((bx - bw * 0.3 - (cx - side / 2)) * s, (by - bh * 0.3 - (cy - side / 2)) * s, bw * 1.6 * s, bh * 1.6 * s); }); return out(c); };
+    const all = document.createElement('canvas'); all.width = 600; all.height = 800; all.getContext('2d').drawImage(im, 0, 0, 600, 800);
+    return { one: [0, 1, 2, 3].map((i) => cut(i, 3, 360)), again: cut(0, 4.5, 400), all: out(all) };
+  }, 'data:image/webp;base64,' + groupPic.toString('base64'));
+  await pg.close();
+  const WHO = ['naf', 'sara', 'mariam', 'm'];
+  cuts.one.forEach((b, i) => fs.writeFileSync(FIX + `/face-${WHO[i]}.jpg`, exifOf(Buffer.from(b, 'base64'), `2026:10:22 11:0${i}:00`)));
+  fs.writeFileSync(FIX + '/face-again.jpg', exifOf(Buffer.from(cuts.again, 'base64'), '2026:10:22 11:20:00'));
+  fs.writeFileSync(FIX + '/group.jpg', exifOf(Buffer.from(cuts.all, 'base64'), '2026:10:22 11:30:00'));
+
+  ok('faces: nothing on the others\' phones', !(await n.textContent('#facebox')).trim());
+  M = await phone('m'); const m = M.pg; const fetched = [];
+  m.on('request', (r) => { if (/vendor\/face-api/.test(r.url())) fetched.push(r.url()); });
+  n.on('request', (r) => { if (/vendor\/face-api|faces\.js/.test(r.url())) fetched.push('naf:' + r.url()); });
+  await m.goto(B + '/japan/photos'); await m.waitForTimeout(1500);
+  ok('Mo\'s phone offers to recognise faces (and downloads nothing yet)', /Recognise faces/.test(await m.textContent('#facebox')) && !fetched.length);
+  await m.screenshot({ path: OUT + 'faces-offer.png' });
+  await m.evaluate(() => localStorage.setItem('japan2026.state.v1', JSON.stringify({ profiles: { m: { color: '#0a7f6e' } } }))); await m.reload(); await m.waitForTimeout(1200);
+  const cOf = (sel) => m.$eval(sel, (e) => e.style.getPropertyValue('--c'));
+  ok('everyone in their own colour: the one Mo picked, the others the Money page\'s', (await cOf('[data-pp="m"] i')) === '#0a7f6e' && (await cOf('[data-pp="naf"] i')) === '#1f98b8' && (await cOf('[data-pp="mariam"] i')) === '#2f9e57');
+  // the photos from before have no faces in them (random pixels): noted, so the test doesn't wait on them
+  await m.evaluate(async (ids) => { const F = await import('./js/faces.js'); for (const id of ids) await F.remember(id, []); }, (await m.evaluate(() => window.__photos.photos.map((p) => p.id))));
+  await m.tap('[data-faceson]');
+  await m.waitForFunction(() => /Tag a few photos/.test(document.querySelector('#facebox').textContent), null, { timeout: 120000 }).catch(() => {});
+  ok('turned on: the model loads on Mo\'s phone and asks for photos of one person', /Tag a few photos of just one person/.test(await m.textContent('#facebox')) && fetched.some((u) => /face_recognition_model\.bin/.test(u)), await m.textContent('#facebox'));
+  await m.tap('[data-upload]'); await m.waitForTimeout(300);
+  await m.setInputFiles('#upfiles', WHO.map((w) => FIX + `/face-${w}.jpg`));
+  for (let i = 0; i < 4; i++) await m.tap(`.uprow[data-row="${i}"] [data-rw="${WHO[i]}"]`);
+  await waitRows(m, 4);
+  const learned = () => { const f = JSON.parse(kv.get('faceprints') || '{"by":{}}'); return WHO.filter((w) => (f.by[w] || []).length); };
+  for (let t = 0; t < 120 && learned().length < 4; t++) await m.waitForTimeout(1000);
+  ok('it learns one face print for each of the four from their own tagged photo', learned().length === 4 && WHO.every((w) => JSON.parse(kv.get('faceprints')).by[w].length === 1), learned().join());
+  await m.waitForFunction(() => /Recognises/.test(document.querySelector('#facebox').textContent), null, { timeout: 30000 }).catch(() => {});
+  ok('…and says who it knows', /Recognises Naf, Sara, Mariam & Mo \(from 4 tagged faces\)\./.test(await m.textContent('#facebox')), await m.textContent('#facebox'));
+  await m.tap('[data-sheetx]'); await m.waitForTimeout(300);
+  await m.tap('[data-upload]'); await m.waitForTimeout(300);
+  await m.setInputFiles('#upfiles', [FIX + '/group.jpg', FIX + '/face-again.jpg']);
+  await waitRows(m, 6);
+  await m.waitForFunction(() => document.querySelectorAll('.uprow .rw.g').length >= 2, null, { timeout: 120000 }).catch(() => {});
+  await m.waitForTimeout(800); await m.$eval('.uprow[data-row="4"]', (e) => e.scrollIntoView({ block: 'center' }));
+  await m.screenshot({ path: OUT + 'faces-upload.png' });
+  const grp = byName('group.jpg'), again = byName('face-again.jpg');
+  ok('a new photo of all four: each face named, as a guess', ap(grp.id).in === 'naf,sara,mariam,m' && ap(grp.id).ig === '1' && ap(grp.id).ck !== '1', JSON.stringify(ap(grp.id)));
+  ok('another photo of one of them: just them', ap(again.id).in === 'naf' && ap(again.id).ig === '1', JSON.stringify(ap(again.id)));
+  ok('the upload row shows the names dotted, to fix with a tap, in each person\'s colour', await m.isVisible('.uprow[data-row="4"] .rw.g [data-rw="m"].on') && (await cOf('.uprow[data-row="4"] [data-rw="m"]')) === '#0a7f6e' && (await cOf('.uprow[data-row="4"] [data-rw="sara"]')) === '#d26b9c');
+  await m.tap('[data-sheetx]'); await m.waitForTimeout(300);
+  await n.reload(); await n.waitForTimeout(2500);
+  ok('on Naf\'s phone: the names show (dotted), and his phone never loaded the model', !!(await n.$(`.grid .th[data-pid="${grp.id}"] .faces.g`)) && !fetched.some((u) => u.startsWith('naf:')), fetched.filter((u) => u.startsWith('naf:')).join());
+  await m.screenshot({ path: OUT + 'faces-on.png' });
+  // a tag changed by hand: that photo's print goes, and it's learned again from the new tags
+  await n.evaluate((id) => fetch('/api/photos/update', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', ids: [id], set: { in: ['sara'] } }) }), byName('face-naf.jpg').id);
+  await m.reload(); await m.waitForTimeout(1500);
+  for (let t = 0; t < 60 && JSON.parse(kv.get('faceprints')).by.naf.length; t++) await m.waitForTimeout(1000);
+  const fp2 = JSON.parse(kv.get('faceprints'));
+  ok('a photo retagged by hand: its old print is dropped, and it teaches the new name', !fp2.by.naf.length && fp2.by.sara.some((x) => x.id === byName('face-naf.jpg').id), JSON.stringify(Object.fromEntries(Object.entries(fp2.by).map(([k, v]) => [k, v.length]))));
+  await m.tap('[data-facesoff]'); await m.waitForTimeout(200);
+  ok('Turn off puts the offer back', /Recognise faces/.test(await m.textContent('#facebox')) && !(await m.evaluate(() => localStorage.getItem('photos.faces'))));
+}
+
+for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S], ['mo', M]]) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
 console.log(fails ? `\n${fails} failed` : '\nall photo checks passed');
 await browser.close(); site.close(); google.close(); fs.rmSync(FIX, { recursive: true, force: true });
 process.exitCode = fails ? 1 : 0;

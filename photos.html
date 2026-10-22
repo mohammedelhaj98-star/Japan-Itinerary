@@ -116,6 +116,9 @@ html.c2 .th.big { grid-column:span 1; grid-row:span 1; } /* two a row: every pho
 .nudge .fc { display:flex; flex:none; }
 .nudge .fc i { width:26px; height:26px; border-radius:50%; background:var(--c); color:#fff; font-style:normal; font-size:10px; font-weight:700; display:grid; place-items:center; box-shadow:0 0 0 2px #fff; margin-right:-7px; }
 .nudge span { flex:1; min-width:0; font-size:13.5px; color:var(--ink2); line-height:1.3; } .nudge span b { display:block; color:var(--ink); font-size:14.5px; }
+.fline { margin:10px 16px 0; padding:0 4px; display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--ink3); }
+.fline span { flex:1; min-width:0; } .fline button { flex:none; font-size:12.5px; font-weight:700; color:var(--blue); }
+.nudge .fi { flex:none; color:var(--ink); }
 .nudge button { flex:none; height:36px; padding:0 14px; border-radius:999px; background:var(--ink); color:#fff; font-weight:700; font-size:14px; }
 .th .hrt { position:absolute; right:6px; top:5px; z-index:1; color:#fff; font-size:13px; text-shadow:0 1px 4px rgba(0,0,0,.5); }
 .th .new { position:absolute; left:5px; top:5px; z-index:1; padding:2px 6px; border-radius:6px; background:var(--ok); color:#fff; font-size:10.5px; font-weight:700; }
@@ -363,6 +366,7 @@ body.guest [data-select] { display:none; }
     </div>
     <div id="resume"></div>
     <div id="nudge"></div>
+    <div id="facebox"></div>
     <div id="drivebanner"></div>
     <nav class="dstrip" id="dstrip" aria-label="Jump to a day"></nav>
     <div id="content"></div>
@@ -399,6 +403,10 @@ const PIDS = Object.keys(PEOPLE);
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch {} };
 const ME = (() => { try { return JSON.parse(lsGet('trips.me')); } catch { return null; } })();
+// each person's own colour, as on the trip and Money pages: the one they picked in their profile (kept on this phone with
+// the trip's shared state), otherwise the Money page's
+const BASE_C = { naf: '#1f98b8', sara: '#d26b9c', mariam: '#2f9e57', m: '#6f4f98' };
+{ let pf = {}; try { pf = (JSON.parse(lsGet('japan2026.state.v1')) || {}).profiles || {}; } catch {} for (const id of PIDS) PEOPLE[id].c = (pf[id] && /^#[0-9a-f]{6}$/i.test(pf[id].color || '') && pf[id].color) || BASE_C[id]; }
 const PIN = () => lsGet('trips.pin') || '';
 const MEMBER = !!(PEOPLE[ME] && PIN()); // one of the four, with the PIN on this phone: can upload and change things
 const member = () => MEMBER;
@@ -659,7 +667,7 @@ function renderTag() {
 function toggleTag(id) {
   const ps = tagIds.map(byIdP); const all = ps.every((p) => p.in.includes(id));
   ps.forEach((p) => { p.in = all ? p.in.filter((x) => x !== id) : PIDS.filter((x) => x === id || p.in.includes(x)); p.guess = false; p.checked = true; });
-  save({ ids: tagIds, tag: { who: id, on: !all } });
+  save({ ids: tagIds, tag: { who: id, on: !all } }); faceSoon();
   renderTag(); render();
 }
 function hide(ids) {
@@ -740,6 +748,7 @@ function setRowIn(r, ids) {
   r.in = PIDS.filter((x) => ids.includes(x)); r.guess = false; r.touched = true; paintRow(r);
   const p = r.id && byIdP(r.id); if (p) { p.in = r.in.slice(); p.guess = false; p.checked = true; render(); }
   if (r.id) save({ ids: [r.id], set: { in: r.in } }); else if (r.started) r.dirty = true; // not started yet: it goes with the upload
+  faceSoon(8000);
 }
 // a small copy of a photo for the sort to look at (a few dozen KB), made on the phone so it needn't wait for Google's
 async function smallCopy(f) {
@@ -758,7 +767,8 @@ async function sortAfterUpload(r) {
   try {
     const d = await api('/sort', { trip: TRIP, items: [{ id: r.id, could: couldOf(r.day.id, r.stop, ME), img }] }); if (d.off) { sortOff = true; return; }
     const x = (d.done || [])[0]; applySort(x);
-    if (x && x.in && !r.touched) { r.in = x.in; r.guess = true; paintRow(r); paintUpAll(); }
+    if (x && x.in && !r.touched && !r.faced) { r.in = x.in; r.guess = true; paintRow(r); paintUpAll(); }
+    else if (x && x.in && r.faced && !r.touched) save({ ids: [r.id], set: { guess: r.in } }); // the faces know better than the count
     render();
   } catch {}
 }
@@ -794,7 +804,7 @@ async function handleFiles(files) {
     const how = m ? { location: 'by location', time: 'by time', near: 'closest in time' }[m.how] : 'no stop at that time';
     r.el = document.createElement('div'); r.el.className = 'uprow';
     r.el.innerHTML = `<span class="pt">${r.isVideo ? `<video src="${r.local}#t=0.1" muted playsinline preload="metadata"></video>` : `<img draggable="false" src="${r.local}" alt="" decoding="async">`}</span><div class="m"><b>${esc(f.name)}</b><small>${fmtMin(min)}${outside ? ' (outside the trip days)' : ''} → <em>${esc(where)}</em> · ${how}</small><div class="prog"><i></i></div><span class="st">${r.resume ? 'Carries on where it stopped' : 'Waiting'}</span>${rowFaces(r)}</div>`;
-    r.el.dataset.row = rows.length; if (list) list.appendChild(r.el); rows.push(r);
+    r.el.dataset.row = rows.length; if (list) list.appendChild(r.el); rows.push(r); queueFaceRow(r);
   }
   paintUpAll(); pump();
 }
@@ -821,7 +831,7 @@ async function uploadOne(r) {
   }
   if (!s) {
     rowState(r, 'Starting…');
-    const d = await api('/session', { trip: TRIP, name: r.f.name, mime: r.f.type || (r.isVideo ? 'video/quicktime' : 'image/jpeg'), size, day: r.day.id, stop: r.stop, t: Math.round(r.takenAt), by: ME, in: r.in });
+    const d = await api('/session', { trip: TRIP, name: r.f.name, mime: r.f.type || (r.isVideo ? 'video/quicktime' : 'image/jpeg'), size, day: r.day.id, stop: r.stop, t: Math.round(r.takenAt), by: ME, in: r.touched ? r.in : [] }); // (a guess isn't sent as said)
     r.started = true;
     if (d.dup) { r.done = r.dup = true; setProg(r, 1); rowState(r, 'Already uploaded', 'done'); paintUpAll(); return; }
     s = { url: d.url, offset: 0 }; q[r.key] = s; qSet(q);
@@ -851,8 +861,10 @@ async function probe(url, size) {
 function finish(r, id) {
   const q = qGet(); delete q[r.key]; qSet(q);
   r.done = true; r.started = true; r.id = id; setProg(r, 1); rowState(r, 'Uploaded', 'done');
-  if (id) photos.push({ id, name: r.f.name, mime: r.f.type, day: r.day.id, stop: r.stop, takenAt: r.takenAt, by: ME, in: r.in.slice(), hearts: [], hidden: false, guess: false, checked: r.touched, kind: null, np: null, words: '', ar: null, thumb: null, isVideo: r.isVideo, local: r.local, fresh: true });
+  if (id) photos.push({ id, name: r.f.name, mime: r.f.type, day: r.day.id, stop: r.stop, takenAt: r.takenAt, by: ME, in: r.in.slice(), hearts: [], hidden: false, guess: !r.touched && r.guess, checked: r.touched, kind: null, np: null, words: '', ar: null, thumb: null, isVideo: r.isVideo, local: r.local, fresh: true });
   if (id && r.dirty) save({ ids: [id], set: { in: r.in } }); // changed while it was uploading
+  else if (id && r.faced && !r.touched) save({ ids: [id], set: { guess: r.in } }); // named from its faces while it went up
+  if (id && r.faces) fxMod().then((F) => F.remember(id, r.faces)).catch(() => {});
   sortAfterUpload(r);
   if (!r.isVideo) { const im = new Image(); im.onload = () => { const p = byIdP(id); if (p) p.ar = im.naturalWidth / im.naturalHeight; }; im.src = r.local; }
   render();
@@ -907,7 +919,7 @@ function drawCheckFaces() {
 }
 function checkSave(none) {
   const p = tq[ti]; if (none) p.in = [];
-  p.guess = false; p.checked = true; save({ ids: [p.id], set: { in: p.in, sure: true } }); render();
+  p.guess = false; p.checked = true; save({ ids: [p.id], set: { in: p.in, sure: true } }); render(); faceSoon();
 }
 function closeCheck(fromPop) { tagr.classList.remove('on'); $('#tgpic').innerHTML = ''; render(); if (!fromPop && history.state && history.state.tagr) history.back(); }
 addEventListener('popstate', () => { if (tagr.classList.contains('on')) closeCheck(true); });
@@ -919,6 +931,84 @@ tagr.addEventListener('click', (e) => {
   if (t('[data-tgnone]')) { checkSave(true); ti++; return drawCheck(); }
   if (t('[data-tgnext]')) { checkSave(); ti++; return drawCheck(); }
 });
+
+/* ═══ faces: on Mo's phone only, a face matcher (js/faces.js) learns the four of us from photos someone tagged, then
+   guesses who's in the ones no one has checked (dotted, like any guess). The prints it learns are kept by the server, so
+   the names it saves show on every phone; none of the others download the model or run it. ═══ */
+const FACES_HERE = MEMBER && ME === 'm';
+let facesOn = FACES_HERE && lsGet('photos.faces') === 'on', faceBusy = false, faceAgain = false, faceMsg = '', fp = null, fpv = {}, faceT = 0;
+const fxMod = () => import('./js/faces.js?v=9');
+function renderFaces() {
+  const el = $('#facebox'); let h = '';
+  if (FACES_HERE && !facesOn) h = `<div class="nudge"><svg class="fi" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="9.5" cy="10" r=".6" fill="currentColor"/><circle cx="14.5" cy="10" r=".6" fill="currentColor"/><path d="M9.5 14.5c1.4 1.2 3.6 1.2 5 0"/></svg><span><b>Recognise faces</b>Learns the four of you from photos you've tagged, then names who's in the rest. Only on your phone: 8 MB, once.</span><button class="press" data-faceson>Turn on</button></div>`;
+  else if (facesOn) h = `<p class="fline"><span>${esc(faceMsg || 'Recognising faces')}</span><button data-facesoff>Turn off</button></p>`;
+  if (drawn.get(el) !== h) noted(el, h).innerHTML = h;
+}
+const setFaceMsg = (m) => { faceMsg = m; renderFaces(); };
+const knows = () => PIDS.filter((id) => (fp && fp.by[id] || []).length);
+async function prints(body) { fp = await api('/prints', body); fpv = (await fxMod()).vectors(fp); return fp; }
+// the faces in a photo: from this phone's notes, or found in a picture of it (its own file, just uploaded, or ours)
+async function facesOf(p) {
+  const F = await fxMod(); const had = await F.seen(p.id); if (had) return had;
+  try {
+    const r = await fetch(p.local || media(p, 'thumb', '&s=800')); if (!r.ok) return null;
+    const faces = await F.facesIn(await r.blob()); await F.remember(p.id, faces); return faces;
+  } catch { return null; } // no picture yet (Google's still making it), or one the phone can't read
+}
+const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+// one go: learn from tagged photos not learned from yet, then name the faces in the ones no one has checked
+async function facePass() {
+  if (!facesOn || !photos.length) return; if (faceBusy) { faceAgain = true; return; } faceBusy = true;
+  try {
+    const F = await fxMod();
+    if (!fp) { setFaceMsg('Getting face recognition ready (8 MB, the first time)…'); await F.ready(); await prints(); }
+    // prints from a photo whose tags changed since (that person isn't in it after all) are dropped, and it's learned again
+    const drop = new Set(); for (const [who, l] of Object.entries(fp.by)) for (const x of l) { const p = byIdP(x.id); if (p && p.checked && !p.in.includes(who)) drop.add(x.id); }
+    if (drop.size) await prints({ drop: [...drop] });
+    const used = new Set(fp.used || []);
+    const teach = photos.filter((p) => p.checked && p.in.length && !p.isVideo && !used.has(p.id)).sort((a, b) => a.in.length - b.in.length); // one person first: they teach the rest
+    for (let round = 0, grew = true; grew && round < 4; round++) {
+      grew = false; let add = [], ids = [], i = 0;
+      for (const p of teach) {
+        if (used.has(p.id)) continue; i++; if (!round) setFaceMsg(`Learning faces from your tagged photos · ${i} of ${teach.length}`);
+        const faces = await facesOf(p); if (!faces) continue;
+        const got = F.learnFrom(faces, p.in, fpv); if (!got.length) continue;
+        add.push(...got.map((g) => ({ ...g, id: p.id }))); ids.push(p.id); used.add(p.id);
+        if (add.length >= 12) { await prints({ add, used: ids }); add = []; ids = []; grew = true; }
+        await sleep(30);
+      }
+      if (add.length) { await prints({ add, used: ids }); grew = true; }
+    }
+    // name the faces in photos no one has checked (the sort said there are people in them, or hasn't looked yet)
+    const look = photos.filter((p) => !p.checked && !p.hidden && !p.isVideo && dayById[p.day] && p.np !== 0); let named = 0, i = 0;
+    if (Object.keys(fpv).length) for (const p of look) {
+      setFaceMsg(`Looking for faces · ${++i} of ${look.length}`);
+      const faces = await facesOf(p); if (!faces) continue;
+      const q = byIdP(p.id); if (!q || q.checked) continue; // (someone checked it meanwhile)
+      const g = F.nameFaces(faces, fpv, couldOf(q.day, q.stop, q.by), q.in);
+      if (g && !sameSet(g, q.in)) { q.in = g; q.guess = true; named++; save({ ids: [q.id], set: { guess: g } }); render(); }
+      await sleep(30);
+    }
+    const k = knows(), not = PIDS.filter((id) => !k.includes(id)), n = k.reduce((s, id) => s + fp.by[id].length, 0);
+    setFaceMsg(!k.length ? 'Tag a few photos of just one person each: it learns from those first.'
+      : `Recognises ${names(k)} (from ${n} tagged face${n > 1 ? 's' : ''}).${not.length ? ` Tag photos of just ${not.map((id) => PEOPLE[id].name).join(' or ')} to teach it.` : ''}${named ? ` Named ${named} photo${named > 1 ? 's' : ''}: check them above.` : ''}`);
+  } catch (e) { setFaceMsg(e && e.status ? 'Couldn\'t reach the trip\'s server. It tries again later.' : 'Face recognition couldn\'t start on this phone.'); }
+  finally { faceBusy = false; if (faceAgain) { faceAgain = false; faceSoon(); } }
+}
+const faceSoon = (ms = 2500) => { if (!facesOn) return; clearTimeout(faceT); faceT = setTimeout(facePass, ms); };
+// a photo being uploaded from this phone: its faces found from the file itself, so a name can show before it's up
+async function faceRow(r) {
+  if (!facesOn || r.isVideo) return;
+  try {
+    const F = await fxMod(); await F.ready(); if (!fp) await prints();
+    r.faces = await F.facesIn(r.f); if (r.id) F.remember(r.id, r.faces);
+    if (r.touched) return;
+    const g = F.nameFaces(r.faces, fpv, couldOf(r.day.id, r.stop, ME), r.in); if (!g || sameSet(g, r.in)) return;
+    r.in = g; r.guess = r.faced = true; paintRow(r); paintUpAll();
+    const p = r.id && byIdP(r.id); if (p && !p.checked) { p.in = g.slice(); p.guess = true; save({ ids: [r.id], set: { guess: g } }); render(); }
+  } catch {}
+}
+let faceRows = Promise.resolve(); const queueFaceRow = (r) => { faceRows = faceRows.then(() => faceRow(r)); }; // one at a time
 
 /* ═══ full-screen viewer ═══ */
 const vw = $('#vw'), track = $('#track');
@@ -1082,8 +1172,8 @@ vw.addEventListener('click', (e) => {
     toast(next ? `Now the photo for ${s.title} on the plan` : `${s.title} is back to its usual picture`, () => { if (prev) covers[s.id] = prev; else delete covers[s.id]; api('/cover', { stop: s.id, id: prev }).catch(failed); if (vw.classList.contains('on')) drawInfo(); }); return; }
   const fsb = t('[data-fs]'); if (fsb) { vi = +fsb.dataset.fs; return drawViewer(); }
   if (t('.capt')) { setInfo(true); setTrack(0, true); return; }
-  const vt = t('[data-vtag]'); if (vt && member()) { const p = vlist[vi], id = vt.dataset.vtag; const on = !p.in.includes(id); p.in = on ? PIDS.filter((x) => x === id || p.in.includes(x)) : p.in.filter((x) => x !== id); p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], tag: { who: id, on } }); return; }
-  if (t('[data-vsure]') && member()) { const p = vlist[vi]; p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], set: { sure: true } }); return; }
+  const vt = t('[data-vtag]'); if (vt && member()) { const p = vlist[vi], id = vt.dataset.vtag; const on = !p.in.includes(id); p.in = on ? PIDS.filter((x) => x === id || p.in.includes(x)) : p.in.filter((x) => x !== id); p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], tag: { who: id, on } }); faceSoon(); return; }
+  if (t('[data-vsure]') && member()) { const p = vlist[vi]; p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], set: { sure: true } }); faceSoon(); return; }
   if (t('[data-vassign]')) return openAssign([vlist[vi].id]);
   if (t('[data-vhide]')) { hide([vlist[vi].id]); return drawViewer(); }
 });
@@ -1184,6 +1274,8 @@ document.addEventListener('click', (e) => {
   const k = t('[data-kind]'); if (k) { ui.kind = k.dataset.kind; return render(); }
   const wb = t('[data-what]'); if (wb) { ui.what = ui.what === wb.dataset.what ? '' : wb.dataset.what; return render(); }
   if (t('[data-check]')) return openCheck();
+  if (t('[data-faceson]')) { facesOn = true; lsSet('photos.faces', 'on'); setFaceMsg('Getting face recognition ready (8 MB, the first time)…'); return facePass(); }
+  if (t('[data-facesoff]')) { facesOn = false; lsSet('photos.faces', null); clearTimeout(faceT); return renderFaces(); }
   if (t('[data-size]')) { setCols(ui.cols === 3 ? 5 : ui.cols === 5 ? 2 : 3, document.elementFromPoint(innerWidth / 2, innerHeight / 2)); return toast(`${ui.cols} photos a row`); }
   if (t('[data-clrq]')) { ui.q = ''; $('#q').value = ''; return render(); }
   const j = t('[data-jump]'); if (j) { const el = document.getElementById('day-' + j.dataset.jump); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
@@ -1238,15 +1330,15 @@ async function start(retried) {
   }
   $('#gate').innerHTML = ''; $('#main').hidden = false;
   $('[data-select]').hidden = !member(); $('#fab').hidden = !member(); $('[data-drive]').hidden = !member(); document.body.classList.toggle('guest', !member());
-  render(); renderResume(); sortBacklog();
+  render(); renderResume(); sortBacklog(); renderFaces(); faceSoon(1500);
   if (member()) getDrive().catch(() => {}).then(sweepDrive).then((n) => { if (n) { toast(`${n} from the Drive app added`); load().then(render).then(sortBacklog).catch(() => {}); } }); // one after the other: the first time, both make the same folders
   const cq = new URLSearchParams(location.search).get('connect');
   if (cq === 'ok') toast('Google Drive connected. Upload away!'); if (cq) history.replaceState(null, '', location.pathname);
   // keep up with the others' uploads while the page is open
-  setInterval(() => { if (document.visibilityState === 'visible' && !uploading && !vw.classList.contains('on') && !story.classList.contains('on') && !document.body.classList.contains('sel')) sweepDrive().then(load).then(render).then(sortBacklog).catch(() => {}); }, 60000);
+  setInterval(() => { if (document.visibilityState === 'visible' && !uploading && !vw.classList.contains('on') && !story.classList.contains('on') && !document.body.classList.contains('sel')) sweepDrive().then(load).then(render).then(sortBacklog).then(() => faceSoon()).catch(() => {}); }, 60000);
 }
 start();
-window.__photos = { get photos() { return photos; }, get order() { return order; }, ui, get covers() { return covers; } };
+window.__photos = { get photos() { return photos; }, get order() { return order; }, ui, get covers() { return covers; }, couldOf, facePass, get faceBusy() { return faceBusy; }, get faceMsg() { return faceMsg; } };
 </script>
 </body>
 </html>
