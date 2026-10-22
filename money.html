@@ -262,6 +262,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .amtin:focus-within { box-shadow:0 0 0 2px var(--ink); }
 .subline { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 4px; min-height:28px; }
 .conv { font-size:13px; color:var(--ink3); }
+.pretax { flex:0 1 auto; margin-right:auto; max-width:96px; font-size:12.5px; line-height:1.25; color:var(--ink3); text-align:left; }
+.pretax:empty { display:none; }
+@supports (field-sizing:content) { #famt { flex:0 1 auto; width:auto; field-sizing:content; min-width:.6em; } }
 .tin { width:100%; height:46px; border-radius:14px; border:0; box-shadow:0 0 0 1px var(--line); background:var(--card); padding:0 14px; font-size:16px; }
 .tin:focus { outline:0; box-shadow:0 0 0 2px var(--ink); }
 .tin::placeholder { color:var(--ink3); }
@@ -1268,6 +1271,9 @@ function resultHtml(x, left, total) {
     : ds.length ? ds.map((d) => `<span class="owe">${av(d.from, 'sm')}<span class="a">→</span>${av(d.to, 'sm')} ${fmtY(d.yen)}${ccyNote(d.yen)}</span>`).join('')
     : `<span class="muted">Nothing owed · ${COUPLE[P[F.payer].couple].name}'s own</span>`;
 }
+// Japanese prices include consumption tax: the yen typed, worked back to before tax. 10%, or 8% (takeaway food,
+// konbini, supermarket) when the line is tapped. Only shown, never saved; none on a tax-free receipt.
+const preTax = (total) => (F.ccy === 'JPY' && total && !F.taxfree ? `(${fmtY(total / (F.tax8 ? 1.08 : 1.1))} before ${F.tax8 ? 8 : 10}% tax)` : '');
 const convText = (total) => F.ccy !== 'JPY' && total ? `= ${fmtY(total)} today · kept as ${SYM[F.ccy]}${esc(F.amt)}` : total ? `= ${fmtC(total)}` : '';
 // Update the numbers in place, never rebuilding the form, so the keyboard stays up and nothing jumps.
 // The field being typed in is left alone.
@@ -1282,6 +1288,7 @@ function liveForm() {
   }
   document.getElementById('fresult').innerHTML = resultHtml(x, left, total);
   document.getElementById('fconv').innerHTML = convText(total);
+  const fp = document.getElementById('fpre'); if (fp) fp.textContent = preTax(total);
   const pre = presetOf(); fpage.querySelectorAll('[data-preset]').forEach((b) => b.classList.toggle('on', b.dataset.preset === pre));
   fsave.disabled = !(total && !left && F.set.length);
 }
@@ -1517,7 +1524,7 @@ function renderForm() {
   fpage.innerHTML = `<div class="fwrap"><div class="ftop"><button data-fcancel>Cancel</button><b>${F.id ? 'Edit expense' : 'New expense'}</b><button class="del" data-fdel style="${F.id ? '' : 'visibility:hidden'}">Delete</button></div>${F.id ? '' : kindTabs()}
     ${SANDBOX ? '<div class="draft"><span>Practice: type an amount (like 3000), check who paid, then tap Add expense. Nothing is saved.</span></div>' : ''}
     ${F.draft ? '<div class="draft"><span>Filled in from the expense that was undone.</span><button data-fblank>Start blank</button></div>' : ''}
-    <div class="fsec"><div class="amtin"><select id="fccy" aria-label="Currency">${['JPY','CAD','QAR','USD'].map((c) => `<option value="${c}" ${F.ccy === c ? 'selected' : ''}>${c === 'JPY' ? '¥' : c}</option>`).join('')}</select><input id="famt" inputmode="decimal" enterkeyhint="done" placeholder="0" value="${esc(F.amt)}" aria-label="Amount">${F.id ? '' : `<button class="scanb ${F.scanning ? 'busy' : ''}" data-scan aria-label="Scan a receipt">${F.scanning ? '<i class="spin"></i>' : CAMERA}<span>${F.scanning ? 'Reading' : 'Scan'}</span></button><input id="fscan" type="file" accept="image/*" capture="environment" hidden>`}</div>
+    <div class="fsec"><div class="amtin"><select id="fccy" aria-label="Currency">${['JPY','CAD','QAR','USD'].map((c) => `<option value="${c}" ${F.ccy === c ? 'selected' : ''}>${c === 'JPY' ? '¥' : c}</option>`).join('')}</select><input id="famt" inputmode="decimal" enterkeyhint="done" placeholder="0" value="${esc(F.amt)}" aria-label="Amount"><button class="pretax" id="fpre" data-pretax title="Tap to switch between 10% and 8% tax">${preTax(total)}</button>${F.id ? '' : `<button class="scanb ${F.scanning ? 'busy' : ''}" data-scan aria-label="Scan a receipt">${F.scanning ? '<i class="spin"></i>' : CAMERA}<span>${F.scanning ? 'Reading' : 'Scan'}</span></button><input id="fscan" type="file" accept="image/*" capture="environment" hidden>`}</div>
       ${scanLine()}
       <div class="subline"><span class="conv" id="fconv">${convText(total)}</span><button class="oweme" data-refund aria-pressed="${F.refund}"><span class="sw ${F.refund ? 'on' : ''}"></span>Refund</button></div>
       <input class="tin" id="ftitle" placeholder="What for, e.g. Ramen at Fuunji" value="${esc(F.title)}" autocomplete="off" enterkeyhint="done" aria-label="What for"><div class="sugg" id="fsugg">${suggHtml()}</div></div>
@@ -1585,6 +1592,8 @@ fpage.addEventListener('click', (e) => {
   const fk = t('[data-fkind]'); if (fk) { F.kind = fk.dataset.fkind; F.exp = null; renderForm(); const a = document.getElementById(F.kind === 'ex' ? 'famt' : 'fmove'); if (a) a.focus({ preventScroll:true }); return; }
   const cd = t('[data-fcxdir]'); if (cd) { F.cdir = cd.dataset.fcxdir; if (F.cdir === 'got') F.cwho = 'atm'; return renderForm(); }
   const cw = t('[data-fcxwho]'); if (cw) { F.cwho = cw.dataset.fcxwho; return renderForm(); }
+  if (t('[data-pretax]')) { F.tax8 = !F.tax8; document.getElementById('fpre').textContent = preTax(formExpense().total); return; }
+  if (e.target.matches('#fpage .amtin')) return document.getElementById('famt').focus(); // the box around a number that's only as wide as itself
   const sa = t('[data-scanamt]'); if (sa) { F.amt = sa.dataset.scanamt; F.fixed = {}; return renderForm(); }
   if (t('[data-scan]')) return camOpen();
   const iw = t('[data-ficwith]'); if (iw) { F.icwith = iw.dataset.ficwith; return renderForm(); }
