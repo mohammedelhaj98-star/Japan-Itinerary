@@ -142,6 +142,17 @@ export function nameFaces(faces, prints, could, cur = []) {
   return u.length <= F.length ? u : names;
 }
 
+// a photo one of us tagged where a face is surely someone not tagged: { seen: [them], instead: the one tagged person no face
+// was theirs, if there's just one } (so "looks like Mo, not Mariam"); null when the faces agree. Faces only: a tagged person
+// who can't be seen (turned away, cut off, blurry) is never questioned.
+export function doubts(L, prints, tagged, everyone) {
+  const F = L.f.filter(big); if (!F.length) return null;
+  const got = assign(F, prints, everyone), seen = got.filter((x) => !tagged.includes(x.who)).map((x) => x.who);
+  if (!seen.length) return null;
+  const missing = tagged.filter((p) => !got.some((x) => x.who === p));
+  return { seen: everyone.filter((p) => seen.includes(p)), instead: seen.length === 1 && missing.length === 1 && F.length <= tagged.length ? missing[0] : null };
+}
+
 /* ── what someone's wearing, for whoever's face doesn't settle it (blurry, side-on, turned away) ── */
 const DRESS = 0.88;     // a top half this alike (see alike) is the same outfit
 const DRESS_GAP = 0.08; // ...and clearly more like one person's outfit than anyone else's that day

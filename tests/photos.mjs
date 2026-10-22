@@ -533,6 +533,8 @@ let M = null;
   ok('faces: a known face is named, among who was there', F.nameFaces([face(near(Bv, 5))], pr, ['naf', 'sara']).join() === 'sara' && F.nameFaces([face(near(Bv, 5))], pr, ['naf', 'mariam']) === null);
   ok('faces: a face halfway between two people isn\'t named', F.nameFaces([face(A.map((x, i) => (x + Bv[i]) / 2))], pr, ['naf', 'sara']) === null);
   ok('faces: a stranger isn\'t named', F.nameFaces([face(C)], pr, ['naf', 'sara']) === null);
+  ok('doubts: tagged Mariam, but the face is surely Naf → "Naf, not Mariam"', JSON.stringify(F.doubts({ f: [face(near(A, 2))], b: [] }, pr, ['mariam'], ['naf', 'sara', 'mariam', 'm'])) === '{"seen":["naf"],"instead":"mariam"}');
+  ok('doubts: faces that agree with the tags, or no face it knows → nothing to say', F.doubts({ f: [face(near(A, 2))], b: [] }, pr, ['naf'], ['naf', 'sara', 'mariam', 'm']) === null && F.doubts({ f: [face(C)], b: [] }, pr, ['mariam'], ['naf', 'sara', 'mariam', 'm']) === null);
   // what someone's wearing (28 colour shares), for when their face doesn't settle it
   const dress = (i) => { const h = new Array(28).fill(0); h[i] = 200; h[(i + 1) % 28] = 55; return Buffer.from(h).toString('base64'); };
   const body = (o, fi = -1, h = 0.5) => ({ x: 0.2, y: 0.3, w: 0.3, h, o, fi });
@@ -645,6 +647,20 @@ let M = null;
   const fp3 = JSON.parse(kv.get('faceprints'));
   ok('learned the old way: forgotten, learned again from photos of one person', fp3.v === 2 && WHO.every((w) => fp3.by[w].length === 1) && !fp3.by.mariam.some((x) => x.id === 'fileid99999998'), JSON.stringify(Object.fromEntries(Object.entries(fp3.by).map(([k, v]) => [k, v.length]))));
   ok('…and its old guess taken back and guessed again', ap(grp.id).in === 'naf,sara,mariam,m' && ap(grp.id).ig === '1' && ap(grp.id).gf === '1', JSON.stringify(ap(grp.id)));
+  // tags the faces question: a card, then the same one-by-one check
+  const setIn = (id, who) => n.evaluate(([id, who]) => fetch('/api/photos/update', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', ids: [id], set: { in: who } }) }), [id, who]);
+  await setIn(again.id, ['mariam']); await setIn(grp.id, ['naf', 'sara', 'mariam']);
+  await m.reload(); await m.waitForSelector('#facebox [data-doubts]', { timeout: 120000 }).catch(() => {});
+  ok('a card asks to check the tags a face disagrees with', /Check these 2 tags\?/.test(await m.textContent('#facebox')), await m.textContent('#facebox'));
+  await m.screenshot({ path: OUT + 'faces-doubts.png' });
+  await m.tap('[data-doubts]'); await m.waitForTimeout(500);
+  ok('…it says what it noticed: "Looks like Naf, not Mariam"', /Looks like Naf, not Mariam\./.test(await m.textContent('#tghint')) && (await m.textContent('[data-tgnext]')) === 'Tags are right', await m.textContent('#tghint'));
+  await m.screenshot({ path: OUT + 'faces-doubt-check.png' });
+  await m.tap('[data-tgp="mariam"]'); await m.tap('[data-tgp="naf"]'); await m.tap('[data-tgnext]'); await m.waitForTimeout(600);
+  ok('fixed with a tap each: saved as Naf', ap(again.id).in === 'naf' && ap(again.id).ck === '1', JSON.stringify(ap(again.id)));
+  ok('next: "Looks like Mo is in it too"', /Looks like Mo is in it too\./.test(await m.textContent('#tghint')), await m.textContent('#tghint'));
+  await m.tap('[data-tgnext]'); await m.waitForTimeout(600);
+  ok('"Tags are right" keeps them, and it won\'t ask again', ap(grp.id).in === 'naf,sara,mariam' && ap(grp.id).dk === 'naf,sara,mariam' && !(await m.isVisible('#tagr')) && !(await m.$('#facebox [data-doubts]')), JSON.stringify(ap(grp.id)));
   await m.tap('[data-facesoff]'); await m.waitForTimeout(200);
   ok('Turn off puts the offer back', /Recognise faces/.test(await m.textContent('#facebox')) && !(await m.evaluate(() => localStorage.getItem('photos.faces'))));
 }
