@@ -25,6 +25,8 @@ export function offline({ DAYS, HOTELS, PLACES }) {
     walk(d.items);
     for (const id of [d.hotel, d.mmHotel]) { const h = HOTELS.find((x) => x.id === id); if (h) add(h.name); }
     for (const c of Object.values(custom)) if (c && c.day === d.id && c.place) add(c.place.name);
+    const movedHere = (it) => it.type === 'event' && custom[it.id] && !custom[it.id].added && custom[it.id].day === d.id;
+    for (const dd of DAYS) if (dd !== d) walk(dd.items.flatMap((it) => (it.type === 'choice' ? (it.options || []).flatMap((o) => o.items || []) : [it])).filter(movedHere)); // stops moved here
     for (const c of Object.values(custom)) if (c && c.day === d.id) ownPhotos(c).forEach((u) => out.add(u));
     return out;
   }

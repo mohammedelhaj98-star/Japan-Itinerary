@@ -610,6 +610,16 @@ body.reordering .tt { display:none; } /* the + buttons would sit over the handle
 .tchips { display:flex; flex-wrap:wrap; gap:6px; }
 .tchips button { padding:8px 12px; border-radius:12px; background:#fff; font-size:13.5px; font-weight:700; border:1px solid rgba(0,0,0,.06); transition:background 160ms, color 160ms; }
 .tchips button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+/* the day a stop is on: a sideways row of days, the city on each so a Kyoto stop isn't dropped on a Tokyo day */
+.dchips { display:flex; gap:6px; overflow-x:auto; scroll-snap-type:x proximity; margin:0 -16px; padding:0 16px 2px; scrollbar-width:none; touch-action:pan-x pan-y; -webkit-overflow-scrolling:touch; }
+.dchips::-webkit-scrollbar { display:none; }
+.dchips button { flex:none; scroll-snap-align:center; display:flex; flex-direction:column; align-items:flex-start; gap:1px; padding:8px 12px; border-radius:12px; background:#fff; border:1px solid rgba(0,0,0,.06); text-align:left; transition:background 160ms, color 160ms; }
+.dchips b { font-size:13.5px; font-weight:700; }
+.dchips small { font-size:11.5px; font-weight:600; color:var(--ink3); white-space:nowrap; transition:color 160ms; }
+.dchips button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+.dchips button.on small { color:rgba(255,255,255,.72); }
+.dchips button.home:not(.on) { border-color:var(--ink3); }
+.fmove { display:block; font-size:12.5px; font-weight:600; color:#1e4fc2; margin:6px 2px 0; }
 .pcur { display:flex; align-items:center; gap:10px; background:#fff; border-radius:14px; padding:10px 12px; margin-bottom:8px; font-size:14.5px; font-weight:700; border:1px solid rgba(0,0,0,.06); }
 .pcur span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .pcur button { color:var(--ink3); font-size:13px; font-weight:700; }
@@ -976,24 +986,31 @@ let day, events, asides, stops, map, layers = [], pinEls = {}, dialApi = null, s
 const nowMin = () => { const t = new Date(Date.now() + 9 * 3600e3); return t.getUTCHours() * 60 + t.getUTCMinutes(); };
 
 const CUSTOM = () => store.state.custom || {};
+// every stop in the plan as written, with the day it's on (stops on a choice's options too)
+const ORIG = new Map(); for (const d of DAYS) for (const it of d.items) { if (it.type === 'event') ORIG.set(it.id, { it, d }); if (it.type === 'choice') for (const o of it.options) for (const y of o.items || []) ORIG.set(y.id, { it: y, d }); }
+// a stop of the plan moved to another day (its edit's `day`): it leaves its own day and joins that one
+const movedTo = (id, C = CUSTOM()) => { const c = C[id], o = ORIG.get(id); return c && !c.added && c.day && o && c.day !== o.d.id ? c.day : null; };
 const fmtRange = (a, b) => { if (a == null) return ''; const [ta, pa] = fmt(a); if (b == null || b <= a) return `${ta} ${pa}`; const [tb, pb] = fmt(b); return pa === pb ? `${ta}–${tb} ${pb}` : `${ta} ${pa}–${tb} ${pb}`; };
 /* All stops for a day: originals with edits applied, hidden ones dropped (unless asked), added ones slotted in. */
 function dayItems(d, { who = ui.who, withHidden = false } = {}) {
   const C = CUSTOM();
   const allowed = (it) => { const w = it.who || 'all'; return who === 'all' || w === 'all' || w === who || !!it.flight; }; // everyone sees every flight
-  const patch = (it) => { const c = C[it.id]; if (it.type !== 'event' || !c || c.added) return it; const o = { ...it, _orig: it, _edited: Object.keys(c).some((k) => k !== 'hidden' && k !== 'ts') };
+  const patch = (it) => { const c = C[it.id]; if (it.type !== 'event' || !c || c.added) return it; const o = { ...it, _orig: it, _edited: Object.keys(c).some((k) => !['hidden', 'ts', 'day'].includes(k)) };
     for (const k of ['title', 'time', 'desc', 'cost', 'who']) if (c[k] != null) o[k] = c[k];
     if ('place' in c) o.place = c.place ? { ...c.place, q: c.place.name } : null;
     if (c.cat) o.tags = [c.cat]; if (c.hidden) o.hidden = true; if (c.flight) { const n0 = (x) => String((x && x.no) || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); o.flight = it.flight && n0(it.flight) && n0(c.flight) !== n0(it.flight) ? { people: it.flight.people, ...c.flight } : { ...(it.flight || {}), ...c.flight }; } /* a different number: the old flight's airports and times don't apply (as on the server) */ return o; };
   const items = [];
   for (const raw of d.items) {
-    if (raw.type === 'choice') { if (!allowed(raw)) continue; const id = store.getChoice(raw.id, raw.default); const o = raw.options.find((x) => x.id === id) || raw.options[0]; items.push(raw); (o.items || []).map(patch).filter(allowed).forEach((x) => items.push(x)); }
+    if (raw.type === 'choice') { if (!allowed(raw)) continue; const id = store.getChoice(raw.id, raw.default); const o = raw.options.find((x) => x.id === id) || raw.options[0]; items.push(raw); (o.items || []).filter((x) => !movedTo(x.id, C)).map(patch).filter(allowed).forEach((x) => items.push(x)); }
+    else if (raw.type === 'event' && movedTo(raw.id, C)) continue;
     else { const it = patch(raw); if (allowed(it)) items.push(it); }
   }
+  // stops moved here from another day slot in by their time, like added ones (whatever was picked on their old day)
+  const movedIn = Object.keys(C).filter((id) => movedTo(id, C) === d.id).map((id) => ({ ...patch(ORIG.get(id).it), _movedFrom: ORIG.get(id).d.id })).filter(allowed);
   const added = Object.entries(C).filter(([, c]) => c.added && c.day === d.id).sort((x, y) => String(x[1].ts).localeCompare(String(y[1].ts)))
     .map(([id, c]) => ({ type: 'event', id, title: c.title || 'New stop', time: c.time || '', desc: c.desc || '', cost: c.cost || '', who: c.who || 'all', place: c.place ? { ...c.place, q: c.place.name } : null, tags: c.cat ? [c.cat] : [], hidden: !!c.hidden, _added: true, _after: c.after, _info: c.info || null, ...(c.flight && c.flight.no ? { flight: { ...c.flight } } : {}) }))
     .filter(allowed);
-  for (const a of added) {
+  for (const a of [...added, ...movedIn]) {
     const s0 = span(a);
     let at = !s0 && a._after ? items.findIndex((x) => x.id === a._after) : -1;
     if (at >= 0) { at++; while (at < items.length && items[at]._added && items[at]._after === a._after) at++; items.splice(at, 0, a); continue; }
@@ -1274,7 +1291,7 @@ function passHTML(e, i) {
   if (e.optional) chips.push('<span class="chip">Optional</span>');
   if (e.who && e.who !== 'all') chips.push(`<span class="chip">${e.who === 'nasa' ? 'NASA' : 'M&amp;M'} only</span>`);
   if (FILLING.has(e.id)) chips.push(`<span class="chip">${I.spark}Filling in…</span>`);
-  if (e._added) chips.push('<span class="chip">Added</span>'); else if (e._edited) chips.push('<span class="chip">Edited</span>');
+  if (e._added) chips.push('<span class="chip">Added</span>'); else { if (e._movedFrom) chips.push(`<span class="chip">From Day ${DAYS.find((x) => x.id === e._movedFrom).n}</span>`); if (e._edited) chips.push('<span class="chip">Edited</span>'); }
   // a meal "in the area" of a shop or sight isn't bound by that place's hours
   const hw = e.place && !tk && !(c.key === 'food' && pi && pi.kind !== 'food') ? hoursWarn(e, pi, day.date) : ''; if (hw) chips.push(`<span class="chip hwarn">${I.clock}${esc(hw)}</span>`);
   const extra = !e.place || tk || !pi ? '' : `${pi.hours ? `<div class="dykx"><b>Opening hours</b>${esc(hoursLine(pi.hours, pi.kind))}</div>` : ''}${pi.try ? `<div class="dykx"><b>Try here</b>${esc(pi.try)}</div>` : ''}${MANNERS[pi.kind] ? `<div class="dykx"><b>${pi.kind === 'shrine' ? 'Shrine' : 'Temple'} manners</b>${esc(MANNERS[pi.kind])}</div>` : ''}`;
@@ -1761,6 +1778,9 @@ function openEditor(opts) {
   const refPlace = (() => { const d = f.d || DAYS.find((x) => x.id === opts.dayId); const evs = dayItems(d, { who: 'all' }).filter((x) => x.type === 'event'); const k = evs.findIndex((x) => x.id === opts.after); for (let j = k; j >= 0; j--) if (evs[j] && evs[j].place) return evs[j].place; const h = HOTELS.find((x) => x.id === d.hotel); return h; })();
   edState = { ...opts, dayId: (f.d && f.d.id) || opts.dayId, it, orig, title: it ? it.title : '', start: sp0 ? sp0[0] : null, end: sp0 && it && /[–-]/.test(it.time || '') ? sp0[1] : null,
     who: it ? it.who || 'all' : ui.who, cat: it ? catOf(it).key : null, flightNo: it && it.flight ? it.flight.no || '' : '', isFlight: !!(it && it.flight), place: it ? it.place || null : null, desc: it ? it.desc || '' : '', cost: it ? it.cost || '' : '', more: opts.mode === 'edit', results: null, ref: refPlace, msg: '', info: it ? it._info || null : null, fill: null, filledFor: '', catSet: false };
+  // the day it's on, and the day it's moving to (journeys keep theirs: they're tied to tickets and the flight tracker)
+  edState.toDay = edState.dayId; edState.canMove = !it || movable(it); edState.ref0 = edState.ref;
+  edState.home = it && !it._added ? (ORIG.get(it.id) || {}).d : null;
   edState.t0 = { start: edState.start, end: edState.end };
   renderEditor(); scrim.style.zIndex = 970; scrim.classList.add('on'); EY.set(innerHeight); EY.to(0, { response: 0.42, damping: 0.88 });
 }
@@ -1792,18 +1812,20 @@ function autoFill() { if (!edState) return; readFormSafe(); if (canAutoFill(edSt
 async function runFill(s, auto) {
   const live = () => edState === s;
   if (live()) readFormSafe();
-  const name = s.title;
+  const name = s.title, dayAsked = s.toDay || s.dayId;
   if (name.length < 2 || SANDBOX) { if (!auto && live()) { s.msg = SANDBOX ? 'Filling in is off in the practice tour.' : 'Type a name first.'; rerenderKeep(); } return; }
   if (s.fill && s.fill.busy) return;
   if (s.fill && s.fill.done) revertFill(s); // a new name: what the last one filled in goes first
   s.fill = { busy: true }; s.filledFor = name; s.msg = '';
   if (live()) { const row = document.getElementById('f-fill'); if (row) row.outerHTML = fillRow(s); }
-  const d = DAYS.find((x) => x.id === s.dayId) || day;
+  const d = DAYS.find((x) => x.id === (s.toDay || s.dayId)) || day;
   let r = null, found = {};
   try { r = await store.api('fill', { name, city: d.city, date: d.date, near: (s.ref && s.ref.name) || '' }); found = await findPlace(r, s.ref).catch(() => ({})); }
   catch (err) { s.msg = err.pin ? 'Filling in needs the PIN.' : navigator.onLine === false ? 'Filling in needs a connection.' : "Couldn't fill this one in. Add the details yourself."; r = null; }
   if (live()) readFormSafe();
   // the name changed while it was out: this answer is for the old one (a stop saved meanwhile asks again for its name)
+  // another day picked while it was out: this answer is for the old day's city, so ask again for the new one
+  if (s.title === name && (s.toDay || s.dayId) !== dayAsked) { s.fill = null; s.filledFor = ''; return runFill(s, true); }
   if (s.title !== name) { s.fill = null; if (!live() && s.savedId && s.title.length >= 2) return runFill(s, true); if (live()) rerenderKeep(); else if (s.savedId) saveFill(s, false); return; }
   if (r) applyFill(s, r, found); else s.fill = null;
   if (live()) rerenderKeep();
@@ -1876,6 +1898,7 @@ function renderEditor() {
   const res = s0.results === 'loading' ? '<p>Searching…</p>' : Array.isArray(s0.results) ? (s0.results.length ? s0.results.map((r, k) => `<button data-fres="${k}"><b>${esc(r.name)}</b><small>${esc(r.sub)}</small></button>`).join('') : '<p>No matches. Try a shorter name.</p>') : '';
   b.innerHTML = `<div class="ed-h"><b>${adding ? 'Add a stop' : 'Edit stop'}</b><button data-edx>Cancel</button></div>
     <label class="fld"><span>Name</span><input id="f-title" value="${esc(s0.title)}" placeholder="e.g. Coffee at % Arabica" autocomplete="off"></label>${fillRow(s0)}
+    ${s0.canMove ? dayRow(s0) : ''}
     <div class="row2"><label class="fld"><span>Start</span><input id="f-start" type="time" value="${toHM(s0.start)}"></label><label class="fld"><span>End (optional)</span><input id="f-end" type="time" value="${toHM(s0.end)}"></label></div>
     ${s0.isFlight || s0.more ? `<label class="fld"><span>Flight number${s0.isFlight ? '' : ' (optional)'}</span><input id="f-flight" value="${esc(flNo(s0.flightNo))}" placeholder="e.g. QR 808" autocomplete="off" autocapitalize="characters"><small class="fhint">Typed in, the flight is tracked: delays, gate, landing and bags show on this stop.</small></label>` : ''}
     <div class="fld"><span>Who's going</span><div class="seg" id="f-who">${whoB}<i></i></div></div>
@@ -1886,10 +1909,19 @@ function renderEditor() {
       <label class="fld"><span>Notes</span><textarea id="f-desc" placeholder="Anything the group should know">${esc(s0.desc)}</textarea></label>
       <label class="fld"><span>Cost</span><input id="f-cost" value="${esc(s0.cost)}" placeholder="e.g. ¥1,500 per person"></label>` : `<button class="more" data-fmore>+ Notes, cost and type</button>`}
     <button class="save" data-fsave>${adding ? 'Add stop' : 'Save changes'}</button>
-    ${!adding && s0.orig ? `<div class="edx"><button data-fhide>${s0.it.hidden ? 'Show this stop again' : 'Hide this stop'}</button>${s0.it._edited ? '<button data-freset>Reset to original</button>' : ''}</div>` : ''}
+    ${!adding && s0.orig ? `<div class="edx"><button data-fhide>${s0.it.hidden ? 'Show this stop again' : 'Hide this stop'}</button>${s0.it._edited || s0.it._movedFrom ? '<button data-freset>Reset to original</button>' : ''}</div>` : ''}
     ${!adding && s0.it && s0.it._added ? `<div class="edx"><button class="danger" data-fdel>Delete this stop</button></div>` : ''}
     <p class="edmsg">${esc(s0.msg || 'Changes are shared with all four of you.')}</p><div style="height:8px"></div>`;
   moveSeg(b.querySelector('#f-who'));
+  const dr = b.querySelector('#f-day'), on = dr && dr.querySelector('.on'); if (on) dr.scrollLeft = on.offsetLeft - (dr.clientWidth - on.offsetWidth) / 2;
+}
+const dayName = (d) => `Day ${d.n}`;
+const dayWhen = (d) => new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' });
+function dayRow(s0) {
+  const to = DAYS.find((d) => d.id === s0.toDay), from = DAYS.find((d) => d.id === s0.dayId), home = s0.home;
+  const note = s0.toDay !== s0.dayId ? `Moves from ${dayName(from)} to ${dayName(to)}${to.city !== from.city ? `, when you're in ${esc(to.city)}` : ''}. Its stamp and photos go with it.`
+    : home && home.id !== s0.toDay ? `Moved here from ${dayName(home)}. Tap ${dayName(home)} to put it back.` : '';
+  return `<div class="fld"><span>Day</span><div class="dchips" id="f-day" role="radiogroup" aria-label="Day">${DAYS.map((d) => `<button data-fday="${d.id}" role="radio" aria-checked="${d.id === s0.toDay}" class="${d.id === s0.toDay ? 'on' : ''}${home && home.id === d.id ? ' home' : ''}"><b>${dayName(d)}</b><small>${dayWhen(d)} · ${esc(d.city)}</small></button>`).join('')}</div>${note ? `<small class="fmove">${note}</small>` : ''}</div>`;
 }
 function readForm() { const g = (id) => document.getElementById(id); edState.title = g('f-title').value.trim(); edState.start = fromHM(g('f-start').value); edState.end = fromHM(g('f-end').value); if (g('f-desc')) edState.desc = g('f-desc').value; if (g('f-cost')) edState.cost = g('f-cost').value; if (g('f-flight')) edState.flightNo = g('f-flight').value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); }
 async function searchPlaces(q) {
@@ -1901,19 +1933,33 @@ async function searchPlaces(q) {
   if (!edState) return; readFormSafe(); renderEditor(); const q2 = document.getElementById('f-q'); q2.value = q;
 }
 function readFormSafe() { try { readForm(); } catch {} }
+// a stop leaving a day (moved, or reset back to its own): that day's Reorder forgets its place and time
+function dropFromOrder(dayId, id) {
+  const ok = 'ord-' + dayId, o = CUSTOM()[ok]; if (!o || !((o.order || []).includes(id) || (o.times && id in o.times))) return;
+  const t = { ...(o.times || {}) }; delete t[id]; const order = (o.order || []).filter((x) => x !== id); const rest = { ...o, order, times: t }; delete rest.ts;
+  store.setCustom(ok, order.length || Object.keys(t).length ? rest : null);
+}
+// where a place search or filling in looks near: the stop before on that day, else its hotel
+function refPlaceOn(dayId, after) {
+  const d = DAYS.find((x) => x.id === dayId); const evs = dayItems(d, { who: 'all' }).filter((x) => x.type === 'event'); const k = after == null ? evs.length - 1 : evs.findIndex((x) => x.id === after);
+  for (let j = k; j >= 0; j--) if (evs[j] && evs[j].place) return evs[j].place; return HOTELS.find((x) => x.id === d.hotel);
+}
 function saveEditor() {
   readForm(); const s0 = edState; if (!s0.title) { s0.msg = 'Give the stop a name first.'; renderEditor(); return; }
   const timeChanged = s0.start !== s0.t0.start || s0.end !== s0.t0.end;
   // a time typed in here wins over the one a reorder gave the stop
   if (timeChanged && s0.it) { const ok = 'ord-' + s0.dayId, o = CUSTOM()[ok]; if (o && o.times && s0.it.id in o.times) { const t = { ...o.times }; delete t[s0.it.id]; store.setCustom(ok, { ...o, times: t }); } }
+  // moving to another day: the day it leaves forgets where a reorder put it
+  if (s0.it && s0.toDay !== s0.dayId) dropFromOrder(s0.dayId, s0.it.id);
   if (s0.mode === 'add' || (s0.it && s0.it._added)) {
     const id = s0.mode === 'add' ? 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : s0.it.id;
     const prev = s0.mode === 'add' ? {} : CUSTOM()[id] || {};
-    store.setCustom(id, { ...prev, added: true, day: s0.dayId, after: s0.mode === 'add' ? s0.after || null : prev.after ?? null, title: s0.title, time: fmtRange(s0.start, s0.end), who: s0.who, cat: s0.cat || (s0.place ? 'sight' : 'plan'), place: s0.place, desc: s0.desc || '', cost: s0.cost || '', info: s0.info || null, ...(s0.flightNo ? { flight: { no: s0.flightNo } } : { flight: undefined }) });
+    const moved = s0.toDay !== s0.dayId; // on a new day it slots in by its time
+    store.setCustom(id, { ...prev, added: true, day: s0.toDay, after: moved ? null : s0.mode === 'add' ? s0.after || null : prev.after ?? null, title: s0.title, time: fmtRange(s0.start, s0.end), who: s0.who, cat: s0.cat || (s0.place ? 'sight' : 'plan'), place: s0.place, desc: s0.desc || '', cost: s0.cost || '', info: s0.info || null, ...(s0.flightNo ? { flight: { no: s0.flightNo } } : { flight: undefined }) });
     // "type the name, tap Add stop": the rest fills in on the saved stop when it arrives
     s0.savedId = id; s0.savedTime = fmtRange(s0.start, s0.end); s0.savedCat = s0.cat || (s0.place ? 'sight' : 'plan');
     if (s0.fill && s0.fill.busy) FILLING.add(id); else if (s0.mode === 'add' && canAutoFill(s0)) { FILLING.add(id); runFill(s0, true); }
-    const keepDay = s0.dayId; closeEditor(); if (keepDay !== day.id) { ui.dayId = keepDay; } renderDay({ keepScroll: true, selId: id }); buzz(10); return;
+    const keepDay = s0.toDay; closeEditor(); if (keepDay !== day.id) { ui.dayId = keepDay; } renderDay({ keepScroll: true, selId: id }); buzz(10); return;
   }
   const o = s0.orig, prev = CUSTOM()[s0.it.id] || {}, patch = { ...prev };
   const set = (k, v, ov) => { if (v === ov || (v === '' && ov == null)) delete patch[k]; else patch[k] = v; };
@@ -1924,12 +1970,14 @@ function saveEditor() {
   if (s0.cat !== catOf(o).key) patch.cat = s0.cat; else delete patch.cat;
   const samePlace = (a, b) => (!a && !b) || (a && b && a.name === b.name && a.lat === b.lat && a.lng === b.lng);
   if (samePlace(s0.place, o.place)) delete patch.place; else patch.place = s0.place ? { name: s0.place.name, lat: s0.place.lat, lng: s0.place.lng } : null;
+  if (s0.home && s0.toDay !== s0.home.id) patch.day = s0.toDay; else delete patch.day;
   delete patch.ts; store.setCustom(s0.it.id, Object.keys(patch).length ? patch : null);
-  const id = s0.it.id; closeEditor(); renderDay({ keepScroll: true, selId: id }); buzz(10);
+  const id = s0.it.id; closeEditor(); if (s0.toDay !== day.id) ui.dayId = s0.toDay; renderDay({ keepScroll: true, selId: id }); buzz(10);
 }
 edEl.addEventListener('click', (e) => {
   if (!edState) return;
   if (e.target.closest('[data-edx]')) { closeEditor(); return; }
+  const dy = e.target.closest('[data-fday]'); if (dy) { readForm(); if (dy.dataset.fday !== edState.toDay && edState.fill && edState.fill.done) { revertFill(edState); edState.filledFor = ''; } edState.toDay = dy.dataset.fday; edState.ref = edState.toDay === edState.dayId ? edState.ref0 : refPlaceOn(edState.toDay, null); autoFill(); renderEditor(); buzz(6); return; }
   if (!e.target.closest('[data-ffill], [data-fundo], [data-fsave]')) autoFill();
   const w = e.target.closest('[data-fwho]'); if (w) { readForm(); edState.who = w.dataset.fwho; renderEditor(); return; }
   const c = e.target.closest('[data-fcat]'); if (c) { readForm(); edState.cat = c.dataset.fcat; edState.catSet = true; renderEditor(); return; }
@@ -1943,7 +1991,7 @@ edEl.addEventListener('click', (e) => {
     navigator.geolocation.getCurrentPosition((pos) => { if (!edState) return; edState.place = { name: edState.title || 'Pinned spot', lat: +pos.coords.latitude.toFixed(5), lng: +pos.coords.longitude.toFixed(5) }; edState.msg = ''; renderEditor(); }, () => { if (!edState) return; edState.msg = 'Could not get your location. Check location permission.'; renderEditor(); }, { enableHighAccuracy: true, timeout: 10000 }); return; }
   if (e.target.closest('[data-fsave]')) { saveEditor(); return; }
   if (e.target.closest('[data-fhide]')) { const id = edState.it.id; const prev = CUSTOM()[id] || {}; const hid = !edState.it.hidden; const patch = { ...prev }; delete patch.ts; if (hid) patch.hidden = true; else delete patch.hidden; store.setCustom(id, Object.keys(patch).length ? patch : null); closeEditor(); renderDay({ keepScroll: true, keepSel: true }); return; }
-  if (e.target.closest('[data-freset]')) { const id = edState.it.id; store.setCustom(id, null); closeEditor(); renderDay({ keepScroll: true, selId: id }); return; }
+  if (e.target.closest('[data-freset]')) { const id = edState.it.id; if (edState.it._movedFrom) dropFromOrder(edState.dayId, id); store.setCustom(id, null); closeEditor(); renderDay({ keepScroll: true, selId: id }); return; }
   if (e.target.closest('[data-fdel]')) { if (!confirm('Delete this stop for everyone?')) return; store.setCustom(edState.it.id, null); closeEditor(); renderDay({ keepScroll: true }); return; }
 });
 // leaving the name (to the time, the place, anywhere) is when the rest gets filled in
@@ -1959,9 +2007,9 @@ function renderSettings() {
   setp.innerHTML = `<div class="set-h"><button class="tb press" data-setx aria-label="Back">${I.chevL}</button><h2>Edit trip</h2></div>
     <a class="set-me" href="/?switch=1">${(() => { const n = { naf: 'Naf', sara: 'Sara', mariam: 'Mariam', m: 'Mo' }[ls.get('trips.me', '')]; return n ? `You're <b>${n}</b> on this phone` : 'Pick who you are'; })()}<span>Switch person or trip ${I.chevR}</span></a>
     <p class="set-note">Tap any stop to change it, hide it or reset it. Added and edited stops show for all four of you. ${changed ? `${changed} change${changed > 1 ? 's' : ''} so far.` : 'No changes yet.'}</p>
-    ${DAYS.map((d) => { const evs = dayItems(d, { who: 'all', withHidden: true }).filter((x) => x.type === 'event'); const n = evs.filter((x) => x._added || x._edited || x.hidden).length;
+    ${DAYS.map((d) => { const evs = dayItems(d, { who: 'all', withHidden: true }).filter((x) => x.type === 'event'); const n = evs.filter((x) => x._added || x._edited || x._movedFrom || x.hidden).length;
       return `<details class="sday" ${d.id === day.id ? 'open' : ''}><summary><span class="n">${d.n}</span><b>${esc(d.title)}<small>${new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · ${esc(d.city)}</small></b>${n ? `<span class="cnt2">${n}</span>` : ''}</summary>
-        ${evs.map((x) => `<button class="srow ${x.hidden ? 'hidden' : ''}" data-sedit="${x.id}"><span class="t">${esc(startTime(x.time) || '—')}</span><span class="m"><b>${esc(x.title)}</b><span class="bd">${x._added ? '<span class="bdg add">Added</span>' : ''}${x._edited ? '<span class="bdg ed2">Edited</span>' : ''}${x.hidden ? '<span class="bdg hid">Hidden</span>' : ''}${x.who === 'nasa' ? '<span class="bdg nasa">NASA</span>' : x.who === 'mm' ? '<span class="bdg mm">M&amp;M</span>' : ''}</span></span>${I.chevR}</button>`).join('')}
+        ${evs.map((x) => `<button class="srow ${x.hidden ? 'hidden' : ''}" data-sedit="${x.id}"><span class="t">${esc(startTime(x.time) || '—')}</span><span class="m"><b>${esc(x.title)}</b><span class="bd">${x._added ? '<span class="bdg add">Added</span>' : ''}${x._movedFrom ? `<span class="bdg ed2">From day ${DAYS.find((y) => y.id === x._movedFrom).n}</span>` : ''}${x._edited ? '<span class="bdg ed2">Edited</span>' : ''}${x.hidden ? '<span class="bdg hid">Hidden</span>' : ''}${x.who === 'nasa' ? '<span class="bdg nasa">NASA</span>' : x.who === 'mm' ? '<span class="bdg mm">M&amp;M</span>' : ''}</span></span>${I.chevR}</button>`).join('')}
         <button class="sadd" data-sadd="${d.id}">${I.plus}Add a stop</button></details>`; }).join('')}
     ${changed ? '<button class="set-reset" data-sresetall>Undo all changes</button>' : ''}`;
 }
