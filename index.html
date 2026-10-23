@@ -1779,7 +1779,7 @@ function openEditor(opts) {
   edState = { ...opts, dayId: (f.d && f.d.id) || opts.dayId, it, orig, title: it ? it.title : '', start: sp0 ? sp0[0] : null, end: sp0 && it && /[–-]/.test(it.time || '') ? sp0[1] : null,
     who: it ? it.who || 'all' : ui.who, cat: it ? catOf(it).key : null, flightNo: it && it.flight ? it.flight.no || '' : '', isFlight: !!(it && it.flight), place: it ? it.place || null : null, desc: it ? it.desc || '' : '', cost: it ? it.cost || '' : '', more: opts.mode === 'edit', results: null, ref: refPlace, msg: '', info: it ? it._info || null : null, fill: null, filledFor: '', catSet: false };
   // the day it's on, and the day it's moving to (journeys keep theirs: they're tied to tickets and the flight tracker)
-  edState.toDay = edState.dayId; edState.canMove = !it || movable(it);
+  edState.toDay = edState.dayId; edState.canMove = !it || movable(it); edState.ref0 = edState.ref;
   edState.home = it && !it._added ? (ORIG.get(it.id) || {}).d : null;
   edState.t0 = { start: edState.start, end: edState.end };
   renderEditor(); scrim.style.zIndex = 970; scrim.classList.add('on'); EY.set(innerHeight); EY.to(0, { response: 0.42, damping: 0.88 });
@@ -1818,7 +1818,7 @@ async function runFill(s, auto) {
   if (s.fill && s.fill.done) revertFill(s); // a new name: what the last one filled in goes first
   s.fill = { busy: true }; s.filledFor = name; s.msg = '';
   if (live()) { const row = document.getElementById('f-fill'); if (row) row.outerHTML = fillRow(s); }
-  const d = DAYS.find((x) => x.id === s.dayId) || day;
+  const d = DAYS.find((x) => x.id === (s.toDay || s.dayId)) || day;
   let r = null, found = {};
   try { r = await store.api('fill', { name, city: d.city, date: d.date, near: (s.ref && s.ref.name) || '' }); found = await findPlace(r, s.ref).catch(() => ({})); }
   catch (err) { s.msg = err.pin ? 'Filling in needs the PIN.' : navigator.onLine === false ? 'Filling in needs a connection.' : "Couldn't fill this one in. Add the details yourself."; r = null; }
@@ -1931,14 +1931,24 @@ async function searchPlaces(q) {
   if (!edState) return; readFormSafe(); renderEditor(); const q2 = document.getElementById('f-q'); q2.value = q;
 }
 function readFormSafe() { try { readForm(); } catch {} }
+// a stop leaving a day (moved, or reset back to its own): that day's Reorder forgets its place and time
+function dropFromOrder(dayId, id) {
+  const ok = 'ord-' + dayId, o = CUSTOM()[ok]; if (!o || !((o.order || []).includes(id) || (o.times && id in o.times))) return;
+  const t = { ...(o.times || {}) }; delete t[id]; const order = (o.order || []).filter((x) => x !== id); const rest = { ...o, order, times: t }; delete rest.ts;
+  store.setCustom(ok, order.length || Object.keys(t).length ? rest : null);
+}
+// where a place search or filling in looks near: the stop before on that day, else its hotel
+function refPlaceOn(dayId, after) {
+  const d = DAYS.find((x) => x.id === dayId); const evs = dayItems(d, { who: 'all' }).filter((x) => x.type === 'event'); const k = after == null ? evs.length - 1 : evs.findIndex((x) => x.id === after);
+  for (let j = k; j >= 0; j--) if (evs[j] && evs[j].place) return evs[j].place; return HOTELS.find((x) => x.id === d.hotel);
+}
 function saveEditor() {
   readForm(); const s0 = edState; if (!s0.title) { s0.msg = 'Give the stop a name first.'; renderEditor(); return; }
   const timeChanged = s0.start !== s0.t0.start || s0.end !== s0.t0.end;
   // a time typed in here wins over the one a reorder gave the stop
   if (timeChanged && s0.it) { const ok = 'ord-' + s0.dayId, o = CUSTOM()[ok]; if (o && o.times && s0.it.id in o.times) { const t = { ...o.times }; delete t[s0.it.id]; store.setCustom(ok, { ...o, times: t }); } }
   // moving to another day: the day it leaves forgets where a reorder put it
-  const moving = s0.it && s0.toDay !== s0.dayId;
-  if (moving) { const ok = 'ord-' + s0.dayId, o = CUSTOM()[ok]; if (o && ((o.order || []).includes(s0.it.id) || (o.times && s0.it.id in o.times))) { const t = { ...(o.times || {}) }; delete t[s0.it.id]; const order = (o.order || []).filter((x) => x !== s0.it.id); const rest = { ...o, order, times: t }; delete rest.ts; store.setCustom(ok, order.length || Object.keys(t).length ? rest : null); } }
+  if (s0.it && s0.toDay !== s0.dayId) dropFromOrder(s0.dayId, s0.it.id);
   if (s0.mode === 'add' || (s0.it && s0.it._added)) {
     const id = s0.mode === 'add' ? 'u-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) : s0.it.id;
     const prev = s0.mode === 'add' ? {} : CUSTOM()[id] || {};
@@ -1965,8 +1975,8 @@ function saveEditor() {
 edEl.addEventListener('click', (e) => {
   if (!edState) return;
   if (e.target.closest('[data-edx]')) { closeEditor(); return; }
+  const dy = e.target.closest('[data-fday]'); if (dy) { readForm(); edState.toDay = dy.dataset.fday; edState.ref = edState.toDay === edState.dayId ? edState.ref0 : refPlaceOn(edState.toDay, null); autoFill(); renderEditor(); buzz(6); return; }
   if (!e.target.closest('[data-ffill], [data-fundo], [data-fsave]')) autoFill();
-  const dy = e.target.closest('[data-fday]'); if (dy) { readForm(); edState.toDay = dy.dataset.fday; renderEditor(); buzz(6); return; }
   const w = e.target.closest('[data-fwho]'); if (w) { readForm(); edState.who = w.dataset.fwho; renderEditor(); return; }
   const c = e.target.closest('[data-fcat]'); if (c) { readForm(); edState.cat = c.dataset.fcat; edState.catSet = true; renderEditor(); return; }
   if (e.target.closest('[data-ffill]')) { runFill(edState, false); return; }
@@ -1979,7 +1989,7 @@ edEl.addEventListener('click', (e) => {
     navigator.geolocation.getCurrentPosition((pos) => { if (!edState) return; edState.place = { name: edState.title || 'Pinned spot', lat: +pos.coords.latitude.toFixed(5), lng: +pos.coords.longitude.toFixed(5) }; edState.msg = ''; renderEditor(); }, () => { if (!edState) return; edState.msg = 'Could not get your location. Check location permission.'; renderEditor(); }, { enableHighAccuracy: true, timeout: 10000 }); return; }
   if (e.target.closest('[data-fsave]')) { saveEditor(); return; }
   if (e.target.closest('[data-fhide]')) { const id = edState.it.id; const prev = CUSTOM()[id] || {}; const hid = !edState.it.hidden; const patch = { ...prev }; delete patch.ts; if (hid) patch.hidden = true; else delete patch.hidden; store.setCustom(id, Object.keys(patch).length ? patch : null); closeEditor(); renderDay({ keepScroll: true, keepSel: true }); return; }
-  if (e.target.closest('[data-freset]')) { const id = edState.it.id; store.setCustom(id, null); closeEditor(); renderDay({ keepScroll: true, selId: id }); return; }
+  if (e.target.closest('[data-freset]')) { const id = edState.it.id; if (edState.it._movedFrom) dropFromOrder(edState.dayId, id); store.setCustom(id, null); closeEditor(); renderDay({ keepScroll: true, selId: id }); return; }
   if (e.target.closest('[data-fdel]')) { if (!confirm('Delete this stop for everyone?')) return; store.setCustom(edState.it.id, null); closeEditor(); renderDay({ keepScroll: true }); return; }
 });
 // leaving the name (to the time, the place, anywhere) is when the rest gets filled in
