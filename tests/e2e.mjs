@@ -1127,6 +1127,12 @@ for (const [t, test] of [
   await pg.tap('#f-title'); await pg.fill('#f-title', 'Yanaka Ginza street'); await pg.tap('[data-fsave]'); await pg.waitForTimeout(5500);
   const fixed = addedIds().find(([, c]) => c.title === 'Yanaka Ginza street');
   ok('fill-in: a name corrected while filling in is asked about again once saved', fills === 2 && fixed && fixed[1].info && fixed[1].info.ja === '谷中銀座商店街', `${fills} asks, ${JSON.stringify(fixed && fixed[1]).slice(0, 120)}`);
+  // the name typed, then another day picked while the first answer is out: it's asked again for that day's city
+  const cities = []; pg.on('request', (r) => { if (/\/api\/fill$/.test(r.url())) cities.push(JSON.parse(r.postData() || '{}').city); });
+  await pg.evaluate(() => document.querySelector('[data-addend]').click()); await pg.waitForTimeout(700);
+  await pg.tap('#f-title'); await pg.fill('#f-title', 'Yanaka Ginza shops'); await pg.tap('[data-fday="d08"]'); await pg.waitForTimeout(4500);
+  ok('fill-in: picking another day while filling in asks again for that day\'s city', cities[0] === 'Tokyo' && cities[cities.length - 1] === 'Kyoto' && /Filled in/.test(await pg.textContent('#f-fill')), cities.join());
+  await pg.tap('[data-edx]'); await pg.waitForTimeout(400); wait = 0;
   const { offline: off } = await import(REPO + '/js/offline.js');
   ok('fill-in: Save whole trip includes added stops\' photos', off({ DAYS: [], HOTELS: [], PLACES: {} }).allPhotos(JSON.parse(store.get('custom') || '{}')).size >= 2);
   ok('fill-in: the photo and the map pin come from Wikipedia, no map search needed', asked.includes('en.wikipedia.org') && !asked.includes('nominatim.openstreetmap.org'), [...new Set(asked)].join(','));

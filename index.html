@@ -1812,7 +1812,7 @@ function autoFill() { if (!edState) return; readFormSafe(); if (canAutoFill(edSt
 async function runFill(s, auto) {
   const live = () => edState === s;
   if (live()) readFormSafe();
-  const name = s.title;
+  const name = s.title, dayAsked = s.toDay || s.dayId;
   if (name.length < 2 || SANDBOX) { if (!auto && live()) { s.msg = SANDBOX ? 'Filling in is off in the practice tour.' : 'Type a name first.'; rerenderKeep(); } return; }
   if (s.fill && s.fill.busy) return;
   if (s.fill && s.fill.done) revertFill(s); // a new name: what the last one filled in goes first
@@ -1824,6 +1824,8 @@ async function runFill(s, auto) {
   catch (err) { s.msg = err.pin ? 'Filling in needs the PIN.' : navigator.onLine === false ? 'Filling in needs a connection.' : "Couldn't fill this one in. Add the details yourself."; r = null; }
   if (live()) readFormSafe();
   // the name changed while it was out: this answer is for the old one (a stop saved meanwhile asks again for its name)
+  // another day picked while it was out: this answer is for the old day's city, so ask again for the new one
+  if (s.title === name && (s.toDay || s.dayId) !== dayAsked) { s.fill = null; s.filledFor = ''; return runFill(s, true); }
   if (s.title !== name) { s.fill = null; if (!live() && s.savedId && s.title.length >= 2) return runFill(s, true); if (live()) rerenderKeep(); else if (s.savedId) saveFill(s, false); return; }
   if (r) applyFill(s, r, found); else s.fill = null;
   if (live()) rerenderKeep();
@@ -1975,7 +1977,7 @@ function saveEditor() {
 edEl.addEventListener('click', (e) => {
   if (!edState) return;
   if (e.target.closest('[data-edx]')) { closeEditor(); return; }
-  const dy = e.target.closest('[data-fday]'); if (dy) { readForm(); edState.toDay = dy.dataset.fday; edState.ref = edState.toDay === edState.dayId ? edState.ref0 : refPlaceOn(edState.toDay, null); autoFill(); renderEditor(); buzz(6); return; }
+  const dy = e.target.closest('[data-fday]'); if (dy) { readForm(); if (dy.dataset.fday !== edState.toDay && edState.fill && edState.fill.done) { revertFill(edState); edState.filledFor = ''; } edState.toDay = dy.dataset.fday; edState.ref = edState.toDay === edState.dayId ? edState.ref0 : refPlaceOn(edState.toDay, null); autoFill(); renderEditor(); buzz(6); return; }
   if (!e.target.closest('[data-ffill], [data-fundo], [data-fsave]')) autoFill();
   const w = e.target.closest('[data-fwho]'); if (w) { readForm(); edState.who = w.dataset.fwho; renderEditor(); return; }
   const c = e.target.closest('[data-fcat]'); if (c) { readForm(); edState.cat = c.dataset.fcat; edState.catSet = true; renderEditor(); return; }
