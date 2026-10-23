@@ -696,7 +696,7 @@ function allStops() {
   for (const d of DAYS) for (const it of d.items) {
     const pick = it.type === 'choice' ? store.getChoice(it.id, it.default) : '', on = (o) => o.id === pick || (!it.options.some((y) => y.id === pick) && o === it.options[0]);
     const evs = it.type === 'event' ? [[it, false]] : it.type === 'choice' ? it.options.flatMap((o) => (o.items || []).map((e) => [e, !on(o)])) : [];
-    for (const [e, off] of evs) { const c = C[e.id] || {}; if (c.hidden) continue; out.push({ id: e.id, d, title: c.title || e.title, place: (c.place && c.place.name) || (e.place && e.place.name) || '', ll: llOf(c.place) || llOf(e.place), who: c.who || e.who || 'all', off }); }
+    for (const [e, off] of evs) { const c = C[e.id] || {}; if (c.hidden) continue; const to = (!c.added && dayOf(c.day)) || null; out.push({ id: e.id, d: to || d, title: c.title || e.title, place: (c.place && c.place.name) || (e.place && e.place.name) || '', ll: llOf(c.place) || llOf(e.place), who: c.who || e.who || 'all', off: off && !to }); } // moved to another day: on that day's route
   }
   for (const [id, c] of Object.entries(C)) if (c && c.added && !c.hidden && dayOf(c.day)) out.push({ id, d: dayOf(c.day), title: c.title || 'New stop', place: (c.place && c.place.name) || '', ll: llOf(c.place), who: c.who || 'all' });
   return out;
@@ -986,7 +986,7 @@ function stopIndex() {
   for (const d of DAYS) for (const it of d.items) { if (it.type === 'event') byId[it.id] = { ...it, d }; if (it.type === 'choice') for (const o of it.options) for (const y of o.items || []) byId[y.id] = { ...y, d }; }
   for (const [id, c] of Object.entries(C)) {
     if (c.added) byId[id] = { id, title: c.title || 'New stop', time: c.time || '', d: dayOf(c.day), place: c.place || null, cat: c.cat, who: c.who, desc: c.desc, cost: c.cost, info: c.info || null, from: c.from };
-    else if (byId[id]) { for (const k of ['title', 'time', 'desc', 'cost', 'who']) if (c[k] != null) byId[id][k] = c[k]; if ('place' in c) byId[id].place = c.place; if (c.cat) byId[id].cat = c.cat; }
+    else if (byId[id]) { for (const k of ['title', 'time', 'desc', 'cost', 'who']) if (c[k] != null) byId[id][k] = c[k]; if ('place' in c) byId[id].place = c.place; if (c.cat) byId[id].cat = c.cat; if (dayOf(c.day)) byId[id].d = dayOf(c.day); }
   }
   return byId;
 }
@@ -1251,7 +1251,7 @@ function renderStamps() {
 function stamped() {
   const checks = store.state.checks || {}, C = store.state.custom || {}; const byId = {};
   for (const d of DAYS) for (const it of d.items) { if (it.type === 'event') byId[it.id] = { ...it, d }; if (it.type === 'choice') for (const o of it.options) for (const y of o.items || []) byId[y.id] = { ...y, d }; }
-  for (const [id, c] of Object.entries(C)) { if (c.added) byId[id] = { id, title: c.title || 'New stop', time: c.time || '', d: dayOf(c.day) }; else if (byId[id]) { if (c.title) byId[id].title = c.title; if (c.time) byId[id].time = c.time; } }
+  for (const [id, c] of Object.entries(C)) { if (c.added) byId[id] = { id, title: c.title || 'New stop', time: c.time || '', d: dayOf(c.day) }; else if (byId[id]) { if (c.title) byId[id].title = c.title; if (c.time) byId[id].time = c.time; if (dayOf(c.day)) byId[id].d = dayOf(c.day); } }
   const groups = new Map();
   for (const id of Object.keys(checks)) { const e = byId[id] || { id, title: id, d: null }; const k = e.d ? e.d.id : 'zz'; if (!groups.has(k)) groups.set(k, [e.d, []]); groups.get(k)[1].push(e); }
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, v]) => v);

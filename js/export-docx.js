@@ -46,19 +46,23 @@ const subbar = (text, fill, color = INK) => box(p(r(text, { b: true, c: color, s
 /* ── the plan with everyone's edits applied (mirrors the trip page) ── */
 function parseTime(t, mer) { const m = /(\d{1,2})(?::(\d{2}))?\s*(AM|PM|noon)?/i.exec(t || ''); if (!m) return null; const hr = +m[1]; let ap = m[3] ? m[3].toUpperCase() : mer || (hr >= 1 && hr <= 6 ? 'PM' : 'AM'); if (ap === 'NOON') ap = 'PM'; let h = hr % 12; if (ap === 'PM') h += 12; return h * 60 + +(m[2] || 0); }
 function startMin(e) { const parts = (e.time || '').replace(/~/g, '').split(/[–-]/).map((s) => s.trim()).filter(Boolean); if (!parts.length) return null; const mer2 = parts[1] && (/(AM|PM)/i.exec(parts[1]) || [])[1]; return parseTime(parts[0], mer2); }
-export function planItems(d, st) {
+export function planItems(d, st, days = [d]) {
   const C = st.custom || {}, CH = st.choices || {};
+  // a stop moved to another day (its edit's `day`) leaves this one, and stops moved here join it
+  const away = (it) => { const c = C[it.id]; return !!(c && !c.added && c.day && c.day !== d.id); };
   const patch = (it) => { const c = C[it.id]; if (it.type !== 'event' || !c || c.added) return it; const o = { ...it, _edited: Object.keys(c).some((k) => k !== 'hidden' && k !== 'ts') };
     for (const k of ['title', 'time', 'desc', 'cost', 'who']) if (c[k] != null) o[k] = c[k];
     if ('place' in c) o.place = c.place; if (c.hidden) o.hidden = true; return o; };
   const items = [];
   for (const raw of d.items) {
-    if (raw.type === 'choice') { const id = CH[raw.id] || raw.default; const o = raw.options.find((y) => y.id === id) || raw.options[0]; items.push({ ...raw, _chosen: o }); (o.items || []).map(patch).forEach((y) => items.push(y)); }
-    else items.push(patch(raw));
+    if (raw.type === 'choice') { const id = CH[raw.id] || raw.default; const o = raw.options.find((y) => y.id === id) || raw.options[0]; items.push({ ...raw, _chosen: o }); (o.items || []).filter((y) => !away(y)).map(patch).forEach((y) => items.push(y)); }
+    else if (!(raw.type === 'event' && away(raw))) items.push(patch(raw));
   }
+  const movedIn = [];
+  for (const dd of days) if (dd !== d) for (const raw of dd.items) for (const y of raw.type === 'choice' ? raw.options.flatMap((o) => o.items || []) : [raw]) { const c = C[y.id]; if (y.type === 'event' && c && !c.added && c.day === d.id) movedIn.push(patch(y)); }
   const added = Object.entries(C).filter(([, c]) => c.added && c.day === d.id).sort((a, b) => String(a[1].ts).localeCompare(String(b[1].ts)))
     .map(([id, c]) => ({ type: 'event', id, title: c.title || 'New stop', time: c.time || '', desc: c.desc || '', cost: c.cost || '', who: c.who || 'all', place: c.place || null, hidden: !!c.hidden, _added: true, _after: c.after }));
-  for (const a of added) {
+  for (const a of [...added, ...movedIn]) {
     const s0 = startMin(a);
     let at = s0 == null && a._after ? items.findIndex((y) => y.id === a._after) : -1;
     if (at >= 0) { items.splice(at + 1, 0, a); continue; }
@@ -122,7 +126,7 @@ export function buildTripDocx({ TRIP, DAYS, HOTELS, BOOKINGS, FOOD, TIPS, state,
   const NOTE = { warn: ['FFF2CC', GOLD, 'Heads up'], decide: ['FFF2CC', GOLD, 'Decide'], book: ['FFF2CC', RED, 'Book ahead'], tip: ['E2EFDA', GREEN, 'Tip'], note: ['F0F0F0', GREY, 'Note'] };
   for (const d of DAYS) {
     const h = hotelOf(d.hotel);
-    const items = planItems(d, st); const evWho = [...new Set(items.filter((y) => y.type === 'event').map((y) => y.who || 'all'))];
+    const items = planItems(d, st, DAYS); const evWho = [...new Set(items.filter((y) => y.type === 'event').map((y) => y.who || 'all'))];
     const dayWho = evWho.length === 1 && evWho[0] !== 'all' ? evWho[0] : null; // a day that belongs to one couple says so once, in the header
     const dateHead = `${fmtDate(d.date, { weekday: 'short' }).toUpperCase()} ${fmtDate(d.date, { month: 'short', day: 'numeric' }).toUpperCase()}  —  ${d.title.toUpperCase()}`;
     const head = table([

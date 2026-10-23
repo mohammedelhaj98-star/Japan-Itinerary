@@ -298,6 +298,27 @@ ok('the copy is the last stop of that day', (await domOrder(A.page)).pop() === c
 // tidy up for the rest of the run
 await A.page.evaluate(async (id) => { const h = { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }; await fetch('/api/custom', { method: 'POST', headers: h, body: JSON.stringify({ id, value: null }) }); await fetch('/api/choices', { method: 'POST', headers: h, body: JSON.stringify({ id: 'sk-d07-deer', value: '' }) }); }, cp[0]);
 await A.page.goto(B + '/japan/?d=d07'); await A.page.waitForTimeout(1500);
+// Move to another day: the editor's Day row moves a stop of the plan (one on a choice's option here) to day 8, for everyone
+const edOpen = async (pg, id) => { await pg.evaluate((x) => document.querySelector(`.pass[data-id="${x}"] [data-edit]`).click(), id); await pg.waitForTimeout(700); };
+await edOpen(A.page, 'd07-bus');
+ok('a journey has no Day row (it stays on its ticket\'s day)', !(await A.page.$('#f-day')));
+await A.page.click('[data-edx]'); await A.page.waitForTimeout(400);
+await edOpen(A.page, 'd07-mochi');
+ok('the Day row lists every day with its city, this day picked', await A.page.$$eval('#f-day [data-fday]', (b) => b.length > 15 && b.find((x) => x.classList.contains('on')).dataset.fday === 'd07' && /Day 8.*Fri 23.*Kyoto/.test(b.find((x) => x.dataset.fday === 'd08').textContent)));
+await A.page.click('[data-fday="d08"]'); await A.page.waitForTimeout(300);
+ok('picking a day says where it moves to, and the city', /Moves from Day 7 to Day 8, when you're in Kyoto/.test(await A.page.textContent('.fmove')), await A.page.textContent('.fmove'));
+await A.page.screenshot({ path: SH + 'move-day.png' });
+await A.page.click('[data-fsave]'); await A.page.waitForTimeout(1500);
+ok('the move is saved for everyone as the stop\'s day', (await shared(A.page)).custom['d07-mochi'].day === 'd08', JSON.stringify((await shared(A.page)).custom['d07-mochi']));
+ok('after saving, the trip shows day 8 with the stop on it, slotted by its time', /Day 8/.test(await A.page.textContent('.hd .eb')) && (await domOrder(A.page)).includes('d07-mochi'));
+await A.page.screenshot({ path: SH + 'moved-day8.png' });
+await A.page.goto(B + '/japan/?d=d07'); await A.page.waitForTimeout(1500);
+ok('the day it left no longer has it', !(await domOrder(A.page)).includes('d07-mochi'));
+await A.page.goto(B + '/japan/?d=d08'); await A.page.waitForTimeout(1500);
+await edOpen(A.page, 'd07-mochi');
+ok('the editor says where it was first planned', /Moved here from Day 7/.test(await A.page.textContent('.fmove')));
+await A.page.click('[data-fday="d07"]'); await A.page.click('[data-fsave]'); await A.page.waitForTimeout(1500);
+ok('tapping its own day again puts it back, with nothing left over', !(await shared(A.page)).custom['d07-mochi'] && (await domOrder(A.page)).includes('d07-mochi') && /Day 7/.test(await A.page.textContent('.hd .eb')));
 
 // 3 · money: expenses shared between two phones (the money page, /japan/money)
 const N = await phone();
