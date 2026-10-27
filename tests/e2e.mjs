@@ -53,7 +53,7 @@ const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Ban
 const said = (c) => typeof c === 'string' ? c : ((c.find((x) => x.type === 'text') || {}).text || '');
 // (asked to sort things into categories: masks, serums and creams are skincare, the rest sweets)
 const sorted = (text) => ({ items: [...text.matchAll(/^([a-z0-9_-]+) \| (.+)$/gim)].map(([, id, name]) => ({ id, cat: /mask|serum|cream/i.test(name) ? 'skincare' : 'sweets' })) });
-const FAKE_AI = { run: async (m, inp) => /^Sort each thing/.test(said(inp.messages[0].content)) ? { response: sorted(said(inp.messages[0].content)) } : /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana', cat: /necklace/i.test(said(inp.messages[0].content)) ? 'fashion' : 'sweets' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }, { name: 'Ramen', jp: 'ラーメン', price: 980, qty: 1 }, { name: 'Extra noodles', jp: '替玉', note: 'a second serving of noodles for the same soup', tags: ['Meal', 'noodles', 'meal'], price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
+const FAKE_AI = { run: async (m, inp) => /^Sort each thing/.test(said(inp.messages[0].content)) ? { response: sorted(said(inp.messages[0].content)) } : /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana', cat: /necklace/i.test(said(inp.messages[0].content)) ? 'fashion' : 'sweets' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], title: 'Ramen', lines: [{ name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }, { name: 'Ramen', jp: 'ラーメン', price: 980, qty: 1 }, { name: 'Extra noodles', jp: '替玉', note: 'a second serving of noodles for the same soup', tags: ['Meal', 'noodles', 'meal'], price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
@@ -105,10 +105,10 @@ const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.
   const { receiptRequest, readReceiptClaude, CLAUDE_MODEL } = await import(REPO + '/lib/scan-claude.js');
   const photo = 'data:image/webp;base64,' + fs.readFileSync(REPO + '/img/places/nakano-broadway.webp').toString('base64');
   const rq = receiptRequest('sk-test', photo); const body = JSON.parse(rq.body);
-  ok('receipt reader: the request the SDK used to send, without the SDK', rq.url === 'https://api.anthropic.com/v1/messages?beta=true' && rq.headers['x-api-key'] === 'sk-test' && rq.headers['anthropic-version'] === '2023-06-01' && body.model === CLAUDE_MODEL && body.output_config.format.type === 'json_schema' && body.output_config.format.schema.required.includes('lines') && body.messages[0].content[0].source.media_type === 'image/webp' && body.messages[0].content[0].source.data.length > 1000 && /receipt from Japan/.test(body.messages[0].content[1].text), JSON.stringify([rq.url, Object.keys(rq.headers), body.model]));
+  ok('receipt reader: the request the SDK used to send, without the SDK', rq.url === 'https://api.anthropic.com/v1/messages?beta=true' && rq.headers['x-api-key'] === 'sk-test' && rq.headers['anthropic-version'] === '2023-06-01' && body.model === CLAUDE_MODEL && body.output_config.format.type === 'json_schema' && body.output_config.format.schema.required.includes('lines') && body.output_config.format.schema.required.includes('title') && body.messages[0].content[0].source.media_type === 'image/webp' && body.messages[0].content[0].source.data.length > 1000 && /receipt from Japan/.test(body.messages[0].content[1].text), JSON.stringify([rq.url, Object.keys(rq.headers), body.model]));
   ok('receipt reader: only a photo as a data URL goes out', receiptRequest('k', 'https://x/y.jpg') === null && receiptRequest('k', 'data:text/plain;base64,aGk=') === null);
   const answer = (status, json, calls = []) => async (url, init) => { calls.push({ url, init }); return new Response(typeof json === 'string' ? json : JSON.stringify(json), { status, headers: { 'content-type': 'application/json' } }); };
-  const said = { total: 1960, cash_given: null, change: null, tax: 178, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', taxfree: false, lines: [{ name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }, { name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }], items: ['Ramen'] };
+  const said = { total: 1960, cash_given: null, change: null, tax: 178, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', taxfree: false, lines: [{ name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }, { name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }], items: ['Ramen'], title: 'Ramen' };
   const good = { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(said) }] };
   const calls = []; const got = await readReceiptClaude('k', photo, { fetchFn: answer(200, good, calls) });
   ok('receipt reader: the answer is read back, with a timeout on the call', got && got.total === 1960 && got.lines.length === 2 && calls.length === 1 && calls[0].init.signal instanceof AbortSignal && calls[0].init.headers['x-api-key'] === 'k');
@@ -121,7 +121,7 @@ const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.
   const realFetch = globalThis.fetch; globalThis.fetch = answer(200, good);
   try {
     const r = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
-    ok('/api/scan asks Claude when the key is set and keeps its lines', r.total === 1960 && r.model === CLAUDE_MODEL && Array.isArray(r.lines) && r.lines.length === 2 && r.shop_en === 'Ichiran Dotonbori' && r.lines[0].jp === 'ラーメン' && !('note' in r.lines[0]), JSON.stringify(r).slice(0, 200));
+    ok('/api/scan asks Claude when the key is set and keeps its lines', r.total === 1960 && r.model === CLAUDE_MODEL && Array.isArray(r.lines) && r.lines.length === 2 && r.shop_en === 'Ichiran Dotonbori' && r.title === 'Ramen' && r.lines[0].jp === 'ラーメン' && !('note' in r.lines[0]), JSON.stringify(r).slice(0, 200));
     globalThis.fetch = answer(500, 'down');
     const r2 = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
     ok('/api/scan falls back to Workers AI when Claude is down', r2.total === 2380 && r2.model !== CLAUDE_MODEL, JSON.stringify(r2).slice(0, 120));
@@ -346,7 +346,7 @@ ok('expenses and money settings need the PIN to read', !Object.keys(stOpen.expen
 // scan a receipt: the total is checked against cash given − change, the shop and day fill in, before-tax is a tap away
 await N.page.tap('#addfab'); await N.page.waitForTimeout(400);
 await N.page.setInputFiles('#fscan', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForTimeout(1500);
-ok('scan fills in what was paid, the shop and the day', (await N.page.inputValue('#famt')) === '2380' && (await N.page.inputValue('#ftitle')) === 'Ichiran Dotonbori' && /Day 7/.test(await N.page.textContent('[data-fexp="day"]')), await N.page.inputValue('#famt'));
+ok('scan fills in what was paid, what was bought at which shop, and the day', (await N.page.inputValue('#famt')) === '2380' && (await N.page.inputValue('#ftitle')) === 'Ramen · Ichiran Dotonbori' && /Day 7/.test(await N.page.textContent('[data-fexp="day"]')), await N.page.inputValue('#famt'));
 ok('scan attaches the photo as the receipt', !!(await N.page.$('.rcpt img')));
 { // the receipt in English, under everything: each line with what it is, the name as printed, its price, and what was paid
   const rx = await N.page.$$eval('#fpage .rxen .rxrow', (r) => r.map((e) => e.textContent));
@@ -429,7 +429,7 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   ok('receipt in English: an older expense with a photo offers to read it', !!(await p.$('[data-rxgo]')));
   await p.tap('[data-rxgo]'); await p.waitForTimeout(1500);
   const now = Object.entries(exMap()).find(([, x]) => x.title === 'Old receipt test');
-  ok('receipt in English: read from the saved photo, shown and kept at once, without counting as an edit', (await p.$$('#fpage .rxen .rxrow')).length === 3 && now && now[1].rx && now[1].rx.lines.length === 3 && now[1].at === old[1].at && (await p.inputValue('#famt')) === '2380', now && JSON.stringify(now[1]).slice(0, 300));
+  ok('receipt in English: read from the saved photo, shown and kept at once, without counting as an edit', (await p.$$('#fpage .rxen .rxrow')).length === 3 && now && now[1].rx && now[1].rx.lines.length === 3 && now[1].at === old[1].at && (await p.inputValue('#famt')) === '2380' && (await p.inputValue('#ftitle')) === 'Old receipt test', now && JSON.stringify(now[1]).slice(0, 300));
   await p.tap('[data-rmreceipt]'); await p.waitForTimeout(200);
   ok('receipt in English: goes with the photo when the receipt is removed', !(await p.$('#fpage .rxen')));
   await p.tap('[data-fcancel]'); await p.waitForTimeout(400);
@@ -482,12 +482,30 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.tap('[data-rxall]'); await p.waitForTimeout(2500); await p.unroute('**/api/scan');
   const st2 = exMap()[stId];
   ok('Settings: a receipt read before tags is offered again, and a reading with no lines keeps the ones it has', line2 === '1 saved receipt to read' && st2.rx.lines.length === 3 && /couldn't be read/.test(await p.textContent('#rx-line')), `${line2} ${JSON.stringify(st2.rx).slice(0, 80)}`);
+  // an expense the scan named after its shop is renamed for what was bought; one with a typed name keeps it
+  await p.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: { ...x, title: 'Ichiran Dotonbori', rx: { ...x.rx, title: '' } } }) }); }, [stId, exMap()[stId]]);
+  const oldId = Object.entries(exMap()).find(([, x]) => x.title === 'Old receipt test')[0];
+  await p.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: { ...x, rx: { ...x.rx, title: '' } } }) }); }, [oldId, exMap()[oldId]]);
+  await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
+  const line3 = await p.textContent('#rx-line').catch(() => '');
+  await p.tap('[data-rxall]'); await p.waitForTimeout(3000);
+  const line4 = await p.textContent('#rx-line').catch(() => '');
+  ok('Settings: Read all renames an expense named after its shop for what was bought, and keeps a typed name', line3 === '2 saved receipts to read' && exMap()[stId].title === 'Ramen · Ichiran Dotonbori' && exMap()[stId].rx.title === 'Ramen' && exMap()[oldId].title === 'Old receipt test' && line4 === '2 receipts read, 1 renamed for what was bought', `${line3} / ${line4} / ${exMap()[stId].title} / ${exMap()[oldId].title}`);
   await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
-  for (const title of ['Old receipt test', 'Settings receipt test']) {
-    const e = Object.entries(exMap()).find(([, x]) => x.title === title);
-    await p.tap(`[data-ex="${e && e[0]}"]`); await p.waitForTimeout(500); await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
+  // the name in the form: the shop goes when the name wouldn't fit one line, or when it's only in Japanese
+  const named = async (said) => {
+    await p.route('**/api/scan', (r) => r.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ total: 1500, lines: [{ name: 'Pocky', price: 1500, qty: 1 }], ...said }) }));
+    await p.tap('#addfab'); await p.waitForTimeout(400); await p.setInputFiles('#fscan', REPO + '/img/places/nakano-broadway.webp'); await p.waitForTimeout(1200);
+    const t = await p.inputValue('#ftitle'); await p.tap('[data-fcancel]'); await p.waitForTimeout(400); await p.unroute('**/api/scan'); return t;
+  };
+  const n1 = await named({ shop: 'ドン・キホーテ 道頓堀店', shop_en: 'Don Quijote Dotonbori', title: 'Snacks and skincare' });
+  const n2 = await named({ shop: '松屋', shop_en: '松屋', title: 'Beef bowl' });
+  const n3 = await named({ shop: 'ローソン', shop_en: 'Lawson' });
+  ok('scan names: summary without the shop when both would not fit; no Japanese shop; the shop alone from the backup reader', n1 === 'Snacks and skincare' && n2 === 'Beef bowl' && n3 === 'Lawson', `${n1} / ${n2} / ${n3}`);
+  for (const id of [oldId, stId]) {
+    await p.tap(`[data-ex="${id}"]`); await p.waitForTimeout(500); await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
   }
-  ok('receipt in English: test expenses removed', !Object.values(exMap()).some((x) => /receipt test/.test(x.title)));
+  ok('receipt in English: test expenses removed', !exMap()[oldId] && !exMap()[stId] && !Object.values(exMap()).some((x) => /receipt test/.test(x.title)));
 }
 ok('scanning needs the PIN', (await fetch(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ photo: 'data:image/jpeg;base64,AAAA' }) })).status === 403);
 // add for Naf + Sara, undo it; then delete the ramen and undo that
