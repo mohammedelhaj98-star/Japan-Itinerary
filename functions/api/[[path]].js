@@ -266,10 +266,11 @@ function tidyScan(data, m) {
     // each line with its price, for splitting a receipt by item and for the receipt in English: { name, jp?, note?, price, qty }
     lines: Array.isArray(data.lines) ? data.lines.slice(0, 40).map((l) => l && typeof l === 'object' && rxLine(l)).filter((l) => l && l.name && l.price && Math.abs(l.price) < 10000000) : [] };
 }
-// one receipt line, trimmed: the English name, the name as printed and a few words on what it is (both only when given)
+// one receipt line, trimmed: the English name, the name as printed, a few words on what it is and the kinds of thing it
+// is, for search (the last three only when given)
 function rxLine(l) {
-  const jp = clean(l.jp, 40), note = clean(l.note, 60);
-  return { name: clean(l.name, 50), ...(jp && jp !== clean(l.name, 50) ? { jp } : {}), ...(note ? { note } : {}), price: Math.round(+l.price) || 0, qty: Math.max(1, Math.min(99, Math.round(+l.qty) || 1)) };
+  const jp = clean(l.jp, 40), note = clean(l.note, 60), tags = Array.isArray(l.tags) ? [...new Set(l.tags.slice(0, 4).map((t) => clean(t, 20).toLowerCase()).filter(Boolean))] : [];
+  return { name: clean(l.name, 50), ...(jp && jp !== clean(l.name, 50) ? { jp } : {}), ...(note ? { note } : {}), ...(tags.length ? { tags } : {}), price: Math.round(+l.price) || 0, qty: Math.max(1, Math.min(99, Math.round(+l.qty) || 1)) };
 }
 
 // Money moving between people: a settle-up payment (pay), cash handed over or taken out (cash), an IC card top-up (ic).
