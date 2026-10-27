@@ -698,6 +698,9 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .byitem svg { width:15px; height:15px; color:var(--ink3); flex:none; }
 .byitem .linkb { margin-left:auto; min-height:40px; }
 @media (prefers-reduced-motion: reduce) { .ipick .av { transition:none; } }
+/* a search that found something on a receipt: the lines it matched, under the expense */
+.xrow .m small.xhit { color:var(--ink); font-weight:700; }
+.xrow .m small.xhit::before { content:'↳ '; color:var(--ink3); font-weight:400; }
 /* ── the receipt in English, under everything in the form ── */
 .rxen { background:var(--card); border-radius:18px; box-shadow:0 0 0 1px var(--line); overflow:hidden; }
 .rxhead { display:grid; gap:1px; padding:12px 14px 10px; border-bottom:1px solid var(--line); }
@@ -1127,7 +1130,7 @@ function renderExpenses() {
   return [['top', `<div class="top">${viewSeg()}${curSeg()}</div>`], gpass, ['news', newsDrop],
     ['settle', `\n    <p class="sec">Settle up ${modeSeg()}</p>${settleCard()}`],
     ['lhead', `\n    <p class="sec">All expenses <span class="fppl">${dayChip}${S.searchOpen ? '' : `<button class="iconb" data-searchopen aria-label="Search expenses">${SEARCH}</button>`}${IDS.map((i) => `<button data-fperson="${i}" class="${S.fperson === i ? 'on' : ''}" aria-pressed="${S.fperson === i}" aria-label="Only ${P[i].name}'s">${av(i, 'sm')}</button>`).join('')}</span></p>
-    ${S.searchOpen ? `<div class="searchrow"><input class="tin" id="gq" type="search" placeholder="Search expenses" value="${esc(S.q || '')}" autocomplete="off"><button class="linkb hit" data-searchclose>Done</button></div>` : ''}\n    `],
+    ${S.searchOpen ? `<div class="searchrow"><input class="tin" id="gq" type="search" placeholder="Search expenses and what you bought" value="${esc(S.q || '')}" autocomplete="off"><button class="linkb hit" data-searchclose>Done</button></div>` : ''}\n    `],
     ['glist', '<div id="glist">', [listGroup(groupShown())], '</div>']];
 }
 function groupShown() {
@@ -1135,8 +1138,10 @@ function groupShown() {
   return S.ex.filter((x) => !isOwn(x) || visibleTo(x, S.me))
     .filter((x) => !S.fperson || x.payer === S.fperson || x.shares[S.fperson] != null)
     .filter((x) => !S.gday || spread(x).some(([d]) => d === S.gday))
-    .filter((x) => !q || `${x.title} ${CATS[x.cat][0]} ${P[x.payer].name}`.toLowerCase().includes(q));
+    .filter((x) => !q || `${x.title} ${CATS[x.cat][0]} ${P[x.payer].name} ${x.rx ? `${x.rx.shop} ${x.rx.jp || ''}` : ''}`.toLowerCase().includes(q) || rxHits(x, q).length);
 }
+// what was bought: the lines of an expense's receipt in English that a search matches, in English or as printed
+const rxHits = (x, q) => (q && x.rx ? x.rx.lines.filter((l) => `${l.name} ${l.jp || ''} ${l.note || ''}`.toLowerCase().includes(q)) : []);
 // the list alone, while typing a search (the rows it keeps aren't made again)
 function renderGlist() { const g = drawn.find((r) => r.k === 'glist'); if (g) g.kids = patch(g.nodes[0], [listGroup(groupShown())], g.kids); }
 const splitName = (x) => { const k = Object.keys(x.shares); if (Object.values(x.owes).some(Boolean)) return 'Split unevenly'; if (k.length === 4) return 'All four'; if (k.length === 2 && P[k[0]].partner === k[1]) return `${P[k[0]].name} + ${P[k[1]].name}`; if (isOwn(x)) return `Only ${P[x.payer].name}`; return 'Split unevenly'; };
@@ -1172,7 +1177,7 @@ function listGroup(list) {
   return ['card', '<div class="card xlist">', groupByDay(list).flatMap(([d, xs]) => [['h:' + d.id, `<p class="xday"><span>${dayName(d)}</span><span>${fmtY(tot[d.id] ?? 0)}</span></p>`], ...xs.map((x) => {
     const ml = meLine(x);
     return [x.id, swRow(x.id, `<button class="xrow" data-ex="${x.id}"><span class="ic" style="--c:${CATS[x.cat][1]}">${CATS[x.cat][2]}</span>
-    <span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}${x.receipt ? `<span class="clip" aria-label="has a receipt">${CLIP}</span>` : ''}${fresh.has(x.title) ? '<i class="new" aria-label="new"></i>' : ''}</b><small>${P[x.payer].name} paid · ${ml || `${splitName(x)}${isOwn(x) ? ' · not shared' : ''}`}${x.nights > 1 ? ` · ${x.nights} nights` : ''}</small></span>
+    <span class="m"><b>${esc(x.title)}${x.refund ? ' <span class="refund">refund</span>' : ''}${x.taxfree ? ' <span class="tfree">Tax-free</span>' : ''}${x.receipt ? `<span class="clip" aria-label="has a receipt">${CLIP}</span>` : ''}${fresh.has(x.title) ? '<i class="new" aria-label="new"></i>' : ''}</b><small>${P[x.payer].name} paid · ${ml || `${splitName(x)}${isOwn(x) ? ' · not shared' : ''}`}${x.nights > 1 ? ` · ${x.nights} nights` : ''}</small>${rxHits(x, (S.q || '').trim().toLowerCase()).map((l) => `<small class="xhit">${l.qty > 1 ? `${l.qty}× ` : ''}${esc(l.name)} · ${fmtY(l.price)}</small>`).join('')}</span>
     <span class="r"><b>${fmtY(x.yen)}</b><small>${homeAmt(x)}</small>${x.orig && x.orig.ccy !== S.cur && SYM[x.orig.ccy] ? `<small>${SYM[x.orig.ccy]}${x.orig.amt}</small>` : ''}</span></button>`)]; })]), '</div>'];
 }
 
