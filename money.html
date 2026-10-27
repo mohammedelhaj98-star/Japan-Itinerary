@@ -1149,8 +1149,8 @@ function groupShown() {
 // the kinds of thing the reader tagged it as ("snacks" finds Pocky); a plural finds its singular tag
 const rxHits = (x, q) => {
   if (!q || !x.rx) return [];
-  const one = q.length > 3 ? q.replace(/(ies|es|s)$/, (m) => (m === 'ies' ? 'y' : '')) : q;
-  return x.rx.lines.filter((l, i) => `${l.name} ${l.jp || ''} ${l.note || ''}`.toLowerCase().includes(q) || (l.tags || []).some((t) => t === q || t === one || t.startsWith(q)) || (ai.q === q && ai.hits.has(`${x.id}:${i}`)));
+  const one = q.length > 3 ? [q.replace(/ies$/, 'y'), q.replace(/es$/, ''), q.replace(/s$/, '')] : []; // medicines, boxes, candies
+  return x.rx.lines.filter((l, i) => `${l.name} ${l.jp || ''} ${l.note || ''}`.toLowerCase().includes(q) || (l.tags || []).some((t) => t.startsWith(q) || one.includes(t)) || (ai.q === q && ai.hits.has(`${x.id}:${i}`)));
 };
 
 /* ───────── smart search: a small AI model that runs on the phone (all-MiniLM-L6-v2) matches what was bought by

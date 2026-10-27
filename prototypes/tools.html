@@ -1240,7 +1240,9 @@ async function backupNow() {
 // time, and the reading is kept on its expense as soon as it comes (closing the app halfway loses nothing: Read all
 // picks up the rest). Shown on the expense form, like a fresh scan's (money.html rxOf/rxHtml).
 const rxAll = { busy: false, done: 0, n: 0, read: 0 };
-const rxTodo = () => Object.entries(store.getExpenses()).filter(([, x]) => x && !x.kind && typeof x.receipt === 'number' && !x.rx);
+// (one read before items had tags for search is read again, once, to get them)
+const rxStale = (rx) => !rx || (rx.lines.length > 0 && !rx.lines.some((l) => l.tags));
+const rxTodo = () => Object.entries(store.getExpenses()).filter(([, x]) => x && !x.kind && typeof x.receipt === 'number' && rxStale(x.rx));
 const rxOf = (r) => {
   const shop = r.shop_en || r.shop || '';
   return { shop, ...(r.shop && r.shop !== shop ? { jp: r.shop } : {}), total: r.total, ...(r.pretax ? { pretax: r.pretax } : {}), ...(r.taxfree ? { taxfree: true } : {}),
@@ -1251,7 +1253,7 @@ function rxRow() {
   const left = rxTodo().length, s = (n) => (n === 1 ? '' : 's');
   const line = rxAll.busy ? `Reading ${Math.min(rxAll.done + 1, rxAll.n)} of ${rxAll.n}…`
     : rxAll.n ? `${rxAll.read} receipt${s(rxAll.read)} read${left ? ` · <span class="warn">${left} couldn't be read. Tap Read all to try again.</span>` : ''}`
-    : left ? `${left} saved receipt${s(left)} not in English yet` : 'Every saved receipt is in English';
+    : left ? `${left} saved receipt${s(left)} to read` : 'Every saved receipt is in English';
   return `<div class="setrow"><span>Receipts in English<small id="rx-line">${line}</small></span><button class="setb" data-rxall ${rxAll.busy || !left ? 'disabled' : ''}>Read all</button></div>`;
 }
 async function rxReadAll() {
@@ -1262,7 +1264,7 @@ async function rxReadAll() {
       const u = await store.receiptUrl(id, x.receipt); if (!u) throw new Error('no photo');
       const r = await store.api('scan', { photo: await shopPhoto(await (await fetch(u)).blob()) });
       const now = store.getExpenses()[id]; // still there, with the same photo, and not read meanwhile on another phone
-      if (r && r.total && now && !now.rx && now.receipt === x.receipt) { const { ts: _, ...rec } = now; store.setExpense(id, { ...rec, rx: rxOf(r) }); rxAll.read++; }
+      if (r && r.total && now && rxStale(now.rx) && now.receipt === x.receipt) { const { ts: _, ...rec } = now; store.setExpense(id, { ...rec, rx: rxOf(r) }); rxAll.read++; }
     } catch { /* counted as not read: still listed, so Read all tries it again */ }
     rxAll.done++; render();
   };

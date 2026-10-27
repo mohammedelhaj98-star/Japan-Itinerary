@@ -442,7 +442,7 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   ok('search: the line fits inside its row', await p.$eval('#glist .xhit', (e) => e.getBoundingClientRect().bottom <= e.closest('.xrow').getBoundingClientRect().bottom));
   await p.screenshot({ path: SH + 'search-receipts.png' });
   ok('search: an expense matched by its name lists no lines', (await hits('Old receipt')) === '');
-  ok('search: finds a line by the kind of thing it is, plural or not (the tags the reader gave it)', (await hits('meals')) === '2× Extra noodles · ¥204' && (await hits('mea')) === '2× Extra noodles · ¥204');
+  ok('search: finds a line by the kind of thing it is, plural or not (the tags the reader gave it)', (await hits('meals')) === '2× Extra noodles · ¥204' && (await hits('mea')) === '2× Extra noodles · ¥204' && (await hits('noodle')) === '2× Extra noodles · ¥204');
   // smart search: offered under the search box; once on, a model on the phone matches by meaning ("dinner" finds the
   // noodles). The model is a stand-in here: words about eating point one way, everything else another.
   const FAKE_LIB = `export const env = {}; export async function pipeline() { const v = (t) => (/noodle|meal|dinner|eat/i.test(t) ? [1, 0, 0] : [0, 0, 1]); return async (texts) => ({ dims: [texts.length, 3], data: Float32Array.from(texts.flatMap(v)) }); }`;
@@ -458,7 +458,7 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.setInputFiles('#freceipt', REPO + '/img/places/nakano-broadway.webp'); await p.waitForTimeout(600); await p.tap('#fsave'); await p.waitForTimeout(1200);
   await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
   const line0 = await p.textContent('#rx-line').catch(() => '');
-  ok('Settings: says how many saved receipts have no English yet', line0 === '1 saved receipt not in English yet', line0);
+  ok('Settings: says how many saved receipts have no English yet', line0 === '1 saved receipt to read', line0);
   await p.tap('[data-rxall]'); await p.waitForTimeout(2500);
   const st = Object.values(exMap()).find((x) => x.title === 'Settings receipt test'), line1 = await p.textContent('#rx-line').catch(() => '');
   ok('Settings: Read all reads it and keeps the English on the expense', st && st.rx && st.rx.lines.length === 3 && line1 === '1 receipt read' && await p.$eval('[data-rxall]', (b) => b.disabled), `${line1} ${JSON.stringify(st && st.rx).slice(0, 80)}`);
