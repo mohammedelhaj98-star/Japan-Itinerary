@@ -1528,12 +1528,13 @@ function scanLine() {
 async function scanReceipt(src) {
   const id0 = F; F.scanning = true; F.scanErr = null; renderForm();
   let photo; try { photo = typeof src === 'string' ? src : await shrinkPhoto(src); } catch { F.scanning = false; F.scanErr = "That photo couldn't be opened."; return renderForm(); }
-  if (F !== id0) return; F.receipt = photo; F.rmReceipt = false; F.rx = null;
+  if (F !== id0) return; const old = F.rx; F.receipt = photo; F.rmReceipt = false; F.rx = null;
   let r = null; try { r = await scanApi(photo); } catch { r = null; }
   if (F !== id0) return; F.scanning = false;
   if (!r || !r.total) { F.scanErr = navigator.onLine === false ? 'No signal: the receipt is attached, type the amount.' : "Couldn't read the total: the receipt is attached, type the amount."; return renderForm(); }
   F.ccy = 'JPY'; F.fixed = {}; F.amt = String(r.total); F.scan = { total:r.total, pretax:r.pretax || null, shop:r.shop_en || r.shop, lines:Array.isArray(r.lines) ? r.lines.filter((x) => x && x.price > 0) : [] }; F.split = null; F.byItem = null; F.taxfree = !!r.taxfree; F.rx = rxOf(r);
-  if (!F.title.trim() && (r.shop_en || r.shop)) F.title = r.shop_en || r.shop;
+  const name = scanName(r), was = F.title.trim();
+  if (name && (!was || was === F.autoName || shopNamed(was, old))) F.title = F.autoName = name;
   if (r.type && CATS[r.type] && !F.catTouched) { F.cat = r.type; F.catGuess = true; }
   const d = r.date && DAYS.find((x) => x.date === r.date); if (d) F.day = d.id;
   renderForm();
@@ -1546,9 +1547,18 @@ async function scanReceipt(src) {
 const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c.8 3 3.2 5.6 6 7M11 5c-.8 3.4-3.4 6.4-7 8"/><path d="M13 21l4-9 4 9M14.4 18h5.2"/></svg>';
 const rxOf = (r) => {
   const shop = r.shop_en || r.shop || '';
-  return { shop, ...(r.shop && r.shop !== shop ? { jp:r.shop } : {}), total:r.total, ...(r.pretax ? { pretax:r.pretax } : {}), ...(r.taxfree ? { taxfree:true } : {}),
+  return { shop, ...(r.shop && r.shop !== shop ? { jp:r.shop } : {}), ...(r.title ? { title:r.title } : {}), total:r.total, ...(r.pretax ? { pretax:r.pretax } : {}), ...(r.taxfree ? { taxfree:true } : {}),
     lines:(Array.isArray(r.lines) ? r.lines : []).filter((l) => l && l.name && l.price).map(({ name, jp, note, tags, price, qty }) => ({ name, ...(jp ? { jp } : {}), ...(note ? { note } : {}), ...(tags && tags.length ? { tags } : {}), price, qty:qty || 1 })) };
 };
+// The expense's name from its receipt: what was bought, then the shop in English or romaji when that still fits on one
+// line of the list ("Santoku knife · Aritsugu"). A reading with no such name (the backup reader) keeps the shop's name.
+const scanName = (r) => {
+  const what = (r.title || '').trim(), shop = (r.shop_en || '').trim();
+  if (!what) return r.shop_en || r.shop || '';
+  return shop && !/[\u3000-\u9fff\uff00-\uffef]/.test(shop) && what.length + shop.length + 3 <= 30 ? `${what} · ${shop}` : what;
+};
+// a name the scan filled in with the shop's name, which a reading of the receipt may replace (never one someone typed)
+const shopNamed = (title, rx) => !!rx && [rx.shop, rx.jp].includes((title || '').trim());
 function rxHtml() {
   const r = F.rx;
   if (!r) return F.id && F.receipt && !(GUEST && !SANDBOX) ? `<div class="fsec"><div><button class="pill rxgo" data-rxgo ${F.rxBusy ? 'disabled' : ''}>${F.rxBusy ? '<i class="spin"></i>Reading the receipt…' : `${GLOBE}Receipt in English`}</button></div>${F.rxErr ? `<p class="scanl err">${esc(F.rxErr)}</p>` : ''}</div>` : '';
@@ -1562,13 +1572,17 @@ async function translateReceipt() {
   const saved = f.rstamp && !f.rmReceipt && !String(f.receipt).startsWith('data:'); // the saved photo, not one just attached (that waits for Save)
   let r = null; try { r = await scanApi(await shrinkPhoto(await (await fetch(f.receipt)).blob())); } catch { r = null; }
   f.rxBusy = false;
-  if (r && r.total) { f.rx = rxOf(r); const x = saved && S.ex.find((e) => e.id === f.id); if (x) saveRx(x, f.rx); }
+  if (r && r.total) {
+    const old = f.rx || { shop:r.shop_en || r.shop, jp:r.shop }, name = shopNamed(f.title, old) && scanName(r);
+    f.rx = rxOf(r); if (name) f.title = name;
+    const x = saved && S.ex.find((e) => e.id === f.id); if (x) saveRx(x, f.rx, name);
+  }
   else f.rxErr = navigator.onLine === false ? 'No signal: try again when there is.' : "Couldn't read this receipt. Try again in a moment.";
   if (F === f) renderForm();
 }
 // kept on the saved expense straight away (no Save needed), and not counted as an edit: it doesn't show as new to the others
-function saveRx(x, rx) {
-  x.rx = rx; if (!WHO || (GUEST && !SANDBOX)) return;
+function saveRx(x, rx, title) {
+  x.rx = rx; if (title) x.title = title; if (!WHO || (GUEST && !SANDBOX)) return;
   const { id, ...r } = x; if (typeof r.receipt !== 'number') delete r.receipt;
   base.recs[id] = JSON.stringify(x); store.setExpense(id, r);
 }
