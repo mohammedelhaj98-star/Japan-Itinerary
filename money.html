@@ -698,6 +698,11 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .byitem svg { width:15px; height:15px; color:var(--ink3); flex:none; }
 .byitem .linkb { margin-left:auto; min-height:40px; }
 @media (prefers-reduced-motion: reduce) { .ipick .av { transition:none; } }
+/* smart search: the line under the search box while it isn't on or ready yet */
+.ailine { display:flex; gap:8px; align-items:flex-start; margin:0 12px 10px; padding:10px 14px; border-radius:16px; background:var(--card); box-shadow:0 0 0 1px var(--line); font-size:13.5px; color:var(--ink2); }
+.ailine svg { width:16px; height:16px; flex:none; margin-top:2px; color:var(--blue-ink); }
+.ailine .linkb { min-height:24px; }
+.ailine small { color:var(--ink3); }
 /* a search that found something on a receipt: the lines it matched, under the expense */
 .xrow .m small.xhit { color:var(--ink); font-weight:700; }
 .xrow .m small.xhit::before { content:'↳ '; color:var(--ink3); font-weight:400; }
@@ -1131,7 +1136,7 @@ function renderExpenses() {
     ['settle', `\n    <p class="sec">Settle up ${modeSeg()}</p>${settleCard()}`],
     ['lhead', `\n    <p class="sec">All expenses <span class="fppl">${dayChip}${S.searchOpen ? '' : `<button class="iconb" data-searchopen aria-label="Search expenses">${SEARCH}</button>`}${IDS.map((i) => `<button data-fperson="${i}" class="${S.fperson === i ? 'on' : ''}" aria-pressed="${S.fperson === i}" aria-label="Only ${P[i].name}'s">${av(i, 'sm')}</button>`).join('')}</span></p>
     ${S.searchOpen ? `<div class="searchrow"><input class="tin" id="gq" type="search" placeholder="Search expenses and what you bought" value="${esc(S.q || '')}" autocomplete="off"><button class="linkb hit" data-searchclose>Done</button></div>` : ''}\n    `],
-    ['glist', '<div id="glist">', [listGroup(groupShown())], '</div>']];
+    ['glist', '<div id="glist">', glistParts(), '</div>']];
 }
 function groupShown() {
   const q = (S.q || '').trim().toLowerCase();
@@ -1140,10 +1145,69 @@ function groupShown() {
     .filter((x) => !S.gday || spread(x).some(([d]) => d === S.gday))
     .filter((x) => !q || `${x.title} ${CATS[x.cat][0]} ${P[x.payer].name} ${x.rx ? `${x.rx.shop} ${x.rx.jp || ''}` : ''}`.toLowerCase().includes(q) || rxHits(x, q).length);
 }
-// what was bought: the lines of an expense's receipt in English that a search matches, in English or as printed
-const rxHits = (x, q) => (q && x.rx ? x.rx.lines.filter((l) => `${l.name} ${l.jp || ''} ${l.note || ''}`.toLowerCase().includes(q)) : []);
+// what was bought: the lines of an expense's receipt in English that a search matches, in English, as printed, or by
+// the kinds of thing the reader tagged it as ("snacks" finds Pocky); a plural finds its singular tag
+const rxHits = (x, q) => {
+  if (!q || !x.rx) return [];
+  const one = q.length > 3 ? q.replace(/(ies|es|s)$/, (m) => (m === 'ies' ? 'y' : '')) : q;
+  return x.rx.lines.filter((l, i) => `${l.name} ${l.jp || ''} ${l.note || ''}`.toLowerCase().includes(q) || (l.tags || []).some((t) => t === q || t === one || t.startsWith(q)) || (ai.q === q && ai.hits.has(`${x.id}:${i}`)));
+};
+
+/* ───────── smart search: a small AI model that runs on the phone (all-MiniLM-L6-v2) matches what was bought by
+   meaning, so "something to drink" finds Calpis and "sun protection" the sunscreen. Each phone turns it on once: the
+   model (23 MB) and its engine (10 MB) download then, and the browser keeps them, so it works offline after that.
+   What each receipt line means is worked out once and kept on the phone. ───────── */
+const AI_LIB = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+const ai = { on:!!ls.get('money.ai', false), st:'off', pct:0, embed:null, q:'', hits:new Set(), vec:{}, timer:0 };
+try { ai.vec = JSON.parse(localStorage.getItem('money.aivec') || '{}'); } catch { ai.vec = {}; }
+function aiLine() {
+  if (!ai.on) return `<p class="ailine">${SPARK}<span>Smart search finds things by meaning, like “snacks” or “something for the sun”. <button class="linkb" data-aion>Turn on</button> <small>(33 MB, once, on this phone)</small></span></p>`;
+  if (ai.st === 'failed') return `<p class="ailine">${SPARK}<span>Smart search couldn't load${navigator.onLine === false ? ': it needs signal the first time' : ''}. <button class="linkb" data-aion>Try again</button></span></p>`;
+  if (ai.st !== 'ready') return `<p class="ailine">${SPARK}<span>Getting smart search ready${ai.pct ? ` · ${ai.pct}%` : '…'}</span></p>`;
+  return '';
+}
+const SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>';
+async function aiStart() {
+  if (ai.st === 'loading' || ai.st === 'ready') return;
+  ai.st = 'loading'; ai.pct = 0; renderGlist();
+  try {
+    const { pipeline, env } = await import(AI_LIB);
+    env.allowLocalModels = false;
+    const prog = {}; // each file's share of the download, shown as one number
+    const p = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { progress_callback:(e) => {
+      if (e.status !== 'progress' || !e.total) return; prog[e.file] = [e.loaded, e.total];
+      const [l, t] = Object.values(prog).reduce(([a, b], [x, y]) => [a + x, b + y], [0, 0]); const pct = Math.floor((l / t) * 100);
+      if (pct !== ai.pct) { ai.pct = pct; renderGlist(); } } });
+    ai.embed = async (texts) => { const out = await p(texts, { pooling:'mean', normalize:true }); const d = out.dims[1]; return texts.map((_, i) => out.data.slice(i * d, (i + 1) * d)); };
+    ai.st = 'ready';
+  } catch { ai.st = 'failed'; }
+  renderGlist(); aiSoon();
+}
+// a line's meaning: kept as 384 small whole numbers (a few hundred bytes a line), keyed by what it says
+const lineText = (l) => [l.name, l.note, (l.tags || []).join(', ')].filter(Boolean).join('. ');
+const packV = (v) => btoa(String.fromCharCode(...Uint8Array.from(v, (x) => Math.round(x * 127) & 255)));
+const unpackV = (s) => Int8Array.from(atob(s), (c) => (c.charCodeAt(0) << 24) >> 24);
+function aiSoon() { clearTimeout(ai.timer); ai.timer = setTimeout(aiRun, 250); }
+async function aiRun() {
+  const q = (S.q || '').trim().toLowerCase();
+  if (ai.st !== 'ready' || !S.searchOpen) return;
+  if (q.length < 3 || /[\u3000-\u9fff]/.test(q)) { if (ai.q) { ai.q = ''; ai.hits = new Set(); renderGlist(); } return; } // Japanese is matched by its letters
+  const lines = S.ex.flatMap((x) => (x.rx ? x.rx.lines.map((l, i) => [`${x.id}:${i}`, lineText(l)]) : []));
+  const need = [...new Set(lines.map(([, t]) => t).filter((t) => !ai.vec[t]))];
+  try {
+    for (let i = 0; i < need.length; i += 16) { const chunk = need.slice(i, i + 16), vs = await ai.embed(chunk); chunk.forEach((t, k) => { ai.vec[t] = packV(vs[k]); }); }
+    if (need.length) try { localStorage.setItem('money.aivec', JSON.stringify(ai.vec)); } catch {}
+    const [qv] = await ai.embed([q]);
+    if ((S.q || '').trim().toLowerCase() !== q) return; // typed on meanwhile: that search is on its way
+    const score = lines.map(([k, t]) => { const v = unpackV(ai.vec[t]); let d = 0; for (let j = 0; j < v.length; j++) d += v[j] * qv[j]; return [k, d / 127]; });
+    // close in meaning: within 0.15 of the best match, and never below 0.38 (tried on real receipt lines)
+    const top = Math.max(0, ...score.map(([, d]) => d)), cut = Math.max(0.38, top - 0.15);
+    ai.q = q; ai.hits = new Set(score.filter(([, d]) => d >= cut).map(([k]) => k)); renderGlist();
+  } catch { /* the model stopped: the search by letters still works */ }
+}
 // the list alone, while typing a search (the rows it keeps aren't made again)
-function renderGlist() { const g = drawn.find((r) => r.k === 'glist'); if (g) g.kids = patch(g.nodes[0], [listGroup(groupShown())], g.kids); }
+function renderGlist() { const g = drawn.find((r) => r.k === 'glist'); if (g) g.kids = patch(g.nodes[0], glistParts(), g.kids); }
+const glistParts = () => (S.searchOpen && !GUEST ? [['ai', aiLine()], listGroup(groupShown())] : [listGroup(groupShown())]);
 const splitName = (x) => { const k = Object.keys(x.shares); if (Object.values(x.owes).some(Boolean)) return 'Split unevenly'; if (k.length === 4) return 'All four'; if (k.length === 2 && P[k[0]].partner === k[1]) return `${P[k[0]].name} + ${P[k[1]].name}`; if (isOwn(x)) return `Only ${P[x.payer].name}`; return 'Split unevenly'; };
 // what an expense means for whoever this phone belongs to, in one line
 function meLine(x) {
@@ -1474,7 +1538,7 @@ const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 const rxOf = (r) => {
   const shop = r.shop_en || r.shop || '';
   return { shop, ...(r.shop && r.shop !== shop ? { jp:r.shop } : {}), total:r.total, ...(r.pretax ? { pretax:r.pretax } : {}), ...(r.taxfree ? { taxfree:true } : {}),
-    lines:(Array.isArray(r.lines) ? r.lines : []).filter((l) => l && l.name && l.price).map(({ name, jp, note, price, qty }) => ({ name, ...(jp ? { jp } : {}), ...(note ? { note } : {}), price, qty:qty || 1 })) };
+    lines:(Array.isArray(r.lines) ? r.lines : []).filter((l) => l && l.name && l.price).map(({ name, jp, note, tags, price, qty }) => ({ name, ...(jp ? { jp } : {}), ...(note ? { note } : {}), ...(tags && tags.length ? { tags } : {}), price, qty:qty || 1 })) };
 };
 function rxHtml() {
   const r = F.rx;
@@ -1893,7 +1957,8 @@ app.addEventListener('click', (e) => {
   if (t('[data-shownews]')) { keep(() => { S.showNews = !S.showNews; }); if (S.showNews) unfold(document.querySelectorAll('.gpass + .drop')); return; }
   if (t('[data-seen]')) return keep(() => { S.seen[S.me] = Date.now(); S.showNews = false; });
   if (t('[data-legend]')) return keep(() => { S.legend = !S.legend; });
-  if (t('[data-searchopen]')) { keep(() => { S.searchOpen = true; }); const q = document.getElementById('gq'); if (q) q.focus(); return; }
+  if (t('[data-searchopen]')) { keep(() => { S.searchOpen = true; }); const q = document.getElementById('gq'); if (q) q.focus(); if (ai.on) aiStart(); return; }
+  if (t('[data-aion]')) { ai.on = true; ls.set('money.ai', true); ai.st = 'off'; aiStart(); return; }
   if (t('[data-searchclose]')) return keep(() => { S.searchOpen = false; S.q = ''; });
   const pf = t('[data-fperson]'); if (pf) return keep(() => { S.fperson = S.fperson === pf.dataset.fperson ? null : pf.dataset.fperson; });
   const gd = t('[data-gday]'); if (gd) return keep(() => { S.gday = S.gday === gd.dataset.gday ? null : gd.dataset.gday; });
@@ -1917,7 +1982,7 @@ app.addEventListener('click', (e) => {
 });
 // typing a search: the list follows once a frame, however fast the keys come
 let qRaf = 0;
-app.addEventListener('input', (e) => { if (e.target.id === 'gq') { S.q = e.target.value; if (!qRaf) qRaf = requestAnimationFrame(() => { qRaf = 0; renderGlist(); }); } });
+app.addEventListener('input', (e) => { if (e.target.id === 'gq') { S.q = e.target.value; if (!qRaf) qRaf = requestAnimationFrame(() => { qRaf = 0; renderGlist(); }); if (ai.on) aiSoon(); } });
 // form extras: the currency picker inside the amount box, and the Type / Day pills that open in place
 fpage.addEventListener('change', (e) => { if (F && e.target.id === 'fccy') { F.ccy = e.target.value; F.fixed = {}; renderForm(); } });
 fpage.addEventListener('click', (e) => { const x = e.target.closest('[data-fexp]'); if (F && x) { F.exp = F.exp === x.dataset.fexp ? null : x.dataset.fexp; renderForm(); } });

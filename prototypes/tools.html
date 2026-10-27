@@ -1244,7 +1244,7 @@ const rxTodo = () => Object.entries(store.getExpenses()).filter(([, x]) => x && 
 const rxOf = (r) => {
   const shop = r.shop_en || r.shop || '';
   return { shop, ...(r.shop && r.shop !== shop ? { jp: r.shop } : {}), total: r.total, ...(r.pretax ? { pretax: r.pretax } : {}), ...(r.taxfree ? { taxfree: true } : {}),
-    lines: (Array.isArray(r.lines) ? r.lines : []).filter((l) => l && l.name && l.price).map(({ name, jp, note, price, qty }) => ({ name, ...(jp ? { jp } : {}), ...(note ? { note } : {}), price, qty: qty || 1 })) };
+    lines: (Array.isArray(r.lines) ? r.lines : []).filter((l) => l && l.name && l.price).map(({ name, jp, note, tags, price, qty }) => ({ name, ...(jp ? { jp } : {}), ...(note ? { note } : {}), ...(tags && tags.length ? { tags } : {}), price, qty: qty || 1 })) };
 };
 function rxRow() {
   if (SANDBOX) return '';

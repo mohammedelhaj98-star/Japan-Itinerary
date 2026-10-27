@@ -53,7 +53,7 @@ const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Ban
 const said = (c) => typeof c === 'string' ? c : ((c.find((x) => x.type === 'text') || {}).text || '');
 // (asked to sort things into categories: masks, serums and creams are skincare, the rest sweets)
 const sorted = (text) => ({ items: [...text.matchAll(/^([a-z0-9_-]+) \| (.+)$/gim)].map(([, id, name]) => ({ id, cat: /mask|serum|cream/i.test(name) ? 'skincare' : 'sweets' })) });
-const FAKE_AI = { run: async (m, inp) => /^Sort each thing/.test(said(inp.messages[0].content)) ? { response: sorted(said(inp.messages[0].content)) } : /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana', cat: /necklace/i.test(said(inp.messages[0].content)) ? 'fashion' : 'sweets' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }, { name: 'Ramen', jp: 'ラーメン', price: 980, qty: 1 }, { name: 'Extra noodles', jp: '替玉', note: 'a second serving of noodles for the same soup', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
+const FAKE_AI = { run: async (m, inp) => /^Sort each thing/.test(said(inp.messages[0].content)) ? { response: sorted(said(inp.messages[0].content)) } : /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana', cat: /necklace/i.test(said(inp.messages[0].content)) ? 'fashion' : 'sweets' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }, { name: 'Ramen', jp: 'ラーメン', price: 980, qty: 1 }, { name: 'Extra noodles', jp: '替玉', note: 'a second serving of noodles for the same soup', tags: ['Meal', 'noodles', 'meal'], price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
@@ -402,7 +402,7 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.tap('[data-iopen]'); await p.waitForTimeout(300); await p.tap('[data-iwho="0:naf"]'); await p.tap('[data-iwho="2:sara"]'); await p.tap('[data-iwho="2:sara"]');
   await p.tap('#fsave'); await p.waitForTimeout(300); await p.tap('#fsave'); await p.waitForTimeout(1200);
   const saved = Object.entries(exMap()).find(([, x]) => x.title === 'Split ramen test');
-  ok('receipt in English: saved with the expense', saved && saved[1].rx && saved[1].rx.lines.length === 3 && saved[1].rx.lines[2].jp === '替玉' && saved[1].rx.total === 2380 && saved[1].rx.shop === 'Ichiran Dotonbori', saved && JSON.stringify(saved[1].rx));
+  ok('receipt in English: saved with the expense', saved && saved[1].rx && saved[1].rx.lines.length === 3 && saved[1].rx.lines[2].jp === '替玉' && saved[1].rx.lines[2].tags.join() === 'meal,noodles' && saved[1].rx.total === 2380 && saved[1].rx.shop === 'Ichiran Dotonbori', saved && JSON.stringify(saved[1].rx));
   ok('split: saved with the expense', saved && saved[1].byItem && saved[1].byItem.lines.length === 3 && saved[1].byItem.lines[0].who.join() === 'naf' && saved[1].byItem.lines[2].n.sara === 2, saved && JSON.stringify(saved[1].byItem));
   const rc = []; p.on('request', (r) => { if (/\/api\/receipt\//.test(r.url())) rc.push(new URL(r.url()).pathname + new URL(r.url()).search); });
   await p.tap(`[data-ex="${saved && saved[0]}"]`); await p.waitForTimeout(600);
@@ -442,6 +442,16 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   ok('search: the line fits inside its row', await p.$eval('#glist .xhit', (e) => e.getBoundingClientRect().bottom <= e.closest('.xrow').getBoundingClientRect().bottom));
   await p.screenshot({ path: SH + 'search-receipts.png' });
   ok('search: an expense matched by its name lists no lines', (await hits('Old receipt')) === '');
+  ok('search: finds a line by the kind of thing it is, plural or not (the tags the reader gave it)', (await hits('meals')) === '2× Extra noodles · ¥204' && (await hits('mea')) === '2× Extra noodles · ¥204');
+  // smart search: offered under the search box; once on, a model on the phone matches by meaning ("dinner" finds the
+  // noodles). The model is a stand-in here: words about eating point one way, everything else another.
+  const FAKE_LIB = `export const env = {}; export async function pipeline() { const v = (t) => (/noodle|meal|dinner|eat/i.test(t) ? [1, 0, 0] : [0, 0, 1]); return async (texts) => ({ dims: [texts.length, 3], data: Float32Array.from(texts.flatMap(v)) }); }`;
+  await p.route('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2', (r) => r.fulfill({ status: 200, headers: { 'content-type': 'text/javascript', 'access-control-allow-origin': '*' }, body: FAKE_LIB }));
+  ok('smart search: offered under the search box, off until turned on', /Turn on/.test(await p.textContent('#glist .ailine').catch(() => '')) && (await hits('dinner')) === '');
+  await p.tap('[data-aion]'); await p.waitForTimeout(600); await p.fill('#gq', 'dinner'); await p.waitForTimeout(900);
+  const ai1 = await p.$$eval('#glist .xhit', (e) => e.map((x) => x.textContent).join(' | '));
+  ok('smart search: once on, finds a line by meaning, and the offer goes', ai1 === '2× Extra noodles · ¥204' && !(await p.$('#glist .ailine')), ai1);
+  ok('smart search: remembered on this phone, with what each line means', await p.evaluate(() => localStorage.getItem('money.ai') === 'true' && Object.keys(JSON.parse(localStorage.getItem('money.aivec') || '{}')).length >= 2));
   await p.tap('[data-searchclose]'); await p.waitForTimeout(200);
   // Settings: Read all reads every saved receipt photo that has no English yet, and keeps it on its expense
   await p.tap('#addfab'); await p.waitForTimeout(400); await p.fill('#famt', '980'); await p.fill('#ftitle', 'Settings receipt test');
