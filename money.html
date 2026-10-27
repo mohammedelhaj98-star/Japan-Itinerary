@@ -1622,7 +1622,7 @@ fpage.addEventListener('change', (e) => {
   if (e.target.id === 'iyin') return fixPrice(e.target);
   if (e.target.dataset.wamt) { commitShare(e.target); liveForm(); }
   if (e.target.id === 'fscan' && e.target.files[0]) { scanReceipt(e.target.files[0]); e.target.value = ''; return; }
-  if (e.target.id === 'freceipt' && e.target.files[0]) { compressPhoto(e.target.files[0]).then((d) => { if (F) { F.receipt = d; F.rmReceipt = false; renderForm(); } }, (err) => toast(err.message)); }
+  if (e.target.id === 'freceipt' && e.target.files[0]) { compressPhoto(e.target.files[0]).then((d) => { if (F) { F.receipt = d; F.rmReceipt = false; F.rx = null; renderForm(); } }, (err) => toast(err.message)); }
 });
 fpage.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.dataset && (e.target.dataset.wamt || e.target.id === 'ftitle' || e.target.id === 'iyin')) e.target.blur(); });
 fpage.addEventListener('click', (e) => {
@@ -1666,7 +1666,7 @@ fpage.addEventListener('click', (e) => {
   const sg = t('[data-sugg]'); if (sg) { const x = S.ex.find((e) => e.id === sg.dataset.sugg); F.title = x.title; F.cat = x.cat; F.catTouched = true; F.with = x.with; F.set = Object.keys(x.shares); F.fixed = {}; return renderForm(); }
   const g = t('[data-cat]'); if (g) { F.cat = g.dataset.cat; F.catTouched = true; F.exp = null; return renderForm(); }
   const nt = t('[data-nights]'); if (nt) { F.nights = Math.max(1, F.nights + +nt.dataset.nights); return renderForm(); }
-  if (t('[data-rmreceipt]')) { F.receipt = null; F.rmReceipt = true; return renderForm(); }
+  if (t('[data-rmreceipt]')) { F.receipt = null; F.rmReceipt = true; F.rx = null; return renderForm(); } // the English went with the photo
   const d = t('[data-fday]'); if (d) { F.day = d.dataset.fday; F.exp = null; F.nights = Math.min(F.nights, Math.max(1, DAYS.length - DAYS.findIndex((x) => x.id === F.day))); return renderForm(); }
 });
 // press (before the field loses focus) so a share still being typed counts when you tap Add

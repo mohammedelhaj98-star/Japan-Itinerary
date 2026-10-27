@@ -430,6 +430,8 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.tap('[data-rxgo]'); await p.waitForTimeout(1500);
   const now = Object.entries(exMap()).find(([, x]) => x.title === 'Old receipt test');
   ok('receipt in English: read from the saved photo, shown and kept at once, without counting as an edit', (await p.$$('#fpage .rxen .rxrow')).length === 3 && now && now[1].rx && now[1].rx.lines.length === 3 && now[1].at === old[1].at && (await p.inputValue('#famt')) === '2380', now && JSON.stringify(now[1]).slice(0, 300));
+  await p.tap('[data-rmreceipt]'); await p.waitForTimeout(200);
+  ok('receipt in English: goes with the photo when the receipt is removed', !(await p.$('#fpage .rxen')));
   await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
 }
 ok('scanning needs the PIN', (await fetch(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ photo: 'data:image/jpeg;base64,AAAA' }) })).status === 403);
