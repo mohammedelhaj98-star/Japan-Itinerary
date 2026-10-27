@@ -167,6 +167,12 @@ function cleanExpense(v) {
     const total = int(v.byItem.total, 0, 100000000);
     if (table.length && lines.length && total) out.byItem = { table, total, lines };
   }
+  // the receipt in English, as read when it was scanned: the shop, each line with its price, and what was paid
+  if (v.rx && typeof v.rx === 'object' && Array.isArray(v.rx.lines)) {
+    const lines = v.rx.lines.slice(0, 40).map((l) => l && typeof l === 'object' && rxLine(l)).filter((l) => l && l.name && l.price && Math.abs(l.price) < 10000000);
+    const total = int(v.rx.total, 0, 100000000), pretax = int(v.rx.pretax, 0, 100000000), shop = clean(v.rx.shop, 60), jp = clean(v.rx.jp, 60);
+    if (total && (lines.length || shop)) out.rx = { shop, ...(jp ? { jp } : {}), total, ...(pretax && pretax < total ? { pretax } : {}), ...(v.rx.taxfree === true ? { taxfree: true } : {}), lines };
+  }
   // "Just me": the payer's own spending, on their money page only and never in who-owes-whom
   if (split.length === 1 && split[0] === v.payer) out.own = true;
   return out;
@@ -257,8 +263,13 @@ function tidyScan(data, m) {
   const types = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'];
   return { model: m, total, pretax, shop: clean(data.shop, 60), shop_en: clean(data.shop_en, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(data.date || '') ? data.date : null,
     type: types.includes(data.type) ? data.type : null, taxfree: data.taxfree === true, items: Array.isArray(data.items) ? data.items.slice(0, 5).map((x) => clean(x, 40)) : [],
-    // each line with its price, for splitting a receipt by item: { name, price, qty }
-    lines: Array.isArray(data.lines) ? data.lines.slice(0, 40).map((l) => l && typeof l === 'object' && { name: clean(l.name, 50), price: Math.round(+l.price) || 0, qty: Math.max(1, Math.min(99, Math.round(+l.qty) || 1)) }).filter((l) => l && l.name && l.price && Math.abs(l.price) < 10000000) : [] };
+    // each line with its price, for splitting a receipt by item and for the receipt in English: { name, jp?, note?, price, qty }
+    lines: Array.isArray(data.lines) ? data.lines.slice(0, 40).map((l) => l && typeof l === 'object' && rxLine(l)).filter((l) => l && l.name && l.price && Math.abs(l.price) < 10000000) : [] };
+}
+// one receipt line, trimmed: the English name, the name as printed and a few words on what it is (both only when given)
+function rxLine(l) {
+  const jp = clean(l.jp, 40), note = clean(l.note, 60);
+  return { name: clean(l.name, 50), ...(jp && jp !== clean(l.name, 50) ? { jp } : {}), ...(note ? { note } : {}), price: Math.round(+l.price) || 0, qty: Math.max(1, Math.min(99, Math.round(+l.qty) || 1)) };
 }
 
 // Money moving between people: a settle-up payment (pay), cash handed over or taken out (cash), an IC card top-up (ic).

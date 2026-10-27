@@ -698,6 +698,27 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .byitem svg { width:15px; height:15px; color:var(--ink3); flex:none; }
 .byitem .linkb { margin-left:auto; min-height:40px; }
 @media (prefers-reduced-motion: reduce) { .ipick .av { transition:none; } }
+/* ── the receipt in English, under everything in the form ── */
+.rxen { background:var(--card); border-radius:18px; box-shadow:0 0 0 1px var(--line); overflow:hidden; }
+.rxhead { display:grid; gap:1px; padding:12px 14px 10px; border-bottom:1px solid var(--line); }
+.rxhead b { font-size:16px; letter-spacing:-.01em; }
+.rxhead small, .rxn small { font-size:12.5px; color:var(--ink3); line-height:1.35; }
+.rxrow { display:grid; grid-template-columns:1fr auto; gap:10px; padding:9px 14px; align-items:baseline; }
+.rxrow + .rxrow { border-top:1px solid var(--line); }
+.rxn { display:grid; gap:1px; min-width:0; }
+.rxn b { font-size:14.5px; line-height:1.3; }
+.rxn b i { font-style:normal; color:var(--ink3); margin-right:5px; }
+.rxn small:not(.rxjp) { color:var(--ink2); }
+.rxy { font-family:var(--serif); font-size:19px; font-weight:400; line-height:1.1; white-space:nowrap; }
+.rxnone { padding:10px 14px; font-size:13.5px; color:var(--ink2); }
+.rxtot { display:grid; grid-template-columns:1fr auto; gap:2px 10px; padding:10px 14px 12px; border-top:1px dashed rgba(20,20,10,.16); background:var(--tint); align-items:baseline; font-size:13.5px; color:var(--ink2); }
+.rxtot b { color:var(--ink); font-size:14.5px; }
+.rxtot .rxy { font-size:22px; }
+.rxtot small { grid-column:2; text-align:right; font-size:12.5px; color:var(--ink3); }
+.rxgo { display:inline-flex; align-items:center; gap:7px; }
+.rxgo svg { width:16px; height:16px; }
+.rxgo:disabled { opacity:1; color:var(--ink3); }
+.rxgo .spin { width:14px; height:14px; border-width:2px; }
 </style>
 
 </head>
@@ -1236,7 +1257,7 @@ function openForm(id, opts = {}) {
   else if (x) {
     const ccy = x.orig ? x.orig.ccy : 'JPY', even = splitShares(Math.abs(x.yen), Object.keys(x.shares), {}, x.payer).shares, fixed = {};
     for (const [k, v] of Object.entries(x.shares)) if (Math.abs(v) !== even[k]) fixed[k] = ccy === 'JPY' ? Math.abs(v) : Math.round(Math.abs(v) / RATE[ccy] * 100) / 100;
-    F = { id:x.id, amt:x.orig ? String(x.orig.amt) : String(Math.abs(x.yen)), ccy, refund:!!x.refund, payer:x.payer, pickPayer:false, with:x.with, set:Object.keys(x.shares), fixed, owes:{ ...x.owes }, cat:x.cat, catTouched:true, title:x.title, day:x.day, src:x.src, quick:false, draft:false, by:x.by, nights:x.nights || 1, taxfree:!!x.taxfree, receipt:typeof x.receipt === 'string' ? x.receipt : null, rstamp:typeof x.receipt === 'number' ? x.receipt : null };
+    F = { id:x.id, amt:x.orig ? String(x.orig.amt) : String(Math.abs(x.yen)), ccy, refund:!!x.refund, payer:x.payer, pickPayer:false, with:x.with, set:Object.keys(x.shares), fixed, owes:{ ...x.owes }, cat:x.cat, catTouched:true, title:x.title, day:x.day, src:x.src, quick:false, draft:false, by:x.by, nights:x.nights || 1, taxfree:!!x.taxfree, receipt:typeof x.receipt === 'string' ? x.receipt : null, rstamp:typeof x.receipt === 'number' ? x.receipt : null, rx:x.rx || null };
     // split by item when it was saved: the lines come back, marked, as long as the amount is still the receipt's
     if (x.byItem && x.byItem.total === Math.abs(x.yen) && !x.orig) { F.scan = { total:x.byItem.total, lines:x.byItem.lines, saved:true }; F.split = { table:x.byItem.table.filter((i) => P[i]), items:x.byItem.lines.map((l) => ({ ...l, who:l.who || [], n:l.n || {} })), edit:null }; F.byItem = itemSig(); }
   } else if (S.draft && Date.now() - S.draft.t < 15 * 60e3) { F = { ...S.draft.f, quick:opts.quick, draft:true }; }
@@ -1256,7 +1277,7 @@ function formExpense() {
   if (left && F.ccy !== 'JPY' && Math.abs(left) <= Math.ceil(RATE[F.ccy] * 0.01 * F.set.length) + 1) { const k = F.set.includes(F.payer) ? F.payer : F.set[0]; shares[k] += left; left = 0; }
   const signed = Object.fromEntries(Object.entries(shares).map(([k, v]) => [k, v * sgn]));
   const owes = {}; for (const k of Object.keys(F.owes)) if (F.owes[k] && F.set.includes(k) && P[F.payer].partner === k) owes[k] = true;
-  return { x:{ id:F.id || uid(), ...(F.src ? { src:F.src } : {}), title:F.title.trim() || CATS[F.cat][0], yen:total * sgn, payer:F.payer, with:F.with, cat:F.cat, day:F.day, shares:signed, owes, refund:F.refund, ...(F.ccy !== 'JPY' ? { orig:{ ccy:F.ccy, amt:parseFloat(F.amt) } } : {}), ...(F.cat === 'hotel' && F.nights > 1 ? { nights:F.nights } : {}), ...(F.taxfree ? { taxfree:true } : {}), ...(F.receipt ? { receipt:F.receipt } : {}), ...(F.split && F.byItem && F.byItem === itemSig() ? { byItem:{ table:F.split.table, total:F.scan.total, lines:F.split.items.map(({ name, price, qty, who, n }) => ({ name, price, qty, who, n })) } } : {}) }, left, total };
+  return { x:{ id:F.id || uid(), ...(F.src ? { src:F.src } : {}), title:F.title.trim() || CATS[F.cat][0], yen:total * sgn, payer:F.payer, with:F.with, cat:F.cat, day:F.day, shares:signed, owes, refund:F.refund, ...(F.ccy !== 'JPY' ? { orig:{ ccy:F.ccy, amt:parseFloat(F.amt) } } : {}), ...(F.cat === 'hotel' && F.nights > 1 ? { nights:F.nights } : {}), ...(F.taxfree ? { taxfree:true } : {}), ...(F.receipt ? { receipt:F.receipt } : {}), ...(F.rx ? { rx:F.rx } : {}), ...(F.split && F.byItem && F.byItem === itemSig() ? { byItem:{ table:F.split.table, total:F.scan.total, lines:F.split.items.map(({ name, price, qty, who, n }) => ({ name, price, qty, who, n })) } } : {}) }, left, total };
 }
 function presetOf() {
   if (Object.keys(F.fixed).length) return null; const s = F.set.slice().sort().join(), pay = F.payer;
@@ -1429,16 +1450,49 @@ function scanLine() {
 async function scanReceipt(src) {
   const id0 = F; F.scanning = true; F.scanErr = null; renderForm();
   let photo; try { photo = typeof src === 'string' ? src : await shrinkPhoto(src); } catch { F.scanning = false; F.scanErr = "That photo couldn't be opened."; return renderForm(); }
-  if (F !== id0) return; F.receipt = photo; F.rmReceipt = false;
+  if (F !== id0) return; F.receipt = photo; F.rmReceipt = false; F.rx = null;
   let r = null; try { r = await scanApi(photo); } catch { r = null; }
   if (F !== id0) return; F.scanning = false;
   if (!r || !r.total) { F.scanErr = navigator.onLine === false ? 'No signal: the receipt is attached, type the amount.' : "Couldn't read the total: the receipt is attached, type the amount."; return renderForm(); }
-  F.ccy = 'JPY'; F.fixed = {}; F.amt = String(r.total); F.scan = { total:r.total, pretax:r.pretax || null, shop:r.shop_en || r.shop, lines:Array.isArray(r.lines) ? r.lines.filter((x) => x && x.price > 0) : [] }; F.split = null; F.byItem = null; F.taxfree = !!r.taxfree;
+  F.ccy = 'JPY'; F.fixed = {}; F.amt = String(r.total); F.scan = { total:r.total, pretax:r.pretax || null, shop:r.shop_en || r.shop, lines:Array.isArray(r.lines) ? r.lines.filter((x) => x && x.price > 0) : [] }; F.split = null; F.byItem = null; F.taxfree = !!r.taxfree; F.rx = rxOf(r);
   if (!F.title.trim() && (r.shop_en || r.shop)) F.title = r.shop_en || r.shop;
   if (r.type && CATS[r.type] && !F.catTouched) { F.cat = r.type; F.catGuess = true; }
   const d = r.date && DAYS.find((x) => x.date === r.date); if (d) F.day = d.id;
   renderForm();
   const box = document.querySelector('#fpage .amtin'); if (box) { box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash'); }
+}
+
+/* ───────── the receipt in English: every line as it was read, with its price, under everything in the form ─────────
+   Read with the scan and kept with the expense, so it's there whenever anyone opens it. An expense saved before this,
+   with a receipt photo, has a button that reads the photo again. */
+const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c.8 3 3.2 5.6 6 7M11 5c-.8 3.4-3.4 6.4-7 8"/><path d="M13 21l4-9 4 9M14.4 18h5.2"/></svg>';
+const rxOf = (r) => {
+  const shop = r.shop_en || r.shop || '';
+  return { shop, ...(r.shop && r.shop !== shop ? { jp:r.shop } : {}), total:r.total, ...(r.pretax ? { pretax:r.pretax } : {}), ...(r.taxfree ? { taxfree:true } : {}),
+    lines:(Array.isArray(r.lines) ? r.lines : []).filter((l) => l && l.name && l.price).map(({ name, jp, note, price, qty }) => ({ name, ...(jp ? { jp } : {}), ...(note ? { note } : {}), price, qty:qty || 1 })) };
+};
+function rxHtml() {
+  const r = F.rx;
+  if (!r) return F.id && F.receipt && !(GUEST && !SANDBOX) ? `<div class="fsec"><div><button class="pill rxgo" data-rxgo ${F.rxBusy ? 'disabled' : ''}>${F.rxBusy ? '<i class="spin"></i>Reading the receipt…' : `${GLOBE}Receipt in English`}</button></div>${F.rxErr ? `<p class="scanl err">${esc(F.rxErr)}</p>` : ''}</div>` : '';
+  const rows = r.lines.map((l) => `<div class="rxrow"><span class="rxn"><b>${l.qty > 1 ? `<i>${l.qty}×</i>` : ''}${esc(l.name)}</b>${l.note ? `<small>${esc(l.note)}</small>` : ''}${l.jp ? `<small class="rxjp" lang="ja">${esc(l.jp)}</small>` : ''}</span><span class="rxy">${fmtY(l.price)}</span></div>`).join('');
+  const tax = r.taxfree ? '<span>Tax</span><span>Tax-free</span>' : r.pretax ? `<span>Tax included</span><span>${fmtY(r.total - r.pretax)}</span>` : '';
+  return `<div class="fsec"><span class="flabel">Receipt in English</span><div class="rxen"><div class="rxhead"><b>${esc(r.shop || 'Receipt')}</b>${r.jp ? `<small lang="ja">${esc(r.jp)}</small>` : ''}</div>
+    ${rows || '<p class="rxnone">Only the total was read from this receipt: no items are listed.</p>'}<div class="rxtot">${tax}<b>Paid</b><b class="rxy">${fmtY(r.total)}</b>${S.cur && S.cur !== 'JPY' ? `<small>= ${fmtC(r.total)}</small>` : ''}</div></div></div>`;
+}
+async function translateReceipt() {
+  const f = F; if (f.rxBusy) return; f.rxBusy = true; f.rxErr = null; renderForm();
+  const saved = f.rstamp && !f.rmReceipt && !String(f.receipt).startsWith('data:'); // the saved photo, not one just attached (that waits for Save)
+  let r = null; try { r = await scanApi(await shrinkPhoto(await (await fetch(f.receipt)).blob())); } catch { r = null; }
+  f.rxBusy = false;
+  if (r && r.total) { f.rx = rxOf(r); const x = saved && S.ex.find((e) => e.id === f.id); if (x) saveRx(x, f.rx); }
+  else f.rxErr = navigator.onLine === false ? 'No signal: try again when there is.' : "Couldn't read this receipt. Try again in a moment.";
+  if (F === f) renderForm();
+}
+// kept on the saved expense straight away (no Save needed), and not counted as an edit: it doesn't show as new to the others
+function saveRx(x, rx) {
+  x.rx = rx; if (!WHO || (GUEST && !SANDBOX)) return;
+  const { id, ...r } = x; if (typeof r.receipt !== 'number') delete r.receipt;
+  base.recs[id] = JSON.stringify(x); store.setExpense(id, r);
 }
 
 /* ───────── splitting a receipt by item: tap whose each line is; untapped lines are shared by the table ───────── */
@@ -1541,6 +1595,7 @@ function renderForm() {
       ${F.exp === 'day' ? `<div class="fstrip" id="fstrip">${DAYS.map((dd) => `<button data-fday="${dd.id}" class="${F.day === dd.id ? 'on' : ''}"><small>${dd.short}${dd.id === TODAY ? ' · today' : ''}</small><b>${dd.dd}</b></button>`).join('')}</div>` : ''}
       ${F.cat === 'hotel' && F.day !== 'pre' ? `<div class="nights"><span>Spread over</span><button class="pill" data-nights="-1" aria-label="One night fewer">−</button><b>${F.nights} night${F.nights === 1 ? '' : 's'}</b><button class="pill" data-nights="1" aria-label="One night more" ${F.nights >= nightsMax ? 'disabled' : ''}>+</button></div>` : ''}
       ${F.receipt ? `<div class="rcpt"><img alt="Receipt photo"><button class="pill" data-rmreceipt>Remove receipt</button></div>` : ''}</div>
+    ${rxHtml()}
     ${F.by ? `<p class="conv" style="padding:14px 16px 0">Added by ${P[F.by].name}</p>` : ''}</div>`;
   // the receipt photo (a big data URL) is the same <img> each time: not parsed and decoded again on every tap
   const ri = fpage.querySelector('.rcpt img');
@@ -1568,7 +1623,7 @@ fpage.addEventListener('change', (e) => {
   if (e.target.id === 'iyin') return fixPrice(e.target);
   if (e.target.dataset.wamt) { commitShare(e.target); liveForm(); }
   if (e.target.id === 'fscan' && e.target.files[0]) { scanReceipt(e.target.files[0]); e.target.value = ''; return; }
-  if (e.target.id === 'freceipt' && e.target.files[0]) { compressPhoto(e.target.files[0]).then((d) => { if (F) { F.receipt = d; F.rmReceipt = false; renderForm(); } }, (err) => toast(err.message)); }
+  if (e.target.id === 'freceipt' && e.target.files[0]) { compressPhoto(e.target.files[0]).then((d) => { if (F) { F.receipt = d; F.rmReceipt = false; F.rx = null; renderForm(); } }, (err) => toast(err.message)); }
 });
 fpage.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.dataset && (e.target.dataset.wamt || e.target.id === 'ftitle' || e.target.id === 'iyin')) e.target.blur(); });
 fpage.addEventListener('click', (e) => {
@@ -1596,6 +1651,7 @@ fpage.addEventListener('click', (e) => {
   if (e.target.matches('#fpage .amtin')) return document.getElementById('famt').focus(); // the box around a number that's only as wide as itself
   const sa = t('[data-scanamt]'); if (sa) { F.amt = sa.dataset.scanamt; F.fixed = {}; return renderForm(); }
   if (t('[data-scan]')) return camOpen();
+  if (t('[data-rxgo]')) return translateReceipt();
   const iw = t('[data-ficwith]'); if (iw) { F.icwith = iw.dataset.ficwith; return renderForm(); }
   if (t('[data-fblank]')) { S.draft = null; F = blankForm(F.day, F.quick); return renderForm(); }
   if (t('[data-fdel]')) return askDelete(F.id);
@@ -1611,7 +1667,7 @@ fpage.addEventListener('click', (e) => {
   const sg = t('[data-sugg]'); if (sg) { const x = S.ex.find((e) => e.id === sg.dataset.sugg); F.title = x.title; F.cat = x.cat; F.catTouched = true; F.with = x.with; F.set = Object.keys(x.shares); F.fixed = {}; return renderForm(); }
   const g = t('[data-cat]'); if (g) { F.cat = g.dataset.cat; F.catTouched = true; F.exp = null; return renderForm(); }
   const nt = t('[data-nights]'); if (nt) { F.nights = Math.max(1, F.nights + +nt.dataset.nights); return renderForm(); }
-  if (t('[data-rmreceipt]')) { F.receipt = null; F.rmReceipt = true; return renderForm(); }
+  if (t('[data-rmreceipt]')) { F.receipt = null; F.rmReceipt = true; F.rx = null; return renderForm(); } // the English went with the photo
   const d = t('[data-fday]'); if (d) { F.day = d.dataset.fday; F.exp = null; F.nights = Math.min(F.nights, Math.max(1, DAYS.length - DAYS.findIndex((x) => x.id === F.day))); return renderForm(); }
 });
 // press (before the field loses focus) so a share still being typed counts when you tap Add
@@ -1879,7 +1935,7 @@ function fromStore(id, r) {
   const shares = r.shares && Object.keys(r.shares).length ? r.shares : evenShares(r.yen, (r.split || [r.payer]).filter((k) => P[k]), r.payer);
   return { id, title:r.title, yen:r.yen, payer:r.payer, with:WITH[r.with] ? r.with : 'card', cat:CATS[r.cat] ? r.cat : 'other', day:DAY[r.day] ? r.day : 'pre', shares, owes:r.owes || {},
     ...(r.refund ? { refund:true } : {}), ...(r.taxfree ? { taxfree:true } : {}), ...(r.orig ? { orig:r.orig } : {}), ...(r.nights > 1 ? { nights:r.nights } : {}), ...(r.by ? { by:r.by } : {}), ...(r.src ? { src:r.src } : {}), ...(r.editedBy ? { editedBy:r.editedBy } : {}),
-    at:r.at || Date.parse(r.ts) || 0, ...(r.receipt ? { receipt:r.receipt } : {}), ...(r.byItem ? { byItem:r.byItem } : {}) };
+    at:r.at || Date.parse(r.ts) || 0, ...(r.receipt ? { receipt:r.receipt } : {}), ...(r.byItem ? { byItem:r.byItem } : {}), ...(r.rx ? { rx:r.rx } : {}) };
 }
 const SETTINGS = [['s', 'senders'], ['r', 'recv'], ['by', 'setBy'], ['u', 'unmerged'], ['b', 'budgets'], ['bc', 'usBudget'], ['seen', 'seen']];
 function moneyMap() {

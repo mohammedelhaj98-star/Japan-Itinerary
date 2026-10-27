@@ -53,7 +53,7 @@ const SHOP_SAID = { shop: 'Gransta, inside Tokyo Station', why: 'Every Tokyo Ban
 const said = (c) => typeof c === 'string' ? c : ((c.find((x) => x.type === 'text') || {}).text || '');
 // (asked to sort things into categories: masks, serums and creams are skincare, the rest sweets)
 const sorted = (text) => ({ items: [...text.matchAll(/^([a-z0-9_-]+) \| (.+)$/gim)].map(([, id, name]) => ({ id, cat: /mask|serum|cream/i.test(name) ? 'skincare' : 'sweets' })) });
-const FAKE_AI = { run: async (m, inp) => /^Sort each thing/.test(said(inp.messages[0].content)) ? { response: sorted(said(inp.messages[0].content)) } : /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana', cat: /necklace/i.test(said(inp.messages[0].content)) ? 'fashion' : 'sweets' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }, { name: 'Extra noodles', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
+const FAKE_AI = { run: async (m, inp) => /^Sort each thing/.test(said(inp.messages[0].content)) ? { response: sorted(said(inp.messages[0].content)) } : /want to buy/.test(said(inp.messages[0].content)) ? { response: { ...SHOP_SAID, name: Array.isArray(inp.messages[0].content) ? 'Matcha Kit Kat' : 'Tokyo Banana', cat: /necklace/i.test(said(inp.messages[0].content)) ? 'fashion' : 'sweets' } } : typeof inp.messages[0].content === 'string' ? { response: FILL_SAID } : ({ response: { total: 3000, cash_given: 3000, change: 620, tax: 216, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', items: ['Ramen'], lines: [{ name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }, { name: 'Ramen', jp: 'ラーメン', price: 980, qty: 1 }, { name: 'Extra noodles', jp: '替玉', note: 'a second serving of noodles for the same soup', price: 204, qty: 2 }, { name: 'bad', price: 0 }] } }) };
 const PIN = '6666'; // the group's PIN for this test server (the real one is a secret on the Pages project)
 const ENV = { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, TRIP_DO: DO };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json' };
@@ -108,7 +108,7 @@ const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.
   ok('receipt reader: the request the SDK used to send, without the SDK', rq.url === 'https://api.anthropic.com/v1/messages?beta=true' && rq.headers['x-api-key'] === 'sk-test' && rq.headers['anthropic-version'] === '2023-06-01' && body.model === CLAUDE_MODEL && body.output_config.format.type === 'json_schema' && body.output_config.format.schema.required.includes('lines') && body.messages[0].content[0].source.media_type === 'image/webp' && body.messages[0].content[0].source.data.length > 1000 && /receipt from Japan/.test(body.messages[0].content[1].text), JSON.stringify([rq.url, Object.keys(rq.headers), body.model]));
   ok('receipt reader: only a photo as a data URL goes out', receiptRequest('k', 'https://x/y.jpg') === null && receiptRequest('k', 'data:text/plain;base64,aGk=') === null);
   const answer = (status, json, calls = []) => async (url, init) => { calls.push({ url, init }); return new Response(typeof json === 'string' ? json : JSON.stringify(json), { status, headers: { 'content-type': 'application/json' } }); };
-  const said = { total: 1960, cash_given: null, change: null, tax: 178, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', taxfree: false, lines: [{ name: 'Ramen', price: 980, qty: 1 }, { name: 'Ramen', price: 980, qty: 1 }], items: ['Ramen'] };
+  const said = { total: 1960, cash_given: null, change: null, tax: 178, pretax: null, shop: '一蘭 道頓堀店本館', shop_en: 'Ichiran Dotonbori', date: '2026-10-22', type: 'food', taxfree: false, lines: [{ name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }, { name: 'Ramen', jp: 'ラーメン', note: '', price: 980, qty: 1 }], items: ['Ramen'] };
   const good = { stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(said) }] };
   const calls = []; const got = await readReceiptClaude('k', photo, { fetchFn: answer(200, good, calls) });
   ok('receipt reader: the answer is read back, with a timeout on the call', got && got.total === 1960 && got.lines.length === 2 && calls.length === 1 && calls[0].init.signal instanceof AbortSignal && calls[0].init.headers['x-api-key'] === 'k');
@@ -121,7 +121,7 @@ const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.
   const realFetch = globalThis.fetch; globalThis.fetch = answer(200, good);
   try {
     const r = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
-    ok('/api/scan asks Claude when the key is set and keeps its lines', r.total === 1960 && r.model === CLAUDE_MODEL && Array.isArray(r.lines) && r.lines.length === 2 && r.shop_en === 'Ichiran Dotonbori', JSON.stringify(r).slice(0, 200));
+    ok('/api/scan asks Claude when the key is set and keeps its lines', r.total === 1960 && r.model === CLAUDE_MODEL && Array.isArray(r.lines) && r.lines.length === 2 && r.shop_en === 'Ichiran Dotonbori' && r.lines[0].jp === 'ラーメン' && !('note' in r.lines[0]), JSON.stringify(r).slice(0, 200));
     globalThis.fetch = answer(500, 'down');
     const r2 = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
     ok('/api/scan falls back to Workers AI when Claude is down', r2.total === 2380 && r2.model !== CLAUDE_MODEL, JSON.stringify(r2).slice(0, 120));
@@ -348,6 +348,12 @@ await N.page.tap('#addfab'); await N.page.waitForTimeout(400);
 await N.page.setInputFiles('#fscan', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForTimeout(1500);
 ok('scan fills in what was paid, the shop and the day', (await N.page.inputValue('#famt')) === '2380' && (await N.page.inputValue('#ftitle')) === 'Ichiran Dotonbori' && /Day 7/.test(await N.page.textContent('[data-fexp="day"]')), await N.page.inputValue('#famt'));
 ok('scan attaches the photo as the receipt', !!(await N.page.$('.rcpt img')));
+{ // the receipt in English, under everything: each line with what it is, the name as printed, its price, and what was paid
+  const rx = await N.page.$$eval('#fpage .rxen .rxrow', (r) => r.map((e) => e.textContent));
+  const last = await N.page.$eval('#fpage .fwrap', (w) => [...w.querySelectorAll(':scope > .fsec')].pop().textContent).catch(() => '');
+  ok('scan: the receipt in English is the last part of the form, one row per line', rx.length === 3 && /^2×Extra noodles.*second serving.*替玉.*¥204$/.test(rx[2]) && /Receipt in English.*Ichiran Dotonbori.*一蘭.*Paid¥2,380/s.test(last), rx.join(' | ') + ' // ' + last.slice(0, 160));
+  await N.page.$eval('#fpage .rxen', (e) => e.scrollIntoView()); await N.page.screenshot({ path: SH + 'receipt-english.png' });
+}
 await N.page.tap('[data-scanamt]'); await N.page.waitForTimeout(200);
 ok('one tap swaps to the amount before tax', (await N.page.inputValue('#famt')) === '2164');
 await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
@@ -396,17 +402,37 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.tap('[data-iopen]'); await p.waitForTimeout(300); await p.tap('[data-iwho="0:naf"]'); await p.tap('[data-iwho="2:sara"]'); await p.tap('[data-iwho="2:sara"]');
   await p.tap('#fsave'); await p.waitForTimeout(300); await p.tap('#fsave'); await p.waitForTimeout(1200);
   const saved = Object.entries(exMap()).find(([, x]) => x.title === 'Split ramen test');
+  ok('receipt in English: saved with the expense', saved && saved[1].rx && saved[1].rx.lines.length === 3 && saved[1].rx.lines[2].jp === '替玉' && saved[1].rx.total === 2380 && saved[1].rx.shop === 'Ichiran Dotonbori', saved && JSON.stringify(saved[1].rx));
   ok('split: saved with the expense', saved && saved[1].byItem && saved[1].byItem.lines.length === 3 && saved[1].byItem.lines[0].who.join() === 'naf' && saved[1].byItem.lines[2].n.sara === 2, saved && JSON.stringify(saved[1].byItem));
   const rc = []; p.on('request', (r) => { if (/\/api\/receipt\//.test(r.url())) rc.push(new URL(r.url()).pathname + new URL(r.url()).search); });
   await p.tap(`[data-ex="${saved && saved[0]}"]`); await p.waitForTimeout(600);
   // the photo is cached for a year, so the request carries the receipt's stamp: a replaced receipt gets a new URL
   ok('the receipt photo is asked for under its stamp', rc.length === 1 && saved && rc[0] === `/api/receipt/${saved[0]}?v=${saved[1].receipt}`, rc.join() || 'no receipt request');
   ok('split: shown again when the expense is opened', /Split by item from the receipt/.test(await p.textContent('.byitem').catch(() => '')) && !(await p.$('.scanl')));
+  ok('receipt in English: shown again when the expense is opened', (await p.$$('#fpage .rxen .rxrow')).length === 3);
   await p.tap('[data-iopen]'); await p.waitForTimeout(300);
   const back = await p.$$eval('.irow .iwho', (els) => els.map((e) => e.textContent).join(' | '));
   ok('split: Change brings back who had what', /^Naf \| Shared .* \| Sara ×2$/.test(back), back);
   await p.tap('[data-iback]'); await p.waitForTimeout(200); await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
   ok('split: test expense removed', !Object.values(exMap()).some((x) => x.title === 'Split ramen test'));
+}
+// an expense saved with a receipt photo but no reading of it: one tap reads the photo and keeps the English with it
+{
+  const p = N.page;
+  await p.tap('#addfab'); await p.waitForTimeout(400); await p.fill('#famt', '2380'); await p.fill('#ftitle', 'Old receipt test');
+  await p.setInputFiles('#freceipt', REPO + '/img/places/nakano-broadway.webp'); await p.waitForTimeout(600);
+  ok('receipt in English: not there for a photo that was only attached', !(await p.$('#fpage .rxen')) && !(await p.$('[data-rxgo]')));
+  await p.tap('#fsave'); await p.waitForTimeout(1200);
+  const old = Object.entries(exMap()).find(([, x]) => x.title === 'Old receipt test');
+  ok('receipt in English: an attached photo alone saves no English', old && old[1].receipt && !old[1].rx);
+  await p.tap(`[data-ex="${old && old[0]}"]`); await p.waitForTimeout(800);
+  ok('receipt in English: an older expense with a photo offers to read it', !!(await p.$('[data-rxgo]')));
+  await p.tap('[data-rxgo]'); await p.waitForTimeout(1500);
+  const now = Object.entries(exMap()).find(([, x]) => x.title === 'Old receipt test');
+  ok('receipt in English: read from the saved photo, shown and kept at once, without counting as an edit', (await p.$$('#fpage .rxen .rxrow')).length === 3 && now && now[1].rx && now[1].rx.lines.length === 3 && now[1].at === old[1].at && (await p.inputValue('#famt')) === '2380', now && JSON.stringify(now[1]).slice(0, 300));
+  await p.tap('[data-rmreceipt]'); await p.waitForTimeout(200);
+  ok('receipt in English: goes with the photo when the receipt is removed', !(await p.$('#fpage .rxen')));
+  await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
 }
 ok('scanning needs the PIN', (await fetch(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ photo: 'data:image/jpeg;base64,AAAA' }) })).status === 403);
 // add for Naf + Sara, undo it; then delete the ramen and undo that
