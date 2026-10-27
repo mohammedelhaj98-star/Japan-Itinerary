@@ -491,6 +491,12 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.tap('[data-rxall]'); await p.waitForTimeout(3000);
   const line4 = await p.textContent('#rx-line').catch(() => '');
   ok('Settings: Read all renames an expense named after its shop for what was bought, and keeps a typed name', line3 === '2 saved receipts to read' && exMap()[stId].title === 'Ramen · Ichiran Dotonbori' && exMap()[stId].rx.title === 'Ramen' && exMap()[oldId].title === 'Old receipt test' && line4 === '2 receipts read, 1 renamed for what was bought', `${line3} / ${line4} / ${exMap()[stId].title} / ${exMap()[oldId].title}`);
+  // a receipt with no items listed (a taxi) is named for what it was
+  await p.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: { ...x, title: 'MK Taxi', rx: { shop: 'MK Taxi', total: 980, lines: [] } } }) }); }, [stId, exMap()[stId]]);
+  await p.route('**/api/scan', (r) => r.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ total: 980, shop: 'MKタクシー', shop_en: 'MK Taxi', title: 'Taxi', lines: [] }) }));
+  await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
+  await p.tap('[data-rxall]'); await p.waitForTimeout(2500); await p.unroute('**/api/scan');
+  ok('Settings: a receipt with no items listed is named for what it was', exMap()[stId].title === 'Taxi · MK Taxi' && exMap()[stId].rx.title === 'Taxi' && (await p.textContent('#rx-line')) === '1 receipt read, 1 renamed for what was bought', `${exMap()[stId].title} / ${await p.textContent('#rx-line')}`);
   await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
   // the name in the form: the shop goes when the name wouldn't fit one line, or when it's only in Japanese
   const named = async (said) => {
