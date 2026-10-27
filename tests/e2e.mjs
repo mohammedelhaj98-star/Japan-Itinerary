@@ -432,7 +432,33 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   ok('receipt in English: read from the saved photo, shown and kept at once, without counting as an edit', (await p.$$('#fpage .rxen .rxrow')).length === 3 && now && now[1].rx && now[1].rx.lines.length === 3 && now[1].at === old[1].at && (await p.inputValue('#famt')) === '2380', now && JSON.stringify(now[1]).slice(0, 300));
   await p.tap('[data-rmreceipt]'); await p.waitForTimeout(200);
   ok('receipt in English: goes with the photo when the receipt is removed', !(await p.$('#fpage .rxen')));
-  await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
+  await p.tap('[data-fcancel]'); await p.waitForTimeout(400);
+  // search what was bought: a receipt's lines are found by their English or their Japanese, and shown under the expense
+  await p.tap('[data-searchopen]'); await p.waitForTimeout(200);
+  const hits = async (q) => { await p.fill('#gq', q); await p.waitForTimeout(300); return p.$$eval('#glist .xhit', (e) => e.map((x) => x.textContent).join(' | ')); };
+  const h1 = await hits('noodles'), h2 = await hits('替玉'), rows = await p.$$eval('#glist .xrow', (e) => e.length);
+  ok('search: finds a receipt line in English or Japanese and shows it under its expense', h1 === '2× Extra noodles · ¥204' && h2 === h1 && rows === 1, `${h1} / ${h2} / ${rows}`);
+  await p.waitForTimeout(500); await p.$eval('#glist .xhit', (e) => e.scrollIntoView({ block: 'center' }));
+  ok('search: the line fits inside its row', await p.$eval('#glist .xhit', (e) => e.getBoundingClientRect().bottom <= e.closest('.xrow').getBoundingClientRect().bottom));
+  await p.screenshot({ path: SH + 'search-receipts.png' });
+  ok('search: an expense matched by its name lists no lines', (await hits('Old receipt')) === '');
+  await p.tap('[data-searchclose]'); await p.waitForTimeout(200);
+  // Settings: Read all reads every saved receipt photo that has no English yet, and keeps it on its expense
+  await p.tap('#addfab'); await p.waitForTimeout(400); await p.fill('#famt', '980'); await p.fill('#ftitle', 'Settings receipt test');
+  await p.setInputFiles('#freceipt', REPO + '/img/places/nakano-broadway.webp'); await p.waitForTimeout(600); await p.tap('#fsave'); await p.waitForTimeout(1200);
+  await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
+  const line0 = await p.textContent('#rx-line').catch(() => '');
+  ok('Settings: says how many saved receipts have no English yet', line0 === '1 saved receipt not in English yet', line0);
+  await p.tap('[data-rxall]'); await p.waitForTimeout(2500);
+  const st = Object.values(exMap()).find((x) => x.title === 'Settings receipt test'), line1 = await p.textContent('#rx-line').catch(() => '');
+  ok('Settings: Read all reads it and keeps the English on the expense', st && st.rx && st.rx.lines.length === 3 && line1 === '1 receipt read' && await p.$eval('[data-rxall]', (b) => b.disabled), `${line1} ${JSON.stringify(st && st.rx).slice(0, 80)}`);
+  await p.screenshot({ path: SH + 'settings-read-all.png' });
+  await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
+  for (const title of ['Old receipt test', 'Settings receipt test']) {
+    const e = Object.entries(exMap()).find(([, x]) => x.title === title);
+    await p.tap(`[data-ex="${e && e[0]}"]`); await p.waitForTimeout(500); await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
+  }
+  ok('receipt in English: test expenses removed', !Object.values(exMap()).some((x) => /receipt test/.test(x.title)));
 }
 ok('scanning needs the PIN', (await fetch(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ photo: 'data:image/jpeg;base64,AAAA' }) })).status === 403);
 // add for Naf + Sara, undo it; then delete the ramen and undo that

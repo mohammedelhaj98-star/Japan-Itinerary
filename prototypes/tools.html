@@ -1104,7 +1104,7 @@ function renderSettings() {
       <p class="sub" style="margin-top:12px">A faded card is stamped as done. Dashed outline means optional. NASA or M&amp;M on a card means it's only for that couple.</p></div>`;
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
   const modeSeg = [['couple', 'By couple'], ['each', 'Person to person']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
-  const prefs = VIEW ? '' : `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div>${part('bk', backupRow())}</div>`;
+  const prefs = VIEW ? '' : `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div>${part('bk', backupRow())}${rxRow()}</div>`;
   if (sub === 'stamps') return renderStamps();
   const alertsSec = GUEST || VIEW ? '' : `<p class="sec">Flight alerts</p>${part('al', alertsCard())}`;
   const nSt = Object.keys(store.state.checks || {}).length;
@@ -1235,6 +1235,39 @@ async function backupNow() {
   backup.busy = true; render();
   try { backup.st = await store.api('backup', {}); backup.err = ''; } catch (err) { backup.err = err.pin ? 'Enter the PIN to back up' : 'Offline: try again with signal'; }
   backup.busy = false; if (tab === 4 && !sub) render();
+}
+// Receipts in English for expenses saved before a scan kept one: each saved receipt photo is read again, three at a
+// time, and the reading is kept on its expense as soon as it comes (closing the app halfway loses nothing: Read all
+// picks up the rest). Shown on the expense form, like a fresh scan's (money.html rxOf/rxHtml).
+const rxAll = { busy: false, done: 0, n: 0, read: 0 };
+const rxTodo = () => Object.entries(store.getExpenses()).filter(([, x]) => x && !x.kind && typeof x.receipt === 'number' && !x.rx);
+const rxOf = (r) => {
+  const shop = r.shop_en || r.shop || '';
+  return { shop, ...(r.shop && r.shop !== shop ? { jp: r.shop } : {}), total: r.total, ...(r.pretax ? { pretax: r.pretax } : {}), ...(r.taxfree ? { taxfree: true } : {}),
+    lines: (Array.isArray(r.lines) ? r.lines : []).filter((l) => l && l.name && l.price).map(({ name, jp, note, price, qty }) => ({ name, ...(jp ? { jp } : {}), ...(note ? { note } : {}), price, qty: qty || 1 })) };
+};
+function rxRow() {
+  if (SANDBOX) return '';
+  const left = rxTodo().length, s = (n) => (n === 1 ? '' : 's');
+  const line = rxAll.busy ? `Reading ${Math.min(rxAll.done + 1, rxAll.n)} of ${rxAll.n}…`
+    : rxAll.n ? `${rxAll.read} receipt${s(rxAll.read)} read${left ? ` · <span class="warn">${left} couldn't be read. Tap Read all to try again.</span>` : ''}`
+    : left ? `${left} saved receipt${s(left)} not in English yet` : 'Every saved receipt is in English';
+  return `<div class="setrow"><span>Receipts in English<small id="rx-line">${line}</small></span><button class="setb" data-rxall ${rxAll.busy || !left ? 'disabled' : ''}>Read all</button></div>`;
+}
+async function rxReadAll() {
+  const todo = rxTodo(); if (rxAll.busy || !todo.length) return;
+  Object.assign(rxAll, { busy: true, done: 0, n: todo.length, read: 0 }); render();
+  const one = async ([id, x]) => {
+    try {
+      const u = await store.receiptUrl(id, x.receipt); if (!u) throw new Error('no photo');
+      const r = await store.api('scan', { photo: await shopPhoto(await (await fetch(u)).blob()) });
+      const now = store.getExpenses()[id]; // still there, with the same photo, and not read meanwhile on another phone
+      if (r && r.total && now && !now.rx && now.receipt === x.receipt) { const { ts: _, ...rec } = now; store.setExpense(id, { ...rec, rx: rxOf(r) }); rxAll.read++; }
+    } catch { /* counted as not read: still listed, so Read all tries it again */ }
+    rxAll.done++; render();
+  };
+  const q = todo.slice(); await Promise.all([0, 1, 2].map(async () => { while (q.length) await one(q.shift()); }));
+  rxAll.busy = false; render();
 }
 // Settings sub-page (Stamped stops) lives in the URL as ?v=5&p=stamps, so back and refresh behave.
 let sub = new URLSearchParams(location.search).get('p') || '';
@@ -1396,6 +1429,7 @@ page.addEventListener('click', (e) => {
   if (t('[data-export]')) { exportDocx(); return; }
   if (t('[data-share]')) { shareWithFamily(); return; }
   if (t('[data-backup]')) { backupNow(); return; }
+  if (t('[data-rxall]')) { rxReadAll(); return; }
   if (t('[data-saveall]')) { saveAll(); return; }
   if (t('[data-homedone]')) { al.home = true; ls.set('japan2026.homeDone', true); return render(); }
   if (t('[data-install]') && al.install) { const ev = al.install; al.install = null; ev.prompt(); ev.userChoice.then((c) => { if (c && c.outcome === 'accepted') { al.home = true; ls.set('japan2026.homeDone', true); } render(); }); return; }
