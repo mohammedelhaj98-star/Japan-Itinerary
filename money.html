@@ -1450,7 +1450,7 @@ function scanLine() {
 async function scanReceipt(src) {
   const id0 = F; F.scanning = true; F.scanErr = null; renderForm();
   let photo; try { photo = typeof src === 'string' ? src : await shrinkPhoto(src); } catch { F.scanning = false; F.scanErr = "That photo couldn't be opened."; return renderForm(); }
-  if (F !== id0) return; F.receipt = photo; F.rmReceipt = false;
+  if (F !== id0) return; F.receipt = photo; F.rmReceipt = false; F.rx = null;
   let r = null; try { r = await scanApi(photo); } catch { r = null; }
   if (F !== id0) return; F.scanning = false;
   if (!r || !r.total) { F.scanErr = navigator.onLine === false ? 'No signal: the receipt is attached, type the amount.' : "Couldn't read the total: the receipt is attached, type the amount."; return renderForm(); }
@@ -1481,9 +1481,10 @@ function rxHtml() {
 }
 async function translateReceipt() {
   const f = F; if (f.rxBusy) return; f.rxBusy = true; f.rxErr = null; renderForm();
+  const saved = f.rstamp && !f.rmReceipt && !String(f.receipt).startsWith('data:'); // the saved photo, not one just attached (that waits for Save)
   let r = null; try { r = await scanApi(await shrinkPhoto(await (await fetch(f.receipt)).blob())); } catch { r = null; }
   f.rxBusy = false;
-  if (r && r.total) { f.rx = rxOf(r); const x = S.ex.find((e) => e.id === f.id); if (x) saveRx(x, f.rx); }
+  if (r && r.total) { f.rx = rxOf(r); const x = saved && S.ex.find((e) => e.id === f.id); if (x) saveRx(x, f.rx); }
   else f.rxErr = navigator.onLine === false ? 'No signal: try again when there is.' : "Couldn't read this receipt. Try again in a moment.";
   if (F === f) renderForm();
 }
