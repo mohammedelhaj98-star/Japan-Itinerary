@@ -1150,7 +1150,7 @@ function groupShown() {
 const rxHits = (x, q) => {
   if (!q || !x.rx) return [];
   const one = q.length > 3 ? [q.replace(/ies$/, 'y'), q.replace(/es$/, ''), q.replace(/s$/, '')] : []; // medicines, boxes, candies
-  return x.rx.lines.filter((l, i) => `${l.name} ${l.jp || ''} ${l.note || ''}`.toLowerCase().includes(q) || (l.tags || []).some((t) => t.startsWith(q) || one.includes(t)) || (ai.q === q && ai.hits.has(`${x.id}:${i}`)));
+  return x.rx.lines.filter((l) => `${l.name} ${l.jp || ''} ${l.note || ''}`.toLowerCase().includes(q) || (l.tags || []).some((t) => t.startsWith(q) || one.includes(t)) || (ai.q === q && ai.hits.has(`${x.id}:${lineText(l)}`)));
 };
 
 /* ───────── smart search: a small AI model that runs on the phone (all-MiniLM-L6-v2) matches what was bought by
@@ -1192,14 +1192,15 @@ async function aiRun() {
   const q = (S.q || '').trim().toLowerCase();
   if (ai.st !== 'ready' || !S.searchOpen) return;
   if (q.length < 3 || /[\u3000-\u9fff]/.test(q)) { if (ai.q) { ai.q = ''; ai.hits = new Set(); renderGlist(); } return; } // Japanese is matched by its letters
-  const lines = S.ex.flatMap((x) => (x.rx ? x.rx.lines.map((l, i) => [`${x.id}:${i}`, lineText(l)]) : []));
+  // a hit is kept by what the line says, so a line changed on another phone meanwhile never takes another's place
+  const lines = S.ex.flatMap((x) => (x.rx ? x.rx.lines.map((l) => [x.id, lineText(l)]) : []));
   const need = [...new Set(lines.map(([, t]) => t).filter((t) => !ai.vec[t]))];
   try {
     for (let i = 0; i < need.length; i += 16) { const chunk = need.slice(i, i + 16), vs = await ai.embed(chunk); chunk.forEach((t, k) => { ai.vec[t] = packV(vs[k]); }); }
     if (need.length) try { localStorage.setItem('money.aivec', JSON.stringify(ai.vec)); } catch {}
     const [qv] = await ai.embed([q]);
     if ((S.q || '').trim().toLowerCase() !== q) return; // typed on meanwhile: that search is on its way
-    const score = lines.map(([k, t]) => { const v = unpackV(ai.vec[t]); let d = 0; for (let j = 0; j < v.length; j++) d += v[j] * qv[j]; return [k, d / 127]; });
+    const score = lines.map(([id, t]) => { const v = unpackV(ai.vec[t]); let d = 0; for (let j = 0; j < v.length; j++) d += v[j] * qv[j]; return [`${id}:${t}`, d / 127]; });
     // close in meaning: within 0.15 of the best match, and never below 0.38 (tried on real receipt lines)
     const top = Math.max(0, ...score.map(([, d]) => d)), cut = Math.max(0.38, top - 0.15);
     ai.q = q; ai.hits = new Set(score.filter(([, d]) => d >= cut).map(([k]) => k)); renderGlist();
@@ -2088,7 +2089,7 @@ store.subscribe(() => {
   if (same && s2 === sigS) return; sig = s1; sigS = s2;
   if (F || sheet.classList.contains('on') || settling) { stale = true; return; }
   if (same && !stale && IDS.every((i) => P[i].photo === store.photoUrl(i))) return syncl();
-  load(); render();
+  load(); render(); if (ai.on) aiSoon(); // receipts changed on another phone: search them again
 });
 function syncl() { const r = drawn.find((r) => r.k === 'syncl'), h = `<p class="syncl">${syncLine()}</p>`; if (r && r.h !== h) { r.nodes[0].innerHTML = syncLine(); r.h = h; } }
 // the form and sheets pick up what changed meanwhile once they close

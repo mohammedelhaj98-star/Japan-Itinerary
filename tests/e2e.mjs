@@ -451,6 +451,16 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.tap('[data-aion]'); await p.waitForTimeout(600); await p.fill('#gq', 'dinner'); await p.waitForTimeout(900);
   const ai1 = await p.$$eval('#glist .xhit', (e) => e.map((x) => x.textContent).join(' | '));
   ok('smart search: once on, finds a line by meaning, and the offer goes', ai1 === '2× Extra noodles · ¥204' && !(await p.$('#glist .ailine')), ai1);
+  // a receipt added, then changed, on another phone during the search: its line is matched by what it says now
+  const nX = Object.values(exMap()).find((x) => x.rx);
+  const other = (x) => p.evaluate(async (v) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id: 'other-phone-rx', value: v }) }); dispatchEvent(new Event('online')); }, x);
+  const aiNow = async () => { await p.waitForTimeout(1500); return p.$$eval('#glist .xhit', (e) => e.map((x) => x.textContent).join(' | ')); };
+  await other({ ...nX, title: 'Udon from the other phone', rx: { ...nX.rx, lines: [{ name: 'Udon noodles', price: 500, qty: 1 }] } });
+  const ai2 = await aiNow();
+  await other({ ...nX, title: 'Udon from the other phone', rx: { ...nX.rx, lines: [{ name: 'Sunscreen', price: 500, qty: 1 }] } });
+  const ai3 = await aiNow();
+  ok('smart search: a receipt added on another phone is searched too, and a line changed there loses the old line\'s match', ai2 === '2× Extra noodles · ¥204 | Udon noodles · ¥500' && ai3 === '2× Extra noodles · ¥204', `${ai2} / ${ai3}`);
+  await other(null);
   ok('smart search: remembered on this phone, with what each line means', await p.evaluate(() => localStorage.getItem('money.ai') === 'true' && Object.keys(JSON.parse(localStorage.getItem('money.aivec') || '{}')).length >= 2));
   await p.tap('[data-searchclose]'); await p.waitForTimeout(200);
   // Settings: Read all reads every saved receipt photo that has no English yet, and keeps it on its expense
