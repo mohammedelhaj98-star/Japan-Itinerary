@@ -463,6 +463,15 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   const st = Object.values(exMap()).find((x) => x.title === 'Settings receipt test'), line1 = await p.textContent('#rx-line').catch(() => '');
   ok('Settings: Read all reads it and keeps the English on the expense', st && st.rx && st.rx.lines.length === 3 && line1 === '1 receipt read' && await p.$eval('[data-rxall]', (b) => b.disabled), `${line1} ${JSON.stringify(st && st.rx).slice(0, 80)}`);
   await p.screenshot({ path: SH + 'settings-read-all.png' });
+  // a receipt read before tags is read again, but a reading with no lines (the backup reader) never wipes its lines
+  const stId = Object.entries(exMap()).find(([, x]) => x.title === 'Settings receipt test')[0];
+  await p.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: { ...x, rx: { ...x.rx, lines: x.rx.lines.map(({ tags: _, ...l }) => l) } } }) }); }, [stId, exMap()[stId]]);
+  await p.route('**/api/scan', (r) => r.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ total: 980, shop: 'Ichiran', lines: [] }) }));
+  await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
+  const line2 = await p.textContent('#rx-line').catch(() => '');
+  await p.tap('[data-rxall]'); await p.waitForTimeout(2500); await p.unroute('**/api/scan');
+  const st2 = exMap()[stId];
+  ok('Settings: a receipt read before tags is offered again, and a reading with no lines keeps the ones it has', line2 === '1 saved receipt to read' && st2.rx.lines.length === 3 && /couldn't be read/.test(await p.textContent('#rx-line')), `${line2} ${JSON.stringify(st2.rx).slice(0, 80)}`);
   await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
   for (const title of ['Old receipt test', 'Settings receipt test']) {
     const e = Object.entries(exMap()).find(([, x]) => x.title === title);

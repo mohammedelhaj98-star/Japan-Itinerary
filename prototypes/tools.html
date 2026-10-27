@@ -1264,7 +1264,8 @@ async function rxReadAll() {
       const u = await store.receiptUrl(id, x.receipt); if (!u) throw new Error('no photo');
       const r = await store.api('scan', { photo: await shopPhoto(await (await fetch(u)).blob()) });
       const now = store.getExpenses()[id]; // still there, with the same photo, and not read meanwhile on another phone
-      if (r && r.total && now && rxStale(now.rx) && now.receipt === x.receipt) { const { ts: _, ...rec } = now; store.setExpense(id, { ...rec, rx: rxOf(r) }); rxAll.read++; }
+      // A reading with no lines (the backup reader lists none) never replaces one that has them.
+      if (r && r.total && now && rxStale(now.rx) && now.receipt === x.receipt && (!now.rx || r.lines?.length)) { const { ts: _, ...rec } = now; store.setExpense(id, { ...rec, rx: rxOf(r) }); rxAll.read++; }
     } catch { /* counted as not read: still listed, so Read all tries it again */ }
     rxAll.done++; render();
   };
