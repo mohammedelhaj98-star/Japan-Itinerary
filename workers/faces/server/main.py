@@ -1,6 +1,6 @@
 # The faces container's web server: POST /look?rot=90 with a photo's bytes → what's in it (look.py), as JSON.
 # GET / answers once the models are loaded (the Worker waits for that before sending photos).
-import json, sys
+import json, socketserver, sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import look
 
@@ -26,5 +26,11 @@ class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
 
 
+class Server(ThreadingHTTPServer):
+    # (HTTPServer looks up the box's own name, and Cloudflare's 64-letter box names are too long for that: it stops)
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self); self.server_name, self.server_port = 'box', self.server_address[1]
+
+
 if __name__ == '__main__':
-    ThreadingHTTPServer(('0.0.0.0', int(sys.argv[1]) if len(sys.argv) > 1 else 8080), H).serve_forever()
+    Server(('0.0.0.0', int(sys.argv[1]) if len(sys.argv) > 1 else 8080), H).serve_forever()

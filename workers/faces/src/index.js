@@ -14,16 +14,26 @@ import { DurableObject } from 'cloudflare:workers';
 // One box: its container is started when a photo comes, and stopped after 5 quiet minutes (a stopped box costs nothing;
 // starting takes a few seconds, the models load in about two)
 const QUIET = 5 * 60e3;
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 export class FaceBox extends DurableObject {
   async fetch(req) {
     const c = this.ctx.container, u = new URL(req.url), body = req.method === 'POST' ? await req.arrayBuffer() : undefined;
     await this.ctx.storage.setAlarm(Date.now() + QUIET);
-    for (let i = 0; i < 180; i++) {
-      if (!c.running) c.start({ image: c.images.box, instance: 'standard-1', enableInternet: false });
-      try { return await c.getTcpPort(8080).fetch('http://box' + u.pathname + u.search, { method: req.method, body }); }
-      catch { await new Promise((r) => setTimeout(r, 1000)); } // (not up yet)
+    const port = () => c.getTcpPort(8080);
+    for (let i = 0; i < 40; i++) { // (about a minute: the box starts, then its models load)
+      if (i === 1 && this.gone === undefined) this.gone = true; // (a box from before this object woke, not answering: start it again)
+      if (!c.running || this.gone) { // (a box that stopped can still say it's running: monitor() tells)
+        if (c.running) await Promise.race([c.destroy().catch(() => {}), wait(5000)]);
+        try { c.start({ image: c.images.box, instance: 'standard-1', enableInternet: false }); } catch (e) { console.log('the face box would not start', String(e)); await wait(1500); continue; }
+        this.gone = false;
+        c.monitor().catch((e) => console.log('the face box stopped', String(e))).finally(() => { this.gone = true; });
+      }
+      try { if ((await port().fetch('http://box/', { signal: AbortSignal.timeout(4000) })).ok) break; } catch {} // (not up yet)
+      if (i === 39) { console.log('the face box did not start'); return Response.json({ error: 'the face box did not start' }, { status: 503 }); }
+      await wait(1500);
     }
-    return Response.json({ error: 'the face box did not start' }, { status: 503 });
+    try { return await port().fetch('http://box' + u.pathname + u.search, { method: req.method, body, signal: AbortSignal.timeout(60e3) }); }
+    catch (e) { console.log('the face box did not answer', String(e)); return Response.json({ error: 'the face box did not answer' }, { status: 503 }); }
   }
   async alarm() { if (this.ctx.container.running) await this.ctx.container.destroy(); }
 }
@@ -63,7 +73,7 @@ export default {
     const url = new URL(req.url);
     if (req.method !== 'POST') return Response.json({ ok: true });
     if (url.pathname === '/look') {
-      const box = env.BOX.get(env.BOX.idFromName('box' + Math.floor(Math.random() * (+env.BOXES || 2)))); // (two boxes, so a phone and the minute's sweep don't queue)
+      const box = env.BOX.get(env.BOX.idFromName('face' + Math.floor(Math.random() * (+env.BOXES || 2)))); // (two boxes, so a phone and the minute's sweep don't queue)
       return box.fetch(new Request('http://box/look' + url.search, { method: 'POST', body: req.body, headers: { 'content-type': 'application/octet-stream' } }));
     }
     return looks(env).fetch(new Request('http://looks' + url.pathname, { method: 'POST', body: req.body, headers: { 'content-type': 'application/json' } }));
