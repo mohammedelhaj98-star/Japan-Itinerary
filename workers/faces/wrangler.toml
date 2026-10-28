@@ -1,0 +1,32 @@
+# Face recognition's server (src/index.js): the faces container (server/) and what it found in each photo.
+# Deploy with scripts/deploy-faces.sh (fetches the container's parts, then builds and uploads it with Docker).
+# Secret, set once: FACES_KEY (the same on the Pages project), so the minute's sweep can ask the site to look at photos.
+name = "japan2026-faces"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[[containers]]
+class_name = "FaceBox"
+image = "./server/Dockerfile"
+max_instances = 2
+instance_type = "standard-1"
+
+[[durable_objects.bindings]]
+name = "BOX"
+class_name = "FaceBox"
+
+[[durable_objects.bindings]]
+name = "LOOKS"
+class_name = "FaceLooks"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FaceBox", "FaceLooks"]
+
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+SITE = "https://ourtrips.date"
+BOXES = "2"

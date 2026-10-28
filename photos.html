@@ -759,8 +759,8 @@ function setRowIn(r, ids) {
   faceSoon(8000);
 }
 // a small copy of a photo for the sort to look at (a few dozen KB), made on the phone so it needn't wait for Google's
-async function smallCopy(f) {
-  try { const bm = await createImageBitmap(f); const k = Math.min(1, 640 / Math.max(bm.width, bm.height)); const c = document.createElement('canvas'); c.width = Math.round(bm.width * k); c.height = Math.round(bm.height * k); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); if (bm.close) bm.close(); return c.toDataURL('image/jpeg', 0.72); } catch { return null; }
+async function smallCopy(f, px = 640, q = 0.72) {
+  try { const bm = await createImageBitmap(f); const k = Math.min(1, px / Math.max(bm.width, bm.height)); const c = document.createElement('canvas'); c.width = Math.round(bm.width * k); c.height = Math.round(bm.height * k); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); if (bm.close) bm.close(); return c.toDataURL('image/jpeg', q); } catch { return null; }
 }
 /* ── the sort: Claude says what's in each photo and how many people; with who was there, that's a guess at who ── */
 let sortOff = false, sorting = false; const sortTried = new Set();
@@ -945,31 +945,43 @@ tagr.addEventListener('click', (e) => {
   if (t('[data-tgnext]')) { checkSave(); ti++; return drawCheck(); }
 });
 
-/* ═══ faces: on Mo's phone only, a face matcher (js/faces.js) learns the four of us from photos someone tagged, then
-   guesses who's in the ones no one has checked (dotted, like any guess). The prints it learns are kept by the server, so
-   the names it saves show on every phone; none of the others download the model or run it. ═══ */
-const FACES_HERE = MEMBER && ME === 'm';
-let facesOn = FACES_HERE && lsGet('photos.faces') === 'on', faceBusy = false, faceAgain = false, faceMsg = '', fp = null, fpv = {}, faceT = 0;
+/* ═══ faces: the faces server (workers/faces) finds the faces and people in each photo, once; on the four's phones a face
+   matcher (js/faces.js) learns the four of us from photos someone tagged, then guesses who's in the ones no one has
+   checked (dotted, like any guess). The prints it learns are kept by the server, so the names show on every phone. ═══ */
+const FACES_HERE = MEMBER;
+let facesOn = FACES_HERE, faceBusy = false, faceAgain = false, faceMsg = '', fp = null, fpv = {}, faceT = 0;
 const fxMod = () => import('./js/faces.js?v=9');
 function renderFaces() {
   const el = $('#facebox'); let h = '';
-  if (FACES_HERE && !facesOn) h = `<div class="nudge"><svg class="fi" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="9.5" cy="10" r=".6" fill="currentColor"/><circle cx="14.5" cy="10" r=".6" fill="currentColor"/><path d="M9.5 14.5c1.4 1.2 3.6 1.2 5 0"/></svg><span><b>Recognise faces</b>Learns the four of you from photos you've tagged, then names who's in the rest. Only on your phone: 26 MB, once.</span><button class="press" data-faceson>Turn on</button></div>`;
   const nd = facesOn ? photos.filter(doubtOf).length : 0;
   if (nd) h += `<div class="nudge"><svg class="fi" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17h.01"/></svg><span><b>Check ${nd === 1 ? 'this tag' : `these ${nd} tags`}?</b>A face looks like someone else.</span><button class="press" data-doubts>Check</button></div>`;
-  if (facesOn) h += `<p class="fline"><span>${esc(faceMsg || 'Recognising faces')}</span><button data-facesoff>Turn off</button></p>`;
+  if (facesOn && faceMsg) h += `<p class="fline"><span>${esc(faceMsg)}</span></p>`;
   if (drawn.get(el) !== h) noted(el, h).innerHTML = h;
 }
 const setFaceMsg = (m) => { faceMsg = m; renderFaces(); };
 const knows = () => PIDS.filter((id) => (fp && fp.by[id] || []).length);
 async function prints(body) { fp = await api('/prints', body); fpv = (await fxMod()).vectors(fp); return fp; }
-// the faces and people in a photo: from this phone's notes, or found in a picture of it (its own file, just uploaded, or ours)
-const lookKey = (id, rot) => 'v2:' + id + (rot ? '@' + rot : ''); // (turned: looked at again)
-async function looksOf(p) {
-  const F = await fxMod(); const key = lookKey(p.id, p.rot); const had = await F.seen(key); if (had) return had;
-  try {
-    const r = await fetch(p.local || media(p, 'thumb', '&s=800')); if (!r.ok) return null;
-    const L = await F.look(await r.blob(), p.rot); await F.remember(key, L); return L;
-  } catch { return null; } // no picture yet (Google's still making it), or one the phone can't read
+// the faces and people in a photo, as the faces server found them: kept on this phone once fetched (a turned photo is
+// looked at again)
+const lookKey = (id, rot) => 'v3:' + id + (rot ? '@' + rot : '');
+const srvKey = (p) => p.id + (p.rot ? '@' + p.rot : '');
+async function looksOf(p) { return (await fxMod()).seen(lookKey(p.id, p.rot)); }
+// fetch the ones this phone doesn't have yet; the server looks at a few new ones a go (Google's picture of a photo just
+// uploaded can take a moment: those wait for the next go)
+async function fetchLooks(list) {
+  const F = await fxMod(); let need = [];
+  for (const p of list) if (!(await F.seen(lookKey(p.id, p.rot)))) need.push(p);
+  const total = need.length, t0 = Date.now();
+  while (need.length) {
+    if (total > 6) setFaceMsg(`Looking at your photos · ${total - need.length} of ${total}`);
+    const part = need.slice(0, 300), d = await api('/looks', { trip: TRIP, items: part.map((p) => ({ id: p.id, rot: p.rot || 0 })) });
+    for (const p of part) { const L = d.looks && d.looks[srvKey(p)]; if (L) await F.remember(lookKey(p.id, p.rot), L); }
+    const later = new Set(d.later || []), left = need.filter((p) => later.has(srvKey(p)) || !part.includes(p));
+    if (left.length === need.length) return false; // nothing new this go (no picture yet): next time
+    need = left;
+    if (Date.now() - t0 > 90e3) return !!need.length; // (names what it has so far, then carries on)
+  }
+  return false;
 }
 // what each of us wore each day: { day: { who: [outfits] } }, from the last go (for photos being uploaded meanwhile)
 let worn = {};
@@ -985,12 +997,13 @@ async function facePass() {
   if (!facesOn || !photos.length) return; if (faceBusy) { faceAgain = true; return; } faceBusy = true;
   try {
     const F = await fxMod();
-    if (!fp) { setFaceMsg('Getting face recognition ready (26 MB, the first time)…'); await F.ready(); await prints(); }
-    if ((fp.v || 1) < F.VERSION) { // it learns a better way now: forget what it learned, and take back the names it guessed
+    if (!fp) await prints();
+    if ((fp.v || 1) < F.VERSION) { // it learns a better way now: forget what it learned, and take back the names the faces guessed
       await prints({ reset: F.VERSION });
-      const undo = []; for (const p of photos) if (p.guess && !p.checked && F.hasFaces(await F.seen(p.id + (p.rot ? '@' + p.rot : '')))) { p.in = []; p.guess = p.faced = false; undo.push(p.id); }
-      if (undo.length) { save({ ids: undo, set: { unguess: true } }); render(); }
+      const undo = photos.filter((p) => p.guess && p.faced && !p.checked); for (const p of undo) { p.in = []; p.guess = p.faced = false; }
+      if (undo.length) { save({ ids: undo.map((p) => p.id), set: { unguess: true } }); render(); }
     }
+    if (await fetchLooks(photos.filter((p) => !p.isVideo && !p.hidden && dayById[p.day] && (p.checked || p.np !== 0)))) faceAgain = true;
     // prints from a photo whose tags changed since (that person isn't in it after all) are dropped, and it's learned again
     const drop = new Set(); for (const [who, l] of Object.entries(fp.by)) for (const x of l) { const p = byIdP(x.id); if (p && p.checked && !p.in.includes(who)) drop.add(x.id); }
     if (drop.size) await prints({ drop: [...drop] });
@@ -1034,7 +1047,7 @@ async function facePass() {
     const k = knows(), not = PIDS.filter((id) => !k.includes(id)), n = k.reduce((s, id) => s + fp.by[id].length, 0);
     setFaceMsg(!k.length ? 'It learns only from photos of one person: tag a few of each of you.'
       : `Recognises ${names(k)} (from ${n} tagged face${n > 1 ? 's' : ''}).${not.length ? ` Tag photos of just ${not.map((id) => PEOPLE[id].name).join(' or ')} to teach it.` : ''}${named ? ` Named ${named} photo${named > 1 ? 's' : ''}: check them above.` : ''}`);
-  } catch (e) { setFaceMsg(e && e.status ? 'Couldn\'t reach the trip\'s server. It tries again later.' : 'Face recognition couldn\'t start on this phone.'); }
+  } catch (e) { setFaceMsg(e && e.status === 503 ? '' : e && e.status ? 'Couldn\'t reach the face server. It tries again later.' : 'Face recognition couldn\'t start on this phone.'); }
   finally { faceBusy = false; if (faceAgain) { faceAgain = false; faceSoon(); } }
 }
 const faceSoon = (ms = 2500) => { if (!facesOn) return; clearTimeout(faceT); faceT = setTimeout(facePass, ms); };
@@ -1042,8 +1055,9 @@ const faceSoon = (ms = 2500) => { if (!facesOn) return; clearTimeout(faceT); fac
 async function faceRow(r) {
   if (!facesOn || r.isVideo) return;
   try {
-    const F = await fxMod(); await F.ready(); if (!fp) await prints();
-    r.look = await F.look(r.f); if (r.id) F.remember(lookKey(r.id), r.look);
+    const F = await fxMod(); if (!fp) await prints();
+    const img = await smallCopy(r.f, 800, 0.85); if (!img) return;
+    r.look = await api('/look', { img }); if (r.id) F.remember(lookKey(r.id), r.look);
     if (r.touched) return;
     const g = F.nameAll(r.look, fpv, couldOf(r.day.id, r.stop, ME), r.in, worn[r.day.id] || {}); if (!g || sameSet(g, r.in)) return;
     r.in = g; r.guess = r.faced = true; paintRow(r); paintUpAll();
@@ -1318,8 +1332,6 @@ document.addEventListener('click', (e) => {
   const wb = t('[data-what]'); if (wb) { ui.what = ui.what === wb.dataset.what ? '' : wb.dataset.what; return render(); }
   if (t('[data-check]')) return openCheck();
   if (t('[data-doubts]')) return openCheck(photos.filter(doubtOf));
-  if (t('[data-faceson]')) { facesOn = true; lsSet('photos.faces', 'on'); setFaceMsg('Getting face recognition ready (26 MB, the first time)…'); return facePass(); }
-  if (t('[data-facesoff]')) { facesOn = false; lsSet('photos.faces', null); clearTimeout(faceT); return renderFaces(); }
   if (t('[data-size]')) { setCols(ui.cols === 3 ? 5 : ui.cols === 5 ? 2 : 3, document.elementFromPoint(innerWidth / 2, innerHeight / 2)); return toast(`${ui.cols} photos a row`); }
   if (t('[data-clrq]')) { ui.q = ''; $('#q').value = ''; return render(); }
   const j = t('[data-jump]'); if (j) { const el = document.getElementById('day-' + j.dataset.jump); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }

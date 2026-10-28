@@ -1,0 +1,8 @@
+{
+  "name": "japan2026-faces",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@cloudflare/containers": "0.3.7"
+  }
+}
