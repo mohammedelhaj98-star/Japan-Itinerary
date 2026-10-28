@@ -734,5 +734,5 @@ let M = null;
 
 for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S], ['mo', M]].filter(([, x]) => x)) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
 console.log(fails ? `\n${fails} failed` : '\nall photo checks passed');
-await browser.close(); site.close(); google.close(); fs.rmSync(FIX, { recursive: true, force: true });
+await browser.close(); site.close(); google.close(); if (faceBox) faceBox.kill(); fs.rmSync(FIX, { recursive: true, force: true });
 process.exitCode = fails ? 1 : 0;
