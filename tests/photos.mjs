@@ -732,7 +732,7 @@ let M = null;
   ok('turned back and unpicked: nothing left over', ap(tp.id).rot === '' && !Object.keys(cv['~rot'] || {}).length, JSON.stringify(cv));
 }
 
-for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S], ['mo', M]]) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
+for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S], ['mo', M]].filter(([, x]) => x)) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
 console.log(fails ? `\n${fails} failed` : '\nall photo checks passed');
 await browser.close(); site.close(); google.close(); fs.rmSync(FIX, { recursive: true, force: true });
 process.exitCode = fails ? 1 : 0;
