@@ -295,6 +295,66 @@ await n.tap(`.grid .th[data-pid="${dinner.id}"]`); await n.waitForTimeout(800);
 ok('viewer plays the video from Drive', /\/api\/photos\/file\//.test(await n.$eval('#track .slide:nth-child(2) video', (v) => v.getAttribute('src'))));
 await n.keyboard.press('Escape'); await n.waitForTimeout(600);
 
+// 8b · saving originals to the phone: a download each on Android, the share sheet on iPhone (20 at a time)
+{
+  const got = []; const onDl = (d) => got.push(d); n.on('download', onDl);
+  await n.tap(`.grid .th[data-pid="${shot.id}"]`); await n.waitForTimeout(700);
+  await n.screenshot({ path: OUT + 'save-viewer.png' });
+  await n.tap('.vw [data-vsave]'); await n.waitForFunction(() => /Saved/.test(document.getElementById('toast').textContent), null, { timeout: 8000 }).catch(() => {});
+  const f0 = got[0] && fs.readFileSync(await got[0].path());
+  ok('viewer Save downloads the original', got.length === 1 && got[0].suggestedFilename() === shot.name && f0 && f0.equals(shot.data), got.map((d) => d.suggestedFilename()).join());
+  ok('…and says so', /Saved 1 photo/.test(await n.textContent('#toast')), await n.textContent('#toast'));
+  await n.keyboard.press('Escape'); await n.waitForTimeout(600);
+  const th0 = await n.$(`.grid .th[data-pid="${castle.id}"]`); await th0.scrollIntoViewIfNeeded(); const bb = await th0.boundingBox();
+  await n.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await n.mouse.down(); await n.waitForTimeout(650); await n.mouse.up(); await n.waitForTimeout(300);
+  ok('press and hold a photo: Select opens with it ticked', await n.evaluate(() => document.body.classList.contains('sel') && !document.getElementById('vw').classList.contains('on')) && (await n.textContent('#seln')) === '1 selected'
+    && (await n.$eval(`.grid .th[data-pid="${castle.id}"]`, (e) => e.classList.contains('on'))), await n.textContent('#seln'));
+  await n.screenshot({ path: OUT + 'save-hold-to-select.png' });
+  await n.tap('[data-selx]'); await n.waitForTimeout(300);
+  await n.tap('[data-pp="sara"]'); await n.waitForTimeout(400);
+  await n.tap('[data-select]'); await n.waitForTimeout(300); await n.tap('#selbar [data-selall]'); await n.waitForTimeout(200);
+  const sel = await n.evaluate(() => [...document.querySelectorAll('.grid .th.on')].map((e) => e.dataset.pid).sort());
+  ok('Select all follows the filters (photos with Sara)', (await n.textContent('#seln')) === '2 selected' && sel.join() === [castle.id, dinner.id].sort().join(), sel.join());
+  await n.tap('[data-selx]'); await n.tap('[data-clrppl]').catch(() => n.tap('[data-pp="sara"]')); await n.waitForTimeout(400);
+  const nv = (await n.$$('.grid .th')).length;
+  await n.tap('[data-select]'); await n.waitForTimeout(300); await n.tap('#selbar [data-selall]'); await n.waitForTimeout(200);
+  ok('Select all picks every photo shown', (await n.textContent('#seln')) === `${nv} selected` && (await n.textContent('#selbar [data-selall]')) === 'Clear');
+  await n.screenshot({ path: OUT + 'save-select-all.png' });
+  got.length = 0; await n.evaluate(() => (document.getElementById('toast').textContent = '')); await n.tap('#selbar [data-save]');
+  await n.waitForFunction(() => /Saved/.test(document.getElementById('toast').textContent), null, { timeout: 15000 }).catch(() => {});
+  const names = got.map((d) => d.suggestedFilename()).sort();
+  ok('Save in Select downloads each original', got.length === nv && names.includes('dinner.mp4') && names.includes('castle.jpg'), names.join());
+  ok('…and counts them', new RegExp(`Saved ${nv} photos`).test(await n.textContent('#toast')), await n.textContent('#toast'));
+  await n.tap('#selbar [data-selall]'); ok('…tap again to clear', (await n.textContent('#seln')) === 'Tap or drag across');
+  await n.tap('[data-selx]'); await n.waitForTimeout(300); n.off('download', onDl);
+
+  // iPhone: the share sheet, from a tap on Save once the files are here; two at a time here (20 on the site)
+  const ictx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3, serviceWorkers: 'block',
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+  const ip = await ictx.newPage(); const ierrs = []; ip.on('pageerror', (e) => ierrs.push(e.message)); ip.on('download', () => ierrs.push('downloaded instead of sharing'));
+  await ip.addInitScript(() => { if (location.protocol === 'about:') return; localStorage.setItem('trips.me', '"mariam"'); localStorage.setItem('trips.pin', '6666'); window.__SAVECHUNK = 2;
+    navigator.canShare = (d) => !!(d && d.files); navigator.share = async (d) => { (window.__shared = window.__shared || []).push(d.files.map((f) => [f.name, f.type, f.size])); }; });
+  await ip.goto(B + '/japan/photos'); await ip.waitForTimeout(1800);
+  await ip.tap(`.grid .th[data-pid="${shot.id}"]`); await ip.waitForTimeout(700); await ip.tap('.vw [data-vsave]');
+  await ip.waitForSelector('#savec.on [data-savego]', { timeout: 8000 }).catch(() => {});
+  ok('iPhone: the photo is fetched, then a Save button', /1 photo ready/.test(await ip.textContent('#savec')) && !(await ip.evaluate(() => window.__shared)), await ip.textContent('#savec'));
+  await ip.waitForTimeout(350); await ip.screenshot({ path: OUT + 'save-iphone-ready.png' });
+  await ip.tap('[data-savego]'); await ip.waitForTimeout(500);
+  const sh1 = await ip.evaluate(() => window.__shared);
+  ok('…which opens the share sheet with the original', sh1 && sh1.length === 1 && sh1[0].length === 1 && sh1[0][0][0] === shot.name && sh1[0][0][1] === 'image/jpeg' && sh1[0][0][2] === shot.data.length, JSON.stringify(sh1));
+  ok('…and says saved', /Saved 1 photo/.test(await ip.textContent('#toast')) && !(await ip.$('#savec.on')));
+  await ip.keyboard.press('Escape'); await ip.waitForTimeout(600);
+  await ip.evaluate(() => { window.__shared = []; document.getElementById('toast').textContent = ''; }); const iv = (await ip.$$('.grid .th')).length;
+  await ip.tap('[data-select]'); await ip.waitForTimeout(300); await ip.tap('#selbar [data-selall]'); await ip.tap('#selbar [data-save]');
+  for (let k = 0; k < Math.ceil(iv / 2); k++) { await ip.waitForSelector('#savec.on [data-savego]', { timeout: 8000 }).catch(() => {}); if (k === 0) { await ip.waitForTimeout(350); await ip.screenshot({ path: OUT + 'save-iphone-many.png' }); } await ip.tap('#savec [data-savego]'); await ip.waitForTimeout(400); }
+  await ip.waitForTimeout(300);
+  const sh2 = await ip.evaluate(() => window.__shared);
+  ok('iPhone: many go to the share sheet in groups', sh2.length === Math.ceil(iv / 2) && sh2.flat().length === iv && sh2.every((g) => g.length <= 2), JSON.stringify(sh2.map((g) => g.length)));
+  ok('…and the total is counted', new RegExp(`Saved ${iv} photos`).test(await ip.textContent('#toast')), await ip.textContent('#toast'));
+  ok('iPhone saving: no page errors', !ierrs.length, ierrs.join(' | '));
+  await ictx.close();
+}
+
 // 9 · changes need the member PIN
 ok('upload needs the member PIN', (await api('/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ trip: 'japan', folder: 'x', name: 'a.jpg', mime: 'image/jpeg', size: 10, day: 'd01', t: 1, by: 'naf' }) })).status === 403);
 ok('editing needs the member PIN', (await api('/update', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '1212' }, body: JSON.stringify({ ids: [shot.id], set: { hidden: true } }) })).status === 403 && files.get(shot.id).appProperties.hidden !== '1');

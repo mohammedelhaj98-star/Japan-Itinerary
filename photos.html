@@ -98,7 +98,7 @@ h1,h2,h3,p { margin:0; }
 .sh .plan { font-size:12.5px; font-weight:700; color:var(--blue); white-space:nowrap; }
 /* mosaic: favourites take a double tile; pinch the grid to change how many fit a row */
 .grid { display:grid; grid-template-columns:repeat(var(--cols, 3), 1fr); grid-auto-rows:var(--cell); grid-auto-flow:dense; gap:3px; border-radius:16px; overflow:hidden; touch-action:pan-y; }
-.th { position:relative; overflow:hidden; background:#ddd8cc; }
+.th { position:relative; overflow:hidden; background:#ddd8cc; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
 .th.big { grid-column:span 2; grid-row:span 2; }
 html.c2 .th.big { grid-column:span 1; grid-row:span 1; } /* two a row: every photo is already big */
 .th img, .th video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; -webkit-user-drag:none; }
@@ -140,8 +140,11 @@ body.sel .th .hrt { display:none; }
 /* select bar */
 .selbar { position:fixed; left:0; right:0; bottom:0; z-index:40; padding:10px 12px calc(12px + env(safe-area-inset-bottom)); background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); box-shadow:0 -1px 0 var(--line); display:flex; align-items:center; gap:6px; transform:translateY(110%); transition:transform 280ms var(--ease); }
 body.sel .selbar { transform:none; }
-.selbar .n { flex:1; font-weight:700; font-size:14.5px; min-width:0; }
-.selbar button { height:42px; padding:0 13px; border-radius:14px; background:rgba(0,0,0,.06); font-weight:700; font-size:14px; }
+.selbar .n { flex:1; font-weight:700; font-size:14.5px; min-width:0; line-height:1.2; }
+.selbar .n b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.selbar button { height:42px; padding:0 12px; border-radius:14px; background:rgba(0,0,0,.06); font-weight:700; font-size:14px; flex:none; }
+.selbar .n button { height:auto; padding:2px 0 0; background:none; border-radius:0; color:var(--blue); font-size:12.5px; }
+.selbar [data-selx] { width:42px; padding:0; display:grid; place-items:center; }
 .selbar button.go { background:var(--ink); color:#fff; }
 .selbar button:disabled { opacity:.4; }
 
@@ -217,7 +220,6 @@ body.sel .selbar { transform:none; }
 .vw .top .mid { text-align:center; flex:1; min-width:0; line-height:1.2; }
 .vw .top .mid b { display:block; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .vw .top .mid small { font-size:12px; opacity:.7; }
-.vw .rbs { width:40px; flex:none; } .vw [data-vrot]:not([hidden]) + .rbs { display:none; }
 .vw .rb { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.14); display:grid; place-items:center; flex:none; color:#fff; }
 /* the heart: a floating button under the right thumb, just above Info */
 .vw .hfab { position:absolute; right:14px; bottom:calc(100% + 4px); width:58px; height:58px; border-radius:50%; background:rgba(255,255,255,.16); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); display:grid; place-items:center; color:#fff; box-shadow:0 10px 26px -12px rgba(0,0,0,.7); }
@@ -319,11 +321,21 @@ body.sel .selbar { transform:none; }
 .toast { position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); z-index:99; transform:translate(-50%, 20px); opacity:0; pointer-events:none; display:flex; align-items:center; gap:12px; padding:10px 10px 10px 16px; border-radius:16px; background:#141412; color:#fff; font-size:14px; white-space:nowrap; transition:opacity 200ms, transform 260ms var(--ease); }
 .toast.on { opacity:1; transform:translate(-50%, 0); pointer-events:auto; }
 .toast button { height:32px; padding:0 12px; border-radius:10px; background:rgba(255,255,255,.16); color:#fff; font-weight:700; }
+/* saving photos to the phone: above the viewer and the select bar */
+.savec { position:fixed; left:12px; right:12px; bottom:calc(16px + env(safe-area-inset-bottom)); z-index:98; max-width:420px; margin:0 auto; padding:14px 14px 14px 16px; border-radius:20px; background:#141412; color:#fff; box-shadow:0 18px 40px -14px rgba(0,0,0,.6); transform:translateY(calc(100% + 30px)); transition:transform 300ms var(--ease); }
+.savec.on { transform:none; }
+.savec .r { display:flex; align-items:center; gap:12px; }
+.savec .t { flex:1; min-width:0; font-size:14.5px; line-height:1.25; }
+.savec .t small { display:block; font-size:12.5px; opacity:.65; margin-top:2px; }
+.savec .prog { margin:10px 0 0; height:4px; background:rgba(255,255,255,.18); }
+.savec button { flex:none; height:40px; padding:0 14px; border-radius:12px; background:rgba(255,255,255,.14); color:#fff; font-weight:700; font-size:14px; }
+.savec button.go { background:#fff; color:#141412; }
+.savec .x { width:40px; padding:0; display:grid; place-items:center; }
 .fab { position:fixed; right:calc(var(--nav-r) + 64px); bottom:calc(20px + env(safe-area-inset-bottom)); z-index:30; height:56px; padding:0 22px 0 18px; border-radius:28px; background:var(--ink); color:#fff; font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow:0 14px 30px -10px rgba(0,0,0,.5); transition:transform 280ms var(--ease); }
 body.sel .fab, body.guest .fab { transform:translateY(160%); }
 body.sel .tt, body.sel .tt-veil { display:none; }
 body.guest [data-select] { display:none; }
-@media (prefers-reduced-motion: reduce) { .sheet, .selbar, .toast, .fab, .vw .track, .info { transition-duration:1ms; } .story .it.on img { animation:none; } }
+@media (prefers-reduced-motion: reduce) { .sheet, .selbar, .savec, .toast, .fab, .vw .track, .info { transition-duration:1ms; } .story .it.on img { animation:none; } }
 /* signing in to the photos (guests) and connecting Google Drive (once) */
 .gate { margin:18px 14px 0; padding:22px 20px; border-radius:24px; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.04), 0 14px 30px -20px rgba(0,0,0,.35); }
 .gate h2 { font-size:22px; letter-spacing:-.02em; }
@@ -379,11 +391,12 @@ body.guest [data-select] { display:none; }
 </main>
 <button class="fab press" id="fab" data-upload hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 19V6M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Upload</button>
 <div class="upbar" id="upbar" hidden><span id="uptxt">Uploading…</span><div class="prog"><i id="upprog"></i></div><button data-upload>Details</button></div>
-<div class="selbar" id="selbar"><span class="n" id="seln">Tap or drag across</span><button data-tag disabled>Tag</button><button data-hide disabled>Hide</button><button class="go" data-assign disabled>Assign</button><button data-selx>Done</button></div>
+<div class="selbar" id="selbar"><span class="n"><b id="seln">Tap or drag across</b><button data-selall>Select all</button></span><button data-save disabled>Save</button><button data-tag disabled>Tag</button><button data-hide disabled>Hide</button><button class="go" data-assign disabled>Assign</button><button data-selx aria-label="Done"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>
+<div class="savec" id="savec" role="status"></div>
 <div class="scrim" id="scrim"></div>
 <section class="sheet" id="sheet" aria-modal="true" role="dialog"></section>
 <div class="vw" id="vw" role="dialog" aria-label="Photo viewer"><div class="track" id="track"></div>
-  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><button class="rb" data-vrot aria-label="Turn the photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button><span class="rbs"></span></div>
+  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><button class="rb" data-vsave aria-label="Save to this phone"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5"/><path d="M5 19.5h14"/></svg></button><button class="rb" data-vrot aria-label="Turn the photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button></div>
   <div class="cap"><button class="hfab" data-heart aria-label="Love this photo" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-7.6-10.4A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.6 2.7c0 5.8-7.6 10.4-7.6 10.4z"/></svg><span class="n" id="hcount"></span></button><div class="capt" id="vcapt"></div><div class="fs" id="fs"></div></div>
   <section class="info" id="vinfo"></section></div>
 <div class="story" id="story"><div class="stage" id="stage"></div><div class="bars" id="sbars"></div><div class="shead" id="shead"></div></div>
@@ -615,17 +628,29 @@ let undoFn = null, toastT = 0;
 function toast(msg, undo) { undoFn = undo || null; $('#toast').innerHTML = `<span>${esc(msg)}</span>${undo ? '<button data-undo>Undo</button>' : ''}`; $('#toast').classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $('#toast').classList.remove('on'), undo ? 5000 : 2600); }
 $('#toast').addEventListener('click', (e) => { if (e.target.closest('[data-undo]') && undoFn) { const f = undoFn; undoFn = null; f(); $('#toast').classList.remove('on'); render(); } });
 
-/* ── select: tap, or drag sideways across photos ── */
+/* ── select: tap, or drag sideways across photos; press and hold a photo to start ── */
 // select mode only marks the photos; the day headers are made new, as a redraw made them (they stick and blur: see dayEl)
 const setSel = (on) => { document.body.classList.toggle('sel', on); if (!on) ui.sel.clear(); for (const h of $('#content').querySelectorAll('.dh')) h.replaceWith(h.cloneNode(true)); paintSel(); };
-function updSel() { const n = ui.sel.size; $('#seln').textContent = n ? `${n} selected` : 'Tap or drag across'; ['tag', 'assign', 'hide'].forEach((k) => ($(`#selbar [data-${k}]`).disabled = !n)); }
+function updSel() {
+  const n = ui.sel.size, vis = visible(); $('#seln').textContent = n ? `${n} selected` : 'Tap or drag across'; ['save', 'tag', 'assign', 'hide'].forEach((k) => ($(`#selbar [data-${k}]`).disabled = !n));
+  const all = vis.length && vis.every((p) => ui.sel.has(p.id)); const sa = $('#selbar [data-selall]'); sa.textContent = all ? 'Clear' : `Select all ${vis.length}`; sa.hidden = !vis.length;
+}
 const paintSel = () => { document.querySelectorAll('.grid .th').forEach((el) => el.classList.toggle('on', ui.sel.has(el.dataset.pid))); updSel(); };
-let drag = null;
+let drag = null, hold = null;
+const HOLD_MS = 420;
+const dropHold = () => { if (hold) { clearTimeout(hold.t); hold = null; } };
 $('#content').addEventListener('pointerdown', (e) => {
-  const th = e.target.closest('.grid .th'); if (!th || !document.body.classList.contains('sel') || !e.isPrimary) return;
+  const th = e.target.closest('.grid .th'); if (!th || !e.isPrimary) return;
+  if (!document.body.classList.contains('sel')) { // held still: select mode, with this photo ticked; keep going sideways to add more
+    if (!member()) return; dropHold();
+    hold = { x: e.clientX, y: e.clientY, t: setTimeout(() => { const id = th.dataset.pid; hold = null; ui.sel.clear(); setSel(true); ui.sel.add(id); paintSel(); if (navigator.vibrate) navigator.vibrate(12);
+      drag = { x: e.clientX, y: e.clientY, start: +th.dataset.ix, mode: null, on: true, before: new Set(), id: e.pointerId, held: true }; }, HOLD_MS) };
+    return;
+  }
   drag = { x: e.clientX, y: e.clientY, start: +th.dataset.ix, mode: null, on: !ui.sel.has(th.dataset.pid), before: new Set(ui.sel), id: e.pointerId };
 });
 $('#content').addEventListener('pointermove', (e) => {
+  if (hold && (Math.abs(e.clientX - hold.x) > 10 || Math.abs(e.clientY - hold.y) > 10)) dropHold();
   if (!drag || e.pointerId !== drag.id) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (!drag.mode) { if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; drag.mode = Math.abs(dx) > Math.abs(dy) ? 'select' : 'scroll'; if (drag.mode === 'select') try { $('#content').setPointerCapture(e.pointerId); } catch {} }
@@ -635,8 +660,9 @@ $('#content').addEventListener('pointermove', (e) => {
   ui.sel = new Set(drag.before); for (let i = a; i <= b; i++) { const id = order[i].id; if (drag.on) ui.sel.add(id); else ui.sel.delete(id); }
   paintSel();
 });
-$('#content').addEventListener('pointerup', () => { if (!drag) return; const was = drag; drag = null; if (!was.mode) { const id = order[was.start].id; if (ui.sel.has(id)) ui.sel.delete(id); else ui.sel.add(id); paintSel(); } });
-$('#content').addEventListener('pointercancel', () => { drag = null; });
+$('#content').addEventListener('pointerup', () => { dropHold(); if (!drag) return; const was = drag; drag = null; if (!was.mode && !was.held) { const id = order[was.start].id; if (ui.sel.has(id)) ui.sel.delete(id); else ui.sel.add(id); paintSel(); } });
+$('#content').addEventListener('pointercancel', () => { dropHold(); drag = null; });
+$('#content').addEventListener('contextmenu', (e) => { if (e.target.closest('.grid .th') && member()) e.preventDefault(); }); // a held photo opens no menu
 
 /* ── sheets: assign to a stop, tag who's in it ── */
 const sheet = $('#sheet'), scrim = $('#scrim');
@@ -678,6 +704,75 @@ function toggleTag(id) {
   save({ ids: tagIds, tag: { who: id, on: !all } }); faceSoon();
   renderTag(); render();
 }
+/* ── saving photos to this phone: the originals, full quality ──
+   iPhone: Safari can't put a download in Photos, so the files go to the share sheet ("Save Image" / "Save 12 Images"),
+   20 at a time. The sheet only opens from a tap, so they're fetched first and a button opens it.
+   Android and computers: each one downloads, and Gallery shows it (Chrome asks once to allow several). */
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const SAVE_N = window.__SAVECHUNK || 20, SAVE_MB = 200; // a share sheet's worth: enough photos without filling the phone's memory with videos
+let saveJob = null;
+const savec = $('#savec');
+const xBtn = '<button class="x" data-savex aria-label="Stop"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg></button>';
+const saveCard = (html) => { savec.innerHTML = html; savec.classList.add('on'); };
+const saveDone = (msg) => { saveJob = null; savec.classList.remove('on'); if (msg) toast(msg); };
+const photoWord = (n, p) => `${n} ${p && n === 1 && p.isVideo ? 'video' : n === 1 ? 'photo' : 'photos'}`;
+const fileName = (p) => { const n = (p.name || 'photo').replace(/[\\/:*?"<>|]/g, '_'); return /\.\w{2,5}$/.test(n) ? n : n + (p.isVideo ? '.mp4' : '.jpg'); };
+// one original, reporting how much has come so far
+async function fetchOriginal(p, job, onp) {
+  const r = await fetch(media(p, 'file'));
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const total = +r.headers.get('content-length') || 0;
+  if (!r.body || !total) return r.blob();
+  const rd = r.body.getReader(), parts = []; let got = 0;
+  for (;;) { const { done, value } = await rd.read(); if (done) break; if (job.stop) { rd.cancel().catch(() => {}); throw new Error('stopped'); } parts.push(value); got += value.length; onp(got / total); }
+  return new Blob(parts, { type: r.headers.get('content-type') || p.mime || '' });
+}
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60e3); }
+async function savePhotos(list) {
+  if (!list.length) return;
+  if (saveJob) saveJob.stop = true;
+  const job = saveJob = { stop: false, go: null, ready: null }, n = list.length;
+  const share = IOS && navigator.canShare && (() => { try { return navigator.canShare({ files: [new File([''], 'a.jpg', { type: 'image/jpeg' })] }); } catch { return false; } })();
+  let saved = 0, failed = 0, i = 0;
+  while (i < n) {
+    const files = []; let mb = 0;
+    while (i < n && files.length < SAVE_N && mb < SAVE_MB) {
+      const p = list[i]; const at = i;
+      const paint = (f) => saveCard(`<div class="r"><span class="t">Getting ${n === 1 ? 'the ' + (p.isVideo ? 'video' : 'photo') : `${at + 1} of ${n}`}…<small>Full quality, from Google Drive</small></span>${xBtn}</div><div class="prog"><i style="width:${Math.round(((at + f) / n) * 100)}%"></i></div>`);
+      paint(0);
+      try {
+        const b = await fetchOriginal(p, job, paint); if (job.stop) return;
+        const f = new File([b], fileName(p), { type: p.mime || b.type || '' }); mb += f.size / 1048576;
+        if (share) files.push(f); else { download(f, f.name); saved++; await sleep(400); } // a pause between, so Chrome takes each one
+      } catch { if (job.stop) return; failed++; }
+      i++;
+    }
+    if (job.stop) return;
+    if (share && files.length) {
+      // the share sheet needs a fresh tap: wait for one on the button (tapping it again after closing the sheet is fine)
+      const more = n > SAVE_N ? `<small>${i - files.length + 1}–${i} of ${n}${i < n ? ' · the rest next' : ''}</small>` : '<small>Then tap “Save Image” to put it in Photos</small>';
+      const ask = (extra = '') => saveCard(`<div class="r"><span class="t">${photoWord(files.length, files.length === 1 && list[i - 1])} ready${extra}${more}</span><button class="go" data-savego>Save</button>${xBtn}</div>`);
+      job.ready = files; ask();
+      for (;;) {
+        const res = await new Promise((ok) => (job.go = ok)); if (job.stop) return;
+        if (res === 'ok') { saved += files.length; break; }
+        ask(res === 'cancel' ? '' : ' · try again');
+      }
+      job.ready = null;
+    }
+  }
+  saveDone(saved ? `Saved ${photoWord(saved, n === 1 && list[0])}${failed ? ` · ${failed} couldn’t be fetched` : ''}${IOS ? '' : ' to Downloads'}` : 'Couldn’t fetch the photos. Check your connection and try again.');
+}
+savec.addEventListener('click', (e) => {
+  const job = saveJob; if (!job) return;
+  if (e.target.closest('[data-savex]')) { job.stop = true; if (job.go) job.go('stop'); return saveDone(); }
+  if (e.target.closest('[data-savego]')) {
+    // the files the card says are ready: read from the card's own job, inside this tap
+    const files = job.ready, go = job.go; if (!files || !go) return;
+    job.go = null; // one sheet at a time: a second tap while it's open does nothing
+    navigator.share({ files }).then(() => go('ok'), (err) => go(err && err.name === 'AbortError' ? 'cancel' : 'fail'));
+  }
+});
 function hide(ids) {
   const ps = ids.map(byIdP); ps.forEach((p) => (p.hidden = true));
   if (document.body.classList.contains('sel')) setSel(false); render();
@@ -1160,7 +1255,7 @@ function drawInfo() {
     ${p.guess && member() ? '<p class="guessed"><span>A guess from the photo.</span><button data-vsure>Looks right</button></p>' : ''}
     ${s && s.place ? `<p class="lbl">Where</p><div class="vmap" id="vmap"></div>` : ''}
     <p class="lbl">Details</p><div class="kv"><span>Taken</span><span>${fmtMin(jstOf(p.takenAt, DAYS).min)}, ${fmtDate(d)}</span><span>By</span><span>${PEOPLE[p.by] ? PEOPLE[p.by].name : '—'}</span><span>Loved by</span><span>${p.hearts.length ? names(p.hearts) : 'no one yet'}</span>${p.name ? `<span>File</span><span>${esc(p.name)}</span>` : ''}</div>
-    <div class="row">${member() && s ? (isCover(p) ? '<button class="chosen" data-vcover>★ The photo for this stop</button>' : '<button data-vcover>★ Use as this stop\'s photo</button>') : ''}<a href="./?d=${d.id}">Open on the plan</a>${p.local ? '' : `<a href="${media(p, 'file', '&dl=1')}" download>Download original</a>`}${member() ? '<button data-vassign>Move to another stop</button><button data-vhide>Hide</button>' : ''}</div>`;
+    <div class="row">${member() && s ? (isCover(p) ? '<button class="chosen" data-vcover>★ The photo for this stop</button>' : '<button data-vcover>★ Use as this stop\'s photo</button>') : ''}<a href="./?d=${d.id}">Open on the plan</a><button data-vsave>Save to phone</button>${member() ? '<button data-vassign>Move to another stop</button><button data-vhide>Hide</button>' : ''}</div>`;
   destroyMap(); const n = mapN; // a newer Info (or closing it) wins over a map still waiting for the library
   if (s && s.place) leaflet().then(() => requestAnimationFrame(() => { const el = document.getElementById('vmap'); if (!el || n !== mapN) return; vmap = L.map(el, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false }).setView([s.place.lat, s.place.lng], 15); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(vmap); L.circleMarker([s.place.lat, s.place.lng], { radius: 8, color: '#fff', weight: 3, fillColor: kindColor(s), fillOpacity: 1 }).addTo(vmap); }), () => {});
 }
@@ -1231,6 +1326,7 @@ vw.addEventListener('click', (e) => {
   const vt = t('[data-vtag]'); if (vt && member()) { const p = vlist[vi], id = vt.dataset.vtag; const on = !p.in.includes(id); p.in = on ? PIDS.filter((x) => x === id || p.in.includes(x)) : p.in.filter((x) => x !== id); p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], tag: { who: id, on } }); faceSoon(); return; }
   if (t('[data-vrot]') && member()) { const p = vlist[vi]; p.rot = ((p.rot || 0) + 90) % 360; zoom = null; drawViewer(); render(); clearTimeout(rotT[p.id]); rotT[p.id] = setTimeout(() => { delete rotT[p.id]; save({ ids: [p.id], set: { rot: p.rot } }); if (covers['~rot'] && isCover(p)) covers['~rot'][p.id] = p.rot; faceSoon(); }, 700); return; } // a tap a quarter turn; saved once the taps stop
   if (t('[data-vsure]') && member()) { const p = vlist[vi]; p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], set: { sure: true } }); faceSoon(); return; }
+  if (t('[data-vsave]')) return savePhotos([vlist[vi]]);
   if (t('[data-vassign]')) return openAssign([vlist[vi].id]);
   if (t('[data-vhide]')) { hide([vlist[vi].id]); return drawViewer(); }
 });
@@ -1326,6 +1422,8 @@ document.addEventListener('click', (e) => {
   if (t('#selbar [data-assign]')) return openAssign([...ui.sel]);
   if (t('#selbar [data-tag]')) return openTag([...ui.sel]);
   if (t('#selbar [data-hide]')) return hide([...ui.sel]);
+  if (t('#selbar [data-save]')) return savePhotos(photos.filter((p) => ui.sel.has(p.id)).sort((a, b) => a.takenAt - b.takenAt));
+  if (t('#selbar [data-selall]')) { const vis = visible(); if (vis.every((p) => ui.sel.has(p.id))) ui.sel.clear(); else vis.forEach((p) => ui.sel.add(p.id)); return paintSel(); } // the photos the filters show
   const pp = t('[data-pp]'); if (pp) { const id = pp.dataset.pp; if (ui.people.has(id)) ui.people.delete(id); else ui.people.add(id); return render(); }
   if (t('[data-clrppl]')) { ui.people.clear(); return render(); }
   const k = t('[data-kind]'); if (k) { ui.kind = k.dataset.kind; return render(); }
