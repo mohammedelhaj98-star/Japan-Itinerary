@@ -3,7 +3,7 @@
 # - Faces: InsightFace's buffalo_l pack (SCRFD finds them, ArcFace w600k_r50 turns each into 512 numbers). Two photos of
 #   the same person give prints that point the same way (cosine ~0.5 and up), two people apart (~0.1). Non-commercial use.
 # - People: YOLOX-s (Apache 2.0), COCO's "person".
-# Answers in the shape js/faces-match.js reads: { f: [{ x, y, w, h, q, s }], b: [{ x, y, w, h, s, o, fi }] }, boxes as shares.
+# Answers in the shape js/faces.js reads: { f: [{ x, y, w, h, q, s }], b: [{ x, y, w, h, s, o, fi }] }, boxes as shares.
 import base64, io, os
 import numpy as np, cv2, onnxruntime as ort
 from PIL import Image, ImageOps

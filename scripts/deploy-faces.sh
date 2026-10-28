@@ -8,4 +8,4 @@
 set -euo pipefail
 cd "$(dirname "$0")/../workers/faces"
 ./fetch-parts.sh
-npx -y wrangler@4 deploy "$@"
+npx -y wrangler@4.154.0 deploy "$@" # (4.151 gave up waiting while Cloudflare prepared the image)
