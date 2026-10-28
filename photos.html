@@ -459,14 +459,15 @@ const pic = (p, s) => (p.thumb ? p.thumb.replace(/=s\d+(-[a-z0-9-]+)?$/i, '') + 
 // tile: in the gallery, a full-size photo just uploaded from this phone is decoded off the main thread (it doesn't hold up scrolling)
 const imgTag = (p, s = 600, tile) => p.local
   ? (p.isVideo ? `<video${rotA(p)} src="${p.local}#t=0.1" muted playsinline preload="metadata"></video>` : `<img${rotA(p)} draggable="false" src="${p.local}" alt="" loading="lazy"${tile ? ' decoding="async"' : ''}>`)
-  : (p.thumb || !p.isVideo ? `<img${rotA(p)} draggable="false" src="${pic(p, s)}" data-fb="${media(p, 'thumb', '&s=' + s)}" alt="" loading="lazy">` : '<span class="ph0">Video<br>(picture coming)</span>');
-// Google's links expire after a while: fall back to our own copy of the picture
+  : p.empty ? '<span class="ph0">Didn\'t upload<br>(send it again)</span>'
+  : (p.thumb || !p.isVideo ? `<img${rotA(p)} draggable="false" src="${pic(p, s)}" data-fb="${p.thumb ? media(p, 'thumb', '&s=' + s) : media(p, 'file')}" alt="" loading="lazy">` : '<span class="ph0">Video<br>(picture coming)</span>');
+// Google's links expire after a while: fall back to our own copy of the picture (or, for a photo Google made no picture of, the photo itself)
 document.addEventListener('error', (e) => { const im = e.target; if (im.tagName === 'IMG' && im.dataset.fb && im.src !== location.origin + im.dataset.fb && !im.src.endsWith(im.dataset.fb)) im.src = im.dataset.fb; }, true);
 
 let photos = [], covers = {};
 const norm = (x) => ({ id: x.id, name: x.name, mime: x.mime, day: x.day, stop: x.stop || null, takenAt: x.t, by: x.by, in: x.in || [], hearts: x.hearts || [], hidden: !!x.hidden,
   guess: !!x.guess, checked: !!x.checked, faced: !!x.faced, tagsOk: x.tagsOk || '', kind: x.kind || null, np: x.np ?? null, words: x.words || '', rot: x.rot || 0,
-  ar: x.w && x.h ? x.w / x.h : null, thumb: x.thumb, isVideo: /^video\//.test(x.mime || ''), dur: x.dur });
+  ar: x.w && x.h ? x.w / x.h : null, thumb: x.thumb, empty: x.size === 0, isVideo: /^video\//.test(x.mime || ''), dur: x.dur });
 async function load() {
   const d = await api('?trip=' + TRIP);
   const local = Object.fromEntries(photos.filter((p) => p.local).map((p) => [p.id, p.local]));
@@ -488,7 +489,7 @@ function couldOf(day, stop, by) {
   return c.size ? PIDS.filter((x) => c.has(x)) : PIDS;
 }
 // a photo that wants someone to say who's in it: a guess to confirm, or people in it and no one tagged
-const toCheck = (p) => !p.hidden && !!dayById[p.day] && !p.checked && (p.guess || (!p.in.length && p.np !== 0));
+const toCheck = (p) => !p.hidden && !p.empty && !!dayById[p.day] && !p.checked && (p.guess || (!p.in.length && p.np !== 0));
 const isCover = (p) => p.stop && covers[p.stop] === p.id;
 const qOk = (p) => { if (!ui.q) return true; const s = stopOf(p), d = dayById[p.day]; const hay = `${s ? s.title : 'other moments'} ${d ? d.title + ' day ' + d.n : ''} ${p.words} ${p.kind ? WHAT[p.kind] || '' : ''}`.toLowerCase(); return ui.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w)); };
 const visible = () => photos.filter((p) => !p.hidden && dayById[p.day]
@@ -1013,7 +1014,7 @@ function drawCheck() {
   if (ti >= tq.length) { closeCheck(); return toast('All checked. Thank you!'); }
   const p = tq[ti], s = stopOf(p), d = dayById[p.day]; tEdited = false;
   $('#tgn').textContent = `${ti + 1} of ${tq.length}`;
-  $('#tgpic').innerHTML = `${p.isVideo ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" autoplay muted loop playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1200)}<span class="where">Day ${d.n} · ${esc(s ? s.title : 'Other moments')}</span>`;
+  $('#tgpic').innerHTML = `${p.isVideo && !p.empty ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" autoplay muted loop playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1200)}<span class="where">Day ${d.n} · ${esc(s ? s.title : 'Other moments')}</span>`;
   drawCheckFaces();
 }
 function drawCheckFaces() {
@@ -1208,7 +1209,7 @@ const curFrame = () => track.children[1] && track.children[1].querySelector('.fr
 function slideHtml(p) {
   if (!p) return '<div class="slide"></div>';
   const r = fit(p);
-  const body = p.isVideo ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" controls playsinline preload="metadata" ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1600);
+  const body = p.isVideo && !p.empty ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" controls playsinline preload="metadata" ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1600);
   return `<div class="slide"><div class="frame ${p.ar && !p.isVideo ? '' : 'real'}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px">${body}</div></div>`;
 }
 function drawViewer() {
@@ -1375,7 +1376,7 @@ function openStory(dayId) {
 }
 const itemDur = (it) => DUR[it.kind];
 function itemHtml(it) {
-  if (it.kind === 'photo' || it.kind === 'video') { const p = it.p; return `<div class="it" style="--dur:${DUR.photo + 600}ms">${p.isVideo ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" autoplay muted playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1400)}<div class="cap2">${faces(p.in, p.guess)}<span>${fmtMin(jstOf(p.takenAt, DAYS).min)}${p.hearts.length ? ' · ♥' : ''}</span></div></div>`; }
+  if (it.kind === 'photo' || it.kind === 'video') { const p = it.p; return `<div class="it" style="--dur:${DUR.photo + 600}ms">${p.isVideo && !p.empty ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" autoplay muted playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1400)}<div class="cap2">${faces(p.in, p.guess)}<span>${fmtMin(jstOf(p.takenAt, DAYS).min)}${p.hearts.length ? ' · ♥' : ''}</span></div></div>`; }
   return `<div class="it"><div class="card2" style="--c:${it.c}"><small>${esc(it.small)}</small><h2>${esc(it.h)}</h2><p>${esc(it.p)}</p>${it.kind === 'end' && it.next ? `<button class="go" data-snext="${it.next.id}">Next: Day ${it.next.n} ▶</button>` : it.kind === 'end' ? '<button class="go" data-sclose>Back to the photos</button>' : ''}</div></div>`;
 }
 function showItem(k) {
