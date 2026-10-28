@@ -98,7 +98,7 @@ h1,h2,h3,p { margin:0; }
 .sh .plan { font-size:12.5px; font-weight:700; color:var(--blue); white-space:nowrap; }
 /* mosaic: favourites take a double tile; pinch the grid to change how many fit a row */
 .grid { display:grid; grid-template-columns:repeat(var(--cols, 3), 1fr); grid-auto-rows:var(--cell); grid-auto-flow:dense; gap:3px; border-radius:16px; overflow:hidden; touch-action:pan-y; }
-.th { position:relative; overflow:hidden; background:#ddd8cc; }
+.th { position:relative; overflow:hidden; background:#ddd8cc; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
 .th.big { grid-column:span 2; grid-row:span 2; }
 html.c2 .th.big { grid-column:span 1; grid-row:span 1; } /* two a row: every photo is already big */
 .th img, .th video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; -webkit-user-drag:none; }
@@ -628,7 +628,7 @@ let undoFn = null, toastT = 0;
 function toast(msg, undo) { undoFn = undo || null; $('#toast').innerHTML = `<span>${esc(msg)}</span>${undo ? '<button data-undo>Undo</button>' : ''}`; $('#toast').classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => $('#toast').classList.remove('on'), undo ? 5000 : 2600); }
 $('#toast').addEventListener('click', (e) => { if (e.target.closest('[data-undo]') && undoFn) { const f = undoFn; undoFn = null; f(); $('#toast').classList.remove('on'); render(); } });
 
-/* ── select: tap, or drag sideways across photos ── */
+/* ── select: tap, or drag sideways across photos; press and hold a photo to start ── */
 // select mode only marks the photos; the day headers are made new, as a redraw made them (they stick and blur: see dayEl)
 const setSel = (on) => { document.body.classList.toggle('sel', on); if (!on) ui.sel.clear(); for (const h of $('#content').querySelectorAll('.dh')) h.replaceWith(h.cloneNode(true)); paintSel(); };
 function updSel() {
@@ -636,12 +636,21 @@ function updSel() {
   const all = vis.length && vis.every((p) => ui.sel.has(p.id)); const sa = $('#selbar [data-selall]'); sa.textContent = all ? 'Clear' : `Select all ${vis.length}`; sa.hidden = !vis.length;
 }
 const paintSel = () => { document.querySelectorAll('.grid .th').forEach((el) => el.classList.toggle('on', ui.sel.has(el.dataset.pid))); updSel(); };
-let drag = null;
+let drag = null, hold = null;
+const HOLD_MS = 420;
+const dropHold = () => { if (hold) { clearTimeout(hold.t); hold = null; } };
 $('#content').addEventListener('pointerdown', (e) => {
-  const th = e.target.closest('.grid .th'); if (!th || !document.body.classList.contains('sel') || !e.isPrimary) return;
+  const th = e.target.closest('.grid .th'); if (!th || !e.isPrimary) return;
+  if (!document.body.classList.contains('sel')) { // held still: select mode, with this photo ticked; keep going sideways to add more
+    if (!member()) return; dropHold();
+    hold = { x: e.clientX, y: e.clientY, t: setTimeout(() => { const id = th.dataset.pid; hold = null; ui.sel.clear(); setSel(true); ui.sel.add(id); paintSel(); if (navigator.vibrate) navigator.vibrate(12);
+      drag = { x: e.clientX, y: e.clientY, start: +th.dataset.ix, mode: null, on: true, before: new Set(), id: e.pointerId, held: true }; }, HOLD_MS) };
+    return;
+  }
   drag = { x: e.clientX, y: e.clientY, start: +th.dataset.ix, mode: null, on: !ui.sel.has(th.dataset.pid), before: new Set(ui.sel), id: e.pointerId };
 });
 $('#content').addEventListener('pointermove', (e) => {
+  if (hold && (Math.abs(e.clientX - hold.x) > 10 || Math.abs(e.clientY - hold.y) > 10)) dropHold();
   if (!drag || e.pointerId !== drag.id) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   if (!drag.mode) { if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return; drag.mode = Math.abs(dx) > Math.abs(dy) ? 'select' : 'scroll'; if (drag.mode === 'select') try { $('#content').setPointerCapture(e.pointerId); } catch {} }
@@ -651,8 +660,9 @@ $('#content').addEventListener('pointermove', (e) => {
   ui.sel = new Set(drag.before); for (let i = a; i <= b; i++) { const id = order[i].id; if (drag.on) ui.sel.add(id); else ui.sel.delete(id); }
   paintSel();
 });
-$('#content').addEventListener('pointerup', () => { if (!drag) return; const was = drag; drag = null; if (!was.mode) { const id = order[was.start].id; if (ui.sel.has(id)) ui.sel.delete(id); else ui.sel.add(id); paintSel(); } });
-$('#content').addEventListener('pointercancel', () => { drag = null; });
+$('#content').addEventListener('pointerup', () => { dropHold(); if (!drag) return; const was = drag; drag = null; if (!was.mode && !was.held) { const id = order[was.start].id; if (ui.sel.has(id)) ui.sel.delete(id); else ui.sel.add(id); paintSel(); } });
+$('#content').addEventListener('pointercancel', () => { dropHold(); drag = null; });
+$('#content').addEventListener('contextmenu', (e) => { if (e.target.closest('.grid .th') && member()) e.preventDefault(); }); // a held photo opens no menu
 
 /* ── sheets: assign to a stop, tag who's in it ── */
 const sheet = $('#sheet'), scrim = $('#scrim');

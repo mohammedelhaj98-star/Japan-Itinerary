@@ -285,6 +285,12 @@ await n.keyboard.press('Escape'); await n.waitForTimeout(600);
   ok('viewer Save downloads the original', got.length === 1 && got[0].suggestedFilename() === shot.name && f0 && f0.equals(shot.data), got.map((d) => d.suggestedFilename()).join());
   ok('…and says so', /Saved 1 photo/.test(await n.textContent('#toast')), await n.textContent('#toast'));
   await n.keyboard.press('Escape'); await n.waitForTimeout(600);
+  const th0 = await n.$(`.grid .th[data-pid="${castle.id}"]`); await th0.scrollIntoViewIfNeeded(); const bb = await th0.boundingBox();
+  await n.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await n.mouse.down(); await n.waitForTimeout(650); await n.mouse.up(); await n.waitForTimeout(300);
+  ok('press and hold a photo: Select opens with it ticked', await n.evaluate(() => document.body.classList.contains('sel') && !document.getElementById('vw').classList.contains('on')) && (await n.textContent('#seln')) === '1 selected'
+    && (await n.$eval(`.grid .th[data-pid="${castle.id}"]`, (e) => e.classList.contains('on'))), await n.textContent('#seln'));
+  await n.screenshot({ path: OUT + 'save-hold-to-select.png' });
+  await n.tap('[data-selx]'); await n.waitForTimeout(300);
   await n.tap('[data-pp="sara"]'); await n.waitForTimeout(400);
   await n.tap('[data-select]'); await n.waitForTimeout(300); await n.tap('#selbar [data-selall]'); await n.waitForTimeout(200);
   const sel = await n.evaluate(() => [...document.querySelectorAll('.grid .th.on')].map((e) => e.dataset.pid).sort());
