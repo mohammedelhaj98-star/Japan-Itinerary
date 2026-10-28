@@ -29,8 +29,10 @@ self.addEventListener('install', (e) => {
     for (const p of ['./', './money.html', './prototypes/tools.html']) { const u = new URL(p, self.registration.scope).href; const r = await c.match(u); if (r) await warm(c, await r.text(), u, true); }
   })().then(() => self.skipWaiting()));
 });
+// (the face models phones used to download: the faces server does that now, so their saved copies go)
+const dropModels = async () => { const c = await caches.open(VERSION); for (const k of await c.keys()) if (/\/vendor\/(face-api|person)\//.test(new URL(k.url).pathname)) await c.delete(k); };
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => !KEEP.includes(k)).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(dropModels().catch(() => {}).then(() => caches.keys()).then((keys) => Promise.all(keys.filter((k) => !KEEP.includes(k)).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
 // The page asks for the next days' photos to be saved: { type: 'precache', urls: [...] }.

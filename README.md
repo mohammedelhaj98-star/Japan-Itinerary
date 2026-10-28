@@ -131,6 +131,7 @@ data/guide.js         bookings, food, tips, suggestions
 functions/api/        Cloudflare Pages Function (the API; state in KV or the Durable Object)
 lib/state-store.js    where the shared state lives: KV, or the Durable Object when bound
 workers/state/        the Durable Object Worker (scripts/deploy-state.sh puts it live)
+workers/faces/        face recognition's server: a container with open-source models (scripts/deploy-faces.sh)
 vendor/leaflet/       Leaflet 1.9.4 (BSD-2)
 vendor/maplibre/      MapLibre GL + the Leaflet bridge, loaded after the plan is on screen
 vendor/fonts/         the three typefaces, self-hosted (SIL OFL); scripts/font-subset.sh rebuilds the Japanese subset
@@ -190,6 +191,19 @@ One-time setup:
 3. Open the photos page as one of the four and tap **Connect Google Drive**, signing in with the Drive's account.
 
 Secrets already set: `TRIP_PIN` (members), `PHOTO_PIN` (guests' viewing PIN), `PHOTO_SECRET` (signs viewing tokens).
+
+### Who's in each photo (faces)
+
+`workers/faces` is a Worker with a container (Cloudflare Containers, on the Workers paid plan) that runs open-source
+models: InsightFace's buffalo_l (finds faces and turns each into a 512-number print; its licence is non-commercial
+use only) and YOLOX-s (finds people, Apache 2.0). It looks at each photo once, Google's 800-pixel picture of it, and
+keeps what it found in a Durable Object; the minute's cron asks the site (`/api/photos/sweep`) to look at a few photos
+no one has looked at yet. On the four's phones `js/faces.js` learns the four from photos of one person someone tagged
+and names the rest as dotted guesses, from the faces and, when a face doesn't settle it, what each wore that day.
+No phone downloads a model. Put live with `bash scripts/deploy-faces.sh` (Docker running; a token with Workers Scripts
+and Containers: Edit), and the same `FACES_KEY` secret on the Worker and the Pages project (see the script).
+`npm run test:photos` uses the real models when `workers/faces/fetch-parts.sh` has fetched them and `FACES_PY` names a
+Python with onnxruntime, opencv and pillow; without them those checks are skipped.
 ### Money backups
 
 The money is backed up into the same Drive, in `Our Trips / Japan 2026 backups` (`lib/backup.js`): each Japan day

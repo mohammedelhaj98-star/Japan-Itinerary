@@ -92,7 +92,27 @@ await new Promise((r) => google.listen(8798, r));
 /* ── the site, with the real API on an in-memory KV ── */
 const kv = new Map();
 const KV = { async get(k, t) { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, async put(k, v) { kv.set(k, v); }, async delete(k) { kv.delete(k); }, async list() { return { keys: [], list_complete: true }; } };
-const env = { TRIP_KV: KV, TRIP_PIN: '6666', PHOTO_PIN: '1212', PHOTO_SECRET: 'test-secret', GOOGLE_API: G, GOOGLE_OAUTH: G, GOOGLE_AUTH: G };
+/* ── the faces server (workers/faces): its container's real models when they're here (workers/faces/fetch-parts.sh, and a
+   Python with onnxruntime: FACES_PY), else none (those checks are skipped); what it found, kept like FaceLooks does ── */
+const PARTS = REPO + '/workers/faces/server/parts/models/', PY = process.env.FACES_PY || 'python3'; let faceBox = null;
+const canFaces = fs.existsSync(PARTS + 'w600k_r50.onnx') && (() => { try { execSync(`${PY} -c "import onnxruntime, cv2, PIL"`, { stdio: 'ignore' }); return true; } catch { return false; } })();
+if (canFaces) {
+  const { spawn } = await import('child_process');
+  faceBox = spawn(PY, [REPO + '/workers/faces/server/main.py', '8797'], { env: { ...process.env, MODELS: PARTS }, stdio: 'ignore' });
+  process.on('exit', () => faceBox.kill());
+  for (let t = 0; t < 60 && !(await fetch('http://localhost:8797/').then((r) => r.ok, () => false)); t++) await new Promise((r) => setTimeout(r, 500));
+}
+const looksKept = new Map(); let lookCalls = 0;
+const FACES = { async fetch(u, init) {
+  const p = new URL(u).pathname, j = (d, s = 200) => new Response(JSON.stringify(d), { status: s, headers: { 'content-type': 'application/json' } });
+  if (p === '/look') { lookCalls++; return canFaces ? fetch('http://localhost:8797/look' + new URL(u).search, { method: 'POST', body: init.body }) : j({ f: [], b: [] }); }
+  const b = JSON.parse(init.body);
+  if (p === '/get') return j({ looks: Object.fromEntries(b.keys.filter((k) => looksKept.has(k)).map((k) => [k, looksKept.get(k)])) });
+  if (p === '/missing') return j({ keys: b.keys.filter((k) => !looksKept.has(k)) });
+  if (p === '/put') { looksKept.set(b.key, b.look); return j({ ok: true }); }
+  return j({}, 404);
+} };
+const env = { TRIP_KV: KV, TRIP_PIN: '6666', PHOTO_PIN: '1212', PHOTO_SECRET: 'test-secret', GOOGLE_API: G, GOOGLE_OAUTH: G, GOOGLE_AUTH: G, FACES, FACES_KEY: 'faces-key' };
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 const B = 'http://localhost:8796';
 const site = http.createServer(async (req, res) => {
@@ -512,16 +532,19 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   claude.close(); delete env.ANTHROPIC_API_KEY; delete env.SORT_API;
 }
 
-// 15 · faces: on Mo's phone only, the face matcher learns the four from tagged photos and names who's in new ones
+// 15 · faces: the faces server looks at each photo once; the four's phones learn the four from tagged photos and name
+// who's in new ones (no model on any phone)
 let M = null;
 {
   const F = await import(REPO + '/js/faces.js'); const ap = (id) => (files.get(id) || {}).appProperties || {};
-  const vec = (seed) => { const v = new Float32Array(128); for (let i = 0; i < 128; i++) v[i] = Math.sin(seed * 7.3 + i * 1.7) * 0.12; return v; };
-  const near = (v, k) => v.map((x, i) => x + Math.cos(i * k) * 0.012); // the same face in another photo (distance ~0.1)
+  const unit = (v) => { const n = Math.hypot(...v); return v.map((x) => x / n); };
+  const fr = (x) => x - Math.floor(x);
+  const vec = (seed) => unit(Float32Array.from({ length: 512 }, (_, i) => fr(Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453) - 0.5)); // a face print: 512 numbers, length 1 (two people: ~1.4 apart)
+  const near = (v, k) => unit(v.map((x, i) => x + (fr(Math.sin(k * 3.7 + i * 12.345) * 24634.6345) - 0.5) * 0.06)); // the same face in another photo (~0.4)
   const face = (v, w = 0.1) => ({ x: 0.3, y: 0.3, w, h: 0.08, q: F.pack(v) });
   const A = vec(1), Bv = vec(2), C = vec(3);
   const pr = { naf: [A], sara: [Bv] };
-  ok('faces: prints survive being stored as whole numbers', Math.abs(F.unpack(F.pack(A))[5] - A[5]) < 0.003 && F.pack(A).length === 172);
+  ok('faces: prints survive being stored as whole numbers', Math.abs(F.unpack(F.pack(A))[5] - A[5]) < 0.0015 && F.pack(A).length === 684);
   ok('faces: one person tagged, one face → their print', F.learnFrom([face(C)], ['mariam'], {}).map((x) => x.who).join() === 'mariam');
   ok('faces: a tiny face in the background isn\'t counted', F.learnFrom([face(C), face(A, 0.02)], ['mariam'], {}).length === 1);
   ok('faces: only photos of one person teach it', F.learnFrom([face(near(A, 3)), face(C)], ['naf', 'mariam'], pr).length === 0 && F.learnFrom([face(A), face(C)], ['naf', 'mariam'], {}).length === 0);
@@ -544,6 +567,7 @@ let M = null;
   ok('outfits: someone whose face doesn\'t show is named by what they wore that day', (F.nameAll({ f: [], b: [body(dress(4))] }, pr, ['naf', 'sara'], [], { naf: [dress(4)], sara: [dress(10)] }) || []).join() === 'naf');
   ok('outfits: two people dressed alike → no name', F.nameAll({ f: [], b: [body(dress(4))] }, pr, ['naf', 'sara'], [], { naf: [dress(4)], sara: [dress(4)] }) === null);
   ok('outfits: a face it recognises wins over the outfit', (F.nameAll({ f: [face(near(Bv, 5))], b: [body(dress(4), 0)] }, pr, ['naf', 'sara'], [], { naf: [dress(4)] }) || []).join() === 'sara');
+  ok('outfits: someone half hidden behind another (dressed alike, further back) teaches no outfit', F.outfitsIn({ f: [face(near(A, 2)), face(near(Bv, 3))], b: [{ x: 0.2, y: 0.2, w: 0.3, h: 0.4, o: dress(4), fi: 0 }, { x: 0.3, y: 0.4, w: 0.3, h: 0.55, o: dress(4), fi: 1 }] }, pr, ['naf', 'sara'], false).map((x) => x.who).join() === 'sara');
   ok('outfits: someone small in the background isn\'t named', F.nameAll({ f: [], b: [body(dress(4), -1, 0.12)] }, pr, ['naf', 'sara'], [], { naf: [dress(4)] }) === null);
   ok('faces: one known of two faces keeps an earlier guess that fits', F.nameFaces([face(near(A, 2)), face(C)], pr, ['naf', 'sara', 'mariam'], ['mariam']).join() === 'naf,mariam' && F.nameFaces([face(near(A, 2)), face(C)], pr, ['naf', 'sara', 'mariam'], ['sara', 'mariam']).join() === 'naf');
 
@@ -557,6 +581,12 @@ let M = null;
   ok('prints: only good ones are kept', fp.by.naf.length === 1 && !fp.by.nobody && !(fp.by.sara || []).length && fp.used.includes('fileid99999999'), JSON.stringify(fp).slice(0, 120));
   await post({ drop: ['fileid99999999'] }); fp = await (await api('/prints', { headers: { 'x-photo-token': tok } })).json();
   ok('prints: dropping a photo takes its prints and lets it be learned again', !fp.by.naf.length && !fp.used.includes('fileid99999999'));
+
+  // the faces server's minute: the photos no one has looked at yet, a few at a time (only with its key)
+  const sweep = (k) => onRequest({ request: new Request(B + '/api/photos/sweep', { method: 'POST', headers: { 'content-type': 'application/json', 'x-faces-key': k }, body: '{"trip":"japan"}' }), env });
+  ok('sweep: needs the faces server\'s key', (await sweep('nope')).status === 403);
+  let sw = null; for (let t = 0; t < 10 && !(sw && sw.left === 0); t++) sw = await (await sweep('faces-key')).json();
+  ok('sweep: in a few goes, every photo has been looked at', sw && sw.left === 0 && looksKept.size > 0, JSON.stringify(sw));
 
   // real faces: the group photo on the trips page, cut up so each of the four has a photo of their own (it isn't in the
   // repo: the copy the deploy fetched, or the live one)
@@ -583,21 +613,19 @@ let M = null;
   fs.writeFileSync(FIX + '/group.jpg', exifOf(Buffer.from(cuts.all, 'base64'), '2026:10:22 11:30:00'));
   fs.writeFileSync(FIX + '/noface.jpg', exifOf(Buffer.from(cuts.noface, 'base64'), '2026:10:22 11:40:00'));
 
-  ok('faces: nothing on the others\' phones', !(await n.textContent('#facebox')).trim());
+  if (!canFaces) console.log('SKIP faces with the real models (run workers/faces/fetch-parts.sh, and set FACES_PY to a Python with onnxruntime, opencv and pillow)');
+  else {
   M = await phone('m'); const m = M.pg; const fetched = [];
-  m.on('request', (r) => { if (/vendor\/face-api/.test(r.url())) fetched.push(r.url()); });
-  n.on('request', (r) => { if (/vendor\/face-api|faces\.js/.test(r.url())) fetched.push('naf:' + r.url()); });
+  const model = /vendor\/(face-api|person)|\.onnx|model\.json|\.bin(\?|$)/;
+  m.on('request', (r) => { if (model.test(r.url())) fetched.push(r.url()); });
+  n.on('request', (r) => { if (model.test(r.url())) fetched.push('naf:' + r.url()); });
   await m.goto(B + '/japan/photos'); await m.waitForTimeout(1500);
-  ok('Mo\'s phone offers to recognise faces (and downloads nothing yet)', /Recognise faces/.test(await m.textContent('#facebox')) && !fetched.length);
-  await m.screenshot({ path: OUT + 'faces-offer.png' });
   await m.evaluate(() => localStorage.setItem('japan2026.state.v1', JSON.stringify({ profiles: { m: { color: '#0a7f6e' } } }))); await m.reload(); await m.waitForTimeout(1200);
   const cOf = (sel) => m.$eval(sel, (e) => e.style.getPropertyValue('--c'));
   ok('everyone in their own colour: the one Mo picked, the others the Money page\'s', (await cOf('[data-pp="m"] i')) === '#0a7f6e' && (await cOf('[data-pp="naf"] i')) === '#1f98b8' && (await cOf('[data-pp="mariam"] i')) === '#2f9e57');
-  // the photos from before have no faces in them (random pixels): noted, so the test doesn't wait on them
-  await m.evaluate(async (ids) => { const F = await import('./js/faces.js'); for (const id of ids) await F.remember(id, []); }, (await m.evaluate(() => window.__photos.photos.map((p) => p.id))));
-  await m.tap('[data-faceson]');
-  await m.waitForFunction(() => /Tag a few photos/.test(document.querySelector('#facebox').textContent), null, { timeout: 120000 }).catch(() => {});
-  ok('turned on: the model loads on Mo\'s phone and asks for photos of one person', /learns only from photos of one person/.test(await m.textContent('#facebox')) && fetched.some((u) => /face_recognition_model\.bin/.test(u)), await m.textContent('#facebox'));
+  await m.waitForFunction(() => /photos of one person/.test(document.querySelector('#facebox').textContent), null, { timeout: 120000 }).catch(() => {});
+  ok('nothing to switch on or download: the server looked at the photos, and it asks for photos of one person', /learns only from photos of one person/.test(await m.textContent('#facebox')) && !fetched.length && lookCalls > 0 && !(await m.$('[data-faceson]')), await m.textContent('#facebox'));
+  await m.screenshot({ path: OUT + 'faces-offer.png' });
   await m.tap('[data-upload]'); await m.waitForTimeout(300);
   await m.setInputFiles('#upfiles', WHO.map((w) => FIX + `/face-${w}.jpg`));
   for (let i = 0; i < 4; i++) await m.tap(`.uprow[data-row="${i}"] [data-rw="${WHO[i]}"]`);
@@ -629,7 +657,7 @@ let M = null;
   await m.screenshot({ path: OUT + 'faces-outfits.png' });
   await m.tap('[data-sheetx]'); await m.waitForTimeout(300);
   await n.reload(); await n.waitForTimeout(2500);
-  ok('on Naf\'s phone: the names show (dotted), and his phone never loaded the model', !!(await n.$(`.grid .th[data-pid="${grp.id}"] .faces.g`)) && !fetched.some((u) => u.startsWith('naf:')), fetched.filter((u) => u.startsWith('naf:')).join());
+  ok('on Naf\'s phone: the names show (dotted)', !!(await n.$(`.grid .th[data-pid="${grp.id}"] .faces.g`)));
   await m.screenshot({ path: OUT + 'faces-on.png' });
   // a tag changed by hand: that photo's print goes, and it's learned again from the new tags
   await n.evaluate((id) => fetch('/api/photos/update', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', ids: [id], set: { in: ['sara'] } }) }), byName('face-naf.jpg').id);
@@ -643,9 +671,9 @@ let M = null;
   Object.assign(files.get(grp.id).appProperties, { in: 'mariam', ig: '1', gf: '' });
   kv.set('faceprints', JSON.stringify({ by: { mariam: [{ id: 'fileid99999998', q: F.pack(vec(5)) }] }, used: [] }));
   await m.reload(); await m.waitForTimeout(1500);
-  for (let t = 0; t < 60 && !(JSON.parse(kv.get('faceprints')).v === 2 && ap(grp.id).in === 'naf,sara,mariam,m'); t++) await m.waitForTimeout(1000);
+  for (let t = 0; t < 60 && !(JSON.parse(kv.get('faceprints')).v === 3 && ap(grp.id).in === 'naf,sara,mariam,m'); t++) await m.waitForTimeout(1000);
   const fp3 = JSON.parse(kv.get('faceprints'));
-  ok('learned the old way: forgotten, learned again from photos of one person', fp3.v === 2 && WHO.every((w) => fp3.by[w].length === 1) && !fp3.by.mariam.some((x) => x.id === 'fileid99999998'), JSON.stringify(Object.fromEntries(Object.entries(fp3.by).map(([k, v]) => [k, v.length]))));
+  ok('learned the old way: forgotten, learned again from photos of one person', fp3.v === 3 && WHO.every((w) => fp3.by[w].length === 1) && !fp3.by.mariam.some((x) => x.id === 'fileid99999998'), JSON.stringify(Object.fromEntries(Object.entries(fp3.by).map(([k, v]) => [k, v.length]))));
   ok('…and its old guess taken back and guessed again', ap(grp.id).in === 'naf,sara,mariam,m' && ap(grp.id).ig === '1' && ap(grp.id).gf === '1', JSON.stringify(ap(grp.id)));
   // tags the faces question: a card, then the same one-by-one check
   const setIn = (id, who) => n.evaluate(([id, who]) => fetch('/api/photos/update', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', ids: [id], set: { in: who } }) }), [id, who]);
@@ -661,8 +689,8 @@ let M = null;
   ok('next: "Looks like Mo is in it too"', /Looks like Mo is in it too\./.test(await m.textContent('#tghint')), await m.textContent('#tghint'));
   await m.tap('[data-tgnext]'); await m.waitForTimeout(600);
   ok('"Tags are right" keeps them, and it won\'t ask again', ap(grp.id).in === 'naf,sara,mariam' && ap(grp.id).dk === 'naf,sara,mariam' && !(await m.isVisible('#tagr')) && !(await m.$('#facebox [data-doubts]')), JSON.stringify(ap(grp.id)));
-  await m.tap('[data-facesoff]'); await m.waitForTimeout(200);
-  ok('Turn off puts the offer back', /Recognise faces/.test(await m.textContent('#facebox')) && !(await m.evaluate(() => localStorage.getItem('photos.faces'))));
+  ok('no phone downloaded a model', !fetched.length, fetched.join());
+  }
 }
 
 // 16 · turning a photo: a quarter turn a tap in the viewer, saved for everyone; a turned plan photo shows turned on the plan
@@ -704,7 +732,7 @@ let M = null;
   ok('turned back and unpicked: nothing left over', ap(tp.id).rot === '' && !Object.keys(cv['~rot'] || {}).length, JSON.stringify(cv));
 }
 
-for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S], ['mo', M]]) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
+for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S], ['mo', M]].filter(([, x]) => x)) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
 console.log(fails ? `\n${fails} failed` : '\nall photo checks passed');
-await browser.close(); site.close(); google.close(); fs.rmSync(FIX, { recursive: true, force: true });
+await browser.close(); site.close(); google.close(); if (faceBox) faceBox.kill(); fs.rmSync(FIX, { recursive: true, force: true });
 process.exitCode = fails ? 1 : 0;
