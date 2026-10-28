@@ -17,3 +17,8 @@ binding = "AI"
 name = "TRIP_DO"
 class_name = "TripState"
 script_name = "japan2026-state"
+
+# Face recognition's server (workers/faces, deployed with scripts/deploy-faces.sh): finds who's in each photo, for /api/photos.
+[[services]]
+binding = "FACES"
+service = "japan2026-faces"
