@@ -9,12 +9,23 @@
 // A key is a photo id, or id@90 for a photo someone turned. Every minute it asks the site to look at a few photos no one
 // has looked at yet (POST /api/photos/sweep with FACES_KEY, a secret both sides have), so the older ones get done too.
 // Deploy with scripts/deploy-faces.sh.
-import { Container, getRandom } from '@cloudflare/containers';
 import { DurableObject } from 'cloudflare:workers';
 
-export class FaceBox extends Container {
-  defaultPort = 8080;
-  sleepAfter = '5m'; // (asleep costs nothing; waking takes a few seconds)
+// One box: its container is started when a photo comes, and stopped after 5 quiet minutes (a stopped box costs nothing;
+// starting takes a few seconds, the models load in about two)
+const QUIET = 5 * 60e3;
+export class FaceBox extends DurableObject {
+  async fetch(req) {
+    const c = this.ctx.container, u = new URL(req.url), body = req.method === 'POST' ? await req.arrayBuffer() : undefined;
+    await this.ctx.storage.setAlarm(Date.now() + QUIET);
+    for (let i = 0; i < 180; i++) {
+      if (!c.running) c.start({ image: c.images.box, instance: 'standard-1', enableInternet: false });
+      try { return await c.getTcpPort(8080).fetch('http://box' + u.pathname + u.search, { method: req.method, body }); }
+      catch { await new Promise((r) => setTimeout(r, 1000)); } // (not up yet)
+    }
+    return Response.json({ error: 'the face box did not start' }, { status: 503 });
+  }
+  async alarm() { if (this.ctx.container.running) await this.ctx.container.destroy(); }
 }
 
 export class FaceLooks extends DurableObject {
@@ -52,7 +63,7 @@ export default {
     const url = new URL(req.url);
     if (req.method !== 'POST') return Response.json({ ok: true });
     if (url.pathname === '/look') {
-      const box = await getRandom(env.BOX, +env.BOXES || 2); // (two boxes, so a phone and the minute's sweep don't queue)
+      const box = env.BOX.get(env.BOX.idFromName('box' + Math.floor(Math.random() * (+env.BOXES || 2)))); // (two boxes, so a phone and the minute's sweep don't queue)
       return box.fetch(new Request('http://box/look' + url.search, { method: 'POST', body: req.body, headers: { 'content-type': 'application/octet-stream' } }));
     }
     return looks(env).fetch(new Request('http://looks' + url.pathname, { method: 'POST', body: req.body, headers: { 'content-type': 'application/json' } }));

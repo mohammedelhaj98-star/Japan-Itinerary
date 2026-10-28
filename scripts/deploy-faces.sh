@@ -8,5 +8,4 @@
 set -euo pipefail
 cd "$(dirname "$0")/../workers/faces"
 ./fetch-parts.sh
-npm install --no-audit --no-fund -q
 npx -y wrangler@4 deploy "$@"

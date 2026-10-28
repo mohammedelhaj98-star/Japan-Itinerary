@@ -6,11 +6,14 @@ main = "src/index.js"
 compatibility_date = "2026-10-01"
 workers_dev = false
 
+# The box (FaceBox) picks its image and size when it starts its container (src/index.js): standard-1, ½ vCPU and 4 GB
 [[containers]]
 class_name = "FaceBox"
-image = "./server/Dockerfile"
-max_instances = 2
-instance_type = "standard-1"
+scheduling_policy = "durable_object"
+
+[containers.images.box]
+dockerfile = "./server/Dockerfile"
+build_context = "./server"
 
 [[durable_objects.bindings]]
 name = "BOX"
