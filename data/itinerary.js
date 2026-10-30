@@ -777,10 +777,10 @@ export const DAYS = [
       }),
       E('5:30–6:00 PM', 'NASA to the gate', 'Boarding call ~30 min before departure.', { id: 'd17-gate', who: 'nasa', tags: ['flight'] }),
       E('6:15 PM', 'Flight to Vancouver', 'Naf, Sara and Mariam together on Air Canada AC 4 from Narita Terminal 1. Sayonara.', {
-        id: 'd17-mariam', tags: ['flight'], flight: { no: 'AC4', people: ['naf', 'sara', 'mariam'], from: 'NRT', to: 'YVR', dep: '2026-11-01T18:15+09:00', arr: '2026-11-01T11:00-07:00' },
+        id: 'd17-mariam', tags: ['flight'], flight: { no: 'AC4', people: ['naf', 'sara', 'mariam'], from: 'NRT', to: 'YVR', dep: '2026-11-01T18:15+09:00', arr: '2026-11-01T11:00-08:00' },
       }),
       E('', 'Vancouver to Toronto', 'Air Canada AC 114, leaves Vancouver 1:30 PM local time (2 h 30 min to change).', {
-        id: 'd17-mariam-yvr', tags: ['flight'], flight: { no: 'AC114', people: ['naf', 'sara', 'mariam'], from: 'YVR', to: 'YYZ', dep: '2026-11-01T13:30-07:00', arr: '2026-11-01T19:57-05:00' },
+        id: 'd17-mariam-yvr', tags: ['flight'], flight: { no: 'AC114', people: ['naf', 'sara', 'mariam'], from: 'YVR', to: 'YYZ', dep: '2026-11-01T13:30-08:00', arr: '2026-11-01T19:57-05:00' },
       }),
       N('Suica', 'Return at ticket machines for the ¥500 deposit, or keep it — works on your next trip.', 'tip'),
     ],
