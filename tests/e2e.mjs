@@ -527,6 +527,20 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   ok('scan: a receipt from just before the trip goes under Before the trip', /^Before the trip/.test(f2.day) && /Filed under Before the trip/.test(f2.note), JSON.stringify(f2));
   ok('scan: a date off the trip, or none, keeps the day and says nothing about it', f3.day === f3.was && f4.day === f4.was && !/Filed/.test(f3.note + f4.note), JSON.stringify([f3, f4]));
   ok('scan names: summary without the shop when both would not fit; no Japanese shop; the shop alone from the backup reader', n1 === 'Snacks and skincare' && n2 === 'Beef bowl' && n3 === 'Lawson', `${n1} / ${n2} / ${n3}`);
+  // Settings: Receipt dates reads each saved receipt's date once and moves it to that day (not a hotel)
+  const post = (id, x) => p.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: x }) }); }, [id, x]);
+  await post(stId, { ...exMap()[stId], day: 'd15' }); await post(oldId, { ...exMap()[oldId], day: 'd15', cat: 'hotel' });
+  ok('Read all leaves the receipt date unchecked', !exMap()[stId].rx.date && !exMap()[oldId].rx.date, JSON.stringify(exMap()[stId].rx).slice(0, 80));
+  await p.route('**/api/scan', (r) => r.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ total: 980, shop: 'MKタクシー', shop_en: 'MK Taxi', title: 'Taxi', date: '2026-10-22', lines: [] }) }));
+  await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
+  const dl0 = await p.textContent('#dt-line').catch(() => '');
+  await p.tap('[data-dtall]'); await p.waitForTimeout(3000); await p.unroute('**/api/scan');
+  const dl1 = await p.textContent('#dt-line').catch(() => '');
+  await p.screenshot({ path: SH + 'settings-receipt-dates.png' });
+  ok('Settings: Receipt dates moves a receipt to the day printed on it and keeps the date; a hotel stays put', /saved receipts? to check/.test(dl0) && exMap()[stId].day === 'd07' && exMap()[stId].rx.date === '2026-10-22' && exMap()[stId].rx.title === 'Taxi' && exMap()[oldId].day === 'd15' && exMap()[oldId].rx.date === '2026-10-22' && /checked, 1 moved: Taxi · MK Taxi to Thu 22 Oct/.test(dl1) && await p.$eval('[data-dtall]', (b) => b.disabled), `${dl0} / ${dl1} / ${exMap()[stId].day} ${exMap()[oldId].day}`);
+  await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
+  ok('Settings: each receipt is checked once', (await p.textContent('#dt-line').catch(() => '')) === 'Every saved receipt is on its date', await p.textContent('#dt-line').catch(() => ''));
+  await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
   for (const id of [oldId, stId]) {
     await p.tap(`[data-ex="${id}"]`); await p.waitForTimeout(500); await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
   }
