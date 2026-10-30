@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <script defer src="/japan/js/report.js"></script>
+<script>/* the photos are just for the four of us: anyone else (a guest) goes straight to the trip, before anything shows */
+(() => { let me = null; try { me = JSON.parse(localStorage.getItem('trips.me')); } catch {} if (!['naf', 'sara', 'mariam', 'm'].includes(me)) { try { localStorage.removeItem('trips.photok'); } catch {} location.replace('./'); } })();</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Trip photos</title>
 <meta name="color-scheme" content="light">
@@ -1436,12 +1438,10 @@ let qT = 0; $('#q').addEventListener('input', (e) => { clearTimeout(qT); qT = se
 document.querySelector('.tback').addEventListener('click', (e) => { if (!uploading) { e.preventDefault(); backToTrip(); } });
 mountNav({ here: 'photos', guest: (() => { try { return JSON.parse(localStorage.getItem('trips.me')) === 'guest'; } catch { return false; } })() });
 
-/* ═══ getting in: the photos are just for the four of us (guests get none); we need Google Drive connected once ═══ */
+/* ═══ getting in: the photos are just for the four of us; we need Google Drive connected once ═══ */
+// (guests never get here: the script at the top sends them to the trip) one of us on a phone without the PIN yet
 function showMembersOnly() {
-  lsSet('trips.photok', null); // a guest's viewing token from when the photos PIN let them look: no use now
-  $('#gate').innerHTML = PEOPLE[ME]
-    ? `<div class="gate"><h2>Enter the PIN first</h2><p>Open the trip and enter the PIN, then come back to see the photos.</p><a class="go press" href="/?next=japan">Enter the PIN</a></div>`
-    : `<div class="gate"><h2>The photos are just for the four of us</h2><p>The trip photos are private to Naf, Sara, Mariam and Mo. You can still follow along on the trip: where they are now, each day's plan and the stories.</p><a class="go press" href="./">Back to the trip</a></div>`;
+  $('#gate').innerHTML = `<div class="gate"><h2>Enter the PIN first</h2><p>Open the trip and enter the PIN, then come back to see the photos.</p><a class="go press" href="/?next=japan">Enter the PIN</a></div>`;
 }
 function showSetup(st) {
   const connect = `/api/photos/connect?k=${encodeURIComponent(PIN())}`;

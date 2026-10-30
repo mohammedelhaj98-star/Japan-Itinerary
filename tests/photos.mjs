@@ -2,7 +2,7 @@
 // uploads), with real Day 7 photos and a video made here (with camera dates and a location), on two phones.
 // Checks connecting the Drive, uploads in pieces (with a dropped piece, and carrying on after the page was closed),
 // duplicates, the gallery by day and stop, hearts, tags, moving, hiding, the plan photo on the trip page, video
-// streaming, downloads, and guests getting none of it (the photos are just for the four of us).
+// streaming, downloads, and guests getting none of it (the photos are just for the four of us; guests go to the trip).
 //   npm run test:photos       (CHROMIUM=/path/to/chrome to pick a browser; screenshots in tests/shots/photos/)
 import { chromium } from 'playwright';
 import http from 'http'; import fs from 'fs'; import os from 'os'; import path from 'path'; import crypto from 'crypto';
@@ -175,16 +175,17 @@ const N = await phone('naf'); const n = N.pg;
 await n.goto(B + '/japan/photos'); await n.waitForTimeout(1200);
 ok('member before setup: "almost ready"', /almost ready/.test(await n.textContent('#gate')));
 const Gst = await phone('guest'); const gp = Gst.pg;
-await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1000);
-ok('guest: the photos are just for the four of us (no PIN pad)', /just for the four of us/.test(await gp.textContent('#gate')) && !(await gp.$('#dots')) && !!(await gp.$('#gate a[href="./"]')));
-await gp.screenshot({ path: OUT + 'guest-members-only.png' });
+const onTrip = async () => /\/japan\/$/.test(new URL(gp.url()).pathname) && !(await gp.$('#gate'));
+await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
+ok('guest opening the photos address lands on the trip', await onTrip(), gp.url());
+await gp.screenshot({ path: OUT + 'guest-photos-link-lands-on-trip.png' });
 ok('guest\'s + menu has no Photos', !(await gp.$$eval('.tt-opt', (els) => els.map((e) => e.dataset.k))).includes('photos'));
 ok('the old photos PIN no longer opens anything', (await api('/unlock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: '1212' }) })).status === 403);
 ok('the member PIN still does', (await (await api('/unlock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: '6666' }) })).json()).role === 'm');
 // a guest's viewing token as the photos PIN used to hand them out (good for 30 days): it opens nothing now
 const gtok = (() => { const exp = Math.floor(Date.now() / 1000) + 86400 * 20; const sig = crypto.createHmac('sha256', env.PHOTO_SECRET).update(`g.${exp}`).digest('base64url').slice(0, 32); return `g.${exp}.${sig}`; })();
-await gp.evaluate((t) => localStorage.setItem('trips.photok', t), gtok); await gp.reload(); await gp.waitForTimeout(900);
-ok('a guest\'s old viewing token is dropped from the phone', /just for the four of us/.test(await gp.textContent('#gate')) && (await gp.evaluate(() => localStorage.getItem('trips.photok'))) === null);
+await gp.evaluate((t) => localStorage.setItem('trips.photok', t), gtok); await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
+ok('a guest\'s old viewing token is dropped from the phone', await onTrip() && (await gp.evaluate(() => localStorage.getItem('trips.photok'))) === null);
 
 // 2 · Google set up: connect the Drive
 env.GOOGLE_CLIENT_ID = 'cid'; env.GOOGLE_CLIENT_SECRET = 'csec';
@@ -376,8 +377,8 @@ ok('…and carries on in the same upload', ky && ky.data.equals(fs.readFileSync(
 ok('queue cleared', (await n.evaluate(() => localStorage.getItem('photos.queue'))) === null);
 
 // 11 · a guest, now there are photos: still none of them, from the page or the server
-await gp.reload(); await gp.waitForTimeout(1800);
-ok('guest still sees no photos', /just for the four of us/.test(await gp.textContent('#gate')) && (await gp.$$('.grid .th')).length === 0 && await gp.$eval('#main', (e) => e.hidden));
+await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
+ok('guest still lands on the trip, with no photos', await onTrip() && !(await gp.$('.grid .th')));
 { const c = byName('castle.jpg').id; // (not a plan photo: those show on the plan, by an id only the four are told)
   const st = [(await api('?trip=japan', { headers: { 'x-photo-token': gtok } })).status, (await api(`/thumb/${c}?s=600&k=${gtok}`)).status, (await api(`/file/${c}?k=${gtok}`)).status, (await api(`/file/${shot.id}?k=${gtok}`)).status];
   ok('a guest token gets no list, picture or file', st.every((x) => x === 403), st.join()); }
@@ -589,7 +590,7 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
     await n.keyboard.press('Escape'); await n.waitForTimeout(500);
   } else ok('a guessed photo is left for the viewer check', false);
   await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
-  ok('guests see no nudge and sort nothing', !(await gp.textContent('#nudge')).trim() && !(await gp.$('#what button.on')) && /just for the four of us/.test(await gp.textContent('#gate')));
+  ok('guests see no nudge and sort nothing (they land on the trip)', await onTrip() && !(await gp.$('#nudge')) && !(await gp.$('#what button.on')));
   claude.close(); delete env.ANTHROPIC_API_KEY; delete env.SORT_API;
 }
 
