@@ -463,8 +463,8 @@ const pic = (p, s) => media(p, 'thumb', '&s=' + s);
 const imgTag = (p, s = 600, tile) => p.local
   ? (p.isVideo ? `<video${rotA(p)} src="${p.local}#t=0.1" muted playsinline preload="metadata"></video>` : `<img${rotA(p)} draggable="false" src="${p.local}" alt="" loading="lazy"${tile ? ' decoding="async"' : ''}>`)
   : p.empty ? '<span class="ph0">Didn\'t upload<br>(send it again)</span>'
-  : (p.thumb || !p.isVideo ? `<img${rotA(p)} draggable="false" src="${pic(p, s)}" data-fb="${p.thumb ? media(p, 'thumb', '&s=' + s) : media(p, 'file')}" alt="" loading="lazy">` : '<span class="ph0">Video<br>(picture coming)</span>');
-// Google's links expire after a while: fall back to our own copy of the picture (or, for a photo Google made no picture of, the photo itself)
+  : (p.thumb || !p.isVideo ? `<img${rotA(p)} draggable="false" src="${pic(p, s)}" data-fb="${!p.thumb ? media(p, 'file') : s > 800 ? pic(p, 400) : ''}" alt="" loading="lazy">` : '<span class="ph0">Video<br>(picture coming)</span>');
+// a big picture that doesn't come (no signal): the gallery's small one, kept on the phone; for a photo Google made no picture of, the photo itself
 document.addEventListener('error', (e) => { const im = e.target; if (im.tagName === 'IMG' && im.dataset.fb && im.src !== location.origin + im.dataset.fb && !im.src.endsWith(im.dataset.fb)) im.src = im.dataset.fb; }, true);
 
 let photos = [], covers = {};

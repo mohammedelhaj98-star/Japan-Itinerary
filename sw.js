@@ -97,13 +97,13 @@ const saved = async (req) => {
 const fromCache = async (req) => (await saved(req)) || (req.mode === 'navigate' ? plain(await caches.match(new URL('./', self.registration.scope).href)) : null);
 
 // A trip photo's picture: the one kept on the phone (the viewing key in its address, k, can change; the picture can't),
-// else fetched and kept. The newest PICS_MAX are kept.
+// else fetched and kept. The newest PICS_MAX are kept (checked on the first one a worker saves, then every 100th).
 const PICS_MAX = 3000; let picsPut = 0;
 async function pics(e, url) {
   const key = url.origin + url.pathname + '?s=' + (+url.searchParams.get('s') || 600);
   const c = await caches.open('pics'); const hit = await c.match(key); if (hit) return hit;
   const r = await fetch(e.request);
-  if (r.ok) e.waitUntil(c.put(key, r.clone()).then(async () => { if (++picsPut % 100) return; const ks = await c.keys(); for (const k of ks.slice(0, Math.max(0, ks.length - PICS_MAX))) await c.delete(k); }));
+  if (r.ok) e.waitUntil(c.put(key, r.clone()).then(async () => { if (picsPut++ % 100) return; const ks = await c.keys(); for (const k of ks.slice(0, Math.max(0, ks.length - PICS_MAX))) await c.delete(k); }));
   return r;
 }
 
