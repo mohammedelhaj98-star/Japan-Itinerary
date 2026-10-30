@@ -1104,7 +1104,7 @@ function renderSettings() {
       <p class="sub" style="margin-top:12px">A faded card is stamped as done. Dashed outline means optional. NASA or M&amp;M on a card means it's only for that couple.</p></div>`;
   const curSeg = ['CAD', 'QAR', 'USD'].map((c) => `<button data-cur="${c}" class="${ex.cur === c ? 'on' : ''}">${c}</button>`).join('');
   const modeSeg = [['couple', 'By couple'], ['each', 'Person to person']].map(([k, l]) => `<button data-mode="${k}" class="${ex.mode === k ? 'on' : ''}">${l}</button>`).join('');
-  const prefs = VIEW ? '' : `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div>${part('bk', backupRow())}${rxRow()}</div>`;
+  const prefs = VIEW ? '' : `<div class="card scard"><div class="setrow"><span>Show money in</span><div class="seg">${curSeg}<i></i></div></div><div class="setrow"><span>Settle up by</span><div class="seg">${modeSeg}<i></i></div></div><div class="setrow"><span>How the app works</span><a href="../?tour=1">Take the tour</a></div><div class="setrow"><span>Not ${me ? me.name : 'you'}?</span><a href="/?switch=1">Switch person or trip</a></div><div class="setrow"><span>Expenses</span><span style="color:var(--ink3)">${syncLine()}</span></div>${part('bk', backupRow())}${rxRow()}${dtRow()}</div>`;
   if (sub === 'stamps') return renderStamps();
   const alertsSec = GUEST || VIEW ? '' : `<p class="sec">Flight alerts</p>${part('al', alertsCard())}`;
   const nSt = Object.keys(store.state.checks || {}).length;
@@ -1275,13 +1275,51 @@ async function rxReadAll() {
       if (r && r.total && now && rxStale(now.rx) && now.receipt === x.receipt && (!now.rx || r.lines?.length || (!now.rx.lines.length && r.title))) {
         // a name the scan filled in with the shop's name becomes what was bought (never a name someone typed)
         const { ts: _, ...rec } = now, name = [now.rx?.shop, now.rx?.jp, r.shop_en, r.shop].filter(Boolean).includes((now.title || '').trim()) && scanName(r);
-        store.setExpense(id, { ...rec, ...(name && name !== now.title ? { title: name } : {}), rx: rxOf(r) }); rxAll.read++; if (name && name !== now.title) rxAll.named++;
+        store.setExpense(id, { ...rec, ...(name && name !== now.title ? { title: name } : {}), rx: { ...rxOf(r), ...(now.rx?.date ? { date: now.rx.date } : {}) } }); rxAll.read++; if (name && name !== now.title) rxAll.named++;
       }
     } catch { /* counted as not read: still listed, so Read all tries it again */ }
     rxAll.done++; render();
   };
   const q = todo.slice(); await Promise.all([0, 1, 2].map(async () => { while (q.length) await one(q.shift()); }));
   rxAll.busy = false; render();
+}
+// Receipt dates: receipts saved before a scan put the expense on the receipt's own day are read again for the date
+// printed on them, and moved to that day (one dated just before the trip goes under Before the trip). The date is
+// kept on the receipt (rx.date, or 'none' if none is printed), so each is checked once. Hotels stay where they are:
+// they're paid at checkout but spread over the nights from check-in.
+const dt = { busy: false, done: 0, n: 0, read: 0, moved: [] };
+const dtTodo = () => Object.entries(store.getExpenses()).filter(([, x]) => x && !x.kind && typeof x.receipt === 'number' && !(x.rx && x.rx.date));
+const receiptDay = (date) => { if (!date || !/^\d{4}-/.test(date)) return null; const d = DAYS.find((x) => x.date === date); return d ? d.id : date >= '2026-09-01' && date < DAYS[0].date ? 'pre' : null; };
+const DDF = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const dayName = (id) => (id === 'pre' ? 'before the trip' : DDF.format(new Date(dayOf(id).date + 'T00:00:00Z')).replace(',', ''));
+function dtRow() {
+  if (SANDBOX) return '';
+  const left = dtTodo().length, s = (n) => (n === 1 ? '' : 's'), mv = dt.moved;
+  const moved = mv.length ? `, ${mv.length} moved: ${mv.slice(0, 3).map(([t, d]) => `${esc(t)} to ${dayName(d)}`).join(', ')}${mv.length > 3 ? ` and ${mv.length - 3} more` : ''}` : ', all already on their day';
+  const line = dt.busy ? `Checking ${Math.min(dt.done + 1, dt.n)} of ${dt.n}…`
+    : dt.n ? `${dt.read} receipt${s(dt.read)} checked${dt.read ? moved : ''}${left ? ` · <span class="warn">${left} couldn't be read. Tap Check to try again.</span>` : ''}`
+    : left ? `${left} saved receipt${s(left)} to check against the date printed on it` : 'Every saved receipt is on its date';
+  return `<div class="setrow"><span>Receipt dates<small id="dt-line">${line}</small></span><button class="setb" data-dtall ${dt.busy || !left ? 'disabled' : ''}>Check</button></div>`;
+}
+async function dtCheckAll() {
+  const todo = dtTodo(); if (dt.busy || !todo.length) return;
+  Object.assign(dt, { busy: true, done: 0, n: todo.length, read: 0, moved: [] }); render();
+  const one = async ([id, x]) => {
+    try {
+      const u = await store.receiptUrl(id, x.receipt); if (!u) throw new Error('no photo');
+      const r = await store.api('scan', { photo: await shopPhoto(await (await fetch(u)).blob()) });
+      const now = store.getExpenses()[id]; // still there, with the same photo, and not checked meanwhile on another phone
+      if (r && r.total && now && now.receipt === x.receipt && !(now.rx && now.rx.date)) {
+        const { ts: _, ...rec } = now, day = receiptDay(r.date), move = day && day !== now.day && now.cat !== 'hotel';
+        // an expense with no English yet gets this reading's; one that has it keeps it, with the date added
+        const rx = now.rx ? { ...now.rx, date: r.date || 'none' } : { ...rxOf(r), date: r.date || 'none' };
+        store.setExpense(id, { ...rec, ...(move ? { day } : {}), rx }); dt.read++; if (move) dt.moved.push([now.title, day]);
+      }
+    } catch { /* counted as not read: still listed, so Check tries it again */ }
+    dt.done++; render();
+  };
+  const q = todo.slice(); await Promise.all([0, 1, 2].map(async () => { while (q.length) await one(q.shift()); }));
+  dt.busy = false; render();
 }
 // Settings sub-page (Stamped stops) lives in the URL as ?v=5&p=stamps, so back and refresh behave.
 let sub = new URLSearchParams(location.search).get('p') || '';
@@ -1444,6 +1482,7 @@ page.addEventListener('click', (e) => {
   if (t('[data-share]')) { shareWithFamily(); return; }
   if (t('[data-backup]')) { backupNow(); return; }
   if (t('[data-rxall]')) { rxReadAll(); return; }
+  if (t('[data-dtall]')) { dtCheckAll(); return; }
   if (t('[data-saveall]')) { saveAll(); return; }
   if (t('[data-homedone]')) { al.home = true; ls.set('japan2026.homeDone', true); return render(); }
   if (t('[data-install]') && al.install) { const ev = al.install; al.install = null; ev.prompt(); ev.userChoice.then((c) => { if (c && c.outcome === 'accepted') { al.home = true; ls.set('japan2026.homeDone', true); } render(); }); return; }

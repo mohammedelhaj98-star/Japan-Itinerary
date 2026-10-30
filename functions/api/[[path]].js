@@ -171,7 +171,7 @@ function cleanExpense(v) {
   if (v.rx && typeof v.rx === 'object' && Array.isArray(v.rx.lines)) {
     const lines = v.rx.lines.slice(0, 40).map((l) => l && typeof l === 'object' && rxLine(l)).filter((l) => l && l.name && l.price && Math.abs(l.price) < 10000000);
     const total = int(v.rx.total, 0, 100000000), pretax = int(v.rx.pretax, 0, 100000000), shop = clean(v.rx.shop, 60), jp = clean(v.rx.jp, 60), title = clean(v.rx.title, 40);
-    if (total && (lines.length || shop)) out.rx = { shop, ...(jp ? { jp } : {}), ...(title ? { title } : {}), ...(isDate(v.rx.date) ? { date: v.rx.date } : {}), total, ...(pretax && pretax < total ? { pretax } : {}), ...(v.rx.taxfree === true ? { taxfree: true } : {}), lines };
+    if (total && (lines.length || shop)) out.rx = { shop, ...(jp ? { jp } : {}), ...(title ? { title } : {}), ...(isDate(v.rx.date) || v.rx.date === 'none' ? { date: v.rx.date } : {}), total, ...(pretax && pretax < total ? { pretax } : {}), ...(v.rx.taxfree === true ? { taxfree: true } : {}), lines };
   }
   // "Just me": the payer's own spending, on their money page only and never in who-owes-whom
   if (split.length === 1 && split[0] === v.payer) out.own = true;

@@ -1577,7 +1577,8 @@ async function translateReceipt() {
   f.rxBusy = false;
   if (r && r.total) {
     const old = f.rx || { shop:r.shop_en || r.shop, jp:r.shop }, name = shopNamed(f.title, old) && scanName(r);
-    f.rx = rxOf(r); if (name) f.title = name;
+    // the date stays as it was: checking it (and moving the expense to its day) is Settings > Receipt dates
+    const d0 = f.rx && f.rx.date; f.rx = rxOf(r); if (d0) f.rx.date = d0; else delete f.rx.date; if (name) f.title = name;
     const x = saved && S.ex.find((e) => e.id === f.id); if (x) saveRx(x, f.rx, name);
   }
   else f.rxErr = navigator.onLine === false ? 'No signal: try again when there is.' : "Couldn't read this receipt. Try again in a moment.";
