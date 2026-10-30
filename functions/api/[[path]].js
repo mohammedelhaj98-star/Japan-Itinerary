@@ -8,7 +8,7 @@
 //                                     (only with the Durable Object; live:false in /api/version means keep polling)
 //   GET  /api/state                   → { checks, choices, suggestions, custom, expenses, money, profiles, covers, flights, shop, updatedAt }
 //                                       (flights: what the flight checks found, per stop; see lib/flights.js)
-//                                       (expenses and money only with the PIN in x-trip-pin)
+//                                       (expenses, money and covers only with the PIN in x-trip-pin)
 //   POST /api/checks                  { id, value:boolean }
 //   POST /api/choices                 { id, value:string }
 //   POST /api/custom                  { id, value:object|null }  (edit, hide or add a stop; null resets/removes)
@@ -392,10 +392,11 @@ export async function onRequest(ctx) {
       return store.live(request);
     }
 
-    // The money stays between the four of us: without the PIN the state comes back with no expenses.
+    // The money and the photos stay between the four of us: without the PIN the state comes back with no expenses, and
+    // without the photos chosen for the stops (covers: which trip photos they are).
     if (request.method === 'GET' && path === 'state') {
       const st = await readState(store);
-      if (!member) { st.expenses = {}; st.money = {}; }
+      if (!member) { st.expenses = {}; st.money = {}; st.covers = {}; }
       st.shop = ownShop(st.shop);
       return json({ ...st, live });
     }

@@ -1280,8 +1280,9 @@ function passHTML(e, i) {
   // an added stop that was filled in carries its own Japanese name, story and photo (the trip's own entry wins)
   const own = e._info && !(e.place && PLACES[e.place.name]) ? e._info : null;
   const host = e.place || placeOfEvent(i); const pi0 = own || placeInfo(host); const pi = pi0 && !e.place && !own ? { ...pi0, area: pi0.area || host.name, key: null } : pi0;
-  // a photo one of us chose for this stop (Photos → Use as this stop's photo) replaces the stock picture
-  const cover = (store.state.covers || {})[e.id]; const photo = cover ? `/api/photos/thumb/${encodeURIComponent(cover)}?s=780` : imgUrl(pi);
+  // a photo one of us chose for this stop (Photos → Use as this stop's photo) replaces the stock picture; guests get the
+  // stock one (the trip photos are just for the four of us, and the server doesn't tell them which they are anyway)
+  const cover = GUEST && !SANDBOX ? null : (store.state.covers || {})[e.id]; const photo = cover ? `/api/photos/thumb/${encodeURIComponent(cover)}?s=780` : imgUrl(pi);
   const turn = cover ? +(((store.state.covers || {})['~rot'] || {})[cover] || 0) : 0; // turned on the Photos page
   const color = tk ? legHex(e) : c.c;
   const kind = tk ? (e.travel ? (MODE[e.travel.mode] || [0, 0, 'Transit'])[2] : 'Transit') : c.label;

@@ -2,7 +2,7 @@
 // uploads), with real Day 7 photos and a video made here (with camera dates and a location), on two phones.
 // Checks connecting the Drive, uploads in pieces (with a dropped piece, and carrying on after the page was closed),
 // duplicates, the gallery by day and stop, hearts, tags, moving, hiding, the plan photo on the trip page, video
-// streaming, downloads, and guests with the photos PIN.
+// streaming, downloads, and guests getting none of it (the photos are just for the four of us; guests go to the trip).
 //   npm run test:photos       (CHROMIUM=/path/to/chrome to pick a browser; screenshots in tests/shots/photos/)
 import { chromium } from 'playwright';
 import http from 'http'; import fs from 'fs'; import os from 'os'; import path from 'path'; import crypto from 'crypto';
@@ -175,13 +175,17 @@ const N = await phone('naf'); const n = N.pg;
 await n.goto(B + '/japan/photos'); await n.waitForTimeout(1200);
 ok('member before setup: "almost ready"', /almost ready/.test(await n.textContent('#gate')));
 const Gst = await phone('guest'); const gp = Gst.pg;
-await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1000);
-ok('guest gets the photos PIN pad', !!(await gp.$('#dots')) && /photos PIN/.test(await gp.textContent('#gate')));
-for (const d of '0000') await gp.tap(`[data-k="${d}"]`); await gp.waitForTimeout(600);
-ok('wrong photos PIN refused', /not it/.test(await gp.textContent('#pin-msg')));
-await gp.screenshot({ path: OUT + 'guest-pin.png' });
-for (const d of '1212') await gp.tap(`[data-k="${d}"]`); await gp.waitForTimeout(900);
-ok('photos PIN lets the guest in (not set up yet)', /aren't set up yet/.test(await gp.textContent('#gate')) && !!(await gp.evaluate(() => localStorage.getItem('trips.photok'))));
+const onTrip = async () => /\/japan\/$/.test(new URL(gp.url()).pathname) && !(await gp.$('#gate'));
+await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
+ok('guest opening the photos address lands on the trip', await onTrip(), gp.url());
+await gp.screenshot({ path: OUT + 'guest-photos-link-lands-on-trip.png' });
+ok('guest\'s + menu has no Photos', !(await gp.$$eval('.tt-opt', (els) => els.map((e) => e.dataset.k))).includes('photos'));
+ok('the old photos PIN no longer opens anything', (await api('/unlock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: '1212' }) })).status === 403);
+ok('the member PIN still does', (await (await api('/unlock', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pin: '6666' }) })).json()).role === 'm');
+// a guest's viewing token as the photos PIN used to hand them out (good for 30 days): it opens nothing now
+const gtok = (() => { const exp = Math.floor(Date.now() / 1000) + 86400 * 20; const sig = crypto.createHmac('sha256', env.PHOTO_SECRET).update(`g.${exp}`).digest('base64url').slice(0, 32); return `g.${exp}.${sig}`; })();
+await gp.evaluate((t) => localStorage.setItem('trips.photok', t), gtok); await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
+ok('a guest\'s old viewing token is dropped from the phone', await onTrip() && (await gp.evaluate(() => localStorage.getItem('trips.photok'))) === null);
 
 // 2 · Google set up: connect the Drive
 env.GOOGLE_CLIENT_ID = 'cid'; env.GOOGLE_CLIENT_SECRET = 'csec';
@@ -372,14 +376,12 @@ const ky = byName('kyoto.jpg');
 ok('…and carries on in the same upload', ky && ky.data.equals(fs.readFileSync(FIX + '/kyoto.jpg')) && sessionsMade === made + 1 && partial && partial.offset > 0, `sessions +${sessionsMade - made}`);
 ok('queue cleared', (await n.evaluate(() => localStorage.getItem('photos.queue'))) === null);
 
-// 11 · a guest with the photos PIN: sees photos (not hidden ones), changes nothing
-await gp.reload(); await gp.waitForTimeout(1800);
-const gv = await gp.evaluate(() => ({ n: document.querySelectorAll('.grid .th').length, fab: document.getElementById('fab').hidden, sel: document.querySelector('[data-select]').hidden, ids: [...document.querySelectorAll('.grid .th')].map((e) => e.dataset.pid) }));
-ok('guest sees the photos, not the hidden one', gv.n === 4 && !gv.ids.includes(early.id), JSON.stringify(gv));
-ok('guest has no Upload, Select or Drive link', gv.fab && gv.sel && (await gp.$eval('.bar [data-drive]', (e) => e.hidden)));
-await gp.tap(`.grid .th[data-pid="${shot.id}"]`); await gp.waitForTimeout(700);
-ok('guest viewer: no heart', await gp.$eval('[data-heart]', (e) => e.hidden));
-await gp.screenshot({ path: OUT + 'guest-viewer.png' });
+// 11 · a guest, now there are photos: still none of them, from the page or the server
+await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
+ok('guest still lands on the trip, with no photos', await onTrip() && !(await gp.$('.grid .th')));
+{ const c = byName('castle.jpg').id; // (not a plan photo: those show on the plan, by an id only the four are told)
+  const st = [(await api('?trip=japan', { headers: { 'x-photo-token': gtok } })).status, (await api(`/thumb/${c}?s=600&k=${gtok}`)).status, (await api(`/file/${c}?k=${gtok}`)).status, (await api(`/file/${shot.id}?k=${gtok}`)).status];
+  ok('a guest token gets no list, picture or file', st.every((x) => x === 403), st.join()); }
 // small phone
 const S = await phone('sara', 375, 667); await S.pg.goto(B + '/japan/photos'); await S.pg.waitForTimeout(1600);
 ok('small phone: gallery renders', (await S.pg.$$('.grid .th')).length === 4);
@@ -588,7 +590,7 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
     await n.keyboard.press('Escape'); await n.waitForTimeout(500);
   } else ok('a guessed photo is left for the viewer check', false);
   await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
-  ok('guests see no nudge and sort nothing', !(await gp.textContent('#nudge')).trim() && !(await gp.$('#what button.on')));
+  ok('guests see no nudge and sort nothing (they land on the trip)', await onTrip() && !(await gp.$('#nudge')) && !(await gp.$('#what button.on')));
   claude.close(); delete env.ANTHROPIC_API_KEY; delete env.SORT_API;
 }
 
@@ -635,7 +637,7 @@ let M = null;
   ok('faces: one known of two faces keeps an earlier guess that fits', F.nameFaces([face(near(A, 2)), face(C)], pr, ['naf', 'sara', 'mariam'], ['mariam']).join() === 'naf,mariam' && F.nameFaces([face(near(A, 2)), face(C)], pr, ['naf', 'sara', 'mariam'], ['sara', 'mariam']).join() === 'naf');
 
   // the server keeps the prints: members only, checked, and dropped when a photo's tags change
-  const tok = await n.evaluate(() => localStorage.getItem('trips.photok')), gtok = await gp.evaluate(() => localStorage.getItem('trips.photok'));
+  const tok = await n.evaluate(() => localStorage.getItem('trips.photok'));
   ok('prints: a guest can\'t read them', (await api('/prints', { headers: { 'x-photo-token': gtok } })).status === 403);
   const post = (b, pin = '6666') => api('/prints', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': pin }, body: JSON.stringify(b) });
   ok('prints: saving needs the member PIN', (await post({ add: [] }, '0000')).status === 403);
@@ -777,8 +779,6 @@ let M = null;
   ok('the gallery tile is turned too', await n.$eval(`.grid .th[data-pid="${tp.id}"] img`, (im) => im.classList.contains('q') && im.style.getPropertyValue('--rot') === '270deg'));
   const list = await (await api('?trip=japan', { headers: { 'x-photo-token': tok } })).json();
   ok('the list says how it\'s turned, for every phone', list.photos.find((p) => p.id === tp.id).rot === 270);
-  await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
-  ok('a guest sees it turned, and has no Turn button', await gp.$eval(`.grid .th[data-pid="${tp.id}"] img`, (im) => im.style.getPropertyValue('--rot') === '270deg') && !(await gp.isVisible('[data-vrot]')));
   // the plan photo: turned on the trip page too
   const pin = { 'content-type': 'application/json', 'x-trip-pin': '6666' };
   await api('/cover', { method: 'POST', headers: pin, body: JSON.stringify({ stop: ap(tp.id).stop, id: tp.id }) });
@@ -789,6 +789,12 @@ let M = null;
   ok('turned again: the plan photo follows', cv['~rot'][tp.id] === 90 && ap(tp.id).rot === '90');
   await n.goto(B + `/japan/?d=${ap(tp.id).day}`); await n.waitForTimeout(2500);
   ok('the trip page draws the plan photo turned', await n.$eval(`.hero[data-pick="${ap(tp.id).stop}"]`, (h) => h.classList.contains('turned') && !!h.querySelector('.hturn.q')).catch(() => false));
+  // guests aren't told which trip photo is a stop's picture, and their trip page keeps the place's own photo
+  const stOf = async (h) => (await onRequest({ request: new Request(B + '/api/state', { headers: h }), env })).json();
+  ok('the state names the plan photos for the four, not for guests', (await stOf({ 'x-trip-pin': '6666' })).covers[ap(tp.id).stop] === tp.id && !Object.keys((await stOf({})).covers).length);
+  await gp.goto(B + `/japan/?d=${ap(tp.id).day}`); await gp.waitForTimeout(2500);
+  ok('a guest\'s trip page shows no trip photo', !(await gp.evaluate(() => [...document.querySelectorAll('img, [style*="api/photos"]')].some((e) => /\/api\/photos\//.test(e.getAttribute('src') || '') || /\/api\/photos\//.test(e.getAttribute('style') || '')))));
+  await gp.tap('#ttBtn'); await gp.waitForTimeout(500); await gp.screenshot({ path: OUT + 'guest-menu.png' }); await gp.tap('#ttBtn');
   await api('/update', { method: 'POST', headers: pin, body: JSON.stringify({ trip: 'japan', ids: [tp.id], set: { rot: 0 } }) });
   await api('/cover', { method: 'POST', headers: pin, body: JSON.stringify({ stop: ap(tp.id).stop, id: null }) });
   cv = (await (await api('?trip=japan', { headers: { 'x-photo-token': tok } })).json()).covers;
