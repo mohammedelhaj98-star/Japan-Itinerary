@@ -2,14 +2,15 @@
 // The server (workers/faces: InsightFace, open source) finds the faces in a picture and turns each into 512 numbers, a
 // face print: two photos of the same person give prints close together (a distance of about 1 or less), two people
 // far apart (about 1.4). It also finds the people in it, and what each is wearing (the colours of their top half).
-// The four of us are learned from photos of one person that someone tagged; the prints are kept by the server
+// The four of us are learned from photos someone tagged (photos of one of us, and group photos); the prints are kept by the server
 // (/api/photos/prints in lib/photos.js), a few numbers a face and never the photos. A new face close enough to one
 // person's prints is guessed as them, shown dotted until someone confirms it, like the other guesses.
 export const VERSION = 3; // how it learns; a newer one starts learning again (v3: the server's model, 512-number prints)
-const MATCH = 1.16;  // a face this close to someone's prints (the mean of the nearest three) is them (a likeness of 0.33)
-const MARGIN = 0.08; // ...and clearly closer to them than to anyone else
-const BIG = 0.04;    // a face narrower than this share of the photo is someone in the background: left out
+const MATCH = 1.22;  // a face this close to someone's prints (the mean of the nearest three) is them (a likeness of 0.26)
+const MARGIN = 0.06; // ...and clearly closer to them than to anyone else
+const BIG = 0.03;    // a face narrower than this share of the photo is someone in the background: left out
 const TEACH = 0.07;  // a face it learns from is at least this wide: the photo is of them
+const LAST = 0.05;   // ...and in a group photo, the last face left (everyone else known) at least this wide
 const K = 400;       // prints come as whole numbers: value × K, in -127…127 (values stay within ±0.3)
 const BINS = 28;     // an outfit: 12 hues × 2 strengths for colours, and 4 shades of grey (workers/faces/server/look.py)
 
@@ -42,9 +43,12 @@ export function assign(faces, prints, who, max = MATCH) {
   return out;
 }
 
-// what a tagged photo teaches: only a photo of one person, with one face big enough to be theirs, and not a face that
-// looks more like someone else we know (a stranger in front, or the wrong person tagged)
+// what a tagged photo teaches. A photo of one person: its one face big enough to be theirs, if it doesn't look more like
+// someone else we know (a stranger in front, or the wrong person tagged). A photo of a few of us: each face that's
+// clearly one of the people tagged (and no one else we know), and then, when just one person and one face are left,
+// that face is them. So it learns each of us from the group photos too, more with each pass as it knows us better.
 export function learnFrom(faces, tagged, prints) {
+  if (tagged.length > 1) return learnGroup(faces, tagged, prints);
   if (tagged.length !== 1) return [];
   const F = faces.filter(big); if (F.length !== 1 || F[0].w < TEACH) return [];
   const who = tagged[0], v = unpack(F[0].q);
@@ -52,6 +56,18 @@ export function learnFrom(faces, tagged, prints) {
   const other = Math.min(Infinity, ...Object.entries(prints).filter(([p, ps]) => p !== who && ps.length).map(([, ps]) => score(v, ps)));
   if (other < MATCH && (own === null || other < own)) return [];
   return [{ who, q: F[0].q }];
+}
+
+function learnGroup(faces, tagged, prints) {
+  const F = faces.filter(big); if (!F.length) return [];
+  const got = assign(F, prints, Object.keys(prints).filter((p) => prints[p].length)).filter((x) => tagged.includes(x.who)); // (faces like someone not tagged teach nothing)
+  const out = got.map((x) => ({ who: x.who, q: F[x.i].q }));
+  const left = tagged.filter((p) => !got.some((x) => x.who === p)), free = F.filter((_, i) => !got.some((x) => x.i === i));
+  if (left.length === 1 && free.length === 1 && free[0].w >= LAST) {
+    const v = unpack(free[0].q), other = Math.min(Infinity, ...Object.entries(prints).filter(([p, ps]) => p !== left[0] && ps.length).map(([, ps]) => score(v, ps)));
+    if (other >= MATCH) out.push({ who: left[0], q: free[0].q });
+  }
+  return out;
 }
 
 // prints that look more like someone else than the person they were learned as: the photo ids, to forget

@@ -1104,14 +1104,18 @@ async function facePass() {
     const drop = new Set(); for (const [who, l] of Object.entries(fp.by)) for (const x of l) { const p = byIdP(x.id); if (p && p.checked && !p.in.includes(who)) drop.add(x.id); }
     if (drop.size) await prints({ drop: [...drop] });
     const used = new Set(fp.used || []);
-    const teach = photos.filter((p) => p.checked && p.in.length === 1 && !p.isVideo && !p.hidden && !used.has(p.id)); // photos of one person: they're the sure ones
+    // photos of one of us first (the sure ones), then group photos: each pass knows us better, so a group photo can teach more
+    const teach = photos.filter((p) => p.checked && p.in.length && !p.isVideo && !p.hidden && !used.has(p.id)).sort((a, b) => a.in.length - b.in.length);
+    const have = new Set(Object.values(fp.by).flat().map((x) => x.id + x.q));
     for (let round = 0, grew = true; grew && round < 4; round++) {
       grew = false; let add = [], ids = [], i = 0;
       for (const p of teach) {
         if (used.has(p.id)) continue; i++; if (!round) setFaceMsg(`Learning faces from your tagged photos · ${i} of ${teach.length}`);
         const L = await looksOf(p); if (!L) continue;
-        const got = F.learnFrom(L.f, p.in, fpv); if (!got.length) continue;
-        add.push(...got.map((g) => ({ ...g, id: p.id }))); ids.push(p.id); used.add(p.id);
+        const got = F.learnFrom(L.f, p.in, fpv).filter((g) => !have.has(p.id + g.q)); if (!got.length) continue;
+        for (const g of got) have.add(p.id + g.q);
+        add.push(...got.map((g) => ({ ...g, id: p.id })));
+        if (p.in.length === 1 || F.learnFrom(L.f, p.in, fpv).length >= p.in.length) { ids.push(p.id); used.add(p.id); } // (a group photo not everyone was learned from: tried again next time)
         if (add.length >= 12) { await prints({ add, used: ids }); add = []; ids = []; grew = true; }
         await sleep(30);
       }
@@ -1141,7 +1145,7 @@ async function facePass() {
       else if (!g && q.faced && q.guess) { q.in = []; q.guess = q.faced = false; save({ ids: [q.id], set: { unguess: true } }); render(); } // no longer sure
     }
     const k = knows(), not = PIDS.filter((id) => !k.includes(id)), n = k.reduce((s, id) => s + fp.by[id].length, 0);
-    setFaceMsg(!k.length ? 'It learns only from photos of one person: tag a few of each of you.'
+    setFaceMsg(!k.length ? 'It learns from photos you tag: tag a few photos of each of you.'
       : `Recognises ${names(k)} (from ${n} tagged face${n > 1 ? 's' : ''}).${not.length ? ` Tag photos of just ${not.map((id) => PEOPLE[id].name).join(' or ')} to teach it.` : ''}${named ? ` Named ${named} photo${named > 1 ? 's' : ''}: check them above.` : ''}`);
   } catch (e) { setFaceMsg(e && e.status === 503 ? '' : e && e.status ? 'Couldn\'t reach the face server. It tries again later.' : 'Face recognition couldn\'t start on this phone.'); }
   finally { faceBusy = false; if (faceAgain) { faceAgain = false; faceSoon(); } }

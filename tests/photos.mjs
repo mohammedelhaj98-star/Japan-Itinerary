@@ -607,7 +607,10 @@ let M = null;
   ok('faces: prints survive being stored as whole numbers', Math.abs(F.unpack(F.pack(A))[5] - A[5]) < 0.0015 && F.pack(A).length === 684);
   ok('faces: one person tagged, one face → their print', F.learnFrom([face(C)], ['mariam'], {}).map((x) => x.who).join() === 'mariam');
   ok('faces: a tiny face in the background isn\'t counted', F.learnFrom([face(C), face(A, 0.02)], ['mariam'], {}).length === 1);
-  ok('faces: only photos of one person teach it', F.learnFrom([face(near(A, 3)), face(C)], ['naf', 'mariam'], pr).length === 0 && F.learnFrom([face(A), face(C)], ['naf', 'mariam'], {}).length === 0);
+  ok('faces: a group photo teaches too: the face it knows, then the last face is the last person',
+    F.learnFrom([face(near(A, 3)), face(C)], ['naf', 'mariam'], pr).map((x) => x.who).sort().join() === 'mariam,naf'
+    && F.learnFrom([face(A), face(C)], ['naf', 'mariam'], {}).length === 0 // (knowing no one: nothing to go on)
+    && F.learnFrom([face(near(Bv, 3)), face(C)], ['naf', 'mariam'], pr).length === 0); // (a face that's Sara, not tagged: the photo teaches nothing)
   ok('faces: a small face isn\'t learned from', F.learnFrom([face(C, 0.05)], ['mariam'], {}).length === 0);
   ok('faces: a face that looks like someone else we know isn\'t learned as the person tagged', F.learnFrom([face(near(A, 4))], ['mariam'], pr).length === 0 && F.learnFrom([face(near(A, 4))], ['naf'], pr).length === 1);
   const fpOdd = { by: { naf: [{ id: 'p1', q: F.pack(A) }, { id: 'p2', q: F.pack(near(A, 2)) }], sara: [{ id: 'p3', q: F.pack(Bv) }, { id: 'p4', q: F.pack(near(Bv, 3)) }, { id: 'p5', q: F.pack(near(A, 5)) }] } };
@@ -683,8 +686,8 @@ let M = null;
   await m.evaluate(() => localStorage.setItem('japan2026.state.v1', JSON.stringify({ profiles: { m: { color: '#0a7f6e' } } }))); await m.reload(); await m.waitForTimeout(1200);
   const cOf = (sel) => m.$eval(sel, (e) => e.style.getPropertyValue('--c'));
   ok('everyone in their own colour: the one Mo picked, the others the Money page\'s', (await cOf('[data-pp="m"] i')) === '#0a7f6e' && (await cOf('[data-pp="naf"] i')) === '#1f98b8' && (await cOf('[data-pp="mariam"] i')) === '#2f9e57');
-  await m.waitForFunction(() => /photos of one person/.test(document.querySelector('#facebox').textContent), null, { timeout: 120000 }).catch(() => {});
-  ok('nothing to switch on or download: the server looked at the photos, and it asks for photos of one person', /learns only from photos of one person/.test(await m.textContent('#facebox')) && !fetched.length && lookCalls > 0 && !(await m.$('[data-faceson]')), await m.textContent('#facebox'));
+  await m.waitForFunction(() => /learns from photos you tag/.test(document.querySelector('#facebox').textContent), null, { timeout: 120000 }).catch(() => {});
+  ok('nothing to switch on or download: the server looked at the photos, and it asks for tagged photos', /learns from photos you tag/.test(await m.textContent('#facebox')) && !fetched.length && lookCalls > 0 && !(await m.$('[data-faceson]')), await m.textContent('#facebox'));
   await m.screenshot({ path: OUT + 'faces-offer.png' });
   await m.tap('[data-upload]'); await m.waitForTimeout(300);
   await m.setInputFiles('#upfiles', WHO.map((w) => FIX + `/face-${w}.jpg`));
