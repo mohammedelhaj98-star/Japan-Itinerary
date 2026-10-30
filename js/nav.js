@@ -11,7 +11,7 @@ const PAGES = [
   ['shopping', 'Shopping', 'prototypes/tools?v=3', svg('<path d="M5 8h14l-1 12H6z"/><path d="M9 8V6a3 3 0 016 0v2"/>'), true],
   ['bookings', 'Bookings', 'prototypes/tools?v=2', svg('<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 10h16M9 3v4M15 3v4M9 15l2 2 4-4"/>'), true],
   ['ideas', 'Ideas', 'prototypes/tools?v=4', svg('<path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0012 3z"/>'), true],
-  ['photos', 'Photos', 'photos', svg('<path d="M4 8.5A2.5 2.5 0 016.5 6h1.7l1.5-2h4.6l1.5 2h1.7A2.5 2.5 0 0120 8.5v8a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5z"/><circle cx="12" cy="12.5" r="3.4"/>')],
+  ['photos', 'Photos', 'photos', svg('<path d="M4 8.5A2.5 2.5 0 016.5 6h1.7l1.5-2h4.6l1.5 2h1.7A2.5 2.5 0 0120 8.5v8a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5z"/><circle cx="12" cy="12.5" r="3.4"/>'), true],
   ['money', 'Expenses', 'money', svg('<path d="M7 4l5 7 5-7M12 11v9M7 12h10M7 16h10"/>'), true],
   ['trip', 'Trip', './', svg('<path d="M9 4.5L3.5 6.5v13L9 17.5l6 2 5.5-2v-13L15 6.5z"/><path d="M9 4.5v13M15 6.5v13"/>')],
 ];

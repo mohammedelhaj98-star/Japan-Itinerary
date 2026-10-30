@@ -1021,11 +1021,11 @@ await C.page.tap('#calbg', { force: true }); await C.page.waitForTimeout(400);
   }
   await g.goto(B + '/japan/'); await g.waitForTimeout(1500);
   await g.tap('#ttBtn'); await g.waitForTimeout(400);
-  ok('guest tools are just Photos and Settings', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))) === '["Settings","Photos"]', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))));
+  ok('guest tools are just Settings (no Photos)', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))) === '["Settings"]', JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))));
   await g.screenshot({ path: SH + 'guest-trip.png' });
   for (const v of [1, 2, 3, 4]) {
     await g.goto(B + '/japan/prototypes/tools?v=' + v); await g.waitForTimeout(1200);
-    ok(`guest asking for tab ${v} (Expenses, Bookings, Shopping, Ideas) gets Settings`, /You &(amp;)? the trip/.test(await g.textContent('#page')) && JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))) === '["Settings","Photos","Trip"]' && (await g.$eval('.tt-opt.tt-here', (e) => e.dataset.k)) === 'settings' && !(await g.$('[data-bkmark]')));
+    ok(`guest asking for tab ${v} (Expenses, Bookings, Shopping, Ideas) gets Settings`, /You &(amp;)? the trip/.test(await g.textContent('#page')) && JSON.stringify(await g.$$eval('.tt-opt', (els) => els.map((e) => e.textContent.trim()))) === '["Settings","Trip"]' && (await g.$eval('.tt-opt.tt-here', (e) => e.dataset.k)) === 'settings' && !(await g.$('[data-bkmark]')));
   }
   await g.goto(B + '/japan/prototypes/tools?v=5'); await g.waitForTimeout(1500);
   ok('guest settings say guest', /Guest/.test(await g.textContent('.me')) && !(await g.$('[data-pcolor]')) && !/Show money in/.test(await g.textContent('#page')));
