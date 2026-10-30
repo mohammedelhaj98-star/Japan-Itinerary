@@ -122,6 +122,10 @@ const pileOrder = (page) => page.evaluate(() => [...document.querySelectorAll('.
   try {
     const r = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
     ok('/api/scan asks Claude when the key is set and keeps its lines', r.total === 1960 && r.model === CLAUDE_MODEL && Array.isArray(r.lines) && r.lines.length === 2 && r.shop_en === 'Ichiran Dotonbori' && r.title === 'Ramen' && r.lines[0].jp === 'ラーメン' && !('note' in r.lines[0]), JSON.stringify(r).slice(0, 200));
+    // the date comes back as YYYY-MM-DD however the receipt printed it, so the expense can go on that day
+    const dated = async (date) => { globalThis.fetch = answer(200, { ...good, content: [{ type: 'text', text: JSON.stringify({ ...said, date }) }] }); return (await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json()).date; };
+    const ds = []; for (const d of ['2026年10月28日(水) 14:05', '26/10/28', 'R8.10.28', '２０２６／１０／２８', '10/28', '2026-10-28', 'Oct 28, 2026', '2026/02/30', 'TEL 03-1234-5678', null]) ds.push(await dated(d));
+    ok('/api/scan: the receipt date in any printed form becomes 2026-10-28; no date or a wrong one is null', ds.slice(0, 7).every((d) => d === '2026-10-28') && ds.slice(7).every((d) => d === null), ds.join(', '));
     globalThis.fetch = answer(500, 'down');
     const r2 = await (await onRequest({ request: new Request(B + '/api/scan', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': PIN }, body: JSON.stringify({ photo }) }), env: { TRIP_KV: KV, TRIP_PIN: PIN, AI: FAKE_AI, ANTHROPIC_API_KEY: 'k' } })).json();
     ok('/api/scan falls back to Workers AI when Claude is down', r2.total === 2380 && r2.model !== CLAUDE_MODEL, JSON.stringify(r2).slice(0, 120));
@@ -347,6 +351,9 @@ ok('expenses and money settings need the PIN to read', !Object.keys(stOpen.expen
 await N.page.tap('#addfab'); await N.page.waitForTimeout(400);
 await N.page.setInputFiles('#fscan', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForTimeout(1500);
 ok('scan fills in what was paid, what was bought at which shop, and the day', (await N.page.inputValue('#famt')) === '2380' && (await N.page.inputValue('#ftitle')) === 'Ramen · Ichiran Dotonbori' && /Day 7/.test(await N.page.textContent('[data-fexp="day"]')), await N.page.inputValue('#famt'));
+ok('scan says the expense went on the date printed on the receipt', /Filed on Thu 22 Oct, the date on the receipt/.test(await N.page.textContent('#fpage .amtin + .scanl + .scanl').catch(() => '')), await N.page.textContent('#fpage .fsec').catch(() => ''));
+await N.page.screenshot({ path: SH + 'receipt-date.png' });
+await N.page.$eval('[data-fexp="day"]', (e) => e.scrollIntoView({ block: 'center' })); await N.page.screenshot({ path: SH + 'receipt-date-day.png' }); await N.page.$eval('#fpage .fwrap', (e) => e.scrollIntoView());
 ok('scan attaches the photo as the receipt', !!(await N.page.$('.rcpt img')));
 { // the receipt in English, under everything: each line with what it is, the name as printed, its price, and what was paid
   const rx = await N.page.$$eval('#fpage .rxen .rxrow', (r) => r.map((e) => e.textContent));
@@ -507,6 +514,18 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   const n1 = await named({ shop: 'ドン・キホーテ 道頓堀店', shop_en: 'Don Quijote Dotonbori', title: 'Snacks and skincare' });
   const n2 = await named({ shop: '松屋', shop_en: '松屋', title: 'Beef bowl' });
   const n3 = await named({ shop: 'ローソン', shop_en: 'Lawson' });
+  // the day: the one printed on the receipt; a receipt from just before the trip goes under Before the trip; a date
+  // that isn't on the trip leaves the day the form was on
+  const filed = async (date) => {
+    await p.route('**/api/scan', (r) => r.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ total: 1500, shop: 'Lawson', lines: [], date }) }));
+    await p.tap('#addfab'); await p.waitForTimeout(400); const was = await p.textContent('[data-fexp="day"]'); await p.setInputFiles('#fscan', REPO + '/img/places/nakano-broadway.webp'); await p.waitForTimeout(1200);
+    const r = { was, day: await p.textContent('[data-fexp="day"]'), note: (await p.$$eval('#fpage .scanl', (e) => e.map((x) => x.textContent))).join(' | ') };
+    await p.tap('[data-fcancel]'); await p.waitForTimeout(400); await p.unroute('**/api/scan'); return r;
+  };
+  const f1 = await filed('2026-10-28'), f2 = await filed('2026-10-14'), f3 = await filed('2026-12-25'), f4 = await filed(null);
+  ok('scan files the expense on the receipt\'s date', /^Day 13 · 28 Oct/.test(f1.day) && /Filed on Wed 28 Oct, the date on the receipt/.test(f1.note), JSON.stringify(f1));
+  ok('scan: a receipt from just before the trip goes under Before the trip', /^Before the trip/.test(f2.day) && /Filed under Before the trip/.test(f2.note), JSON.stringify(f2));
+  ok('scan: a date off the trip, or none, keeps the day and says nothing about it', f3.day === f3.was && f4.day === f4.was && !/Filed/.test(f3.note + f4.note), JSON.stringify([f3, f4]));
   ok('scan names: summary without the shop when both would not fit; no Japanese shop; the shop alone from the backup reader', n1 === 'Snacks and skincare' && n2 === 'Beef bowl' && n3 === 'Lawson', `${n1} / ${n2} / ${n3}`);
   for (const id of [oldId, stId]) {
     await p.tap(`[data-ex="${id}"]`); await p.waitForTimeout(500); await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);

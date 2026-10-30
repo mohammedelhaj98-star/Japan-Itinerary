@@ -1523,8 +1523,11 @@ let shrinkPhoto = (file) => new Promise((ok) => { const r = new FileReader(); r.
 function scanLine() {
   const sc = F.scan; if (sc && sc.saved) return ''; if (!sc || !sc.total) return F.scanErr ? `<p class="scanl err">${esc(F.scanErr)}</p>` : '';
   const amt = +F.amt, onPre = sc.pretax && amt === sc.pretax;
-  return `<p class="scanl">${F.taxfree ? '<span class="tfree">Tax-free</span>' : ''}Read ${fmtY(sc.total)} paid${sc.pretax ? ` · <button class="linkb" data-scanamt="${onPre ? sc.total : sc.pretax}">${onPre ? `Use paid ${fmtY(sc.total)}` : `Use before tax ${fmtY(sc.pretax)}`}</button>` : ''}</p>${sc.lines && sc.lines.length > 1 && F.byItem !== itemSig() ? `<div><button class="splitb" data-iopen>${LISTI}Split by item</button></div>` : ''}`;
+  return `<p class="scanl">${F.taxfree ? '<span class="tfree">Tax-free</span>' : ''}Read ${fmtY(sc.total)} paid${sc.pretax ? ` · <button class="linkb" data-scanamt="${onPre ? sc.total : sc.pretax}">${onPre ? `Use paid ${fmtY(sc.total)}` : `Use before tax ${fmtY(sc.pretax)}`}</button>` : ''}</p>${sc.day && sc.day === F.day ? `<p class="scanl">${sc.day === 'pre' ? 'Filed under Before the trip' : `Filed on ${DAY[sc.day].dow} ${DAY[sc.day].dd}`}, the date on the receipt</p>` : ''}${sc.lines && sc.lines.length > 1 && F.byItem !== itemSig() ? `<div><button class="splitb" data-iopen>${LISTI}Split by item</button></div>` : ''}`;
 }
+// the trip day a receipt's printed date falls on: one dated in the weeks before the trip is Before the trip; a date
+// that isn't on the trip at all (misread, or none printed) leaves the day as it was
+const receiptDay = (date) => { if (!date) return null; const d = DAYS.find((x) => x.date === date); return d ? d.id : date >= '2026-09-01' && date < DAYS[1].date ? 'pre' : null; };
 async function scanReceipt(src) {
   const id0 = F; F.scanning = true; F.scanErr = null; renderForm();
   let photo; try { photo = typeof src === 'string' ? src : await shrinkPhoto(src); } catch { F.scanning = false; F.scanErr = "That photo couldn't be opened."; return renderForm(); }
@@ -1536,7 +1539,7 @@ async function scanReceipt(src) {
   const name = scanName(r), was = F.title.trim();
   if (name && (!was || was === F.autoName || shopNamed(was, old))) F.title = F.autoName = name;
   if (r.type && CATS[r.type] && !F.catTouched) { F.cat = r.type; F.catGuess = true; }
-  const d = r.date && DAYS.find((x) => x.date === r.date); if (d) F.day = d.id;
+  const d = receiptDay(r.date); if (d) { F.day = d; F.scan.day = d; F.nights = Math.min(F.nights, Math.max(1, DAYS.length - DAYS.findIndex((x) => x.id === d))); }
   renderForm();
   const box = document.querySelector('#fpage .amtin'); if (box) { box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash'); }
 }
@@ -1547,7 +1550,7 @@ async function scanReceipt(src) {
 const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h9M8.5 3v2M6 5c.8 3 3.2 5.6 6 7M11 5c-.8 3.4-3.4 6.4-7 8"/><path d="M13 21l4-9 4 9M14.4 18h5.2"/></svg>';
 const rxOf = (r) => {
   const shop = r.shop_en || r.shop || '';
-  return { shop, ...(r.shop && r.shop !== shop ? { jp:r.shop } : {}), ...(r.title ? { title:r.title } : {}), total:r.total, ...(r.pretax ? { pretax:r.pretax } : {}), ...(r.taxfree ? { taxfree:true } : {}),
+  return { shop, ...(r.shop && r.shop !== shop ? { jp:r.shop } : {}), ...(r.title ? { title:r.title } : {}), ...(r.date ? { date:r.date } : {}), total:r.total, ...(r.pretax ? { pretax:r.pretax } : {}), ...(r.taxfree ? { taxfree:true } : {}),
     lines:(Array.isArray(r.lines) ? r.lines : []).filter((l) => l && l.name && l.price).map(({ name, jp, note, tags, price, qty }) => ({ name, ...(jp ? { jp } : {}), ...(note ? { note } : {}), ...(tags && tags.length ? { tags } : {}), price, qty:qty || 1 })) };
 };
 // The expense's name from its receipt: what was bought, then the shop in English or romaji when that still fits on one
