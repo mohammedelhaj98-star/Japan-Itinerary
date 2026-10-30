@@ -263,7 +263,8 @@ function receiptDate(v) {
     [/\b(\d{1,2})\s+(Sep|Oct|Nov)[a-z]*\.?,?\s*(\d{4})?/i, (x) => [+(x[3] || 2026), 'sepoctnov'.indexOf(x[2].toLowerCase()) / 3 + 9, +x[1]]], // 28 Oct 2026
     [/\b(Sep|Oct|Nov)[a-z]*\.?\s+(\d{1,2})(?!\d)(?:,?\s*(\d{4}))?/i, (x) => [+(x[3] || 2026), 'sepoctnov'.indexOf(x[1].toLowerCase()) / 3 + 9, +x[2]]], // Oct 28, 2026
   ];
-  for (const [re, f] of ways) { const x = re.exec(s), d = x && ok(...f(x)); if (d) return d; }
+  // the first form found decides: a date with a year off the trip (10/28/2024) isn't read again as a yearless 10/28
+  for (const [re, f] of ways) { const x = re.exec(s); if (x) return ok(...f(x)); }
   return null;
 }
 // whatever model answered: check and trim it
