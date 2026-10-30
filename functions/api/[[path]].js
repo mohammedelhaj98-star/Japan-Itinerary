@@ -171,7 +171,7 @@ function cleanExpense(v) {
   if (v.rx && typeof v.rx === 'object' && Array.isArray(v.rx.lines)) {
     const lines = v.rx.lines.slice(0, 40).map((l) => l && typeof l === 'object' && rxLine(l)).filter((l) => l && l.name && l.price && Math.abs(l.price) < 10000000);
     const total = int(v.rx.total, 0, 100000000), pretax = int(v.rx.pretax, 0, 100000000), shop = clean(v.rx.shop, 60), jp = clean(v.rx.jp, 60), title = clean(v.rx.title, 40);
-    if (total && (lines.length || shop)) out.rx = { shop, ...(jp ? { jp } : {}), ...(title ? { title } : {}), total, ...(pretax && pretax < total ? { pretax } : {}), ...(v.rx.taxfree === true ? { taxfree: true } : {}), lines };
+    if (total && (lines.length || shop)) out.rx = { shop, ...(jp ? { jp } : {}), ...(title ? { title } : {}), ...(isDate(v.rx.date) ? { date: v.rx.date } : {}), total, ...(pretax && pretax < total ? { pretax } : {}), ...(v.rx.taxfree === true ? { taxfree: true } : {}), lines };
   }
   // "Just me": the payer's own spending, on their money page only and never in who-owes-whom
   if (split.length === 1 && split[0] === v.payer) out.own = true;
@@ -250,6 +250,23 @@ async function scanReceipt(env, photo, model) {
   if (!data) return { model: m, error: 'unreadable', raw: String(text || '').slice(0, 400) };
   return tidyScan(data, m);
 }
+// the receipt's date as YYYY-MM-DD, however it was printed: 2026/10/28, 26.10.28, 2026年10月28日(水) 14:05, 令和8年10月28日,
+// R8.10.28, 10/28 (no year), Oct 28, full-width digits. All from this trip, so a short or missing year is 2026; null if it isn't a real date.
+function receiptDate(v) {
+  const s = String(v ?? '').replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/／/g, '/').replace(/．/g, '.');
+  const ok = (y, mo, d) => (y >= 2025 && y <= 2027 && mo >= 1 && mo <= 12 && d >= 1 && d <= new Date(Date.UTC(y, mo, 0)).getUTCDate() ? `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null);
+  const ways = [
+    [/(?:令和|R)\s*0?(\d{1,2})\s*[年./-]\s*(\d{1,2})\s*[月./-]\s*(\d{1,2})/i, (x) => [2018 + +x[1], +x[2], +x[3]]], // Reiwa 8 is 2026
+    [/(?:^|\D)(\d{4}|\d{2})\s*[年./-]\s*(\d{1,2})\s*[月./-]\s*(\d{1,2})(?!\d)/, (x) => [(x[1].length === 2 ? 2000 : 0) + +x[1], +x[2], +x[3]]],
+    [/(?:^|\D)(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{4})(?!\d)/, (x) => [+x[3], +x[1], +x[2]]], // 10/28/2026
+    [/(?:^|\D)(\d{1,2})\s*[月/]\s*(\d{1,2})(?:日|(?!\d))/, (x) => [2026, +x[1], +x[2]]],
+    [/\b(\d{1,2})\s+(Sep|Oct|Nov)[a-z]*\.?,?\s*(\d{4})?/i, (x) => [+(x[3] || 2026), 'sepoctnov'.indexOf(x[2].toLowerCase()) / 3 + 9, +x[1]]], // 28 Oct 2026
+    [/\b(Sep|Oct|Nov)[a-z]*\.?\s+(\d{1,2})(?!\d)(?:,?\s*(\d{4}))?/i, (x) => [+(x[3] || 2026), 'sepoctnov'.indexOf(x[1].toLowerCase()) / 3 + 9, +x[2]]], // Oct 28, 2026
+  ];
+  // the first form found decides: a date with a year off the trip (10/28/2024) isn't read again as a yearless 10/28
+  for (const [re, f] of ways) { const x = re.exec(s); if (x) return ok(...f(x)); }
+  return null;
+}
 // whatever model answered: check and trim it
 function tidyScan(data, m) {
   const yen = (v) => { const n = Math.round(Number(String(v ?? '').replace(/[^\d.]/g, ''))); return n > 0 && n < 10000000 ? n : null; };
@@ -261,7 +278,7 @@ function tidyScan(data, m) {
   let pretax = total && tax && tax < total * 0.2 ? total - tax : yen(data.pretax);
   if (!total || !pretax || pretax >= total || pretax < total * 0.85) pretax = null;
   const types = ['food', 'transport', 'tickets', 'shopping', 'hotel', 'other'];
-  return { model: m, total, pretax, shop: clean(data.shop, 60), shop_en: clean(data.shop_en, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(data.date || '') ? data.date : null,
+  return { model: m, total, pretax, shop: clean(data.shop, 60), shop_en: clean(data.shop_en, 60), date: receiptDate(data.date),
     type: types.includes(data.type) ? data.type : null, taxfree: data.taxfree === true, items: Array.isArray(data.items) ? data.items.slice(0, 5).map((x) => clean(x, 40)) : [], title: clean(data.title, 40),
     // each line with its price, for splitting a receipt by item and for the receipt in English: { name, jp?, note?, price, qty }
     lines: Array.isArray(data.lines) ? data.lines.slice(0, 40).map((l) => l && typeof l === 'object' && rxLine(l)).filter((l) => l && l.name && l.price && Math.abs(l.price) < 10000000) : [] };
