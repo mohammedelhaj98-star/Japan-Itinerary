@@ -254,7 +254,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline:2px so
 .ftop button { font-weight:700; font-size:15px; color:var(--ink2); min-width:72px; min-height:44px; padding:0 8px; text-align:left; }
 .ftop .del { color:var(--red); text-align:right; }
 .draft { margin:10px 12px 0; padding:8px 12px; border-radius:12px; background:var(--warnbg); color:var(--warn); font-size:13.5px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
-.draft button { font-weight:700; color:var(--warn); text-decoration:underline; min-height:32px; }
+.draft button, .draft a { font-weight:700; color:var(--warn); text-decoration:underline; min-height:32px; display:inline-flex; align-items:center; flex:none; }
+.dtnote { margin:14px 12px 0; }
 .fsec { padding:14px 12px 0; display:grid; gap:8px; }
 .flabel { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); padding-left:4px; }
 .amtin { display:flex; align-items:center; gap:4px; min-width:0; background:var(--card); border-radius:18px; padding:4px 14px 4px 6px; box-shadow:0 0 0 1px var(--line); }
@@ -1133,7 +1134,10 @@ function renderExpenses() {
     ['cats', `\n    <button class="gp-cats" data-legend aria-expanded="${!!S.legend}" aria-label="Spend by type">${cats.slice(0, S.legend ? 9 : 3).map(([k, v]) => `<span style="--c:${CATS[k][1]}"><i></i>${CATS[k][0]} <b>${Math.round(v / total * 100)}%</b>${S.legend ? ` <em class="lg-y">${fmtY(v)}</em>` : ''}</span>`).join('')}${!S.legend && cats.length > 3 ? `<span><b>+${cats.length - 3}</b></span>` : ''}</button>\n  `]], '</div>'];
 
   const dayChip = S.gday ? `<button class="pill on" data-gday="${S.gday}">${DAY[S.gday].n ? `Day ${DAY[S.gday].n}` : 'Before the trip'} ✕</button>` : '';
-  return [['top', `<div class="top">${viewSeg()}${curSeg()}</div>`], gpass, ['news', newsDrop],
+  // receipts saved before scans went on the receipt's own day: a way to Settings > Receipt dates, which checks them
+  const dtLeft = GUEST ? 0 : S.ex.filter((x) => typeof x.receipt === 'number' && !(x.rx && x.rx.date)).length;
+  const dtNote = dtLeft ? `<div class="draft dtnote"><span>${dtLeft} receipt${dtLeft === 1 ? '' : 's'} may be on the wrong day</span><a href="prototypes/tools?v=5&dt=1">Check dates</a></div>` : '';
+  return [['top', `<div class="top">${viewSeg()}${curSeg()}</div>`], gpass, ['news', newsDrop], ['dtnote', dtNote],
     ['settle', `\n    <p class="sec">Settle up ${modeSeg()}</p>${settleCard()}`],
     ['lhead', `\n    <p class="sec">All expenses <span class="fppl">${dayChip}${S.searchOpen ? '' : `<button class="iconb" data-searchopen aria-label="Search expenses">${SEARCH}</button>`}${IDS.map((i) => `<button data-fperson="${i}" class="${S.fperson === i ? 'on' : ''}" aria-pressed="${S.fperson === i}" aria-label="Only ${P[i].name}'s">${av(i, 'sm')}</button>`).join('')}</span></p>
     ${S.searchOpen ? `<div class="searchrow"><input class="tin" id="gq" type="search" placeholder="Search expenses and what you bought" value="${esc(S.q || '')}" autocomplete="off"><button class="linkb hit" data-searchclose>Done</button></div>` : ''}\n    `],

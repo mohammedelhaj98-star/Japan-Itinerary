@@ -532,15 +532,18 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await post(stId, { ...exMap()[stId], day: 'd15' }); await post(oldId, { ...exMap()[oldId], day: 'd15', cat: 'hotel' });
   ok('Read all leaves the receipt date unchecked', !exMap()[stId].rx.date && !exMap()[oldId].rx.date, JSON.stringify(exMap()[stId].rx).slice(0, 80));
   await p.route('**/api/scan', (r) => r.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ total: 980, shop: 'MKタクシー', shop_en: 'MK Taxi', title: 'Taxi', date: '2026-10-22', lines: [] }) }));
-  await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
-  const dl0 = await p.textContent('#dt-line').catch(() => '');
-  await p.tap('[data-dtall]'); await p.waitForTimeout(3000); await p.unroute('**/api/scan');
+  // the Money page points to it, and its link starts the check
+  await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
+  const dl0 = await p.textContent('.dtnote').catch(() => '');
+  await p.screenshot({ path: SH + 'money-check-dates.png' });
+  await p.tap('.dtnote a'); await p.waitForTimeout(4000); await p.unroute('**/api/scan');
   const dl1 = await p.textContent('#dt-line').catch(() => '');
   await p.screenshot({ path: SH + 'settings-receipt-dates.png' });
-  ok('Settings: Receipt dates moves a receipt to the day printed on it and keeps the date; a hotel stays put', /saved receipts? to check/.test(dl0) && exMap()[stId].day === 'd07' && exMap()[stId].rx.date === '2026-10-22' && exMap()[stId].rx.title === 'Taxi' && exMap()[oldId].day === 'd15' && exMap()[oldId].rx.date === '2026-10-22' && /checked, 1 moved: Taxi · MK Taxi to Thu 22 Oct/.test(dl1) && await p.$eval('[data-dtall]', (b) => b.disabled), `${dl0} / ${dl1} / ${exMap()[stId].day} ${exMap()[oldId].day}`);
+  ok('Settings: Receipt dates moves a receipt to the day printed on it and keeps the date; a hotel stays put', /^2 receipts may be on the wrong dayCheck dates$/.test(dl0) && exMap()[stId].day === 'd07' && exMap()[stId].rx.date === '2026-10-22' && exMap()[stId].rx.title === 'Taxi' && exMap()[oldId].day === 'd15' && exMap()[oldId].rx.date === '2026-10-22' && /checked, 1 moved: Taxi · MK Taxi to Thu 22 Oct/.test(dl1) && await p.$eval('[data-dtall]', (b) => b.disabled), `${dl0} / ${dl1} / ${exMap()[stId].day} ${exMap()[oldId].day}`);
   await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
-  ok('Settings: each receipt is checked once', (await p.textContent('#dt-line').catch(() => '')) === 'Every saved receipt is on its date', await p.textContent('#dt-line').catch(() => ''));
+  ok('Settings: each receipt is checked once', (await p.textContent('#dt-line').catch(() => '')) === 'Every saved receipt is on its date' && !/dt=/.test(p.url()), await p.textContent('#dt-line').catch(() => ''));
   await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
+  ok('Money: the receipt dates note goes once every receipt is checked', !(await p.$('.dtnote')));
   for (const id of [oldId, stId]) {
     await p.tap(`[data-ex="${id}"]`); await p.waitForTimeout(500); await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
   }
