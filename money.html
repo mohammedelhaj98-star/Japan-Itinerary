@@ -1788,8 +1788,10 @@ fsave.addEventListener('click', () => {
   if (i >= 0) { prev = S.ex[i]; x.by = prev.by; if (prev.by && prev.by !== S.me) x.editedBy = S.me; S.ex[i] = x; logIt('edited', x); }
   else { x.by = S.me; S.ex.push(x); S.last = { set:F.set.slice(), with:F.with }; ls.set('money.last', S.last); logIt('added', x); }
   S.draft = null; vibrate();
-  if (receiptData) uploadReceipt(x.id, receiptData);
-  closeForm(); if (quick) { setTimeout(backToTrip, 350); return; } // logged from the trip's ¥+: straight back to it
+  const sent = receiptData && uploadReceipt(x.id, receiptData);
+  // logged from the trip's ¥+: straight back to it, but only once the receipt photo is sent: leaving the page while
+  // it's still going cuts it off, and the expense would point at a photo the server never got
+  closeForm(); if (quick) { if (!sent) { setTimeout(backToTrip, 350); return; } toast('Sending the receipt photo…', null, 60000); sent.then((ok) => { if (ok) backToTrip(); }); return; }
   // Undo (15 s, or swipe it away): put things back and reopen the form with what was typed, to fix it
   toast(`✓ ${i < 0 ? 'Added' : 'Saved'} ${x.title} ${fmtY(x.yen)}`, () => {
     if (prev) S.ex[S.ex.findIndex((e) => e.id === x.id)] = prev; else { S.ex = S.ex.filter((e) => e.id !== x.id); S.draft = { f:{ ...typed, id:null, quick:false }, t:Date.now() }; }
@@ -2098,7 +2100,7 @@ function compressPhoto(file) {
 shrinkPhoto = compressPhoto;
 scanApi = (photo) => store.api('scan', { photo });
 function uploadReceipt(id, data) {
-  store.setReceipt(id, data).then((ok) => { if (ok || SANDBOX) return; const x = S.ex.find((e) => e.id === id); if (x) { delete x.receipt; render(); } toast("The receipt photo didn't upload. Try adding it again with signal."); });
+  return store.setReceipt(id, data).then((ok) => { if (ok || SANDBOX) return true; const x = S.ex.find((e) => e.id === id); if (x) { delete x.receipt; render(); } toast("The receipt photo didn't upload. Try adding it again with signal."); return false; });
 }
 
 // the + bubble, the same as on every page; ‹ Trip goes back to the trip as you left it (js/nav.js)
