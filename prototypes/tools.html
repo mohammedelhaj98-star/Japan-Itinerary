@@ -1321,6 +1321,14 @@ async function dtCheckAll() {
   const q = todo.slice(); await Promise.all([0, 1, 2].map(async () => { while (q.length) await one(q.shift()); }));
   dt.busy = false; render();
 }
+// opened from the Money page's "Check dates": start the check straight away, once the expenses are in
+if (new URLSearchParams(location.search).get('dt')) {
+  const u = new URL(location); u.searchParams.delete('dt'); history.replaceState(history.state, '', u);
+  let n = 0; const go = setInterval(() => {
+    if (dtTodo().length) { clearInterval(go); dtCheckAll(); setTimeout(() => document.getElementById('dt-line')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 100); }
+    else if (++n > 40) clearInterval(go);
+  }, 250);
+}
 // Settings sub-page (Stamped stops) lives in the URL as ?v=5&p=stamps, so back and refresh behave.
 let sub = new URLSearchParams(location.search).get('p') || '';
 function setSub(v, push = true) { sub = v; const u = new URL(location); if (v) u.searchParams.set('p', v); else u.searchParams.delete('p'); if (push) history.pushState({ sub: v }, '', u); else history.replaceState({ sub: v }, '', u); window.scrollTo(0, 0); render(); }
