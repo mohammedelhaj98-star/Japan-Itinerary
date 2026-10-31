@@ -530,6 +530,8 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   // Settings: Receipt dates reads each saved receipt's date once and moves it to that day (not a hotel)
   const post = (id, x) => p.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: x }) }); }, [id, x]);
   await post(stId, { ...exMap()[stId], day: 'd15' }); await post(oldId, { ...exMap()[oldId], day: 'd15', cat: 'hotel' });
+  // and one whose photo never reached the server (saved two hours ago, nothing stored under it)
+  await post('xlostrc1', { title: 'Lost photo test', yen: 500, payer: 'naf', with: 'card', cat: 'food', day: 'd15', shares: { naf: 500 }, owes: {}, receipt: Date.now() - 2 * 3600e3, by: 'naf' });
   ok('Read all leaves the receipt date unchecked', !exMap()[stId].rx.date && !exMap()[oldId].rx.date, JSON.stringify(exMap()[stId].rx).slice(0, 80));
   await p.route('**/api/scan', (r) => r.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ total: 980, shop: 'MKタクシー', shop_en: 'MK Taxi', title: 'Taxi', date: '2026-10-22', lines: [] }) }));
   // the Money page points to it, and its link starts the check
@@ -539,8 +541,10 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   await p.tap('.dtnote a'); await p.waitForTimeout(4000); await p.unroute('**/api/scan');
   const dl1 = await p.textContent('#dt-line').catch(() => '');
   await p.screenshot({ path: SH + 'settings-receipt-dates.png' });
-  ok('Settings: Receipt dates moves a receipt to the day printed on it and keeps the date; a hotel stays put', /^2 receipts may be on the wrong dayCheck dates$/.test(dl0) && exMap()[stId].day === 'd07' && exMap()[stId].rx.date === '2026-10-22' && exMap()[stId].rx.title === 'Taxi' && exMap()[oldId].day === 'd15' && exMap()[oldId].rx.date === '2026-10-22' && /checked, 1 moved: Taxi · MK Taxi to Thu 22 Oct/.test(dl1) && await p.$eval('[data-dtall]', (b) => b.disabled), `${dl0} / ${dl1} / ${exMap()[stId].day} ${exMap()[oldId].day}`);
+  ok('Settings: Receipt dates moves a receipt to the day printed on it and keeps the date; a hotel stays put', /^3 receipts may be on the wrong dayCheck dates$/.test(dl0) && exMap()[stId].day === 'd07' && exMap()[stId].rx.date === '2026-10-22' && exMap()[stId].rx.title === 'Taxi' && exMap()[oldId].day === 'd15' && exMap()[oldId].rx.date === '2026-10-22' && /checked, 1 moved: Taxi · MK Taxi to Thu 22 Oct/.test(dl1) && await p.$eval('[data-dtall]', (b) => b.disabled), `${dl0} / ${dl1} / ${exMap()[stId].day} ${exMap()[oldId].day}`);
   await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
+  ok('Settings: a receipt whose photo never reached the server shows as having no receipt, and says so', exMap().xlostrc1 && !('receipt' in exMap().xlostrc1) && /1 had no photo saved \(it never finished sending\), so it shows as having no receipt now/.test(dl1), `${dl1} ${JSON.stringify(exMap().xlostrc1)}`);
+  await post('xlostrc1', null);
   ok('Settings: each receipt is checked once', (await p.textContent('#dt-line').catch(() => '')) === 'Every saved receipt is on its date' && !/dt=/.test(p.url()), await p.textContent('#dt-line').catch(() => ''));
   await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
   ok('Money: the receipt dates note goes once every receipt is checked', !(await p.$('.dtnote')));
@@ -621,8 +625,15 @@ ok('¥+ opens the expense form straight away', await N.page.$eval('#fpage', (e) 
 ok('…on the day that was on screen', /Day 5/.test(await N.page.textContent('[data-fexp="day"]')));
 await N.page.screenshot({ path: SH + 'quick-add.png' });
 await N.page.fill('#famt', '1200'); await N.page.fill('#ftitle', 'Matcha'); await N.page.tap('[data-preset="one"]');
-await N.page.tap('#fsave'); await N.page.waitForURL(/\/japan\/(\?|$)/); await N.page.waitForTimeout(1500);
+// with a receipt photo, it goes back only once the photo is sent (leaving mid-send used to cut it off)
+await N.page.setInputFiles('#freceipt', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForTimeout(600);
+await N.page.route('**/api/receipt', async (r) => { await new Promise((ok) => setTimeout(ok, 2500)); await r.continue(); });
+await N.page.tap('#fsave'); await N.page.waitForTimeout(1000);
+ok('¥+ with a receipt: waits on the money page while the photo is sent', /\/money/.test(N.page.url()) && /Sending the receipt photo/.test(await N.page.textContent('#toast').catch(() => '')), N.page.url());
+await N.page.waitForURL(/\/japan\/(\?|$)/); await N.page.unroute('**/api/receipt'); await N.page.waitForTimeout(1500);
 const mat = Object.values(exMap()).find((x) => x.title === 'Matcha');
+const matId = Object.entries(exMap()).find(([, x]) => x.title === 'Matcha')[0];
+ok('…then back on the trip, with the photo on the server', typeof mat.receipt === 'number' && !!store.get('rc:' + matId), matId);
 ok('saved as Only Naf, back on the same day of the trip', mat && mat.own === true && mat.payer === 'naf' && Object.keys(mat.shares).join() === 'naf' && mat.day === 'd05' && (await N.page.textContent('#dayp')) === dayShown, JSON.stringify(mat));
 await N.page.goto(B + '/japan/money'); await N.page.waitForTimeout(1500);
 await N.page.tap('[data-view="group"]'); await N.page.waitForTimeout(300);

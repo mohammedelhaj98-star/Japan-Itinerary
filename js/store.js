@@ -287,8 +287,9 @@ export const store = {
     try { await this.api('receipt', { id, photo }); return true; } catch (err) { if (err.pin) this._locked(); return false; }
   },
   // v is the expense's receipt stamp: the photo is cached for a year, so a replaced receipt needs a new URL.
+  // null: the server has no such photo (its upload never finished); '': it couldn't be fetched just now.
   async receiptUrl(id, v) {
-    try { const res = await fetch('/api/receipt/' + encodeURIComponent(id) + (v ? '?v=' + encodeURIComponent(v) : ''), { headers: pinOf() ? { 'x-trip-pin': pinOf() } : undefined }); if (!res.ok) return ''; return URL.createObjectURL(await res.blob()); } catch { return ''; }
+    try { const res = await fetch('/api/receipt/' + encodeURIComponent(id) + (v ? '?v=' + encodeURIComponent(v) : ''), { headers: pinOf() ? { 'x-trip-pin': pinOf() } : undefined }); if (res.status === 404) return null; if (!res.ok) return ''; return URL.createObjectURL(await res.blob()); } catch { return ''; }
   },
 
   // Profiles: colour, photo and money choices (cur, mode) per person. The photo itself is served by /api/photo/<id>?v=<photo stamp>.

@@ -1239,7 +1239,15 @@ async function backupNow() {
 // Receipts in English for expenses saved before a scan kept one: each saved receipt photo is read again, three at a
 // time, and the reading is kept on its expense as soon as it comes (closing the app halfway loses nothing: Read all
 // picks up the rest). Shown on the expense form, like a fresh scan's (money.html rxOf/rxHtml).
-const rxAll = { busy: false, done: 0, n: 0, read: 0, named: 0 };
+const rxAll = { busy: false, done: 0, n: 0, read: 0, named: 0, lost: 0 };
+// An expense whose receipt photo never reached the server (the app was left while it was still sending): the stamp
+// points at nothing, so it's taken off and the expense shows as having no receipt (one can be added again). Only once
+// it's an hour old, so a photo another phone is still sending isn't mistaken for a lost one.
+function photoLost(id, x) {
+  const now = store.getExpenses()[id]; if (!now || now.receipt !== x.receipt || Date.now() - x.receipt < 3600e3) return false;
+  const { ts: _, receipt: __, ...rec } = now; store.setExpense(id, rec); return true;
+}
+const lostLine = (n) => (n ? ` · ${n} had no photo saved (it never finished sending), so ${n === 1 ? 'it shows' : 'they show'} as having no receipt now` : '');
 // (one read before items had tags for search, or before the reader named what was bought, is read again, once)
 const rxStale = (rx) => !rx || !rx.title || (rx.lines.length > 0 && !rx.lines.some((l) => l.tags));
 const rxTodo = () => Object.entries(store.getExpenses()).filter(([, x]) => x && !x.kind && typeof x.receipt === 'number' && rxStale(x.rx));
@@ -1258,16 +1266,16 @@ function rxRow() {
   if (SANDBOX) return '';
   const left = rxTodo().length, s = (n) => (n === 1 ? '' : 's');
   const line = rxAll.busy ? `Reading ${Math.min(rxAll.done + 1, rxAll.n)} of ${rxAll.n}…`
-    : rxAll.n ? `${rxAll.read} receipt${s(rxAll.read)} read${rxAll.named ? `, ${rxAll.named} renamed for what was bought` : ''}${left ? ` · <span class="warn">${left} couldn't be read. Tap Read all to try again.</span>` : ''}`
+    : rxAll.n ? `${rxAll.read} receipt${s(rxAll.read)} read${rxAll.named ? `, ${rxAll.named} renamed for what was bought` : ''}${lostLine(rxAll.lost)}${left ? ` · <span class="warn">${left} couldn't be read. Tap Read all to try again.</span>` : ''}`
     : left ? `${left} saved receipt${s(left)} to read` : 'Every saved receipt is in English';
   return `<div class="setrow"><span>Receipts in English<small id="rx-line">${line}</small></span><button class="setb" data-rxall ${rxAll.busy || !left ? 'disabled' : ''}>Read all</button></div>`;
 }
 async function rxReadAll() {
   const todo = rxTodo(); if (rxAll.busy || !todo.length) return;
-  Object.assign(rxAll, { busy: true, done: 0, n: todo.length, read: 0, named: 0 }); render();
+  Object.assign(rxAll, { busy: true, done: 0, n: todo.length, read: 0, named: 0, lost: 0 }); render();
   const one = async ([id, x]) => {
     try {
-      const u = await store.receiptUrl(id, x.receipt); if (!u) throw new Error('no photo');
+      const u = await store.receiptUrl(id, x.receipt); if (u === null && photoLost(id, x)) { rxAll.lost++; throw new Error('lost'); } if (!u) throw new Error('no photo');
       const r = await store.api('scan', { photo: await shopPhoto(await (await fetch(u)).blob()) });
       const now = store.getExpenses()[id]; // still there, with the same photo, and not read meanwhile on another phone
       // A reading with no lines (the backup reader lists none) never replaces one that has them; one that names what
@@ -1287,7 +1295,7 @@ async function rxReadAll() {
 // printed on them, and moved to that day (one dated just before the trip goes under Before the trip). The date is
 // kept on the receipt (rx.date, or 'none' if none is printed), so each is checked once. Hotels stay where they are:
 // they're paid at checkout but spread over the nights from check-in.
-const dt = { busy: false, done: 0, n: 0, read: 0, moved: [] };
+const dt = { busy: false, done: 0, n: 0, read: 0, moved: [], lost: 0 };
 const dtTodo = () => Object.entries(store.getExpenses()).filter(([, x]) => x && !x.kind && typeof x.receipt === 'number' && !(x.rx && x.rx.date));
 const receiptDay = (date) => { if (!date || !/^\d{4}-/.test(date)) return null; const d = DAYS.find((x) => x.date === date); return d ? d.id : date >= '2026-09-01' && date < DAYS[0].date ? 'pre' : null; };
 const DDF = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
@@ -1297,16 +1305,16 @@ function dtRow() {
   const left = dtTodo().length, s = (n) => (n === 1 ? '' : 's'), mv = dt.moved;
   const moved = mv.length ? `, ${mv.length} moved: ${mv.slice(0, 3).map(([t, d]) => `${esc(t)} to ${dayName(d)}`).join(', ')}${mv.length > 3 ? ` and ${mv.length - 3} more` : ''}` : ', all already on their day';
   const line = dt.busy ? `Checking ${Math.min(dt.done + 1, dt.n)} of ${dt.n}…`
-    : dt.n ? `${dt.read} receipt${s(dt.read)} checked${dt.read ? moved : ''}${left ? ` · <span class="warn">${left} couldn't be read. Tap Check to try again.</span>` : ''}`
+    : dt.n ? `${dt.read} receipt${s(dt.read)} checked${dt.read ? moved : ''}${lostLine(dt.lost)}${left ? ` · <span class="warn">${left} couldn't be read. Tap Check to try again.</span>` : ''}`
     : left ? `${left} saved receipt${s(left)} to check against the date printed on it` : 'Every saved receipt is on its date';
   return `<div class="setrow"><span>Receipt dates<small id="dt-line">${line}</small></span><button class="setb" data-dtall ${dt.busy || !left ? 'disabled' : ''}>Check</button></div>`;
 }
 async function dtCheckAll() {
   const todo = dtTodo(); if (dt.busy || !todo.length) return;
-  Object.assign(dt, { busy: true, done: 0, n: todo.length, read: 0, moved: [] }); render();
+  Object.assign(dt, { busy: true, done: 0, n: todo.length, read: 0, moved: [], lost: 0 }); render();
   const one = async ([id, x]) => {
     try {
-      const u = await store.receiptUrl(id, x.receipt); if (!u) throw new Error('no photo');
+      const u = await store.receiptUrl(id, x.receipt); if (u === null && photoLost(id, x)) { dt.lost++; throw new Error('lost'); } if (!u) throw new Error('no photo');
       const r = await store.api('scan', { photo: await shopPhoto(await (await fetch(u)).blob()) });
       const now = store.getExpenses()[id]; // still there, with the same photo, and not checked meanwhile on another phone
       if (r && r.total && now && now.receipt === x.receipt && !(now.rx && now.rx.date)) {
