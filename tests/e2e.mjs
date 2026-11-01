@@ -650,6 +650,25 @@ await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
 const moGroup = await A.page.textContent('.app'); await A.page.tap('[data-view="mine"]'); await A.page.waitForTimeout(500);
 const moMine = await A.page.textContent('.app'); await A.page.tap('[data-view="group"]');
 ok("Mo never sees Naf's own spending", !/Matcha/.test(moGroup) && !/Matcha/.test(moMine));
+// inside a couple: a share the partner doesn't owe back counts as the payer's own spending; one they owe stays split
+{
+  const yenIn = async (sel) => { const t = await A.page.textContent(sel); return [...t.matchAll(/¥([\d,]+)/g)].map((m) => +m[1].replace(/,/g, '')); };
+  const spends = async () => {
+    await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
+    await A.page.tap('[data-view="mine"]'); await A.page.waitForTimeout(400); const mo = (await yenIn('.hero-big'))[0];
+    await A.page.tap('[data-view="us"]'); await A.page.waitForTimeout(400); const us = (await yenIn('.hero-big'))[0], [moU, maU] = await yenIn('.hsplit-l');
+    await A.page.tap('[data-view="group"]'); return { mo, us, moU, maU };
+  };
+  const postX = (id, x) => A.page.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: x }) }); }, [id, x]);
+  const b0 = await spends();
+  await postX('xmmown01', { title: 'Dinner for us', yen: 6000, payer: 'm', with: 'card', cat: 'food', day: 'd05', shares: { m: 3000, mariam: 3000 }, owes: {}, by: 'm' });
+  const b1 = await spends();
+  ok("M&M: a dinner Mo paid that Mariam doesn't owe back counts all as Mo's", b1.mo - b0.mo === 6000 && b1.us - b0.us === 6000 && b1.moU - b0.moU === 6000 && b1.maU === b0.maU, JSON.stringify([b0, b1]));
+  await postX('xmmown01', { title: 'Dinner for us', yen: 6000, payer: 'm', with: 'card', cat: 'food', day: 'd05', shares: { m: 3000, mariam: 3000 }, owes: { mariam: true }, by: 'm' });
+  const b2 = await spends();
+  ok('M&M: one Mariam owes back stays half each', b2.mo - b0.mo === 3000 && b2.us - b0.us === 6000 && b2.moU - b0.moU === 3000 && b2.maU - b0.maU === 3000, JSON.stringify([b0, b2]));
+  await A.page.evaluate(async () => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id: 'xmmown01', value: null }) }); });
+}
 await A.page.goto(B + '/japan/prototypes/tools?v=1'); await A.page.waitForTimeout(1200);
 ok('the old Expenses tab opens the money page', /\/japan\/money/.test(A.page.url()));
 
