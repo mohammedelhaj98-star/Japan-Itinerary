@@ -175,7 +175,7 @@ of that, less once the live connection carries the changes; a hibernating WebSoc
 
 ## Trip photos (Google Drive)
 
-`/japan/photos` (+ menu → Photos) shows everyone's photos and videos by day and stop. Files live in one person's
+`/japan/photos` (+ menu → Photos) shows everyone's photos and videos by day and stop, to the four of us only (guests get no Photos, and `/api/state` leaves out which trip photos are the stops' covers for them). Files live in one person's
 Google Drive, all in one folder, `Our Trips / Japan 2026` (the site sorts them by day and stop); the site uploads into it as them (`lib/photos.js`).
 The four can also add photos with the Google Drive app (the Photos page's **Drive** button opens the trip folder; the
 app keeps uploading in the background). The next member to open the Photos page files them by day and stop, from the
@@ -190,7 +190,7 @@ One-time setup:
    then redeploy (`bash scripts/deploy.sh`).
 3. Open the photos page as one of the four and tap **Connect Google Drive**, signing in with the Drive's account.
 
-Secrets already set: `TRIP_PIN` (members), `PHOTO_PIN` (guests' viewing PIN), `PHOTO_SECRET` (signs viewing tokens).
+Secrets already set: `TRIP_PIN` (members), `PHOTO_PIN` (the old guests' viewing PIN: no longer lets anyone see the photos, which are members only), `PHOTO_SECRET` (signs viewing tokens).
 
 ### Who's in each photo (faces)
 
