@@ -641,7 +641,8 @@ const grp = await N.page.textContent('.app');
 ok('Only Naf stays out of the group totals', /¥4,400/.test(await N.page.textContent('.gp-big')) && !/Matcha/.test(await N.page.textContent('.gpass')));
 await N.page.tap('[data-view="mine"]'); await N.page.waitForTimeout(500);
 const mine = await N.page.textContent('.hero');
-ok("Naf's page: the ramen share + the matcha", /¥2,300/.test(mine), mine.replace(/\s+/g, ' '));
+// Naf paid the ramen for all four: his ¥1,100 + Sara's ¥1,100, which she doesn't owe back, so it's his spending
+ok("Naf's page: the ramen for him and Sara (she doesn't owe it back) + the matcha", /¥3,400/.test(mine), mine.replace(/\s+/g, ' '));
 await N.page.tap('[data-budget]'); await N.page.waitForTimeout(300); await N.page.fill('#budin', '100000'); await N.page.tap('[data-budok]'); await N.page.waitForTimeout(700);
 ok('a budget is shared and shows what is left', JSON.parse(store.get('money') || '{}')['b:naf'] === 100000 && /left/.test(await N.page.textContent('.hero')));
 await N.page.screenshot({ path: SH + 'mine.png', fullPage: true });
@@ -656,7 +657,7 @@ ok("Mo never sees Naf's own spending", !/Matcha/.test(moGroup) && !/Matcha/.test
   const spends = async () => {
     await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
     await A.page.tap('[data-view="mine"]'); await A.page.waitForTimeout(400); const mo = (await yenIn('.hero-big'))[0];
-    await A.page.tap('[data-view="us"]'); await A.page.waitForTimeout(400); const us = (await yenIn('.hero-big'))[0], [moU, maU] = await yenIn('.hsplit-l');
+    await A.page.tap('[data-view="us"]'); await A.page.waitForTimeout(400); const us = (await yenIn('.hero-big'))[0], [maU, moU] = await yenIn('.hsplit-l'); // listed Mariam, then Mo
     await A.page.tap('[data-view="group"]'); return { mo, us, moU, maU };
   };
   const postX = (id, x) => A.page.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: x }) }); }, [id, x]);
