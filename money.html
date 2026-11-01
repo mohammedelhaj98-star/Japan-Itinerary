@@ -969,6 +969,12 @@ const isOwn = (x) => { const k = Object.keys(x.shares); return k.length === 1 &&
 // spending for one person: that person, their partner, and whoever logged it (so they can check or fix it)
 const visibleTo = (x, me) => !isOwn(x) || x.payer === me || P[x.payer].partner === me || x.by === me;
 const shareOf = (x, ids) => ids.reduce((s, i) => s + (x.shares[i] || 0), 0);
+// what each person really spent: inside a couple, a share the partner paid and doesn't ask back ("doesn't owe")
+// counts as the payer's own spending, not the other's (the couple's total stays the same)
+const covered = (x, i) => P[i].partner === x.payer && x.shares[i] != null && !x.owes[i];
+const spentBy = (x, i) => (covered(x, i) ? 0 : (x.shares[i] || 0) + (covered(x, P[i].partner) ? x.shares[P[i].partner] : 0));
+const inSpend = (x, i) => !covered(x, i) && (x.shares[i] != null || covered(x, P[i].partner));
+const spendOf = (x, ids) => ids.reduce((s, i) => s + spentBy(x, i), 0);
 function cashLeft(who) {
   let v = 0;
   for (const c of S.cash) { if (c.who === who) v += c.yen; if (c.from === who) v -= c.yen; }
@@ -1263,7 +1269,7 @@ function listGroup(list) {
 function renderMine(ids, kind) {
   const me = S.me, cpl = P[me].couple, us = kind === 'us';
   const who = us ? COUPLE[cpl].name : P[me].name, [pa, pb] = COUPLE[cpl].ids, color = us ? P[pa].c : P[me].c;
-  const lines = S.ex.filter((x) => visibleTo(x, me) && ids.some((i) => x.shares[i] != null)).map((x) => ({ ...x, mine:shareOf(x, ids) }));
+  const lines = S.ex.filter((x) => visibleTo(x, me) && ids.some((i) => inSpend(x, i))).map((x) => ({ ...x, mine:spendOf(x, ids) }));
   const spent = lines.reduce((s, x) => s + x.mine, 0);
   const budget = us ? S.usBudget[cpl] : S.budgets[me];
   const pre = lines.filter((x) => x.day === 'pre').reduce((s, x) => s + x.mine, 0);
@@ -1274,7 +1280,7 @@ function renderMine(ids, kind) {
 
   // the pass
   const pct = budget ? Math.min(100, Math.max(0, spent / budget * 100)) : 0, mark = budget ? Math.min(100, should / budget * 100) : 0;
-  const split = us ? COUPLE[cpl].ids.map((i) => [i, lines.reduce((s, x) => s + (x.shares[i] || 0), 0)]) : null;
+  const split = us ? COUPLE[cpl].ids.map((i) => [i, lines.reduce((s, x) => s + spentBy(x, i), 0)]) : null;
   const hero = `<div class="hero ticket" style="--c:${color};--c2:${us ? P[pb].c : color}">
     <span class="seal" aria-label="Today ${fmtY(today)}"><span>Today<b>${fmtK(today)}</b></span></span>
     <div class="hero-top"><span>${us ? `${COUPLE[cpl].ids.map((i) => P[i].name).join(' + ')} have spent` : `${who} has spent`}</span></div>
