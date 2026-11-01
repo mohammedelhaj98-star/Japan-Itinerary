@@ -527,6 +527,27 @@ await N.page.tap('[data-fcancel]'); await N.page.waitForTimeout(400);
   ok('scan: a receipt from just before the trip goes under Before the trip', /^Before the trip/.test(f2.day) && /Filed under Before the trip/.test(f2.note), JSON.stringify(f2));
   ok('scan: a date off the trip, or none, keeps the day and says nothing about it', f3.day === f3.was && f4.day === f4.was && !/Filed/.test(f3.note + f4.note), JSON.stringify([f3, f4]));
   ok('scan names: summary without the shop when both would not fit; no Japanese shop; the shop alone from the backup reader', n1 === 'Snacks and skincare' && n2 === 'Beef bowl' && n3 === 'Lawson', `${n1} / ${n2} / ${n3}`);
+  // Settings: Receipt dates reads each saved receipt's date once and moves it to that day (not a hotel)
+  const post = (id, x) => p.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: x }) }); }, [id, x]);
+  await post(stId, { ...exMap()[stId], day: 'd15' }); await post(oldId, { ...exMap()[oldId], day: 'd15', cat: 'hotel' });
+  // and one whose photo never reached the server (saved two hours ago, nothing stored under it)
+  await post('xlostrc1', { title: 'Lost photo test', yen: 500, payer: 'naf', with: 'card', cat: 'food', day: 'd15', shares: { naf: 500 }, owes: {}, receipt: Date.now() - 2 * 3600e3, by: 'naf' });
+  ok('Read all leaves the receipt date unchecked', !exMap()[stId].rx.date && !exMap()[oldId].rx.date, JSON.stringify(exMap()[stId].rx).slice(0, 80));
+  await p.route('**/api/scan', (r) => r.fulfill({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ total: 980, shop: 'MKタクシー', shop_en: 'MK Taxi', title: 'Taxi', date: '2026-10-22', lines: [] }) }));
+  // the Money page points to it, and its link starts the check
+  await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
+  const dl0 = await p.textContent('.dtnote').catch(() => '');
+  await p.screenshot({ path: SH + 'money-check-dates.png' });
+  await p.tap('.dtnote a'); await p.waitForTimeout(4000); await p.unroute('**/api/scan');
+  const dl1 = await p.textContent('#dt-line').catch(() => '');
+  await p.screenshot({ path: SH + 'settings-receipt-dates.png' });
+  ok('Settings: Receipt dates moves a receipt to the day printed on it and keeps the date; a hotel stays put', /^3 receipts may be on the wrong dayCheck dates$/.test(dl0) && exMap()[stId].day === 'd07' && exMap()[stId].rx.date === '2026-10-22' && exMap()[stId].rx.title === 'Taxi' && exMap()[oldId].day === 'd15' && exMap()[oldId].rx.date === '2026-10-22' && /checked, 1 moved: Taxi · MK Taxi to Thu 22 Oct/.test(dl1) && await p.$eval('[data-dtall]', (b) => b.disabled), `${dl0} / ${dl1} / ${exMap()[stId].day} ${exMap()[oldId].day}`);
+  await p.goto(B + '/japan/prototypes/tools?v=5'); await p.waitForTimeout(1500);
+  ok('Settings: a receipt whose photo never reached the server shows as having no receipt, and says so', exMap().xlostrc1 && !('receipt' in exMap().xlostrc1) && /1 had no photo saved \(it never finished sending\), so it shows as having no receipt now/.test(dl1), `${dl1} ${JSON.stringify(exMap().xlostrc1)}`);
+  await post('xlostrc1', null);
+  ok('Settings: each receipt is checked once', (await p.textContent('#dt-line').catch(() => '')) === 'Every saved receipt is on its date' && !/dt=/.test(p.url()), await p.textContent('#dt-line').catch(() => ''));
+  await p.goto(B + '/japan/money'); await p.waitForTimeout(1500);
+  ok('Money: the receipt dates note goes once every receipt is checked', !(await p.$('.dtnote')));
   for (const id of [oldId, stId]) {
     await p.tap(`[data-ex="${id}"]`); await p.waitForTimeout(500); await p.tap('[data-fdel]'); await p.waitForTimeout(300); await p.tap('[data-delok]'); await p.waitForTimeout(1200);
   }
@@ -604,8 +625,15 @@ ok('¥+ opens the expense form straight away', await N.page.$eval('#fpage', (e) 
 ok('…on the day that was on screen', /Day 5/.test(await N.page.textContent('[data-fexp="day"]')));
 await N.page.screenshot({ path: SH + 'quick-add.png' });
 await N.page.fill('#famt', '1200'); await N.page.fill('#ftitle', 'Matcha'); await N.page.tap('[data-preset="one"]');
-await N.page.tap('#fsave'); await N.page.waitForURL(/\/japan\/(\?|$)/); await N.page.waitForTimeout(1500);
+// with a receipt photo, it goes back only once the photo is sent (leaving mid-send used to cut it off)
+await N.page.setInputFiles('#freceipt', REPO + '/img/places/nakano-broadway.webp'); await N.page.waitForTimeout(600);
+await N.page.route('**/api/receipt', async (r) => { await new Promise((ok) => setTimeout(ok, 2500)); await r.continue(); });
+await N.page.tap('#fsave'); await N.page.waitForTimeout(1000);
+ok('¥+ with a receipt: waits on the money page while the photo is sent', /\/money/.test(N.page.url()) && /Sending the receipt photo/.test(await N.page.textContent('#toast').catch(() => '')), N.page.url());
+await N.page.waitForURL(/\/japan\/(\?|$)/); await N.page.unroute('**/api/receipt'); await N.page.waitForTimeout(1500);
 const mat = Object.values(exMap()).find((x) => x.title === 'Matcha');
+const matId = Object.entries(exMap()).find(([, x]) => x.title === 'Matcha')[0];
+ok('…then back on the trip, with the photo on the server', typeof mat.receipt === 'number' && !!store.get('rc:' + matId), matId);
 ok('saved as Only Naf, back on the same day of the trip', mat && mat.own === true && mat.payer === 'naf' && Object.keys(mat.shares).join() === 'naf' && mat.day === 'd05' && (await N.page.textContent('#dayp')) === dayShown, JSON.stringify(mat));
 await N.page.goto(B + '/japan/money'); await N.page.waitForTimeout(1500);
 await N.page.tap('[data-view="group"]'); await N.page.waitForTimeout(300);
@@ -613,7 +641,8 @@ const grp = await N.page.textContent('.app');
 ok('Only Naf stays out of the group totals', /¥4,400/.test(await N.page.textContent('.gp-big')) && !/Matcha/.test(await N.page.textContent('.gpass')));
 await N.page.tap('[data-view="mine"]'); await N.page.waitForTimeout(500);
 const mine = await N.page.textContent('.hero');
-ok("Naf's page: the ramen share + the matcha", /¥2,300/.test(mine), mine.replace(/\s+/g, ' '));
+// Naf paid the ramen for all four: his ¥1,100 + Sara's ¥1,100, which she doesn't owe back, so it's his spending
+ok("Naf's page: the ramen for him and Sara (she doesn't owe it back) + the matcha", /¥3,400/.test(mine), mine.replace(/\s+/g, ' '));
 await N.page.tap('[data-budget]'); await N.page.waitForTimeout(300); await N.page.fill('#budin', '100000'); await N.page.tap('[data-budok]'); await N.page.waitForTimeout(700);
 ok('a budget is shared and shows what is left', JSON.parse(store.get('money') || '{}')['b:naf'] === 100000 && /left/.test(await N.page.textContent('.hero')));
 await N.page.screenshot({ path: SH + 'mine.png', fullPage: true });
@@ -622,6 +651,25 @@ await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
 const moGroup = await A.page.textContent('.app'); await A.page.tap('[data-view="mine"]'); await A.page.waitForTimeout(500);
 const moMine = await A.page.textContent('.app'); await A.page.tap('[data-view="group"]');
 ok("Mo never sees Naf's own spending", !/Matcha/.test(moGroup) && !/Matcha/.test(moMine));
+// inside a couple: a share the partner doesn't owe back counts as the payer's own spending; one they owe stays split
+{
+  const yenIn = async (sel) => { const t = await A.page.textContent(sel); return [...t.matchAll(/¥([\d,]+)/g)].map((m) => +m[1].replace(/,/g, '')); };
+  const spends = async () => {
+    await A.page.goto(B + '/japan/money'); await A.page.waitForTimeout(1500);
+    await A.page.tap('[data-view="mine"]'); await A.page.waitForTimeout(400); const mo = (await yenIn('.hero-big'))[0];
+    await A.page.tap('[data-view="us"]'); await A.page.waitForTimeout(400); const us = (await yenIn('.hero-big'))[0], [maU, moU] = await yenIn('.hsplit-l'); // listed Mariam, then Mo
+    await A.page.tap('[data-view="group"]'); return { mo, us, moU, maU };
+  };
+  const postX = (id, x) => A.page.evaluate(async ([id, x]) => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id, value: x }) }); }, [id, x]);
+  const b0 = await spends();
+  await postX('xmmown01', { title: 'Dinner for us', yen: 6000, payer: 'm', with: 'card', cat: 'food', day: 'd05', shares: { m: 3000, mariam: 3000 }, owes: {}, by: 'm' });
+  const b1 = await spends();
+  ok("M&M: a dinner Mo paid that Mariam doesn't owe back counts all as Mo's", b1.mo - b0.mo === 6000 && b1.us - b0.us === 6000 && b1.moU - b0.moU === 6000 && b1.maU === b0.maU, JSON.stringify([b0, b1]));
+  await postX('xmmown01', { title: 'Dinner for us', yen: 6000, payer: 'm', with: 'card', cat: 'food', day: 'd05', shares: { m: 3000, mariam: 3000 }, owes: { mariam: true }, by: 'm' });
+  const b2 = await spends();
+  ok('M&M: one Mariam owes back stays half each', b2.mo - b0.mo === 3000 && b2.us - b0.us === 6000 && b2.moU - b0.moU === 3000 && b2.maU - b0.maU === 3000, JSON.stringify([b0, b2]));
+  await A.page.evaluate(async () => { await fetch('/api/expenses', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': localStorage.getItem('trips.pin') }, body: JSON.stringify({ id: 'xmmown01', value: null }) }); });
+}
 await A.page.goto(B + '/japan/prototypes/tools?v=1'); await A.page.waitForTimeout(1200);
 ok('the old Expenses tab opens the money page', /\/japan\/money/.test(A.page.url()));
 
