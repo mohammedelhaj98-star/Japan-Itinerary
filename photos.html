@@ -144,11 +144,13 @@ body.sel .th .hrt { display:none; }
 /* select bar */
 .selbar { position:fixed; left:0; right:0; bottom:0; z-index:40; padding:10px 12px calc(12px + env(safe-area-inset-bottom)); background:rgba(252,250,246,.96); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); box-shadow:0 -1px 0 var(--line); display:flex; align-items:center; gap:6px; transform:translateY(110%); transition:transform 280ms var(--ease); }
 body.sel .selbar { transform:none; }
-.selbar .n { flex:1; font-weight:700; font-size:14.5px; min-width:0; line-height:1.2; }
-.selbar .n b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.selbar button { height:42px; padding:0 12px; border-radius:14px; background:rgba(0,0,0,.06); font-weight:700; font-size:14px; flex:none; }
-.selbar .n button { height:auto; padding:2px 0 0; background:none; border-radius:0; color:var(--blue); font-size:12.5px; }
-.selbar [data-selx] { width:42px; padding:0; display:grid; place-items:center; }
+/* two rows: how many and Select all (and Done), then the five things to do with them */
+.selbar { flex-wrap:wrap; row-gap:8px; }
+.selbar .n { flex:1 0 calc(100% - 48px); order:0; display:flex; align-items:baseline; gap:12px; font-weight:700; font-size:14.5px; min-width:0; line-height:1.2; }
+.selbar .n b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.selbar button { order:2; flex:1 1 0; min-width:0; height:42px; padding:0 6px; border-radius:14px; background:rgba(0,0,0,.06); font-weight:700; font-size:14px; }
+.selbar .n button { flex:none; height:auto; padding:0; background:none; border-radius:0; color:var(--blue); font-size:13px; }
+.selbar [data-selx] { order:1; flex:none; width:42px; height:36px; padding:0; display:grid; place-items:center; }
 .selbar button.go { background:var(--ink); color:#fff; }
 .selbar button:disabled { opacity:.4; }
 
@@ -327,6 +329,7 @@ body.sel .selbar { transform:none; }
 .toast button { height:32px; padding:0 12px; border-radius:10px; background:rgba(255,255,255,.16); color:#fff; font-weight:700; }
 /* saving photos to the phone: above the viewer and the select bar */
 .savec { position:fixed; left:12px; right:12px; bottom:calc(16px + env(safe-area-inset-bottom)); z-index:98; max-width:420px; margin:0 auto; padding:14px 14px 14px 16px; border-radius:20px; background:#141412; color:#fff; box-shadow:0 18px 40px -14px rgba(0,0,0,.6); transform:translateY(calc(100% + 30px)); transition:transform 300ms var(--ease); }
+body.lettering .savec, body.lettering .toast { z-index:240; } /* above "Letter it" (js/letter.js), which saves from there */
 .savec.on { transform:none; }
 .savec .r { display:flex; align-items:center; gap:12px; }
 .savec .t { flex:1; min-width:0; font-size:14.5px; line-height:1.25; }
@@ -385,12 +388,12 @@ body.guest [data-select] { display:none; }
 </main>
 <button class="fab press" id="fab" data-upload hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 19V6M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Upload</button>
 <div class="upbar" id="upbar" hidden><span id="uptxt">Uploading…</span><div class="prog"><i id="upprog"></i></div><button data-upload>Details</button></div>
-<div class="selbar" id="selbar"><span class="n"><b id="seln">Tap or drag across</b><button data-selall>Select all</button></span><button data-save disabled>Save</button><button data-tag disabled>Tag</button><button data-hide disabled>Hide</button><button class="go" data-assign disabled>Assign</button><button data-selx aria-label="Done"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>
+<div class="selbar" id="selbar"><span class="n"><b id="seln">Tap or drag across</b><button data-selall>Select all</button></span><button data-save disabled>Save</button><button data-letter disabled>Letter</button><button data-tag disabled>Tag</button><button data-hide disabled>Hide</button><button class="go" data-assign disabled>Assign</button><button data-selx aria-label="Done"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>
 <div class="savec" id="savec" role="status"></div>
 <div class="scrim" id="scrim"></div>
 <section class="sheet" id="sheet" aria-modal="true" role="dialog"></section>
 <div class="vw" id="vw" role="dialog" aria-label="Photo viewer"><div class="track" id="track"></div>
-  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><button class="rb" data-vsave aria-label="Save to this phone"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5"/><path d="M5 19.5h14"/></svg></button><button class="rb" data-vrot aria-label="Turn the photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button></div>
+  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><button class="rb" data-vletter aria-label="Letter it: Japanese lettering on this photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M8.5 4v3M6 7c.5 4 3 7 7 8M11 7c-.5 4-3 7-6.5 8.5"/><path d="M14 20l3.5-9 3.5 9M15.3 17h4.4"/></svg></button><button class="rb" data-vsave aria-label="Save to this phone"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5"/><path d="M5 19.5h14"/></svg></button><button class="rb" data-vrot aria-label="Turn the photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button></div>
   <div class="cap"><button class="hfab" data-heart aria-label="Love this photo" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-7.6-10.4A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.6 2.7c0 5.8-7.6 10.4-7.6 10.4z"/></svg><span class="n" id="hcount"></span></button><div class="capt" id="vcapt"></div><div class="fs" id="fs"></div></div>
   <section class="info" id="vinfo"></section></div>
 <div class="story" id="story"><div class="stage" id="stage"></div><div class="bars" id="sbars"></div><div class="shead" id="shead"></div></div>
@@ -634,7 +637,7 @@ $('#toast').addEventListener('click', (e) => { if (e.target.closest('[data-undo]
 // select mode only marks the photos; the day headers are made new, as a redraw made them (they stick and blur: see dayEl)
 const setSel = (on) => { document.body.classList.toggle('sel', on); if (!on) ui.sel.clear(); for (const h of $('#content').querySelectorAll('.dh')) h.replaceWith(h.cloneNode(true)); paintSel(); };
 function updSel() {
-  const n = ui.sel.size, vis = visible(); $('#seln').textContent = n ? `${n} selected` : 'Tap or drag across'; ['save', 'tag', 'assign', 'hide'].forEach((k) => ($(`#selbar [data-${k}]`).disabled = !n));
+  const n = ui.sel.size, vis = visible(); $('#seln').textContent = n ? `${n} selected` : 'Tap or drag across'; ['save', 'letter', 'tag', 'assign', 'hide'].forEach((k) => ($(`#selbar [data-${k}]`).disabled = !n));
   const all = vis.length && vis.every((p) => ui.sel.has(p.id)); const sa = $('#selbar [data-selall]'); sa.textContent = all ? 'Clear' : `Select all ${vis.length}`; sa.hidden = !vis.length;
 }
 const paintSel = () => { document.querySelectorAll('.grid .th').forEach((el) => el.classList.toggle('on', ui.sel.has(el.dataset.pid))); updSel(); };
@@ -743,7 +746,7 @@ async function savePhotos(list) {
       const paint = (f) => saveCard(`<div class="r"><span class="t">Getting ${n === 1 ? 'the ' + (p.isVideo ? 'video' : 'photo') : `${at + 1} of ${n}`}…<small>Full quality, from Google Drive</small></span>${xBtn}</div><div class="prog"><i style="width:${Math.round(((at + f) / n) * 100)}%"></i></div>`);
       paint(0);
       try {
-        const b = await fetchOriginal(p, job, paint); if (job.stop) return;
+        const b = p.blob || await fetchOriginal(p, job, paint); if (job.stop) return; // (a lettered photo is made on the phone)
         const f = new File([b], fileName(p), { type: p.mime || b.type || '' }); mb += f.size / 1048576;
         if (share) files.push(f); else { download(f, f.name); saved++; await sleep(400); } // a pause between, so Chrome takes each one
       } catch { if (job.stop) return; failed++; }
@@ -780,6 +783,42 @@ function hide(ids) {
   if (document.body.classList.contains('sel')) setSel(false); render();
   save({ ids, set: { hidden: true } });
   toast(`Hidden ${ids.length}. Still kept in Google Drive`, () => { ps.forEach((p) => (p.hidden = false)); save({ ids, set: { hidden: false } }); });
+}
+
+/* ═══ "Letter it" (js/letter.js): Japanese lettering on photos, for posting. Saved to the phone, and a lettered copy goes
+   in the album under the same day and stop (just after the photo), with the same people in it ═══ */
+const LETTER_MAX = 30;
+async function letter(list) {
+  if (!member()) return;
+  const ps = list.filter((p) => !p.isVideo && !p.empty);
+  if (!ps.length) return toast('Videos can\'t be lettered. Pick a photo.');
+  if (ps.length > LETTER_MAX) toast(`The first ${LETTER_MAX} photos: up to ${LETTER_MAX} at a time`);
+  let mod; try { mod = await import('./js/letter.js?v=9'); } catch { return toast('Couldn\'t open Letter it. Check your signal.'); }
+  mod.openLetter({
+    photos: ps.slice(0, LETTER_MAX), start: 0, days: DAYS, stopsOf: stopsOfDay,
+    src: (p) => p.local || pic(p, 2000), srcFallback: (p) => pic(p, 1200), thumb: (p) => p.local || pic(p, 200),
+    places: () => import('./data/places.js?v=9').then((m) => m.PLACES),
+    ai: (b) => api('/words', { trip: TRIP, ...b }),
+    save: letterSave,
+  });
+}
+const letName = (p, n) => `${(p.name || 'photo').replace(/\.\w{2,5}$/, '').replace(/[\\/:*?"<>|]/g, '_')} lettered ${n}.jpg`;
+async function letterSave(items, album) {
+  const stamp = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+  const made = items.map(({ blob, from }, i) => ({ blob, from, name: letName(from, stamp + (items.length > 1 ? '-' + (i + 1) : '')), mime: 'image/jpeg', isVideo: false }));
+  if (album) addLettered(made);
+  savePhotos(made);
+}
+function addLettered(made) {
+  for (const m of made) {
+    const day = dayById[m.from.day]; if (!day) continue;
+    const f = new File([m.blob], m.name, { type: 'image/jpeg', lastModified: Date.now() });
+    const r = { f, key: fileKey(f), day, stop: m.from.stop || null, takenAt: (m.from.takenAt || Date.now()) + 1000, how: null, local: URL.createObjectURL(f), isVideo: false, resume: null, in: (m.from.in || []).slice(), guess: false, touched: true, lettered: true };
+    r.el = document.createElement('div'); r.el.className = 'uprow';
+    r.el.innerHTML = `<span class="pt"><img draggable="false" src="${r.local}" alt="" decoding="async"></span><div class="m"><b>${esc(f.name)}</b><small>Lettered copy → <em>${esc(`Day ${day.n} · ${(stopOf(m.from) || { title: 'Other moments' }).title}`)}</em></small><div class="prog"><i></i></div><span class="st">Waiting</span>${rowFaces(r)}</div>`;
+    r.el.dataset.row = rows.length; const list = $('#uplist'); if (list) list.appendChild(r.el); rows.push(r);
+  }
+  paintUpAll(); pump();
 }
 
 /* ═══ upload: straight from the phone to Google Drive, in pieces, so a bad connection loses nothing ═══ */
@@ -1209,7 +1248,7 @@ async function closeViewer(fromPop, fromRect) {
   vw.getAnimations().forEach((a) => a.cancel()); vw.style.background = ''; vw.classList.remove('on', 'chrome-off'); track.innerHTML = ''; destroyMap();
   if (!fromPop && history.state && history.state.viewer) history.back();
 }
-addEventListener('popstate', () => { if (vw.classList.contains('on')) closeViewer(true); });
+addEventListener('popstate', () => { if (vw.classList.contains('on') && !document.body.classList.contains('lettering')) closeViewer(true); }); // (Back in "Letter it" closes just that)
 const curFrame = () => track.children[1] && track.children[1].querySelector('.frame');
 function slideHtml(p) {
   if (!p) return '<div class="slide"></div>';
@@ -1232,7 +1271,7 @@ function drawViewer() {
   setTrack(0, false);
   const p = vlist[vi], s = stopOf(p), d = dayById[p.day], who = PEOPLE[p.by];
   $('#vtitle').innerHTML = `<b>${esc(s ? s.title : 'Other moments')}</b><small>Day ${d.n} · ${fmtMin(jstOf(p.takenAt, DAYS).min)} · ${vi + 1} of ${vlist.length}</small>`;
-  const mine = p.hearts.includes(ME); const hb = $('[data-heart]'); hb.classList.toggle('on', mine); hb.setAttribute('aria-pressed', mine); hb.hidden = !member();
+  const mine = p.hearts.includes(ME); const hb = $('[data-heart]'); hb.classList.toggle('on', mine); hb.setAttribute('aria-pressed', mine); hb.hidden = !member(); $('[data-vletter]').hidden = !member() || p.isVideo || !!p.empty;
   $('#hcount').textContent = p.hearts.length > 1 || (p.hearts.length && !mine) ? p.hearts.length : '';
   $('#vcapt').innerHTML = `${p.in.length ? faces(p.in, p.guess) : ''}<span><b>${p.in.length ? names(p.in) + (p.guess ? '?' : '') : 'No one tagged'}</b><small>${p.hearts.length ? `♥ ${names(p.hearts)}` : who ? `Taken by ${who.name}` : ''}</small></span><span class="up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 14l6-6 6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Info</span>`;
   drawFilmstrip();
@@ -1339,6 +1378,7 @@ vw.addEventListener('click', (e) => {
   if (t('[data-vrot]') && member()) { const p = vlist[vi]; p.rot = ((p.rot || 0) + 90) % 360; zoom = null; drawViewer(); render(); clearTimeout(rotT[p.id]); rotT[p.id] = setTimeout(() => { delete rotT[p.id]; save({ ids: [p.id], set: { rot: p.rot } }); if (covers['~rot'] && isCover(p)) covers['~rot'][p.id] = p.rot; faceSoon(); }, 700); return; } // a tap a quarter turn; saved once the taps stop
   if (t('[data-vsure]') && member()) { const p = vlist[vi]; p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], set: { sure: true } }); faceSoon(); return; }
   if (t('[data-vsave]')) return savePhotos([vlist[vi]]);
+  if (t('[data-vletter]')) return letter([vlist[vi]]);
   if (t('[data-vassign]')) return openAssign([vlist[vi].id]);
   if (t('[data-vhide]')) { hide([vlist[vi].id]); return drawViewer(); }
 });
@@ -1434,6 +1474,7 @@ document.addEventListener('click', (e) => {
   if (t('#selbar [data-assign]')) return openAssign([...ui.sel]);
   if (t('#selbar [data-tag]')) return openTag([...ui.sel]);
   if (t('#selbar [data-hide]')) return hide([...ui.sel]);
+  if (t('#selbar [data-letter]')) return letter(photos.filter((p) => ui.sel.has(p.id)).sort((a, b) => a.takenAt - b.takenAt));
   if (t('#selbar [data-save]')) return savePhotos(photos.filter((p) => ui.sel.has(p.id)).sort((a, b) => a.takenAt - b.takenAt));
   if (t('#selbar [data-selall]')) { const vis = visible(); if (vis.every((p) => ui.sel.has(p.id))) ui.sel.clear(); else vis.forEach((p) => ui.sel.add(p.id)); return paintSel(); } // the photos the filters show
   const pp = t('[data-pp]'); if (pp) { const id = pp.dataset.pp; if (ui.people.has(id)) ui.people.delete(id); else ui.people.add(id); return render(); }

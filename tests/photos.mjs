@@ -817,6 +817,86 @@ let M = null;
   ok('turned back and unpicked: nothing left over', ap(tp.id).rot === '' && !Object.keys(cv['~rot'] || {}).length, JSON.stringify(cv));
 }
 
+// 13 · "Letter it": Japanese lettering on a photo (js/letter.js), saved to the phone and as a lettered copy in the album
+{
+  const asked = [], sof = (b) => { for (let i = 2; i < b.length - 9; i++) if (b[i] === 0xff && b[i + 1] >= 0xc0 && b[i + 1] <= 0xc2) return [b.readUInt16BE(i + 7), b.readUInt16BE(i + 5)]; return [0, 0]; };
+  const claude = http.createServer(async (req, res) => {
+    const q = JSON.parse((await body(req)).toString()), txt = q.messages[0].content; asked.push({ key: req.headers['x-api-key'], model: q.model, txt });
+    const en = /The English: "([^"]+)"/.exec(txt), ja = /: "([^"]+)"/.exec(txt);
+    const a = en ? { en: en[1], ja: en[1] === 'Best day ever' ? '最高の一日' : '心斎橋の古着' } : { en: /hanko/.test(txt) ? 'Dream' : 'Meaning', ja: ja ? ja[1] : '' };
+    res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(a) }] }));
+  });
+  await new Promise((r) => claude.listen(8797, r));
+  env.ANTHROPIC_API_KEY = 'sk-test'; env.WORDS_API = 'http://localhost:8797/v1/messages';
+  const pin = { 'content-type': 'application/json', 'x-trip-pin': '6666' };
+  const w = await (await api('/words', { method: 'POST', headers: pin, body: JSON.stringify({ trip: 'japan', en: 'Best day ever' }) })).json();
+  ok('words: English in, Japanese out (the small model)', w.ja === '最高の一日' && w.en === 'Best day ever' && asked[0].model === 'claude-haiku-5-5', JSON.stringify(w));
+  ok('words: members only', (await api('/words', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ en: 'x' }) })).status === 403);
+  const dl = []; const onDl = (d) => dl.push(d); n.on('download', onDl);
+  await n.goto(B + '/japan/photos'); await n.waitForTimeout(2000);
+  const pic = byName('shinsaibashi.jpg'); const before = new Set(files.keys());
+  await n.tap(`.grid .th[data-pid="${pic.id}"]`); await n.waitForTimeout(700);
+  ok('the viewer has a Letter it button', await n.isVisible('.vw [data-vletter]'));
+  await n.tap('.vw [data-vletter]'); await n.waitForSelector('.lt [data-cv]', { timeout: 15000 }).catch(() => {});
+  await n.waitForSelector('.lt [data-wait]', { state: 'hidden', timeout: 15000 }).catch(() => {});
+  await n.waitForFunction(() => /心斎橋/.test(document.querySelector('.lt [data-layers]').textContent), null, { timeout: 8000 }).catch(() => {});
+  const chips = await n.$$eval('.lt [data-l]', (b) => b.map((x) => x.textContent));
+  ok('opens on the photo, labelled with its stop (Japanese written for it) and a Day 7 stamp with its meaning', /Shinsaibashi/.test(chips[0]) && /心斎橋の古着/.test(chips[0]) && chips.some((c) => /七日目 · Day 7/.test(c)), chips.join(' | '));
+  const lit = await n.$eval('.lt [data-cv]', (c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let k = 0; for (let i = 0; i < d.length; i += 4 * 97) if (d[i] + d[i + 1] + d[i + 2] > 60) k++; return k; });
+  ok('the photo is drawn', lit > 200, lit);
+  await n.screenshot({ path: OUT + 'letter-brush.png' });
+  // the words: another stop that day, then your own (Claude writes the Japanese)
+  await n.tap('.lt [data-l]'); await n.tap('.lt [data-says]'); await n.waitForTimeout(300);
+  ok('what it says: the day, its places and moments', (await n.$$('.lt-opt[data-list="day"]')).length >= 8 && /奈良・大阪/.test(await n.textContent('.lt-opts')));
+  await n.fill('.lt [data-q]', 'fushimi'); await n.waitForTimeout(200);
+  ok('…any other place on the trip', /伏見稲荷大社/.test(await n.textContent('.lt [data-any]')));
+  await n.screenshot({ path: OUT + 'letter-says.png' });
+  await n.fill('.lt [data-own-en]', 'Best day ever'); await n.tap('.lt [data-owngo]');
+  await n.waitForFunction(() => /最高の一日/.test(document.querySelector('.lt [data-panel]').textContent), null, { timeout: 8000 }).catch(() => {});
+  ok('…or your own words, with the Japanese written for you', /最高の一日/.test(await n.textContent('.lt [data-panel]')));
+  await n.tap('.lt [data-set="style"] [data-v="anime"]'); await n.tap('.lt [data-set="col"] [data-v="1"]');
+  // a stamp you type: what it means
+  await n.tap('.lt [data-add="stamp"]'); await n.fill('.lt [data-stampown]', '夢'); await n.tap('.lt [data-stampgo]');
+  await n.waitForFunction(() => /means “Dream”/.test(document.querySelector('.lt [data-panel]').textContent), null, { timeout: 8000 }).catch(() => {});
+  ok('a stamp you type says what it means', /夢, which means “Dream”/.test(await n.textContent('.lt [data-panel]')), await n.textContent('.lt .lt-means'));
+  ok('every stamp choice shows its English', (await n.$$eval('.lt .lt-grid .k small', (s) => s.map((x) => x.textContent))).every(Boolean));
+  // drag the stamp to the middle, add a sticker, a story frame in film
+  const box = await n.$eval('.lt [data-ov]', (c) => { const r = c.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+  await n.mouse.move(box.x + box.w / 2, box.y + box.h / 2); await n.mouse.down(); await n.mouse.move(box.x + box.w * .3, box.y + box.h * .4, { steps: 6 }); await n.mouse.up();
+  await n.tap('.lt [data-add="sticker"]'); await n.tap('.lt [data-set="what"] [data-v="momiji"]');
+  await n.tap('.lt [data-shape] [data-v="story"]'); await n.tap('.lt [data-tone] [data-v="film"]'); await n.waitForTimeout(400);
+  const asp = await n.$eval('.lt [data-cv]', (c) => c.height / c.width);
+  ok('story shape: 9:16', Math.abs(asp - 16 / 9) < .02, asp);
+  await n.screenshot({ path: OUT + 'letter-anime.png' });
+  // save: a download, and a lettered copy in the album under the same day and stop
+  const sess = sessionsMade;
+  await n.tap('.lt-top [data-ltsave]');
+  await n.waitForFunction(() => /Saved/.test(document.getElementById('toast').textContent), null, { timeout: 15000 }).catch(() => {});
+  await n.waitForFunction(() => !document.querySelector('.uprow:not(.done):not(.err)'), null, { timeout: 20000 }).catch(() => {});
+  const made = [...files.values()].find((f) => !before.has(f.id) && / lettered /.test(f.name));
+  ok('Save downloads the lettered picture', dl.length === 1 && / lettered \d+\.jpg$/.test(dl[0].suggestedFilename()), dl.map((d) => d.suggestedFilename()).join());
+  const jpg = dl[0] && fs.readFileSync(await dl[0].path());
+  ok('…a full-size story picture (1080 × 1920 JPEG)', jpg && jpg[0] === 0xff && jpg[1] === 0xd8 && sof(jpg).join('x') === '1080x1920', jpg && sof(jpg).join('x'));
+  ok('…and a lettered copy goes in the album, same day, stop and people, just after the photo', sessionsMade === sess + 1 && made && made.appProperties.day === pic.appProperties.day && made.appProperties.stop === pic.appProperties.stop && made.appProperties.in === pic.appProperties.in && +made.appProperties.t === +pic.appProperties.t + 1000, made && JSON.stringify(made.appProperties));
+  ok('the original is left as it was', files.get(pic.id).data.equals(pic.data));
+  // Back closes just the editor: the viewer stays
+  await n.goBack(); await n.waitForTimeout(500);
+  ok('Back closes Letter it, and the viewer stays open', !(await n.$('.lt')) && await n.isVisible('#vw.on'));
+  await n.keyboard.press('Escape'); await n.waitForTimeout(600);
+  // many at once: one look on all, each keeps its own place
+  const two = [...files.values()].filter((f) => f.appProperties && f.appProperties.trip && /^image\//.test(f.mimeType) && !f.appProperties.hidden && f.id !== made.id).slice(0, 2);
+  await n.tap('[data-select]'); for (const f of two) await n.tap(`.grid .th[data-pid="${f.id}"]`);
+  await n.tap('#selbar [data-letter]'); await n.waitForSelector('.lt .lt-th', { timeout: 15000 }).catch(() => {}); await n.waitForSelector('.lt [data-wait]', { state: 'hidden', timeout: 15000 }).catch(() => {});
+  ok('selected photos open together', (await n.$$('.lt .lt-th')).length === 2);
+  await n.tap('.lt [data-preset="mincho"]'); await n.tap('.lt [data-all]'); await n.waitForTimeout(300);
+  ok('one look on all of them', /Save all 2/.test(await n.textContent('.lt [data-all]')) && (await n.$$('.lt .lt-th .e')).length === 2);
+  await n.tap('.lt .lt-th[data-i="1"]'); await n.waitForTimeout(600);
+  ok('…the second photo has the same look', /Elegant/.test(await n.$eval('.lt [data-l]', (b) => { b.click(); return document.querySelector('.lt [data-set="style"] .on').textContent; })));
+  await n.screenshot({ path: OUT + 'letter-many.png' });
+  await n.tap('.lt [data-ltx]'); await n.waitForTimeout(400); if (await n.$('body.sel')) await n.tap('#selbar [data-selx]');
+  n.off('download', onDl); claude.close(); delete env.ANTHROPIC_API_KEY; delete env.WORDS_API;
+}
+
 for (const [k, x] of [['naf', N], ['guest', Gst], ['sara', S], ['mo', M]].filter(([, x]) => x)) ok(`no page errors (${k})`, !x.errs.length, x.errs.join(' | '));
 console.log(fails ? `\n${fails} failed` : '\nall photo checks passed');
 await browser.close(); site.close(); google.close(); if (faceBox) faceBox.kill(); fs.rmSync(FIX, { recursive: true, force: true });
