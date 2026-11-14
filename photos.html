@@ -1034,7 +1034,7 @@ async function probe(url, size) {
 function finish(r, id) {
   const q = qGet(); delete q[r.key]; qSet(q);
   r.done = true; r.started = true; r.id = id; setProg(r, 1); rowState(r, 'Uploaded', 'done');
-  if (id) photos.push({ id, name: r.f.name, mime: r.f.type, day: r.day.id, stop: r.stop, takenAt: r.takenAt, by: ME, in: r.in.slice(), hearts: [], hidden: false, guess: !r.touched && r.guess, checked: r.touched, kind: null, np: null, words: '', ar: null, thumb: null, isVideo: r.isVideo, local: r.local, fresh: true });
+  if (id) photos.push({ id, name: r.f.name, mime: r.f.type, day: r.day.id, stop: r.stop, takenAt: r.takenAt, by: ME, in: r.in.slice(), hearts: [], hidden: false, guess: !r.touched && r.guess, faced: !r.touched && !!r.faced, checked: r.touched, kind: null, np: null, words: '', ar: null, thumb: null, isVideo: r.isVideo, local: r.local, fresh: true });
   if (id && r.dirty) save({ ids: [id], set: { in: r.in } }); // changed while it was uploading
   else if (id && r.faced && !r.touched) save({ ids: [id], set: { guess: r.in } }); // named from its faces while it went up
   if (id && r.look) fxMod().then((F) => F.remember(lookKey(id), r.look)).catch(() => {});
@@ -1231,7 +1231,7 @@ async function faceRow(r) {
     if (r.touched) return;
     const g = F.nameAll(r.look, fpv, couldOf(r.day.id, r.stop, ME), r.in, worn[r.day.id] || {}); if (!g || sameSet(g, r.in)) return;
     r.in = g; r.guess = r.faced = true; paintRow(r); paintUpAll();
-    const p = r.id && byIdP(r.id); if (p && !p.checked) { p.in = g.slice(); p.guess = true; save({ ids: [r.id], set: { guess: g } }); render(); }
+    const p = r.id && byIdP(r.id); if (p && !p.checked) { p.in = g.slice(); p.guess = p.faced = true; save({ ids: [r.id], set: { guess: g } }); render(); }
   } catch {}
 }
 let faceRows = Promise.resolve(); const queueFaceRow = (r) => { faceRows = faceRows.then(() => faceRow(r)); }; // one at a time
