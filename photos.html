@@ -114,7 +114,6 @@ html.c2 .th.big { grid-column:span 1; grid-row:span 1; } /* two a row: every pho
 .faces { position:absolute; left:5px; bottom:5px; z-index:1; display:flex; }
 .faces i { width:18px; height:18px; border-radius:50%; background:var(--c, #555); color:#fff; font-style:normal; font-size:8.5px; font-weight:700; display:grid; place-items:center; box-shadow:0 0 0 1.5px #fff; margin-right:-4px; }
 .faces i.more { background:#141412; }
-.faces.g i { box-shadow:none; outline:1.5px dashed #fff; outline-offset:-1.5px; opacity:.9; }
 .what { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; margin:0 -16px; padding:0 16px; }
 .what::-webkit-scrollbar { display:none; }
 .what button { flex:none; height:32px; padding:0 12px; border-radius:999px; background:#fff; box-shadow:0 0 0 1px var(--line); font-size:13px; font-weight:700; color:var(--ink2); white-space:nowrap; }
@@ -203,8 +202,6 @@ body.sel .selbar { transform:none; }
 .rw { display:flex; gap:5px; margin-top:6px; }
 .rw button { width:30px; height:30px; border-radius:50%; background:var(--c); color:#fff; font-size:11px; font-weight:700; opacity:.28; transition:opacity 140ms, box-shadow 140ms; }
 .rw button.on { opacity:1; box-shadow:0 0 0 2px #fff, 0 0 0 3.5px var(--c); }
-.rw.g button.on { box-shadow:none; outline:2px dashed var(--c); outline-offset:2px; }
-.rw .gl { align-self:center; margin-left:4px; font-size:11.5px; font-weight:700; color:var(--ink3); }
 .upall { padding:12px 0 10px; border-top:1px solid var(--line); display:flex; align-items:center; gap:10px; }
 .upall > span { flex:1; font-size:13.5px; font-weight:700; } .upall > span small { display:block; font-weight:500; color:var(--ink3); font-size:12px; }
 .upall .rw { margin:0; } .upall .rw button { width:36px; height:36px; font-size:12px; }
@@ -222,10 +219,10 @@ body.sel .selbar { transform:none; }
 .vw .frame img, .vw .frame video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; -webkit-user-drag:none; }
 .vw .frame.real img, .vw .frame.real video { object-fit:contain; }
 .vw .playbadge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:68px; height:68px; border-radius:50%; background:rgba(0,0,0,.45); display:grid; place-items:center; color:#fff; }
-.vw .top { position:absolute; left:0; right:0; top:0; z-index:3; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:calc(12px + env(safe-area-inset-top)) 14px 14px; color:#fff; background:linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0)); transition:opacity 200ms; }
+.vw .top { position:absolute; left:0; right:0; top:0; z-index:3; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:calc(12px + env(safe-area-inset-top)) 14px 14px; color:#fff; background:linear-gradient(180deg, rgba(0,0,0,.6), rgba(0,0,0,0)); transition:opacity 200ms; }
 .vw .top .mid { text-align:center; flex:1; min-width:0; line-height:1.2; }
 .vw .top .mid b { display:block; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.vw .top .mid small { font-size:12px; opacity:.7; }
+.vw .top .mid small { display:block; font-size:12px; opacity:.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .vw .rb { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.14); display:grid; place-items:center; flex:none; color:#fff; }
 /* the heart: a floating button under the right thumb, just above Info */
 .vw .hfab { position:absolute; right:14px; bottom:calc(100% + 4px); width:58px; height:58px; border-radius:50%; background:rgba(255,255,255,.16); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); display:grid; place-items:center; color:#fff; box-shadow:0 10px 26px -12px rgba(0,0,0,.7); }
@@ -268,9 +265,6 @@ body.sel .selbar { transform:none; }
 .info .tagrow button i { width:42px; height:42px; border-radius:50%; background:var(--c); color:#fff; font-style:normal; display:grid; place-items:center; opacity:.35; transition:opacity 160ms, box-shadow 160ms; }
 .info .tagrow button.on { color:#fff; } .info .tagrow button.on i { opacity:1; box-shadow:0 0 0 2px #1b1a18, 0 0 0 4px var(--c); }
 .info .tagrow[disabled] button { pointer-events:none; }
-.info .tagrow.g button.on i { box-shadow:none; outline:2px dashed var(--c); outline-offset:2px; }
-.info .guessed { display:flex; align-items:center; gap:10px; margin-top:8px; font-size:12.5px; color:rgba(255,255,255,.6); }
-.info .guessed button { color:#9cc0ff; font-weight:700; font-size:13px; }
 .tagr { position:fixed; inset:0; z-index:85; background:#0d0d0c; color:#fff; display:none; flex-direction:column; }
 .tagr.on { display:flex; }
 .tagr .tg-top { display:flex; align-items:center; justify-content:space-between; padding:calc(12px + env(safe-area-inset-top)) 16px 10px; font-weight:700; }
@@ -388,12 +382,12 @@ body.guest [data-select] { display:none; }
 </main>
 <button class="fab press" id="fab" data-upload hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 19V6M6 11l6-6 6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Upload</button>
 <div class="upbar" id="upbar" hidden><span id="uptxt">Uploading…</span><div class="prog"><i id="upprog"></i></div><button data-upload>Details</button></div>
-<div class="selbar" id="selbar"><span class="n"><b id="seln">Tap or drag across</b><button data-selall>Select all</button></span><button data-save disabled>Save</button><button data-letter disabled>Letter</button><button data-tag disabled>Tag</button><button data-hide disabled>Hide</button><button class="go" data-assign disabled>Assign</button><button data-selx aria-label="Done"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>
+<div class="selbar" id="selbar"><span class="n"><b id="seln">Tap or drag across</b><button data-selall>Select all</button></span><button data-share disabled hidden>Share</button><button data-save disabled>Save</button><button data-letter disabled>Letter</button><button data-tag disabled>Tag</button><button data-hide disabled>Hide</button><button class="go" data-assign disabled>Assign</button><button data-selx aria-label="Done"><svg width="16" height="16" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div>
 <div class="savec" id="savec" role="status"></div>
 <div class="scrim" id="scrim"></div>
 <section class="sheet" id="sheet" aria-modal="true" role="dialog"></section>
 <div class="vw" id="vw" role="dialog" aria-label="Photo viewer"><div class="track" id="track"></div>
-  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><button class="rb" data-vletter aria-label="Letter it: Japanese lettering on this photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M8.5 4v3M6 7c.5 4 3 7 7 8M11 7c-.5 4-3 7-6.5 8.5"/><path d="M14 20l3.5-9 3.5 9M15.3 17h4.4"/></svg></button><button class="rb" data-vsave aria-label="Save to this phone"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5"/><path d="M5 19.5h14"/></svg></button><button class="rb" data-vrot aria-label="Turn the photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button></div>
+  <div class="top"><button class="rb" data-vclose aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></button><span class="mid" id="vtitle"></span><button class="rb" data-vletter aria-label="Letter it: Japanese lettering on this photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M8.5 4v3M6 7c.5 4 3 7 7 8M11 7c-.5 4-3 7-6.5 8.5"/><path d="M14 20l3.5-9 3.5 9M15.3 17h4.4"/></svg></button><button class="rb" data-vsave aria-label="Save to this phone"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5"/><path d="M5 19.5h14"/></svg></button><button class="rb" data-vshare aria-label="Share" hidden><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></svg></button><button class="rb" data-vrot aria-label="Turn the photo" hidden><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button></div>
   <div class="cap"><button class="hfab" data-heart aria-label="Love this photo" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-7.6-10.4A4.3 4.3 0 0112 7.2a4.3 4.3 0 017.6 2.7c0 5.8-7.6 10.4-7.6 10.4z"/></svg><span class="n" id="hcount"></span></button><div class="capt" id="vcapt"></div><div class="fs" id="fs"></div></div>
   <section class="info" id="vinfo"></section></div>
 <div class="story" id="story"><div class="stage" id="stage"></div><div class="bars" id="sbars"></div><div class="shead" id="shead"></div></div>
@@ -430,7 +424,7 @@ const fmtDate = (d) => new Date(d.date + 'T00:00:00').toLocaleDateString('en-GB'
 const kindColor = (s) => { const k = /dinner|lunch|breakfast|market|ramen|sushi|food|cafe|izakaya|okonomiyaki/i.test(s.title) ? 'food' : /shop|vintage|streetwear|don quijote|mall|arcade|ginza|uniqlo|street/i.test(s.title) ? 'shop' : /train|bus|subway|walk|→|keihan|shinkansen|transfer|taxi|flight/i.test(s.title) ? 'transit' : /hotel|check/i.test(s.title) ? 'hotel' : 'sight'; return CAT[k][0]; };
 const stopCache = {}; const stopsOfDay = (id) => (stopCache[id] = stopCache[id] || (dayById[id] ? stopsOf(dayById[id]) : []));
 const stopOf = (p) => (p.stop ? stopsOfDay(p.day).find((s) => s.id === p.stop) || null : null);
-const faces = (ids, guess) => (ids && ids.length ? `<span class="faces${guess ? ' g' : ''}">${ids.slice(0, 3).map((id) => `<i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>`).join('')}${ids.length > 3 ? `<i class="more">+${ids.length - 3}</i>` : ''}</span>` : '');
+const faces = (ids) => (ids && ids.length ? `<span class="faces">${ids.slice(0, 3).map((id) => `<i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>`).join('')}${ids.length > 3 ? `<i class="more">+${ids.length - 3}</i>` : ''}</span>` : '');
 const isVid = (p) => !!p.isVideo;
 const dur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '');
 const names = (ids) => { const n = ids.map((id) => PEOPLE[id].name); return n.length < 2 ? n.join('') : n.slice(0, -1).join(', ') + ' & ' + n[n.length - 1]; };
@@ -489,15 +483,16 @@ function couldOf(day, stop, by) {
   const w = s ? [s.who] : ss.map((x) => x.who); const c = new Set(w.flatMap((x) => COUPLES[x] || PIDS)); if (PEOPLE[by]) c.add(by);
   return c.size ? PIDS.filter((x) => c.has(x)) : PIDS;
 }
-// a photo that wants someone to say who's in it: a guess to confirm, or people in it and no one tagged
-const toCheck = (p) => !p.hidden && !p.empty && !!dayById[p.day] && !p.checked && (p.guess || (!p.in.length && p.np !== 0));
+// a photo that wants someone to say who's in it: people in it and no one tagged. A guess (from the sort or the faces)
+// counts as said: it shows and filters like any tag, and stays a guess only so the faces can still put it right
+const toCheck = (p) => !p.hidden && !p.empty && !!dayById[p.day] && !p.checked && !p.in.length && p.np !== 0;
 const isCover = (p) => p.stop && covers[p.stop] === p.id;
 const qOk = (p) => { if (!ui.q) return true; const s = stopOf(p), d = dayById[p.day]; const hay = `${s ? s.title : 'other moments'} ${d ? d.title + ' day ' + d.n : ''} ${p.words} ${p.kind ? WHAT[p.kind] || '' : ''}`.toLowerCase(); return ui.q.toLowerCase().split(/\s+/).every((w) => hay.includes(w)); };
 const visible = () => photos.filter((p) => !p.hidden && dayById[p.day]
   && (ui.kind === 'all' || (ui.kind === 'video' ? isVid(p) : ui.kind === 'photo' ? !isVid(p) : p.hearts.length)) && (!ui.what || p.kind === ui.what)
   && [...ui.people].every((id) => p.in.includes(id)) && qOk(p));
 // a photo's tile: its picture (m), then what's drawn over it (o)
-const over = (p) => `${isVid(p) ? `<span class="vd"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>${dur(p.dur)}</span>` : ''}${faces(p.in, p.guess)}${p.hearts.length ? '<span class="hrt">♥</span>' : ''}${isCover(p) ? '<span class="cov">★ Plan photo</span>' : ''}${p.fresh ? '<span class="new">New</span>' : ''}<span class="ck"></span>`;
+const over = (p) => `${isVid(p) ? `<span class="vd"><svg width="11" height="11" viewBox="0 0 24 24"><path d="M7 5v14l12-7z" fill="#fff"/></svg>${dur(p.dur)}</span>` : ''}${faces(p.in)}${p.hearts.length ? '<span class="hrt">♥</span>' : ''}${isCover(p) ? '<span class="cov">★ Plan photo</span>' : ''}${p.fresh ? '<span class="new">New</span>' : ''}<span class="ck"></span>`;
 const tileOf = (p, ix, big) => ({ id: p.id, ix, big, m: imgTag(p, big ? 800 : 400, true), o: over(p) });
 const thumb = (t) => `<button class="th ${t.big ? 'big' : ''}" data-pid="${t.id}" data-ix="${t.ix}" aria-label="Photo">${t.m}${t.o}</button>`;
 
@@ -637,7 +632,7 @@ $('#toast').addEventListener('click', (e) => { if (e.target.closest('[data-undo]
 // select mode only marks the photos; the day headers are made new, as a redraw made them (they stick and blur: see dayEl)
 const setSel = (on) => { document.body.classList.toggle('sel', on); if (!on) ui.sel.clear(); for (const h of $('#content').querySelectorAll('.dh')) h.replaceWith(h.cloneNode(true)); paintSel(); };
 function updSel() {
-  const n = ui.sel.size, vis = visible(); $('#seln').textContent = n ? `${n} selected` : 'Tap or drag across'; ['save', 'letter', 'tag', 'assign', 'hide'].forEach((k) => ($(`#selbar [data-${k}]`).disabled = !n));
+  const n = ui.sel.size, vis = visible(); $('#seln').textContent = n ? `${n} selected` : 'Tap or drag across'; ['share', 'save', 'letter', 'tag', 'assign', 'hide'].forEach((k) => ($(`#selbar [data-${k}]`).disabled = !n));
   const all = vis.length && vis.every((p) => ui.sel.has(p.id)); const sa = $('#selbar [data-selall]'); sa.textContent = all ? 'Clear' : `Select all ${vis.length}`; sa.hidden = !vis.length;
 }
 const paintSel = () => { document.querySelectorAll('.grid .th').forEach((el) => el.classList.toggle('on', ui.sel.has(el.dataset.pid))); updSel(); };
@@ -733,12 +728,32 @@ async function fetchOriginal(p, job, onp) {
   return new Blob(parts, { type: r.headers.get('content-type') || p.mime || '' });
 }
 function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60e3); }
-async function savePhotos(list) {
+// the phone's share sheet takes files: always on iPhone and Android, on some computers
+const CAN_SHARE = !!navigator.canShare && (() => { try { return navigator.canShare({ files: [new File([''], 'a.jpg', { type: 'image/jpeg' })] }); } catch { return false; } })();
+// a file the share sheet will take: Chrome on Android won't share a .mov or a .heic, so a video goes as .mp4 (the same
+// film, which apps play) and a photo as Google's big JPEG of it
+async function shareable(f, p) {
+  const ok = (x) => { try { return navigator.canShare({ files: [x] }); } catch { return false; } };
+  if (ok(f)) return f;
+  if (p.isVideo) { const v = new File([f], f.name.replace(/\.\w{2,5}$/, '') + '.mp4', { type: 'video/mp4' }); if (ok(v)) return v; throw new Error('unshareable'); }
+  const r = await fetch(pic(p, 2000)); if (!r.ok) throw new Error('HTTP ' + r.status);
+  const j = new File([await r.blob()], f.name.replace(/\.\w{2,5}$/, '') + '.jpg', { type: 'image/jpeg' }); if (ok(j)) return j;
+  throw new Error('unshareable');
+}
+// Share buttons: only where the share sheet takes photos, with the icon this phone's own share button has
+if (CAN_SHARE) {
+  const vb = $('[data-vshare]'); vb.hidden = false; $('#selbar [data-share]').hidden = false;
+  vb.querySelector('svg').innerHTML = IOS ? '<path d="M12 3.5v11M8 7.5l4-4 4 4"/><path d="M8.5 10.5H6.5v10h11v-10h-2"/>'
+    : '<circle cx="17.5" cy="5.5" r="2.5"/><circle cx="6.5" cy="12" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/><path d="M8.7 10.7l6.6-3.9M8.7 13.3l6.6 3.9"/>';
+}
+// Save (sharing false) or Share: the originals, fetched, then onto the phone or into the share sheet
+async function savePhotos(list, sharing = false) {
   if (!list.length) return;
+  if (sharing && !CAN_SHARE) return toast('This browser can\'t share photos. Save them instead, then share from your phone.');
   if (saveJob) saveJob.stop = true;
   const job = saveJob = { stop: false, go: null, ready: null }, n = list.length;
-  const share = IOS && navigator.canShare && (() => { try { return navigator.canShare({ files: [new File([''], 'a.jpg', { type: 'image/jpeg' })] }); } catch { return false; } })();
-  let saved = 0, failed = 0, i = 0;
+  const share = sharing || (IOS && CAN_SHARE);
+  let saved = 0, failed = 0, i = 0, tryNow = sharing && n <= SAVE_N;
   while (i < n) {
     const files = []; let mb = 0;
     while (i < n && files.length < SAVE_N && mb < SAVE_MB) {
@@ -747,26 +762,40 @@ async function savePhotos(list) {
       paint(0);
       try {
         const b = p.blob || await fetchOriginal(p, job, paint); if (job.stop) return; // (a lettered photo is made on the phone)
-        const f = new File([b], fileName(p), { type: p.mime || b.type || '' }); mb += f.size / 1048576;
+        let f = new File([b], fileName(p), { type: p.mime || b.type || '' });
+        if (sharing) { f = await shareable(f, p); if (job.stop) return; }
+        mb += f.size / 1048576;
         if (share) files.push(f); else { download(f, f.name); saved++; await sleep(400); } // a pause between, so Chrome takes each one
       } catch { if (job.stop) return; failed++; }
       i++;
     }
     if (job.stop) return;
     if (share && files.length) {
+      const word = photoWord(files.length, files.length === 1 && list[i - 1]);
+      // straight into the share sheet, while the tap on Share still counts (a quick fetch); otherwise a tap on the card
+      if (tryNow) {
+        tryNow = false; savec.classList.remove('on');
+        const res = await navigator.share({ files }).then(() => 'ok', (err) => (err && err.name === 'AbortError' ? 'cancel' : err && err.name === 'NotAllowedError' ? 'tap' : 'fail'));
+        if (job.stop) return;
+        if (res === 'ok') { saved += files.length; continue; }
+        if (res === 'cancel') return saveDone();
+      }
       // the share sheet needs a fresh tap: wait for one on the button (tapping it again after closing the sheet is fine)
-      const more = n > SAVE_N ? `<small>${i - files.length + 1}–${i} of ${n}${i < n ? ' · the rest next' : ''}</small>` : '<small>Then tap “Save Image” to put it in Photos</small>';
-      const ask = (extra = '') => saveCard(`<div class="r"><span class="t">${photoWord(files.length, files.length === 1 && list[i - 1])} ready${extra}${more}</span><button class="go" data-savego>Save</button>${xBtn}</div>`);
+      const more = n > SAVE_N ? `<small>${i - files.length + 1}–${i} of ${n}${i < n ? ' · the rest next' : ''}</small>`
+        : sharing ? '<small>Then pick who to send it to</small>' : '<small>Then tap “Save Image” to put it in Photos</small>';
+      const ask = (extra = '') => saveCard(`<div class="r"><span class="t">${word} ready${extra}${more}</span><button class="go" data-savego>${sharing ? 'Share' : 'Save'}</button>${xBtn}</div>`);
       job.ready = files; ask();
       for (;;) {
         const res = await new Promise((ok) => (job.go = ok)); if (job.stop) return;
         if (res === 'ok') { saved += files.length; break; }
+        if (res === 'cancel' && sharing) return saveDone(saved ? `Shared ${photoWord(saved, n === 1 && list[0])}` : '');
         ask(res === 'cancel' ? '' : ' · try again');
       }
       job.ready = null;
     }
   }
-  saveDone(saved ? `Saved ${photoWord(saved, n === 1 && list[0])}${failed ? ` · ${failed} couldn’t be fetched` : ''}${IOS ? '' : ' to Downloads'}` : 'Couldn’t fetch the photos. Check your connection and try again.');
+  const what = photoWord(saved, n === 1 && list[0]), fails = failed ? ` · ${failed} couldn’t be ${sharing ? 'shared' : 'fetched'}` : '';
+  saveDone(saved ? (sharing ? `Shared ${what}${fails}` : `Saved ${what}${fails}${IOS ? '' : ' to Downloads'}`) : 'Couldn’t fetch the photos. Check your connection and try again.');
 }
 savec.addEventListener('click', (e) => {
   const job = saveJob; if (!job) return;
@@ -879,7 +908,7 @@ function openUpload() {
   const list = $('#uplist'); rows.forEach((r) => list.appendChild(r.el)); paintUpAll();
 }
 /* who's in each one, said while it uploads: a tap on a face; the whole batch at once from the row on top */
-const rowFaces = (r) => `<span class="rw${r.guess ? ' g' : ''}">${PIDS.map((id) => `<button data-rw="${id}" class="${r.in.includes(id) ? 'on' : ''}" style="--c:${PEOPLE[id].c}" aria-label="${PEOPLE[id].name}" aria-pressed="${r.in.includes(id)}">${PEOPLE[id].ini}</button>`).join('')}${r.guess ? '<span class="gl">Guessed · tap to fix</span>' : ''}</span>`;
+const rowFaces = (r) => `<span class="rw">${PIDS.map((id) => `<button data-rw="${id}" class="${r.in.includes(id) ? 'on' : ''}" style="--c:${PEOPLE[id].c}" aria-label="${PEOPLE[id].name}" aria-pressed="${r.in.includes(id)}">${PEOPLE[id].ini}</button>`).join('')}</span>`;
 const paintRow = (r) => { const el = r.el.querySelector('.rw'); if (el) el.outerHTML = rowFaces(r); };
 const upAll = document.createElement('div'); upAll.className = 'upall';
 function paintUpAll() {
@@ -1040,7 +1069,7 @@ addEventListener('beforeunload', (e) => { if (uploading) { e.preventDefault(); e
 const tagr = $('#tagr'); let tq = [], ti = 0, tEdited = false;
 function renderNudge() {
   const n = member() ? photos.filter(toCheck).length : 0; const el = $('#nudge');
-  const h = n ? `<div class="nudge"><span class="fc">${PIDS.map((id) => `<i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>`).join('')}</span><span><b>Who's in ${n === 1 ? 'this one' : `these ${n}`}?</b>${photos.some((p) => toCheck(p) && p.guess) ? 'Some are guessed. A tap each to check.' : 'A tap each, then the next one.'}</span><button class="press" data-check>Check</button></div>` : '';
+  const h = n ? `<div class="nudge"><span class="fc">${PIDS.map((id) => `<i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>`).join('')}</span><span><b>Who's in ${n === 1 ? 'this one' : `these ${n}`}?</b>A tap each, then the next one.</span><button class="press" data-check>Check</button></div>` : '';
   if (drawn.get(el) !== h) noted(el, h).innerHTML = h;
   renderFaces();
 }
@@ -1083,7 +1112,7 @@ tagr.addEventListener('click', (e) => {
 
 /* ═══ faces: the faces server (workers/faces) finds the faces and people in each photo, once; on the four's phones a face
    matcher (js/faces.js) learns the four of us from photos someone tagged, then guesses who's in the ones no one has
-   checked (dotted, like any guess). The prints it learns are kept by the server, so the names show on every phone. ═══ */
+   checked (a guess, which counts as a tag at once). The prints it learns are kept by the server, so the names show on every phone. ═══ */
 const FACES_HERE = MEMBER;
 let facesOn = FACES_HERE, faceBusy = false, faceAgain = false, faceMsg = '', fp = null, fpv = {}, faceT = 0;
 const fxMod = () => import('./js/faces.js?v=9');
@@ -1141,11 +1170,12 @@ async function facePass() {
     }
     if (await fetchLooks(photos.filter((p) => !p.isVideo && !p.hidden && dayById[p.day] && (p.checked || p.np !== 0)))) faceAgain = true;
     // prints from a photo whose tags changed since (that person isn't in it after all) are dropped, and it's learned again
-    const drop = new Set(); for (const [who, l] of Object.entries(fp.by)) for (const x of l) { const p = byIdP(x.id); if (p && p.checked && !p.in.includes(who)) drop.add(x.id); }
+    const drop = new Set(); for (const [who, l] of Object.entries(fp.by)) for (const x of l) { const p = byIdP(x.id); if (p && !p.in.includes(who)) drop.add(x.id); }
     if (drop.size) await prints({ drop: [...drop] });
     const used = new Set(fp.used || []);
     // photos of one of us first (the sure ones), then group photos: each pass knows us better, so a group photo can teach more
-    const teach = photos.filter((p) => p.checked && p.in.length && !p.isVideo && !p.hidden && !used.has(p.id)).sort((a, b) => a.in.length - b.in.length);
+    // (a guess from the sort counts as said, so it teaches too; the faces' own guesses don't, or it would teach itself)
+    const teach = photos.filter((p) => (p.checked || (p.guess && !p.faced)) && p.in.length && !p.isVideo && !p.hidden && !used.has(p.id)).sort((a, b) => a.in.length - b.in.length);
     const have = new Set(Object.values(fp.by).flat().map((x) => x.id + x.q));
     for (let round = 0, grew = true; grew && round < 4; round++) {
       grew = false; let add = [], ids = [], i = 0;
@@ -1186,7 +1216,7 @@ async function facePass() {
     }
     const k = knows(), not = PIDS.filter((id) => !k.includes(id)), n = k.reduce((s, id) => s + fp.by[id].length, 0);
     setFaceMsg(!k.length ? 'It learns from photos you tag: tag a few photos of each of you.'
-      : `Recognises ${names(k)} (from ${n} tagged face${n > 1 ? 's' : ''}).${not.length ? ` Tag photos of just ${not.map((id) => PEOPLE[id].name).join(' or ')} to teach it.` : ''}${named ? ` Named ${named} photo${named > 1 ? 's' : ''}: check them above.` : ''}`);
+      : `Recognises ${names(k)} (from ${n} tagged face${n > 1 ? 's' : ''}).${not.length ? ` Tag photos of just ${not.map((id) => PEOPLE[id].name).join(' or ')} to teach it.` : ''}${named ? ` Named ${named} photo${named > 1 ? 's' : ''}.` : ''}`);
   } catch (e) { setFaceMsg(e && e.status === 503 ? '' : e && e.status ? 'Couldn\'t reach the face server. It tries again later.' : 'Face recognition couldn\'t start on this phone.'); }
   finally { faceBusy = false; if (faceAgain) { faceAgain = false; faceSoon(); } }
 }
@@ -1273,7 +1303,7 @@ function drawViewer() {
   $('#vtitle').innerHTML = `<b>${esc(s ? s.title : 'Other moments')}</b><small>Day ${d.n} · ${fmtMin(jstOf(p.takenAt, DAYS).min)} · ${vi + 1} of ${vlist.length}</small>`;
   const mine = p.hearts.includes(ME); const hb = $('[data-heart]'); hb.classList.toggle('on', mine); hb.setAttribute('aria-pressed', mine); hb.hidden = !member(); $('[data-vletter]').hidden = !member() || p.isVideo || !!p.empty;
   $('#hcount').textContent = p.hearts.length > 1 || (p.hearts.length && !mine) ? p.hearts.length : '';
-  $('#vcapt').innerHTML = `${p.in.length ? faces(p.in, p.guess) : ''}<span><b>${p.in.length ? names(p.in) + (p.guess ? '?' : '') : 'No one tagged'}</b><small>${p.hearts.length ? `♥ ${names(p.hearts)}` : who ? `Taken by ${who.name}` : ''}</small></span><span class="up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 14l6-6 6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Info</span>`;
+  $('#vcapt').innerHTML = `${p.in.length ? faces(p.in) : ''}<span><b>${p.in.length ? names(p.in) : 'No one tagged'}</b><small>${p.hearts.length ? `♥ ${names(p.hearts)}` : who ? `Taken by ${who.name}` : ''}</small></span><span class="up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 14l6-6 6 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Info</span>`;
   drawFilmstrip();
   if (vw.classList.contains('showinfo')) drawInfo();
 }
@@ -1296,11 +1326,10 @@ function drawInfo() {
   const ev = s ? d.items.flatMap((it) => (it.type === 'event' ? [it] : it.type === 'choice' ? it.options.flatMap((o) => o.items || []) : [])).find((x) => x.id === s.id) : null;
   $('#vinfo').innerHTML = `<div class="grab"></div><h3>${esc(s ? s.title : 'Other moments')}</h3><p class="meta">Day ${d.n} · ${fmtDate(d)} · ${esc(s && s.time ? s.time : 'between stops')}</p>
     ${ev && ev.desc ? `<p class="desc">${esc(ev.desc).slice(0, 260)}${ev.desc.length > 260 ? '…' : ''}</p>` : ''}
-    <p class="lbl">Who's in it</p><div class="tagrow${p.guess ? ' g' : ''}" ${member() ? '' : 'disabled'}>${PIDS.map((id) => `<button data-vtag="${id}" class="${p.in.includes(id) ? 'on' : ''}"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}</button>`).join('')}</div>
-    ${p.guess && member() ? '<p class="guessed"><span>A guess from the photo.</span><button data-vsure>Looks right</button></p>' : ''}
+    <p class="lbl">Who's in it</p><div class="tagrow" ${member() ? '' : 'disabled'}>${PIDS.map((id) => `<button data-vtag="${id}" class="${p.in.includes(id) ? 'on' : ''}"><i style="--c:${PEOPLE[id].c}">${PEOPLE[id].ini}</i>${PEOPLE[id].name}</button>`).join('')}</div>
     ${s && s.place ? `<p class="lbl">Where</p><div class="vmap" id="vmap"></div>` : ''}
     <p class="lbl">Details</p><div class="kv"><span>Taken</span><span>${fmtMin(jstOf(p.takenAt, DAYS).min)}, ${fmtDate(d)}</span><span>By</span><span>${PEOPLE[p.by] ? PEOPLE[p.by].name : '—'}</span><span>Loved by</span><span>${p.hearts.length ? names(p.hearts) : 'no one yet'}</span>${p.name ? `<span>File</span><span>${esc(p.name)}</span>` : ''}</div>
-    <div class="row">${member() && s ? (isCover(p) ? '<button class="chosen" data-vcover>★ The photo for this stop</button>' : '<button data-vcover>★ Use as this stop\'s photo</button>') : ''}<a href="./?d=${d.id}">Open on the plan</a><button data-vsave>Save to phone</button>${member() ? '<button data-vassign>Move to another stop</button><button data-vhide>Hide</button>' : ''}</div>`;
+    <div class="row">${member() && s ? (isCover(p) ? '<button class="chosen" data-vcover>★ The photo for this stop</button>' : '<button data-vcover>★ Use as this stop\'s photo</button>') : ''}<a href="./?d=${d.id}">Open on the plan</a>${CAN_SHARE ? '<button data-vshare>Share</button>' : ''}<button data-vsave>Save to phone</button>${member() ? '<button data-vassign>Move to another stop</button><button data-vhide>Hide</button>' : ''}</div>`;
   destroyMap(); const n = mapN; // a newer Info (or closing it) wins over a map still waiting for the library
   if (s && s.place) leaflet().then(() => requestAnimationFrame(() => { const el = document.getElementById('vmap'); if (!el || n !== mapN) return; vmap = L.map(el, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false }).setView([s.place.lat, s.place.lng], 15); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(vmap); L.circleMarker([s.place.lat, s.place.lng], { radius: 8, color: '#fff', weight: 3, fillColor: kindColor(s), fillOpacity: 1 }).addTo(vmap); }), () => {});
 }
@@ -1376,8 +1405,8 @@ vw.addEventListener('click', (e) => {
   if (t('.capt')) { setInfo(true); setTrack(0, true); return; }
   const vt = t('[data-vtag]'); if (vt && member()) { const p = vlist[vi], id = vt.dataset.vtag; const on = !p.in.includes(id); p.in = on ? PIDS.filter((x) => x === id || p.in.includes(x)) : p.in.filter((x) => x !== id); p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], tag: { who: id, on } }); faceSoon(); return; }
   if (t('[data-vrot]') && member()) { const p = vlist[vi]; p.rot = ((p.rot || 0) + 90) % 360; zoom = null; drawViewer(); render(); clearTimeout(rotT[p.id]); rotT[p.id] = setTimeout(() => { delete rotT[p.id]; save({ ids: [p.id], set: { rot: p.rot } }); if (covers['~rot'] && isCover(p)) covers['~rot'][p.id] = p.rot; faceSoon(); }, 700); return; } // a tap a quarter turn; saved once the taps stop
-  if (t('[data-vsure]') && member()) { const p = vlist[vi]; p.guess = false; p.checked = true; drawViewer(); render(); save({ ids: [p.id], set: { sure: true } }); faceSoon(); return; }
   if (t('[data-vsave]')) return savePhotos([vlist[vi]]);
+  if (t('[data-vshare]')) return savePhotos([vlist[vi]], true);
   if (t('[data-vletter]')) return letter([vlist[vi]]);
   if (t('[data-vassign]')) return openAssign([vlist[vi].id]);
   if (t('[data-vhide]')) { hide([vlist[vi].id]); return drawViewer(); }
@@ -1427,7 +1456,7 @@ function openStory(dayId) {
 }
 const itemDur = (it) => DUR[it.kind];
 function itemHtml(it) {
-  if (it.kind === 'photo' || it.kind === 'video') { const p = it.p; return `<div class="it" style="--dur:${DUR.photo + 600}ms">${p.isVideo && !p.empty ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" autoplay muted playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1400)}<div class="cap2">${faces(p.in, p.guess)}<span>${fmtMin(jstOf(p.takenAt, DAYS).min)}${p.hearts.length ? ' · ♥' : ''}</span></div></div>`; }
+  if (it.kind === 'photo' || it.kind === 'video') { const p = it.p; return `<div class="it" style="--dur:${DUR.photo + 600}ms">${p.isVideo && !p.empty ? `<video${rotA(p)} src="${p.local || media(p, 'file')}" autoplay muted playsinline ${p.thumb ? `poster="${pic(p, 1200)}"` : ''}></video>` : imgTag(p, 1400)}<div class="cap2">${faces(p.in)}<span>${fmtMin(jstOf(p.takenAt, DAYS).min)}${p.hearts.length ? ' · ♥' : ''}</span></div></div>`; }
   return `<div class="it"><div class="card2" style="--c:${it.c}"><small>${esc(it.small)}</small><h2>${esc(it.h)}</h2><p>${esc(it.p)}</p>${it.kind === 'end' && it.next ? `<button class="go" data-snext="${it.next.id}">Next: Day ${it.next.n} ▶</button>` : it.kind === 'end' ? '<button class="go" data-sclose>Back to the photos</button>' : ''}</div></div>`;
 }
 function showItem(k) {
@@ -1476,6 +1505,7 @@ document.addEventListener('click', (e) => {
   if (t('#selbar [data-hide]')) return hide([...ui.sel]);
   if (t('#selbar [data-letter]')) return letter(photos.filter((p) => ui.sel.has(p.id)).sort((a, b) => a.takenAt - b.takenAt));
   if (t('#selbar [data-save]')) return savePhotos(photos.filter((p) => ui.sel.has(p.id)).sort((a, b) => a.takenAt - b.takenAt));
+  if (t('#selbar [data-share]')) return savePhotos(photos.filter((p) => ui.sel.has(p.id)).sort((a, b) => a.takenAt - b.takenAt), true);
   if (t('#selbar [data-selall]')) { const vis = visible(); if (vis.every((p) => ui.sel.has(p.id))) ui.sel.clear(); else vis.forEach((p) => ui.sel.add(p.id)); return paintSel(); } // the photos the filters show
   const pp = t('[data-pp]'); if (pp) { const id = pp.dataset.pp; if (ui.people.has(id)) ui.people.delete(id); else ui.people.add(id); return render(); }
   if (t('[data-clrppl]')) { ui.people.clear(); return render(); }
