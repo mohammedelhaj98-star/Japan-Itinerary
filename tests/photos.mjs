@@ -337,7 +337,7 @@ await n.keyboard.press('Escape'); await n.waitForTimeout(600);
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
   const ip = await ictx.newPage(); const ierrs = []; ip.on('pageerror', (e) => ierrs.push(e.message)); ip.on('download', () => ierrs.push('downloaded instead of sharing'));
   await ip.addInitScript(() => { if (location.protocol === 'about:') return; localStorage.setItem('trips.me', '"mariam"'); localStorage.setItem('trips.pin', '6666'); window.__SAVECHUNK = 2;
-    navigator.canShare = (d) => !!(d && d.files); navigator.share = async (d) => { (window.__shared = window.__shared || []).push(d.files.map((f) => [f.name, f.type, f.size])); }; });
+    navigator.canShare = (d) => !!(d && d.files); navigator.share = async (d) => { if (window.__deny) { window.__deny--; throw new DOMException('no tap', 'NotAllowedError'); } (window.__shared = window.__shared || []).push(d.files.map((f) => [f.name, f.type, f.size])); }; });
   await ip.goto(B + '/japan/photos'); await ip.waitForTimeout(1800);
   await ip.tap(`.grid .th[data-pid="${shot.id}"]`); await ip.waitForTimeout(700); await ip.tap('.vw [data-vsave]');
   await ip.waitForSelector('#savec.on [data-savego]', { timeout: 8000 }).catch(() => {});
@@ -356,7 +356,50 @@ await n.keyboard.press('Escape'); await n.waitForTimeout(600);
   ok('iPhone: many go to the share sheet in groups', sh2.length === Math.ceil(iv / 2) && sh2.flat().length === iv && sh2.every((g) => g.length <= 2), JSON.stringify(sh2.map((g) => g.length)));
   ok('…and the total is counted', new RegExp(`Saved ${iv} photos`).test(await ip.textContent('#toast')), await ip.textContent('#toast'));
   ok('iPhone saving: no page errors', !ierrs.length, ierrs.join(' | '));
+
+  // Share: the photo straight into the share sheet (WhatsApp, Messages…), from the viewer and from Select
+  if (await ip.evaluate(() => document.body.classList.contains('sel'))) { await ip.tap('[data-selx]'); await ip.waitForTimeout(300); }
+  const clr = () => ip.evaluate(() => { window.__shared = []; document.getElementById('toast').textContent = ''; });
+  await clr(); await ip.tap(`.grid .th[data-pid="${shot.id}"]`); await ip.waitForTimeout(700);
+  ok('Share: a button in the viewer, with the iPhone share icon', await ip.isVisible('.vw .top [data-vshare]') && !(await ip.$('.vw .top [data-vshare] circle')));
+  await ip.screenshot({ path: OUT + 'share-viewer.png' });
+  await ip.tap('.vw .top [data-vshare]'); await ip.waitForFunction(() => /Shared/.test(document.getElementById('toast').textContent), null, { timeout: 8000 }).catch(() => {});
+  const ss1 = await ip.evaluate(() => window.__shared);
+  ok('…one tap: the original goes straight to the share sheet', ss1.length === 1 && ss1[0].length === 1 && ss1[0][0][0] === shot.name && ss1[0][0][2] === shot.data.length, JSON.stringify(ss1));
+  ok('…and says shared', /Shared 1 photo/.test(await ip.textContent('#toast')) && !(await ip.$('#savec.on')), await ip.textContent('#toast'));
+  await clr(); await ip.evaluate(() => (window.__deny = 1));
+  await ip.tap('.vw .top [data-vshare]'); await ip.waitForSelector('#savec.on [data-savego]', { timeout: 8000 }).catch(() => {});
+  ok('Share after a slow fetch (the tap no longer counts): the card asks for one more tap', /1 photo ready/.test(await ip.textContent('#savec')) && (await ip.textContent('#savec [data-savego]')) === 'Share', await ip.textContent('#savec'));
+  await ip.waitForTimeout(350); await ip.screenshot({ path: OUT + 'share-card.png' });
+  await ip.tap('#savec [data-savego]'); await ip.waitForTimeout(500);
+  ok('…which shares it', (await ip.evaluate(() => window.__shared)).length === 1 && /Shared 1 photo/.test(await ip.textContent('#toast')), await ip.textContent('#toast'));
+  await ip.tap('.vw [data-vclose]'); await ip.waitForTimeout(600);
+  await clr(); await ip.tap('[data-select]'); await ip.waitForTimeout(300);
+  const two = (await ip.$$('.grid .th')).slice(0, 2); for (const t of two) { await t.tap(); await ip.waitForTimeout(150); }
+  ok('Select: a Share button', await ip.isVisible('#selbar [data-share]') && (await ip.textContent('#seln')) === '2 selected', await ip.textContent('#seln'));
+  await ip.screenshot({ path: OUT + 'share-select.png' });
+  await ip.tap('#selbar [data-share]'); await ip.waitForFunction(() => /Shared/.test(document.getElementById('toast').textContent), null, { timeout: 8000 }).catch(() => {});
+  const ss2 = await ip.evaluate(() => window.__shared);
+  ok('…shares the picked photos in one go', ss2.length === 1 && ss2[0].length === 2 && /Shared 2 photos/.test(await ip.textContent('#toast')), JSON.stringify(ss2) + ' ' + await ip.textContent('#toast'));
+  ok('iPhone sharing: no page errors', !ierrs.length, ierrs.join(' | '));
   await ictx.close();
+
+  // Android (Chrome): its own share icon; a file its share sheet won't take (an iPhone .heic) goes as Google's JPEG of it
+  const sf = files.get(shot.id), was = { name: sf.name, mimeType: sf.mimeType }; Object.assign(sf, { name: 'shinsaibashi.heic', mimeType: 'image/heic' });
+  const actx = await browser.newContext({ viewport: { width: 412, height: 915 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2.6, serviceWorkers: 'block',
+    userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36' });
+  const ap2 = await actx.newPage(); const aerrs = []; ap2.on('pageerror', (e) => aerrs.push(e.message));
+  await ap2.addInitScript(() => { if (location.protocol === 'about:') return; localStorage.setItem('trips.me', '"m"'); localStorage.setItem('trips.pin', '6666');
+    navigator.canShare = (d) => !!(d && d.files) && d.files.every((f) => !/heic|quicktime/.test(f.type)); navigator.share = async (d) => { (window.__shared = window.__shared || []).push(d.files.map((f) => [f.name, f.type, f.size])); }; });
+  await ap2.goto(B + '/japan/photos'); await ap2.waitForTimeout(1800);
+  await ap2.tap(`.grid .th[data-pid="${shot.id}"]`); await ap2.waitForTimeout(700);
+  ok('Android: the share button has Android\'s share icon', !!(await ap2.$('.vw .top [data-vshare] circle')));
+  await ap2.screenshot({ path: OUT + 'share-android-viewer.png' });
+  await ap2.tap('.vw .top [data-vshare]'); await ap2.waitForFunction(() => /Shared/.test(document.getElementById('toast').textContent), null, { timeout: 8000 }).catch(() => {});
+  const as1 = await ap2.evaluate(() => window.__shared);
+  ok('…a file the sheet won\'t take goes as the JPEG picture instead', as1 && as1.length === 1 && as1[0][0][0] === 'shinsaibashi.jpg' && as1[0][0][1] === 'image/jpeg', JSON.stringify(as1) + ' ' + await ap2.textContent('#toast'));
+  ok('Android sharing: no page errors', !aerrs.length, aerrs.join(' | '));
+  await actx.close(); Object.assign(sf, was);
 }
 
 // 9 · changes need the member PIN
@@ -539,19 +582,23 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   await n.setInputFiles('#upfiles', ['gion.jpg', 'view.jpg', 'us.jpg'].map((f) => FIX + '/' + f)); await n.waitForTimeout(200);
   ok('upload sheet: a row of faces on each photo, and one for all of them', (await n.$$('.uprow .rw button')).length === 12 && await n.isVisible('.upall [data-rwall="naf"]'));
   await n.tap('.uprow[data-row="2"] [data-rw="naf"]'); await n.tap('.uprow[data-row="2"] [data-rw="sara"]'); // while the first one is still going up
-  await waitRows(n, 3); await n.waitForSelector('.uprow[data-row="0"] .rw.g', { timeout: 8000 }).catch(() => {}); putDelay = 0;
+  await waitRows(n, 3); await n.waitForSelector('.uprow[data-row="0"] [data-rw="sara"].on', { timeout: 8000 }).catch(() => {}); putDelay = 0;
   await n.screenshot({ path: OUT + 'upload-who.png' });
   const gion = byName('gion.jpg'), view = byName('view.jpg'), us = byName('us.jpg');
   ok('tagged while uploading: Naf & Sara saved with the photo, as checked', ap(us.id).in === 'naf,sara' && ap(us.id).ck === '1' && !ap(us.id).ig, JSON.stringify(ap(us.id)));
   ok('…and the sort leaves a photo someone tagged alone', !ap(us.id).ai);
   ok('one person at NASA\'s Gion stop, uploaded by Naf → guessed Sara', ap(gion.id).in === 'sara' && ap(gion.id).ig === '1' && ap(gion.id).ai === 'us' && ap(gion.id).np === '1' && /gion/.test(ap(gion.id).aw), JSON.stringify(ap(gion.id)));
   ok('a view → no one, kind Places, search words', ap(view.id).in === '' && ap(view.id).ai === 'place' && ap(view.id).np === '0' && ap(view.id).aw === 'view temple', JSON.stringify(ap(view.id)));
-  ok('the upload row shows the guess, dotted, to fix with a tap', await n.isVisible('.uprow[data-row="0"] .rw.g [data-rw="sara"].on') && /Guessed/.test(await n.textContent('.uprow[data-row="0"]')));
+  ok('the upload row shows the guess as a tag, like any other (a tap still fixes it)', await n.isVisible('.uprow[data-row="0"] [data-rw="sara"].on') && !(await n.$('.uprow .rw.g')) && !/Guessed/.test(await n.textContent('.uprow[data-row="0"]')));
   ok('the sort looked at the phone\'s own small copy (≤ 640 px)', asked.slice(-2).every((a) => Math.max(a.w, a.h) <= 640 && a.w > 0), JSON.stringify(asked.slice(-2)));
   await n.tap('[data-sheetx]'); await n.waitForTimeout(300);
 
   await n.reload(); await n.waitForTimeout(2500);
-  ok('gallery: a guessed tag is dotted', !!(await n.$(`.grid .th[data-pid="${gion.id}"] .faces.g`)) && !(await n.$(`.grid .th[data-pid="${us.id}"] .faces.g`)));
+  ok('gallery: a guessed tag shows like any tag', !!(await n.$(`.grid .th[data-pid="${gion.id}"] .faces`)) && !(await n.$('.grid .faces.g')));
+  await n.tap('[data-pp="sara"]'); await n.waitForTimeout(400);
+  ok('…and the Who\'s in it filter finds it right away, unchecked', (await n.$$eval('.grid .th', (els) => els.map((e) => e.dataset.pid))).includes(gion.id) && ap(gion.id).ig === '1' && ap(gion.id).ck !== '1');
+  await n.screenshot({ path: OUT + 'guess-filter.png' });
+  await n.tap('[data-pp="sara"]'); await n.waitForTimeout(400);
   ok('kind filters appear', await n.isVisible('#what [data-what="place"]') && await n.isVisible('#what [data-what="us"]'));
   await n.tap('#what [data-what="place"]'); await n.waitForTimeout(400);
   const placeIds = await n.$$eval('.grid .th', (els) => els.map((e) => e.dataset.pid));
@@ -576,35 +623,34 @@ await S.pg.screenshot({ path: OUT + 'small.png' });
   await n.mouse.click(vb.x + vb.width / 2, vb.y + vb.height / 2); await n.mouse.click(vb.x + vb.width / 2, vb.y + vb.height / 2); await n.waitForTimeout(900);
   ok('speed: zooming in swaps in the full-size picture', /s=4000/.test(await n.getAttribute('.vw .slide:nth-child(2) .frame img', 'src')), await n.getAttribute('.vw .slide:nth-child(2) .frame img', 'src'));
   await n.keyboard.press('Escape'); await n.waitForTimeout(700);
-  ok('a nudge offers to check who\'s in the rest', await n.isVisible('#nudge [data-check]') && /Who's in these \d+/.test(await n.textContent('#nudge')), await n.textContent('#nudge'));
+  // a photo of two that the sort couldn't name (two people, not a selfie, all four there): that one waits for a tap
+  for (const nm of ['kyoto.jpg', 'castle.jpg']) Object.assign(files.get(byName(nm).id).appProperties, { day: 'd06', stop: 'd06-gion', in: '', ig: '', ck: '', gf: '', ai: 'us', np: '2', aw: 'street' }); // (at NASA's stop)
+  await n.reload(); await n.waitForTimeout(2500);
+  ok('a nudge offers to check who\'s in the rest', await n.isVisible('#nudge [data-check]') && /Who's in (these \d+|this one)/.test(await n.textContent('#nudge')), await n.textContent('#nudge'));
   await n.screenshot({ path: OUT + 'nudge.png' });
   await n.tap('[data-check]'); await n.waitForTimeout(600);
   const curId = async () => { const src = await n.getAttribute('#tgpic img', 'src').catch(() => ''); return (/thumb\/([\w-]+)[=?]/.exec(src || '') || [])[1]; };
   const first = await curId();
-  ok('the check starts with the earliest: the Gion guess, "Looks right"', first === gion.id && /^1 of \d+$/.test(await n.textContent('#tgn')) && (await n.textContent('[data-tgnext]')) === 'Looks right' && /Guessed Sara/.test(await n.textContent('#tghint')), `${first} · ${await n.textContent('#tgn')} · ${await n.textContent('#tghint')}`);
+  ok('the check skips guesses (they count already): it asks only about photos no one is tagged in', first && first !== gion.id && !ap(first).in && /^1 of \d+$/.test(await n.textContent('#tgn')) && !/Guessed/.test(await n.textContent('#tghint')), `${first} · ${await n.textContent('#tgn')} · ${await n.textContent('#tghint')}`);
   ok('…people who weren\'t at that stop say so', /wasn't there/.test(await n.textContent('[data-tgp="m"]')));
   await n.screenshot({ path: OUT + 'check-guess.png' });
-  await n.tap('[data-tgnext]'); await n.waitForTimeout(500);
-  ok('Looks right confirms the guess', ap(gion.id).in === 'sara' && ap(gion.id).ck === '1' && !ap(gion.id).ig, JSON.stringify(ap(gion.id)));
-  const second = await curId();
+  const second = first;
   await n.tap('[data-tgp="mariam"]'); await n.waitForTimeout(150);
   ok('a tap changes it and the button says Next', /^(Next|Done)$/.test(await n.textContent('[data-tgnext]')) && !(await n.$('#tgppl.g')));
   await n.tap('[data-tgnext]'); await n.waitForTimeout(500);
   ok('…saved as checked', second && ap(second).in.split(',').includes('mariam') && ap(second).ck === '1' && !ap(second).ig, JSON.stringify(ap(second)));
   const third = await curId();
   if (third) { await n.tap('[data-tgnone]'); await n.waitForTimeout(500); ok('No one: no tags, and it isn\'t asked again', ap(third).in === '' && ap(third).ck === '1', JSON.stringify(ap(third))); }
-  await n.tap('[data-tgx]'); await n.waitForTimeout(400);
+  if (await n.isVisible('#tagr')) await n.tap('[data-tgx]'); await n.waitForTimeout(400); // (the last one closes it on its own)
   ok('closing the check goes back to the gallery', !(await n.isVisible('#tagr')));
-  // the viewer: a guess says so, and "Looks right" confirms it
+  // the viewer: a guess is shown as a plain tag, nothing to confirm
   const g2 = [...files.values()].find((f) => f.appProperties && f.appProperties.ig === '1' && !f.appProperties.hidden && !f.trashed);
   if (g2) {
     await n.tap(`.grid .th[data-pid="${g2.id}"]`); await n.waitForTimeout(700); await n.tap('#vcapt'); await n.waitForTimeout(600);
-    ok('viewer Info: the guess is dotted, with Looks right', await n.isVisible('#vinfo .tagrow.g') && await n.isVisible('#vinfo [data-vsure]'));
+    ok('viewer Info: a guess is a plain tag, nothing to confirm', await n.isVisible('#vinfo .tagrow button.on') && !(await n.$('#vinfo .tagrow.g')) && !(await n.$('#vinfo [data-vsure]')) && !/\?/.test(await n.textContent('#vcapt b')));
     await n.screenshot({ path: OUT + 'viewer-guess.png' });
-    await n.tap('#vinfo [data-vsure]'); await n.waitForTimeout(500);
-    ok('…which saves it as checked', ap(g2.id).ck === '1' && !ap(g2.id).ig && !(await n.$('#vinfo .tagrow.g')));
     await n.keyboard.press('Escape'); await n.waitForTimeout(500);
-  } else ok('a guessed photo is left for the viewer check', false);
+  } else ok('a guessed photo is left with its guess', false);
   await gp.goto(B + '/japan/photos'); await gp.waitForTimeout(1500);
   ok('guests see no nudge and sort nothing (they land on the trip)', await onTrip() && !(await gp.$('#nudge')) && !(await gp.$('#what button.on')));
   claude.close(); delete env.ANTHROPIC_API_KEY; delete env.SORT_API;
@@ -720,13 +766,13 @@ let M = null;
   await m.tap('[data-upload]'); await m.waitForTimeout(300);
   await m.setInputFiles('#upfiles', [FIX + '/group.jpg', FIX + '/face-again.jpg']);
   await waitRows(m, 6);
-  await m.waitForFunction(() => document.querySelectorAll('.uprow .rw.g').length >= 2, null, { timeout: 120000 }).catch(() => {});
+  await m.waitForFunction(() => document.querySelectorAll('.uprow[data-row="4"] .rw button.on').length >= 4 && document.querySelectorAll('.uprow[data-row="5"] .rw button.on').length >= 1, null, { timeout: 120000 }).catch(() => {});
   await m.waitForTimeout(800); await m.$eval('.uprow[data-row="4"]', (e) => e.scrollIntoView({ block: 'center' }));
   await m.screenshot({ path: OUT + 'faces-upload.png' });
   const grp = byName('group.jpg'), again = byName('face-again.jpg');
   ok('a new photo of all four: each face named, as a guess', ap(grp.id).in === 'naf,sara,mariam,m' && ap(grp.id).ig === '1' && ap(grp.id).ck !== '1', JSON.stringify(ap(grp.id)));
   ok('another photo of one of them: just them', ap(again.id).in === 'naf' && ap(again.id).ig === '1', JSON.stringify(ap(again.id)));
-  ok('the upload row shows the names dotted, to fix with a tap, in each person\'s colour', await m.isVisible('.uprow[data-row="4"] .rw.g [data-rw="m"].on') && (await cOf('.uprow[data-row="4"] [data-rw="m"]')) === '#0a7f6e' && (await cOf('.uprow[data-row="4"] [data-rw="sara"]')) === '#d26b9c');
+  ok('the upload row shows the names, to fix with a tap, in each person\'s colour', await m.isVisible('.uprow[data-row="4"] .rw [data-rw="m"].on') && (await cOf('.uprow[data-row="4"] [data-rw="m"]')) === '#0a7f6e' && (await cOf('.uprow[data-row="4"] [data-rw="sara"]')) === '#d26b9c');
   await m.tap('[data-sheetx]'); await m.waitForTimeout(300);
   // the same people later that day with no face to see: named by what they're wearing (learned from the photo above)
   await m.evaluate(() => window.__photos.facePass()); await m.waitForFunction(() => !window.__photos.faceBusy, null, { timeout: 120000 }).catch(() => {});
@@ -738,7 +784,7 @@ let M = null;
   await m.screenshot({ path: OUT + 'faces-outfits.png' });
   await m.tap('[data-sheetx]'); await m.waitForTimeout(300);
   await n.reload(); await n.waitForTimeout(2500);
-  ok('on Naf\'s phone: the names show (dotted)', !!(await n.$(`.grid .th[data-pid="${grp.id}"] .faces.g`)));
+  ok('on Naf\'s phone: the names show, as tags', !!(await n.$(`.grid .th[data-pid="${grp.id}"] .faces`)) && (await n.$$(`.grid .th[data-pid="${grp.id}"] .faces i`)).length >= 3);
   await m.screenshot({ path: OUT + 'faces-on.png' });
   // a tag changed by hand: that photo's print goes, and it's learned again from the new tags
   await n.evaluate((id) => fetch('/api/photos/update', { method: 'POST', headers: { 'content-type': 'application/json', 'x-trip-pin': '6666' }, body: JSON.stringify({ trip: 'japan', ids: [id], set: { in: ['sara'] } }) }), byName('face-naf.jpg').id);
